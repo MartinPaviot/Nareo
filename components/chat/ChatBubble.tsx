@@ -126,7 +126,7 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
         const trimmed = part.trim();
         if (trimmed.match(/^[A-D]\)/)) {
           options.push(trimmed);
-        } else if (trimmed.startsWith('_Type A, B, C, or D_')) {
+        } else if (trimmed.toLowerCase().includes('tapez votre réponse') || trimmed.toLowerCase().includes('type your answer')) {
           hint = trimmed;
         } else if (trimmed) {
           questionParts.push(trimmed);
@@ -134,7 +134,7 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
       });
       
       return (
-          <div className="space-y-3">
+        <div className="space-y-3">
           {/* Question text */}
           <div className="text-sm leading-relaxed">
             {questionParts.map((part, idx) => (
@@ -149,26 +149,35 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
           {/* MCQ Options */}
           {options.length > 0 && (
             <div className="space-y-2 pl-2">
-              {options.map((option, idx) => (
-                <div 
-                  key={idx}
-                  className="flex items-start gap-2 p-2 rounded-lg hover:bg-orange-50 transition-colors"
-                >
-                  <span className="font-semibold text-orange-600 min-w-[24px]">
-                    {option.substring(0, 2)}
-                  </span>
-                  <span className="text-sm text-gray-700 flex-1">
-                    {option.substring(2).trim()}
-                  </span>
-                </div>
-              ))}
+              {options.map((option, idx) => {
+                // Extract the letter label (e.g., "A)")
+                const letter = option.substring(0, 2);
+                // Get the text after "A)" and remove any leading "A. " pattern
+                let optionText = option.substring(2).trim();
+                // Remove the duplicate prefix like "A. ", "B. ", etc.
+                optionText = optionText.replace(/^[A-D]\.\s*/, '');
+                
+                return (
+                  <div 
+                    key={idx}
+                    className="flex items-start gap-2"
+                  >
+                    <span className="font-semibold text-orange-600 min-w-[24px]">
+                      {letter}
+                    </span>
+                    <span className="text-sm text-gray-700 flex-1">
+                      {optionText}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
           
           {/* Hint */}
           {hint && (
             <p className="text-xs text-gray-500 italic mt-2">
-              {hint.replace(/_/g, '')}
+              {hint}
             </p>
           )}
         </div>

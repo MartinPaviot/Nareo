@@ -98,7 +98,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
               questionContent += translatedQuestion.options.map((opt, idx) => 
                 `${String.fromCharCode(65 + idx)}) ${opt}`
               ).join('\n');
-              questionContent += `\n\n_${translate('chat_type_hint')}_`;
+              questionContent += `\n\n${translate('chat_type_hint')}`;
             }
 
             const updatedMessages = [...translatedMessages];
@@ -172,10 +172,16 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       // Add initial greeting only if starting from question 1
       if (startQuestionNumber === 1) {
         const localizedTitle = getLocalizedChapterTitle(chapter, currentLanguage);
+        
+        // Calculate points information
+        const pointsInfo = currentLanguage === 'fr' 
+          ? '• Questions 1-3 (QCM): 10 points chacune\n• Questions 4-5 (Réponse courte/Réflexive): 35 points chacune'
+          : '• Questions 1-3 (MCQ): 10 points each\n• Questions 4-5 (Short/Reflective): 35 points each';
+        
         const greeting: ChatMessage = {
           id: generateId(),
           role: 'assistant',
-          content: `${translate('chat_greeting')}\n\n${translate('chat_intro', { title: localizedTitle })}\n\n${translate('chat_intro_mcq')}\n${translate('chat_intro_short')}\n${translate('chat_intro_reflective')}\n\n${translate('chat_ready')}`,
+          content: `${translate('chat_greeting')}\n\n${translate('chat_intro', { title: localizedTitle })}\n\n${translate('chat_intro_mcq')}\n${translate('chat_intro_short')}\n${translate('chat_intro_reflective')}\n\n**${currentLanguage === 'fr' ? '🎯 Points par question' : '🎯 Points per question'}:**\n${pointsInfo}\n\n${translate('chat_ready')}`,
           timestamp: new Date(),
           aristoState: 'happy',
         };
@@ -249,7 +255,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       questionContent += question.options.map((opt, idx) => 
         `${String.fromCharCode(65 + idx)}) ${opt}`
       ).join('\n');
-      questionContent += `\n\n_${translate('chat_type_hint')}_`;
+      questionContent += `\n\n${translate('chat_type_hint')}`;
     }
 
     const questionMessage: ChatMessage = {

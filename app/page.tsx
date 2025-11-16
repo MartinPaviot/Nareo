@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, Loader2, Home, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import AuthGuard from '@/components/auth/AuthGuard';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 function UploadScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
   const { translate } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -133,9 +135,41 @@ function UploadScreen() {
     }
   };
 
+  const handleGoHome = () => {
+    router.push('/dashboard');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
+      {/* Top Header with Home and Logout Icons */}
+      <div className="flex justify-end items-center gap-4 p-4">
+        <button
+          onClick={handleGoHome}
+          className="p-2 hover:bg-white rounded-full transition-all duration-200 group"
+          title="Go to Dashboard"
+        >
+          <Home className="w-6 h-6 text-gray-600 group-hover:text-orange-500 transition-colors" />
+        </button>
+        <button
+          onClick={handleSignOut}
+          className="p-2 hover:bg-white rounded-full transition-all duration-200 group"
+          title="Sign Out"
+        >
+          <LogOut className="w-6 h-6 text-gray-600 group-hover:text-orange-500 transition-colors" />
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex items-center justify-center p-4 pt-0">
+        <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
@@ -278,11 +312,12 @@ function UploadScreen() {
           </div>
         </div>
 
-        {/* Example Images Hint */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
-            {translate('upload_tip')}
-          </p>
+          {/* Example Images Hint */}
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-500">
+              {translate('upload_tip')}
+            </p>
+          </div>
         </div>
       </div>
     </div>

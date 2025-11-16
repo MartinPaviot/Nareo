@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Learning Notes - Test Image</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #764ba2;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        .concept {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid #667eea;
+            border-radius: 8px;
+        }
+        .concept h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        .difficulty {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .easy { background: #d4edda; color: #155724; }
+        .medium { background: #fff3cd; color: #856404; }
+        .hard { background: #f8d7da; color: #721c24; }
+        .note {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Introduction to Machine Learning</h1>
+        
+        <div class="note">
+            <strong>📝 Course Overview:</strong> This chapter covers fundamental concepts in machine learning, 
+            from basic principles to advanced techniques. Perfect for beginners and intermediate learners.
+        </div>
+
+        <div class="concept">
+            <h3>1. What is Machine Learning? <span class="difficulty easy">EASY</span></h3>
+            <p>
+                Machine learning is a subset of artificial intelligence that enables computers to learn 
+                from data without being explicitly programmed.
+            </p>
+            <p><strong>Key Points:</strong></p>
+            <ul>
+                <li>Computers learn from experience</li>
+                <li>No explicit programming needed</li>
+                <li>Improves automatically with more data</li>
+                <li>Makes predictions based on patterns</li>
+            </ul>
+        </div>
+
+        <div class="concept">
+            <h3>2. Supervised Learning <span class="difficulty medium">MEDIUM</span></h3>
+            <p>
+                Uses labeled training data to learn the relationship between inputs and outputs. 
+                The algorithm learns from examples where the correct answer is known.
+            </p>
+            <p><strong>Applications:</strong></p>
+            <ul>
+                <li><strong>Classification:</strong> Categorizing data (spam detection, image recognition)</li>
+                <li><strong>Regression:</strong> Predicting continuous values (house prices, stock prices)</li>
+            </ul>
+        </div>
+
+        <div class="concept">
+            <h3>3. Unsupervised Learning <span class="difficulty medium">MEDIUM</span></h3>
+            <p>
+                Finds patterns in unlabeled data without predefined categories. The algorithm explores 
+                the data structure on its own.
+            </p>
+            <p><strong>Techniques:</strong></p>
+            <ul>
+                <li><strong>Clustering:</strong> Grouping similar items (customer segmentation)</li>
+                <li><strong>Dimensionality Reduction:</strong> Simplifying complex data (PCA, t-SNE)</li>
+            </ul>
+        </div>
+
+        <div class="concept">
+            <h3>4. Neural Networks & Deep Learning <span class="difficulty hard">HARD</span></h3>
+            <p>
+                Computing systems inspired by biological neural networks. Deep learning uses neural 
+                networks with multiple layers to learn hierarchical representations.
+            </p>
+            <p><strong>Components:</strong></p>
+            <ul>
+                <li>Input Layer → Hidden Layers → Output Layer</li>
+                <li>Neurons process and transmit information</li>
+                <li>Activation functions introduce non-linearity</li>
+                <li>Backpropagation adjusts weights during training</li>
+            </ul>
+        </div>
+
+        <div class="concept">
+            <h3>5. Model Training & Evaluation <span class="difficulty medium">MEDIUM</span></h3>
+            <p>
+                Training involves fitting a model to data. Evaluation measures performance on unseen data 
+                to prevent overfitting.
+            </p>
+            <p><strong>Best Practices:</strong></p>
+            <ul>
+                <li>Split data: Training (70%) / Validation (15%) / Test (15%)</li>
+                <li>Use cross-validation for robust evaluation</li>
+                <li>Monitor for overfitting and underfitting</li>
+                <li>Choose appropriate metrics (accuracy, precision, recall, F1-score)</li>
+            </ul>
+        </div>
+
+        <div class="note">
+            <strong>💡 Next Steps:</strong> Practice with real datasets, implement algorithms from scratch, 
+            and explore popular ML libraries like scikit-learn, TensorFlow, and PyTorch.
+        </div>
+    </div>
+</body>
+</html>

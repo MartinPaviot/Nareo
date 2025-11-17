@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { evaluateAnswer } from '@/lib/openai-vision';
-import { memoryStore } from '@/lib/memory-store';
+import { authenticateRequest } from '@/lib/api-auth';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { calculateBadge } from '@/lib/scoring';
 
 export async function POST(request: NextRequest) {
@@ -9,12 +10,12 @@ export async function POST(request: NextRequest) {
     
     // Check if this is chapter-based or concept-based evaluation
     if (body.chapterId) {
-      return handleChapterEvaluation(body);
+      return handleChapterEvaluation(request, body);
     } else {
-      return handleConceptEvaluation(body);
+      return handleConceptEvaluation(request, body);
     }
   } catch (error) {
-    console.error('Error evaluating answer:', error);
+    console.error('❌ Error evaluating answer:', error);
     return NextResponse.json(
       { error: 'Failed to evaluate answer', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -23,8 +24,16 @@ export async function POST(request: NextRequest) {
 }
 
 // New chapter-based evaluation
-async function handleChapterEvaluation(body: any) {
+async function handleChapterEvaluation(request: NextRequest, body: any) {
   const { chapterId, questionId, questionNumber, questionType, answer, correctAnswer, language = 'EN' } = body;
+
+  // Authenticate user
+  const auth = await authenticateRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const userId = auth.user.id;
 
   if (!chapterId || !questionId || !questionNumber || !questionType || !answer) {
     return NextResponse.json(
@@ -33,23 +42,47 @@ async function handleChapterEvaluation(body: any) {
     );
   }
 
-  // Get chapter
-  const chapter = memoryStore.getChapter(chapterId);
+  console.log('📝 Evaluating answer for chapter:', chapterId, 'question:', questionNumber, 'user:', userId);
+
+  const supabase = await createSupabaseServerClient();
+
+  // Get chapter from Supabase
+  const { data: chapter, error: chapterError } = await supabase
+    .from('chapters')
+    .select('*')
+    .eq('id', chapterId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (chapterError) {
+    console.error('❌ Error fetching chapter:', chapterError);
+    return NextResponse.json(
+      { error: 'Failed to fetch chapter' },
+      { status: 500 }
+    );
+  }
+
   if (!chapter) {
+    console.error('❌ Chapter not found:', chapterId);
     return NextResponse.json(
       { error: 'Chapter not found' },
       { status: 404 }
     );
   }
 
+  console.log('✅ Chapter found:', chapter.title);
+
   // Get the question
-  const question = chapter.questions?.find(q => q.id === questionId);
+  const question = chapter.questions?.find((q: any) => q.id === questionId);
   if (!question) {
+    console.error('❌ Question not found:', questionId);
     return NextResponse.json(
       { error: 'Question not found' },
       { status: 404 }
     );
   }
+
+  console.log('✅ Question found:', question.type, 'points:', question.points);
 
   let evaluation: any;
   let score = 0;
@@ -65,6 +98,8 @@ async function handleChapterEvaluation(body: any) {
     correct = userAnswer === correctAnswerLetter;
     score = correct ? question.points : 0;
     
+    console.log('📊 MCQ evaluation:', { userAnswer, correctAnswerLetter, correct, score });
+    
     if (correct) {
       feedback = language === 'FR' 
         ? `✅ Correct ! Excellent travail ! Vous avez gagné ${question.points} points.`
@@ -75,11 +110,11 @@ async function handleChapterEvaluation(body: any) {
       const correctOptionText = question.options?.[correctOptionIndex] || '';
       
       evaluation = await evaluateAnswer(
-        `Question: ${question.question}\n\nOptions:\n${question.options?.map((opt, idx) => `${String.fromCharCode(65 + idx)}) ${opt}`).join('\n')}\n\nStudent answered: ${userAnswer}\nCorrect answer: ${correctAnswerLetter}) ${correctOptionText}`,
+        `Question: ${question.question}\n\nOptions:\n${question.options?.map((opt: string, idx: number) => `${String.fromCharCode(65 + idx)}) ${opt}`).join('\n')}\n\nStudent answered: ${userAnswer}\nCorrect answer: ${correctAnswerLetter}) ${correctOptionText}`,
         `The student chose ${userAnswer} but the correct answer is ${correctAnswerLetter}. Explain why ${correctAnswerLetter} is correct and why ${userAnswer} is incorrect.`,
         questionNumber <= 3 ? 1 : questionNumber === 4 ? 2 : 3,
         undefined,
-        chapter.sourceText,
+        chapter.source_text,
         language
       );
       
@@ -89,12 +124,13 @@ async function handleChapterEvaluation(body: any) {
     }
   } else {
     // For open-ended questions, use AI evaluation
+    console.log('🤖 Using AI evaluation for open-ended question');
     evaluation = await evaluateAnswer(
       question.question,
       answer,
       questionNumber <= 3 ? 1 : questionNumber === 4 ? 2 : 3,
       undefined,
-      chapter.sourceText,
+      chapter.source_text,
       language
     );
     
@@ -103,36 +139,142 @@ async function handleChapterEvaluation(body: any) {
       ? 'Bon effort ! Continuez à explorer ce concept.'
       : 'Good effort! Keep exploring this concept.');
     correct = score > (question.points * 0.6); // Consider correct if > 60% of points
+    
+    console.log('📊 AI evaluation result:', { score, correct });
   }
 
-  // Update chapter progress
-  memoryStore.addChapterAnswer(
-    chapterId,
+  // Update chapter progress in Supabase
+  console.log('💾 Updating chapter progress in Supabase');
+  
+  // Get current progress
+  const { data: currentProgress, error: progressFetchError } = await supabase
+    .from('chapter_progress')
+    .select('*')
+    .eq('chapter_id', chapterId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (progressFetchError && progressFetchError.code !== 'PGRST116') {
+    console.error('❌ Error fetching progress:', progressFetchError);
+    return NextResponse.json(
+      { error: 'Failed to fetch progress' },
+      { status: 500 }
+    );
+  }
+
+  // Prepare answer record
+  const answerRecord = {
     questionId,
     questionNumber,
     answer,
     correct,
     score,
-    feedback
-  );
+    feedback,
+    timestamp: new Date().toISOString(),
+  };
 
-  // Get updated progress
-  const progress = memoryStore.getChapterProgress(chapterId);
+  let updatedProgress;
+
+  if (currentProgress) {
+    // Update existing progress
+    const answers = currentProgress.answers || [];
+    // Remove any existing answer for this question
+    const filteredAnswers = answers.filter((a: any) => a.questionNumber !== questionNumber);
+    // Add new answer
+    const newAnswers = [...filteredAnswers, answerRecord];
+    
+    const newScore = newAnswers.reduce((sum: number, a: any) => sum + (a.score || 0), 0);
+    const newQuestionsAnswered = newAnswers.length;
+    const newCompleted = newQuestionsAnswered >= 5;
+    const newCurrentQuestion = Math.min(questionNumber + 1, 5);
+
+    const { data: updated, error: updateError } = await supabase
+      .from('chapter_progress')
+      .update({
+        current_question: newCurrentQuestion,
+        questions_answered: newQuestionsAnswered,
+        score: newScore,
+        completed: newCompleted,
+        answers: newAnswers,
+      })
+      .eq('chapter_id', chapterId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Error updating progress:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update progress' },
+        { status: 500 }
+      );
+    }
+
+    updatedProgress = updated;
+  } else {
+    // Create new progress
+    const newCurrentQuestion = Math.min(questionNumber + 1, 5);
+    
+    const { data: created, error: createError } = await supabase
+      .from('chapter_progress')
+      .insert({
+        chapter_id: chapterId,
+        user_id: userId,
+        current_question: newCurrentQuestion,
+        questions_answered: 1,
+        score: score,
+        completed: false,
+        answers: [answerRecord],
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('❌ Error creating progress:', createError);
+      return NextResponse.json(
+        { error: 'Failed to create progress' },
+        { status: 500 }
+      );
+    }
+
+    updatedProgress = created;
+  }
+
+  console.log('✅ Progress updated successfully');
+
+  // Format progress for response (camelCase for frontend)
+  const formattedProgress = {
+    chapterId: updatedProgress.chapter_id,
+    currentQuestion: updatedProgress.current_question,
+    questionsAnswered: updatedProgress.questions_answered,
+    score: updatedProgress.score,
+    completed: updatedProgress.completed,
+    answers: updatedProgress.answers,
+  };
 
   return NextResponse.json({
     success: true,
     correct,
     score,
     feedback,
-    progress,
+    progress: formattedProgress,
     phaseComplete: false, // Not used in chapter-based learning
     followUpQuestion: evaluation?.followUpQuestion,
   });
 }
 
 // Original concept-based evaluation (for backward compatibility)
-async function handleConceptEvaluation(body: any) {
+// This is deprecated but kept for any legacy code
+async function handleConceptEvaluation(request: NextRequest, body: any) {
   const { conceptId, question, answer, phase, correctAnswer } = body;
+
+  // Authenticate user
+  const auth = await authenticateRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const userId = auth.user.id;
 
   if (!conceptId || !question || !answer || !phase) {
     return NextResponse.json(
@@ -141,18 +283,33 @@ async function handleConceptEvaluation(body: any) {
     );
   }
 
-  // Get concept details
-  const concept = memoryStore.getConcept(conceptId);
+  console.log('📝 Evaluating concept answer (legacy):', conceptId, 'phase:', phase, 'user:', userId);
+
+  const supabase = await createSupabaseServerClient();
+
+  // Get concept details from Supabase
+  const { data: concept, error: conceptError } = await supabase
+    .from('concepts')
+    .select('*')
+    .eq('id', conceptId)
+    .eq('user_id', userId)
+    .maybeSingle();
   
+  if (conceptError) {
+    console.error('❌ Error fetching concept:', conceptError);
+    return NextResponse.json(
+      { error: 'Failed to fetch concept' },
+      { status: 500 }
+    );
+  }
+
   if (!concept) {
+    console.error('❌ Concept not found:', conceptId);
     return NextResponse.json(
       { error: 'Concept not found' },
       { status: 404 }
     );
   }
-
-  // Store student's answer in chat history
-  memoryStore.addChatMessage(conceptId, 'user', answer);
 
   // Evaluate the answer with source text for better context
   const evaluation = await evaluateAnswer(
@@ -160,49 +317,64 @@ async function handleConceptEvaluation(body: any) {
     answer,
     phase as 1 | 2 | 3,
     correctAnswer,
-    concept.sourceText
+    concept.source_text
   );
 
-  // Store evaluation feedback in chat history
-  memoryStore.addChatMessage(conceptId, 'assistant', evaluation.feedback);
-
-  // Update progress
-  const currentProgress = memoryStore.getProgress(conceptId) || {
-    conceptId,
-    phase1Score: 0,
-    phase2Score: 0,
-    phase3Score: 0,
-    totalScore: 0,
-    badge: null,
-    completed: false,
-  };
-
   // Update score for the current phase
-  const phaseKey = `phase${phase}Score` as 'phase1Score' | 'phase2Score' | 'phase3Score';
+  const phaseKey = `phase${phase}_score` as 'phase1_score' | 'phase2_score' | 'phase3_score';
   const newPhaseScore = evaluation.score || (evaluation.correct ? (phase === 1 ? 10 : phase === 2 ? 30 : 60) : 0);
   
-  const updatedProgress = {
-    ...currentProgress,
-    [phaseKey]: Math.max(currentProgress[phaseKey], newPhaseScore),
-  };
+  // Get current progress
+  const { data: currentProgress, error: progressFetchError } = await supabase
+    .from('user_progress')
+    .select('*')
+    .eq('concept_id', conceptId)
+    .eq('user_id', userId)
+    .maybeSingle();
 
-  // Calculate total score
-  updatedProgress.totalScore = 
-    updatedProgress.phase1Score + 
-    updatedProgress.phase2Score + 
-    updatedProgress.phase3Score;
+  if (progressFetchError && progressFetchError.code !== 'PGRST116') {
+    console.error('❌ Error fetching progress:', progressFetchError);
+    return NextResponse.json(
+      { error: 'Failed to fetch progress' },
+      { status: 500 }
+    );
+  }
 
-  // Calculate badge
-  updatedProgress.badge = calculateBadge(updatedProgress.totalScore);
+  const phase1Score = phaseKey === 'phase1_score' ? newPhaseScore : (currentProgress?.phase1_score || 0);
+  const phase2Score = phaseKey === 'phase2_score' ? newPhaseScore : (currentProgress?.phase2_score || 0);
+  const phase3Score = phaseKey === 'phase3_score' ? newPhaseScore : (currentProgress?.phase3_score || 0);
   
-  // Check if completed (all phases done)
-  updatedProgress.completed = 
-    updatedProgress.phase1Score > 0 && 
-    updatedProgress.phase2Score > 0 && 
-    updatedProgress.phase3Score > 0;
+  const totalScore = phase1Score + phase2Score + phase3Score;
+  const badge = calculateBadge(totalScore);
+  const completed = phase1Score > 0 && phase2Score > 0 && phase3Score > 0;
 
-  // Save progress
-  memoryStore.updateProgress(conceptId, updatedProgress);
+  // Upsert progress
+  const { data: updatedProgress, error: upsertError } = await supabase
+    .from('user_progress')
+    .upsert({
+      concept_id: conceptId,
+      user_id: userId,
+      phase1_score: phase1Score,
+      phase2_score: phase2Score,
+      phase3_score: phase3Score,
+      total_score: totalScore,
+      badge: badge,
+      completed: completed,
+    }, {
+      onConflict: 'concept_id,user_id'
+    })
+    .select()
+    .single();
+
+  if (upsertError) {
+    console.error('❌ Error updating progress:', upsertError);
+    return NextResponse.json(
+      { error: 'Failed to update progress' },
+      { status: 500 }
+    );
+  }
+
+  console.log('✅ Concept progress updated successfully');
 
   return NextResponse.json({
     success: true,
@@ -213,6 +385,14 @@ async function handleConceptEvaluation(body: any) {
       needsClarification: evaluation.needsClarification,
       followUpQuestion: evaluation.followUpQuestion,
     },
-    progress: updatedProgress,
+    progress: {
+      conceptId: updatedProgress.concept_id,
+      phase1Score: updatedProgress.phase1_score,
+      phase2Score: updatedProgress.phase2_score,
+      phase3Score: updatedProgress.phase3_score,
+      totalScore: updatedProgress.total_score,
+      badge: updatedProgress.badge,
+      completed: updatedProgress.completed,
+    },
   });
 }

@@ -9,7 +9,7 @@ export async function GET(
     const { id } = await context.params;
     
     // Get concept from memory store
-    const concept = memoryStore.getConcept(id);
+    const concept = await memoryStore.getConcept(id);
     
     if (!concept) {
       return NextResponse.json(
@@ -19,10 +19,10 @@ export async function GET(
     }
 
     // Get progress for this concept
-    const progress = memoryStore.getProgress(id);
+    const progress = await memoryStore.getProgress(id);
 
     // Get chat history
-    const chatHistory = memoryStore.getChatHistory(id);
+    const chatHistory = await memoryStore.getChatHistory(id);
 
     return NextResponse.json({
       id: concept.id,

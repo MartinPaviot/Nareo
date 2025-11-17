@@ -10,8 +10,7 @@ import ChatBubble from '@/components/chat/ChatBubble';
 import QuickActionButtons from '@/components/chat/QuickActionButtons';
 import VoiceInput from '@/components/chat/VoiceInput';
 import ChapterSidebar from '@/components/layout/ChapterSidebar';
-import SignOutButton from '@/components/layout/SignOutButton';
-import LanguageToggle from '@/components/layout/LanguageToggle';
+import TopBarActions from '@/components/layout/TopBarActions';
 import PointsAnimation from '@/components/chat/PointsAnimation';
 import { ChatMessage } from '@/types/chat.types';
 import { ChapterData, ChapterProgress, ChapterQuestion, getPhaseForQuestion } from '@/types/concept.types';
@@ -48,12 +47,28 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
   const questionLoadedRef = useRef<Set<string>>(new Set());
   const isInitializedRef = useRef<boolean>(false);
   const previousLanguageRef = useRef<string>(currentLanguage);
+  const previousChapterIdRef = useRef<string>(chapterId);
 
+  // Initialize and reload when chapterId changes
   useEffect(() => {
+    // Reset refs when chapter changes
+    if (previousChapterIdRef.current !== chapterId) {
+      console.log('🔄 Chapter changed, resetting state');
+      isInitializedRef.current = false;
+      questionLoadedRef.current.clear();
+      previousChapterIdRef.current = chapterId;
+    }
+
     if (!isInitializedRef.current) {
+      console.log('🚀 Initializing chapter:', chapterId);
       isInitializedRef.current = true;
       loadChapterData();
     }
+
+    // Cleanup function
+    return () => {
+      console.log('🧹 Cleaning up chapter:', chapterId);
+    };
   }, [chapterId]);
 
   // Handle language changes - re-translate all content
@@ -145,19 +160,42 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
 
   const loadChapterData = async () => {
     try {
+      console.log('📚 Loading chapter data for:', chapterId);
+      
       // Fetch all chapters for sidebar
       const chaptersResponse = await fetch('/api/chapters');
       if (chaptersResponse.ok) {
         const chaptersData = await chaptersResponse.json();
+        console.log('📊 chaptersData from /api/chapters:', chaptersData);
         setChapters(chaptersData.chapters || []);
         setChapterProgress(chaptersData.progress || []);
       }
 
       // Fetch current chapter
       const response = await fetch(`/api/chapters/${chapterId}`);
-      if (!response.ok) throw new Error('Failed to fetch chapter');
+      if (!response.ok) {
+        throw new Error('Failed to fetch chapter');
+      }
       
       const chapter = await response.json();
+      
+      // Validate chapter data
+      if (!chapter || !chapter.questions || chapter.questions.length === 0) {
+        console.error('❌ Invalid chapter data:', chapter);
+        const errorMessage: ChatMessage = {
+          id: generateId(),
+          role: 'assistant',
+          content: currentLanguage === 'fr' 
+            ? '❌ Désolé, je ne peux pas charger ce chapitre. Les données sont manquantes ou invalides.'
+            : '❌ Sorry, I cannot load this chapter. The data is missing or invalid.',
+          timestamp: new Date(),
+          aristoState: 'confused',
+        };
+        setMessages([errorMessage]);
+        return;
+      }
+      
+      console.log('✅ Chapter loaded:', chapter.title, 'with', chapter.questions.length, 'questions');
       setCurrentChapter(chapter);
 
       // Get progress for this chapter
@@ -167,6 +205,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
         const progress = await progressResponse.json();
         startQuestionNumber = progress.currentQuestion || 1;
         setCurrentQuestionNumber(startQuestionNumber);
+        console.log('📈 Progress loaded, starting at question:', startQuestionNumber);
       }
 
       // Add initial greeting only if starting from question 1
@@ -187,14 +226,30 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
         };
         setMessages([greeting]);
 
-        // Load first question - pass chapter directly
-        setTimeout(() => loadQuestion(1, chapter), 1500);
+        // Load first question with delay
+        setTimeout(() => {
+          console.log('⏰ Loading first question after delay');
+          loadQuestion(1, chapter);
+        }, 1500);
       } else {
-        // If resuming, load the current question immediately
-        loadQuestion(startQuestionNumber, chapter);
+        // If resuming, load the current question with a small delay for state sync
+        console.log('🔄 Resuming session at question:', startQuestionNumber);
+        setTimeout(() => {
+          loadQuestion(startQuestionNumber, chapter);
+        }, 500);
       }
     } catch (error) {
-      console.error('Error loading chapter:', error);
+      console.error('❌ Error loading chapter:', error);
+      const errorMessage: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: currentLanguage === 'fr' 
+          ? '❌ Une erreur est survenue lors du chargement du chapitre. Veuillez réessayer.'
+          : '❌ An error occurred while loading the chapter. Please try again.',
+        timestamp: new Date(),
+        aristoState: 'confused',
+      };
+      setMessages([errorMessage]);
     }
   };
 
@@ -205,8 +260,34 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
     console.log('📊 chapter:', chapter?.title);
     console.log('📝 questions available:', chapter?.questions?.length);
     
-    if (!chapter || !chapter.questions) {
-      console.error('❌ No chapter or questions available');
+    // Validate chapter data
+    if (!chapter) {
+      console.error('❌ No chapter data available');
+      const errorMessage: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: currentLanguage === 'fr' 
+          ? '❌ Impossible de charger la question. Les données du chapitre sont manquantes.'
+          : '❌ Cannot load question. Chapter data is missing.',
+        timestamp: new Date(),
+        aristoState: 'confused',
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
+
+    if (!chapter.questions || chapter.questions.length === 0) {
+      console.error('❌ No questions available in chapter');
+      const errorMessage: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: currentLanguage === 'fr' 
+          ? '❌ Ce chapitre ne contient aucune question.'
+          : '❌ This chapter contains no questions.',
+        timestamp: new Date(),
+        aristoState: 'confused',
+      };
+      setMessages(prev => [...prev, errorMessage]);
       return;
     }
 
@@ -214,6 +295,16 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
     if (!question) {
       console.error('❌ Question not found:', questionNumber);
       console.log('Available questions:', chapter.questions.map(q => q.questionNumber));
+      const errorMessage: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: currentLanguage === 'fr' 
+          ? `❌ Question ${questionNumber} introuvable dans ce chapitre.`
+          : `❌ Question ${questionNumber} not found in this chapter.`,
+        timestamp: new Date(),
+        aristoState: 'confused',
+      };
+      setMessages(prev => [...prev, errorMessage]);
       return;
     }
 
@@ -235,7 +326,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
     try {
       question = await translateQuestionObject(question, currentLanguage);
     } catch (error) {
-      console.error('Error translating question:', error);
+      console.error('⚠️ Error translating question:', error);
       // Continue with original question if translation fails
     }
     
@@ -246,6 +337,9 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
     if (chapterData && !currentChapter) {
       setCurrentChapter(chapterData);
     }
+
+    // Save session when loading a question (creates or updates learning_session)
+    saveSession();
 
     // Format question message based on type
     let questionContent = `**${translate('learn_question')} ${questionNumber}:** ${question.question}`;
@@ -266,6 +360,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       aristoState: 'asking',
     };
     
+    console.log('✅ Question loaded successfully, adding to messages');
     setMessages(prev => [...prev, questionMessage]);
   };
 
@@ -350,8 +445,9 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
 
       // Move to next question or complete chapter
       if (currentQuestionNumber < 5) {
-        // Don't reset the ref - just load next question
+        // Load next question after delay
         setTimeout(() => {
+          console.log('➡️ Moving to next question:', currentQuestionNumber + 1);
           loadQuestion(currentQuestionNumber + 1);
         }, 2000);
       } else {
@@ -461,14 +557,15 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
   };
 
   const saveSession = async () => {
-    if (!user?.id || !chapterId) return;
+    if (!chapterId) return;
 
     try {
+      console.log('💾 Saving learning session for chapter:', chapterId, 'question:', currentQuestionNumber);
+      
       await fetch('/api/sessions/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
           chapterId: chapterId,
           currentQuestion: currentQuestionNumber,
           chatMessages: messages.map(msg => ({
@@ -481,8 +578,10 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
           sessionState: currentQuestionNumber >= 5 ? 'completed' : 'active',
         }),
       });
+      
+      console.log('✅ Learning session saved successfully');
     } catch (error) {
-      console.error('Error saving session:', error);
+      console.error('❌ Error saving session:', error);
     }
   };
 
@@ -527,11 +626,8 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
             </p>
           </div>
           
-          {/* Right: Sign Out + Mascot + Language Toggle */}
+          {/* Right: Mascot + Action Buttons */}
           <div className="flex items-center gap-3 ml-4">
-            {/* Sign Out Button */}
-            <SignOutButton />
-            
             {/* Mascot Avatar */}
             <img
               src="/chat/mascotte.png"
@@ -541,8 +637,8 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
               className="rounded-full object-cover shadow-lg"
             />
             
-            {/* Language Toggle */}
-            <LanguageToggle />
+            {/* Language Toggle + Sign Out */}
+            <TopBarActions />
           </div>
         </div>
 

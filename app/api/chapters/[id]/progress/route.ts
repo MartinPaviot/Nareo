@@ -9,12 +9,12 @@ export async function GET(
     const { id } = await params;
     
     // Get progress for this chapter
-    const progress = memoryStore.getChapterProgress(id);
+    const progress = await memoryStore.getChapterProgress(id);
     
     if (!progress) {
       // Initialize if doesn't exist
-      memoryStore.initializeChapterProgress(id);
-      const newProgress = memoryStore.getChapterProgress(id);
+      await memoryStore.initializeChapterProgress(id);
+      const newProgress = await memoryStore.getChapterProgress(id);
       return NextResponse.json(newProgress);
     }
     

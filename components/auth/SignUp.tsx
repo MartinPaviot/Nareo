@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { trackVisitor } from '@/lib/visitors';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SignUp() {
@@ -56,6 +57,9 @@ export default function SignUp() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            email_confirm: false
+          }
         },
       });
 
@@ -64,17 +68,24 @@ export default function SignUp() {
       // Track visitor if user was created
       if (data.user) {
         await trackVisitor(data.user.id, data.user.email || '');
+        
+        // Auto sign in after successful signup (no email confirmation needed)
+        console.log('✅ User signed up successfully:', data.user.id);
+        
+        // Redirect to home page immediately
+        router.push('/');
+        router.refresh();
+      } else {
+        setSuccess(translate('auth_reset_success'));
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+
+        // Redirect to sign in after 3 seconds
+        setTimeout(() => {
+          router.push('/auth/signin');
+        }, 3000);
       }
-
-      setSuccess(translate('auth_reset_success'));
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-
-      // Redirect to sign in after 3 seconds
-      setTimeout(() => {
-        router.push('/auth/signin');
-      }, 3000);
     } catch (err: any) {
       setError(err.message || translate('auth_signup_error_failed'));
     } finally {
@@ -87,9 +98,14 @@ export default function SignUp() {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="text-6xl">🎓🐱</div>
-          </div>
+          <Image
+            src="/chat/mascotte.png"
+            alt="Aristo Mascotte"
+            width={240}
+            height={240}
+            className="mx-auto mb-6"
+            priority
+          />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {translate('auth_signup_title')}
           </h1>

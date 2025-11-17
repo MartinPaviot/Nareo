@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { authenticateRequest } from '@/lib/api-auth';
 import { memoryStore } from '@/lib/memory-store';
 
 interface Course {
@@ -20,11 +21,24 @@ interface Course {
   createdAt: Date;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get all chapters
-    const allChapters = memoryStore.getAllChapters();
-    const allProgress = memoryStore.getAllChapterProgress();
+    // Authenticate user
+    const authResult = await authenticateRequest(request);
+    if (!authResult) {
+      console.warn('⚠️ Unauthorized access attempt to /api/courses');
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const userId = authResult.user.id;
+    console.log('📊 Fetching courses for user:', userId);
+
+    // Get all chapters FOR THIS USER ONLY
+    const allChapters = await memoryStore.getAllChapters(userId);
+    const allProgress = await memoryStore.getAllChapterProgress(userId);
 
     // Group chapters by course (assuming 3 chapters per course: easy, medium, hard)
     const coursesMap = new Map<string, Course>();
@@ -81,12 +95,14 @@ export async function GET() {
 
     const courses = Array.from(coursesMap.values());
 
+    console.log(`✅ Returning ${courses.length} courses for user ${userId}`);
+
     return NextResponse.json({
       success: true,
       courses,
     });
   } catch (error) {
-    console.error('Error fetching courses:', error);
+    console.error('❌ Error fetching courses:', error);
     return NextResponse.json(
       { error: 'Failed to fetch courses' },
       { status: 500 }

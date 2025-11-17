@@ -23,7 +23,7 @@ export async function POST(
     }
 
     // Get chapter
-    const chapter = memoryStore.getChapter(chapterId);
+    const chapter = await memoryStore.getChapter(chapterId);
     if (!chapter) {
       return NextResponse.json(
         { error: 'Chapter not found' },
@@ -33,7 +33,7 @@ export async function POST(
 
     // Check if translations already exist
     const translationKey = `${chapterId}_${targetLanguage}`;
-    const cachedTranslation = memoryStore.getTranslation(translationKey);
+    const cachedTranslation = await memoryStore.getTranslation(translationKey);
     
     if (cachedTranslation) {
       return NextResponse.json({
@@ -84,7 +84,7 @@ Return the translated questions in the exact same JSON format. Do not change que
     })) || [];
 
     // Cache the translation
-    memoryStore.setTranslation(translationKey, fullTranslatedQuestions);
+    await memoryStore.setTranslation(translationKey, fullTranslatedQuestions);
 
     return NextResponse.json({
       success: true,

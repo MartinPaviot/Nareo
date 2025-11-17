@@ -20,11 +20,11 @@ export default function LanguageToggle({ className }: LanguageToggleProps) {
   return (
     <button
       onClick={toggleLanguage}
-      className={className || "flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-all shadow-md hover:shadow-lg"}
+      className={className || "flex items-center gap-2 h-10 px-4 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md"}
       title={targetLanguage === 'fr' ? 'Passer au français' : 'Switch to English'}
     >
       <Languages className="w-4 h-4 text-gray-600" />
-      <span className="font-semibold text-gray-900">
+      <span className="text-sm font-medium text-gray-700 min-w-[1.5rem] text-center">
         {targetLanguage.toUpperCase()}
       </span>
     </button>

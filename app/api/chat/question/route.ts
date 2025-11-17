@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get concept details
-    const concept = memoryStore.getConcept(conceptId);
+    const concept = await memoryStore.getConcept(conceptId);
     
     if (!concept) {
       return NextResponse.json(
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get chat history for context
-    const chatHistory = memoryStore.getChatHistory(conceptId);
+    const chatHistory = await memoryStore.getChatHistory(conceptId);
     const previousMessages = chatHistory?.messages || [];
     
     // Extract previous questions to avoid duplication
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       ? `${questionData.question}\n\nOptions:\nA) ${questionData.options[0]}\nB) ${questionData.options[1]}\nC) ${questionData.options[2]}\nD) ${questionData.options[3]}`
       : questionData.question;
     
-    memoryStore.addChatMessage(conceptId, 'assistant', questionText);
+    await memoryStore.addChatMessage(conceptId, 'assistant', questionText);
 
     return NextResponse.json({
       success: true,

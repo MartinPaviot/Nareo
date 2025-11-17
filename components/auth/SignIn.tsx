@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { trackVisitor } from '@/lib/visitors';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SignIn() {
@@ -27,7 +28,10 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      // Sign in with Supabase
+      // Create Supabase browser client with SSR support
+      const supabase = createSupabaseBrowserClient();
+      
+      // Sign in with Supabase - this will create the auth cookies
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -36,6 +40,9 @@ export default function SignIn() {
       if (signInError) throw signInError;
 
       if (data.user) {
+        console.log('✅ User signed in successfully:', data.user.id);
+        console.log('✅ Session created, cookies should be set');
+        
         // Track visitor (add to visitors table if not exists)
         await trackVisitor(data.user.id, data.user.email || '');
 
@@ -56,6 +63,7 @@ export default function SignIn() {
         router.refresh();
       }
     } catch (err: any) {
+      console.error('❌ Sign in error:', err);
       setError(err.message || translate('auth_signin_error_failed'));
     } finally {
       setLoading(false);
@@ -67,9 +75,14 @@ export default function SignIn() {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="text-6xl">🎓🐱</div>
-          </div>
+          <Image
+            src="/chat/Drag_and_Drop.png"
+            alt="Aristo Drag And Drop"
+            width={240}
+            height={240}
+            className="mx-auto mb-6"
+            priority
+          />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {translate('auth_signin_title')}
           </h1>

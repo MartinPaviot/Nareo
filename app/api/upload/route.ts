@@ -6,8 +6,18 @@ import { parseDocx, extractDocumentTitle } from '@/lib/document-parser';
 import { memoryStore } from '@/lib/memory-store';
 import { generateId } from '@/lib/utils';
 import { ChapterQuestion } from '@/types/concept.types';
+import { requireAuth, isErrorResponse } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
+  // Authenticate the request
+  const authResult = await requireAuth(request);
+  if (isErrorResponse(authResult)) {
+    return authResult;
+  }
+  
+  const { user } = authResult;
+  console.log('🔐 Authenticated user for upload:', user.id);
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -190,7 +200,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Store chapter in memory with questions and both language versions
-      memoryStore.addChapter({
+      await memoryStore.addChapter({
         id: chapterId,
         title: chapterTitle, // Backward compatibility
         summary: chapterSummary, // Backward compatibility
@@ -205,23 +215,23 @@ export async function POST(request: NextRequest) {
         questions: questionsWithChapterId,
         sourceText: chapterSourceText || extractedData.extractedText,
         createdAt: new Date(),
-      });
+      }, user.id);
       
       // Initialize progress for this chapter
-      memoryStore.initializeChapterProgress(chapterId);
+      await memoryStore.initializeChapterProgress(chapterId, user.id);
       
       // Store concepts in memory (for backward compatibility)
-      chapterConcepts.forEach((concept: any, index: number) => {
-        memoryStore.addConcept({
+      for (const concept of chapterConcepts) {
+        await memoryStore.addConcept({
           id: generateId(),
           chapterId: chapterId,
           title: concept.title,
           description: concept.content || concept.description || '',
           difficulty: concept.difficulty || 'medium',
-          orderIndex: index,
+          orderIndex: chapterConcepts.indexOf(concept),
           sourceText: concept.sourceText || '',
-        });
-      });
+        }, user.id);
+      }
       
       createdChapters.push({
         id: chapterId,

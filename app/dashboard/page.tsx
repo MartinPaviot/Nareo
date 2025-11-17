@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, BookOpen, Clock, TrendingUp, Play, Loader2 } from 'lucide-react';
+import { Upload, BookOpen, Clock, TrendingUp, Play, Loader2, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthGuard from '@/components/auth/AuthGuard';
 import AristoAvatar from '@/components/chat/AristoAvatar';
-import SignOutButton from '@/components/layout/SignOutButton';
-import LanguageToggle from '@/components/layout/LanguageToggle';
+import TopBarActions from '@/components/layout/TopBarActions';
 import CourseOverviewCard from '@/components/concepts/CourseOverviewCard';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -65,6 +64,25 @@ function DashboardScreen() {
     inProgressChapters: 0,
     totalScore: 0,
   });
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    chapterId: string | null;
+    chapterTitle: string;
+  }>({
+    isOpen: false,
+    chapterId: null,
+    chapterTitle: '',
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error';
+  }>({
+    show: false,
+    message: '',
+    type: 'success',
+  });
 
   useEffect(() => {
     if (user) {
@@ -87,13 +105,21 @@ function DashboardScreen() {
       const chaptersResponse = await fetch('/api/chapters');
       if (chaptersResponse.ok) {
         const chaptersData = await chaptersResponse.json();
-        const loadedChapters = chaptersData.chapters || [];
-        const progress = chaptersData.progress || [];
+        console.log('DEBUG /api/chapters response:', chaptersData);
+
+        const loadedChapters =
+          chaptersData.chapters ??
+          chaptersData.data ??
+          (Array.isArray(chaptersData) ? chaptersData : []);
+
+        const progress =
+          chaptersData.progress ??
+          chaptersData.progressData ??
+          [];
 
         setChapters(loadedChapters);
         setChapterProgress(progress);
 
-        // Calculate stats
         const completed = progress.filter((p: ChapterProgress) => p.completed).length;
         const inProgress = progress.filter((p: ChapterProgress) => !p.completed && p.questionsAnswered > 0).length;
         const totalScore = progress.reduce((sum: number, p: ChapterProgress) => sum + p.score, 0);
@@ -135,6 +161,66 @@ function DashboardScreen() {
     return `${diffDays} ${translate(diffDays === 1 ? 'dashboard_time_day_ago' : 'dashboard_time_days_ago')}`;
   };
 
+  const handleDeleteCourse = (chapterId: string) => {
+    const chapter = chapters.find(c => c.id === chapterId);
+    if (chapter) {
+      setDeleteConfirmation({
+        isOpen: true,
+        chapterId,
+        chapterTitle: chapter.title,
+      });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation.chapterId) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/chapters/${deleteConfirmation.chapterId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Show success notification
+        setNotification({
+          show: true,
+          message: translate('dashboard_delete_success'),
+          type: 'success',
+        });
+
+        // Reload dashboard data
+        await loadDashboardData();
+
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+          setNotification({ show: false, message: '', type: 'success' });
+        }, 3000);
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      setNotification({
+        show: true,
+        message: translate('dashboard_delete_error'),
+        type: 'error',
+      });
+
+      // Hide notification after 3 seconds
+      setTimeout(() => {
+        setNotification({ show: false, message: '', type: 'success' });
+      }, 3000);
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmation({ isOpen: false, chapterId: null, chapterTitle: '' });
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmation({ isOpen: false, chapterId: null, chapterTitle: '' });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
@@ -163,10 +249,7 @@ function DashboardScreen() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <LanguageToggle />
-              <SignOutButton />
-            </div>
+            <TopBarActions />
           </div>
         </div>
       </div>
@@ -296,6 +379,7 @@ function DashboardScreen() {
                         // Navigate to learn page with first concept/chapter
                         router.push(`/learn/${chapter.id}`);
                       }}
+                      onDelete={handleDeleteCourse}
                     />
                   );
                 })}
@@ -340,6 +424,69 @@ function DashboardScreen() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmation.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                {translate('dashboard_delete_confirm_title')}
+              </h3>
+              <button
+                onClick={cancelDelete}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                disabled={isDeleting}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              {translate('dashboard_delete_confirm_message')}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={cancelDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {translate('dashboard_delete_cancel')}
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {translate('dashboard_deleting')}
+                  </>
+                ) : (
+                  translate('dashboard_delete_confirm_button')
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Toast */}
+      {notification.show && (
+        <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-5">
+          <div
+            className={`px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 ${
+              notification.type === 'success'
+                ? 'bg-green-500 text-white'
+                : 'bg-red-500 text-white'
+            }`}
+          >
+            <span className="font-semibold">{notification.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ export async function GET(
     const { id } = await context.params;
     
     // Get chapter from memory store
-    const chapter = memoryStore.getChapter(id);
+    const chapter = await memoryStore.getChapter(id);
     
     if (!chapter) {
       return NextResponse.json(
@@ -19,10 +19,10 @@ export async function GET(
     }
 
     // Get concepts for this chapter
-    const concepts = memoryStore.getConceptsByChapter(id);
+    const concepts = await memoryStore.getConceptsByChapter(id);
 
     // Get progress for all concepts
-    const allProgress = memoryStore.getAllProgress();
+    const allProgress = await memoryStore.getAllProgress();
     
     // Build concept results
     const conceptResults = concepts.map(concept => {

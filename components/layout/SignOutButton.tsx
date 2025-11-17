@@ -35,19 +35,19 @@ export default function SignOutButton({ className, style }: SignOutButtonProps) 
     <button
       onClick={handleSignOut}
       disabled={isSigningOut}
-      className={className || "flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full shadow-lg hover:shadow-xl hover:border-orange-400 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"}
+      className={className || "flex items-center gap-2 h-10 px-4 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"}
       style={style}
       title={translate('signout_button')}
     >
       {isSigningOut ? (
         <>
-          <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
+          <Loader2 className="w-4 h-4 text-gray-600 animate-spin" />
           <span className="text-sm font-medium text-gray-700">{translate('signout_loading')}</span>
         </>
       ) : (
         <>
-          <LogOut className="w-4 h-4 text-gray-600 group-hover:text-orange-500 transition-colors" />
-          <span className="text-sm font-medium text-gray-700 group-hover:text-orange-600 transition-colors">
+          <LogOut className="w-4 h-4 text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">
             {translate('signout_button')}
           </span>
         </>

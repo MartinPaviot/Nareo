@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import FeedbackWidget from '@/components/layout/FeedbackWidget';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,6 +23,7 @@ export default function RootLayout({
         <AuthProvider>
           <LanguageProvider>
             {children}
+            <FeedbackWidget />
           </LanguageProvider>
         </AuthProvider>
       </body>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +12,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Get server client with cookie support
+    const supabase = await createSupabaseServerClient();
 
     // Find the active session (where ended_at is null)
     const { data: activeSessions, error: fetchError } = await supabase

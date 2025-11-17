@@ -465,7 +465,7 @@ export const translations: Record<Language, Translations> = {
     upload_header_tagline: 'Votre compagnon pour réviser plus vite',
     upload_card_title: 'Dépose ton cours ici',
     upload_card_subtitle: 'PDF ou image, nous générons des questions et un plan de révision',
-    upload_drop_here: 'Déposez votre fichier ici',
+    upload_drop_here: 'Déposez votre fichier ici (max 10 pages)',
     upload_or_click: 'ou cliquez pour parcourir',
     upload_supported: 'Formats supportés',
     upload_choose_button: 'Choisir un fichier',

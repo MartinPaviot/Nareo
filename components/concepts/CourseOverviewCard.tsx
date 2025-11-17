@@ -66,17 +66,6 @@ export default function CourseOverviewCard({ chapter, progress, onClick, onDelet
 
   const status = getStatus();
 
-  // Get difficulty badge
-  const getDifficultyBadge = () => {
-    const badges = {
-      easy: { label: translate('chapter_difficulty_easy'), color: 'bg-green-100 text-green-700' },
-      medium: { label: translate('chapter_difficulty_medium'), color: 'bg-yellow-100 text-yellow-700' },
-      hard: { label: translate('chapter_difficulty_hard'), color: 'bg-red-100 text-red-700' },
-    };
-    return badges[chapter.difficulty] || badges.medium;
-  };
-
-  const difficultyBadge = getDifficultyBadge();
 
   // Calculate progress percentage
   const progressPercentage = progress ? progress.score : 0;
@@ -131,9 +120,6 @@ export default function CourseOverviewCard({ chapter, progress, onClick, onDelet
 
         {/* Badges */}
         <div className="flex items-center gap-2 mb-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${difficultyBadge.color}`}>
-            {difficultyBadge.label}
-          </span>
           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${status.color}`}>
             {status.label}
           </span>

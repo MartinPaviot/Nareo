@@ -369,12 +369,7 @@ function DashboardScreen() {
               {translate('dashboard_courses_title')}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {chapters
-                .sort((a, b) => {
-                  const difficultyOrder = { easy: 1, medium: 2, hard: 3 };
-                  return (difficultyOrder[a.difficulty] || 2) - (difficultyOrder[b.difficulty] || 2);
-                })
-                .map((chapter) => {
+              {chapters.map((chapter) => {
                   const progress = chapterProgress.find(p => p.chapterId === chapter.id);
                   return (
                     <CourseOverviewCard

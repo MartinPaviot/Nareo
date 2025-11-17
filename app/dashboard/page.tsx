@@ -19,6 +19,8 @@ interface ActiveSession {
     id: string;
     title: string;
     summary: string;
+    english_title: string;
+    french_title: string;
   };
   progress: {
     score: number;
@@ -53,7 +55,7 @@ interface ChapterProgress {
 function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { translate } = useLanguage();
+  const { translate, currentLanguage } = useLanguage();
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [chapterProgress, setChapterProgress] = useState<ChapterProgress[]>([]);
@@ -320,8 +322,12 @@ function DashboardScreen() {
                   onClick={() => handleResumeSession(session.id, session.chapter_id)}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900 line-clamp-2">
-                      {session.chapter.title}
+                    <h3 className="text-lg font-bold text-gray-900 line-clamp-2">
+                      {currentLanguage === 'fr' && session.chapter.french_title
+                        ? session.chapter.french_title
+                        : currentLanguage === 'en' && session.chapter.english_title
+                        ? session.chapter.english_title
+                        : session.chapter.title}
                     </h3>
                     <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
                       {formatTimeAgo(session.last_activity)}

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       (sessions || []).map(async (session) => {
         const { data: chapter } = await serverClient
           .from('chapters')
-          .select('id, title, summary')
+          .select('id, title, summary, english_title, french_title')
           .eq('id', session.chapter_id)
           .maybeSingle();
 

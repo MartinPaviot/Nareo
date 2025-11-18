@@ -102,14 +102,26 @@ export async function translateText(
     });
 
     if (!response.ok) {
-      console.error('Translation API error:', response.statusText);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Translation API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData.error,
+        details: errorData.details,
+      });
+      // ✅ Fallback: retourner le texte original si la traduction échoue
       return text;
     }
 
     const data = await response.json();
     return data.translated || text;
   } catch (error) {
-    console.error('Error translating text:', error);
+    console.error('❌ Error calling translation API:', {
+      error: error instanceof Error ? error.message : String(error),
+      contentType,
+      targetLanguage,
+    });
+    // ✅ Fallback: retourner le texte original si la traduction échoue
     return text;
   }
 }

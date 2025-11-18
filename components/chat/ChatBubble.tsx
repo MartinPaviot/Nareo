@@ -152,10 +152,16 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
               {options.map((option, idx) => {
                 // Extract the letter label (e.g., "A)")
                 const letter = option.substring(0, 2);
-                // Get the text after "A)" and remove any leading "A. " pattern
+                // Get the text after "A)" and clean it thoroughly
                 let optionText = option.substring(2).trim();
-                // Remove the duplicate prefix like "A. ", "B. ", etc.
-                optionText = optionText.replace(/^[A-D]\.\s*/, '');
+                
+                // Remove ALL possible letter prefixes:
+                // - "A: " format (with colon)
+                // - "A. " format (with period)
+                // - "A) " format (in case it appears again)
+                // - "A " format (just letter and space)
+                optionText = optionText.replace(/^[A-D][:\.)\]]\s*/, '');
+                optionText = optionText.replace(/^[A-D]\s+/, '');
                 
                 return (
                   <div 

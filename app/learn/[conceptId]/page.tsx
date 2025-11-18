@@ -6,6 +6,7 @@ import { Send, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useChatMemory } from '@/hooks/useChatMemory';
 import ChatBubble from '@/components/chat/ChatBubble';
 import QuickActionButtons from '@/components/chat/QuickActionButtons';
 import VoiceInput from '@/components/chat/VoiceInput';
@@ -15,12 +16,12 @@ import PointsAnimation from '@/components/chat/PointsAnimation';
 import { ChatMessage } from '@/types/chat.types';
 import { ChapterData, ChapterProgress, ChapterQuestion, getPhaseForQuestion } from '@/types/concept.types';
 import { generateId } from '@/lib/utils';
-import { 
-  getApiLanguage, 
-  translateQuestionObject, 
+import {
+  getApiLanguage,
+  translateQuestionObject,
   translateMessageBatch,
   translateText,
-  getLocalizedChapterTitle 
+  getLocalizedChapterTitle
 } from '@/lib/content-translator';
 
 export default function LearnChapterPage({ params }: { params: Promise<{ conceptId: string }> }) {
@@ -30,8 +31,18 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
   const { conceptId } = use(params);
   // In the new system, conceptId is actually the chapterId
   const chapterId = conceptId;
-  
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  // 🆕 Hook de mémoire persistante du chat
+  const {
+    messages,
+    addMessage,
+    isLoading: isLoadingMemory,
+    error: memoryError
+  } = useChatMemory({
+    userId: user?.id,
+    chapterId,
+    enabled: !!user && !!chapterId,
+  });
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [chapters, setChapters] = useState<ChapterData[]>([]);
@@ -59,8 +70,11 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       previousChapterIdRef.current = chapterId;
     }
 
-    if (!isInitializedRef.current) {
-      console.log('🚀 Initializing chapter:', chapterId);
+    // ✅ ATTENDRE que la mémoire soit chargée AVANT d'initialiser le chapitre
+    // Ceci évite le race condition où loadChapterData() s'exécute avant que
+    // useChatMemory ait fini de charger l'historique depuis Supabase
+    if (!isInitializedRef.current && !isLoadingMemory) {
+      console.log('🚀 Initializing chapter:', chapterId, '(memory loaded, messages count:', messages.length, ')');
       isInitializedRef.current = true;
       loadChapterData();
     }
@@ -69,90 +83,30 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
     return () => {
       console.log('🧹 Cleaning up chapter:', chapterId);
     };
-  }, [chapterId]);
+  }, [chapterId, isLoadingMemory, messages.length]);
 
-  // Handle language changes - re-translate all content
+  // Track language changes
   useEffect(() => {
-    const handleLanguageChange = async () => {
-      // Skip if language hasn't actually changed
-      if (previousLanguageRef.current === currentLanguage) {
-        return;
-      }
-
+    if (previousLanguageRef.current !== currentLanguage) {
       console.log('🌍 Language changed from', previousLanguageRef.current, 'to', currentLanguage);
       previousLanguageRef.current = currentLanguage;
 
-      // Skip if no messages to translate
-      if (messages.length === 0) {
-        return;
+      // Re-translate current question if needed
+      if (currentQuestion) {
+        translateQuestionObject(currentQuestion, currentLanguage)
+          .then(translatedQuestion => {
+            setCurrentQuestion(translatedQuestion);
+          })
+          .catch(error => {
+            console.error('⚠️ Error translating question:', error);
+          });
       }
-
-      setIsTranslating(true);
-
-      try {
-        // Translate all existing messages
-        const translatedMessages = await translateMessageBatch(messages, currentLanguage);
-        setMessages(translatedMessages);
-
-        // Re-translate current question if one is loaded
-        if (currentQuestion) {
-          const translatedQuestion = await translateQuestionObject(currentQuestion, currentLanguage);
-          setCurrentQuestion(translatedQuestion);
-
-          // Update the question message in the chat
-          const questionMessageIndex = messages.findIndex(
-            msg => msg.role === 'assistant' && msg.aristoState === 'asking'
-          );
-
-          if (questionMessageIndex !== -1) {
-            // Rebuild the question message with translated content
-            let questionContent = `**${translate('learn_question')} ${currentQuestionNumber}:** ${translatedQuestion.question}`;
-            
-            if (translatedQuestion.type === 'mcq' && translatedQuestion.options) {
-              questionContent += '\n\n';
-              questionContent += translatedQuestion.options.map((opt, idx) => 
-                `${String.fromCharCode(65 + idx)}) ${opt}`
-              ).join('\n');
-              questionContent += `\n\n${translate('chat_type_hint')}`;
-            }
-
-            const updatedMessages = [...translatedMessages];
-            updatedMessages[questionMessageIndex] = {
-              ...updatedMessages[questionMessageIndex],
-              content: questionContent,
-            };
-            setMessages(updatedMessages);
-          }
-        }
-      } catch (error) {
-        console.error('Error translating content on language change:', error);
-      } finally {
-        setIsTranslating(false);
-      }
-    };
-
-    handleLanguageChange();
-  }, [currentLanguage]);
+    }
+  }, [currentLanguage, currentQuestion]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Auto-save session periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      saveSession();
-    }, 30000); // Save every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [user, chapterId, currentQuestionNumber, messages]);
-
-  // Save session on unmount
-  useEffect(() => {
-    return () => {
-      saveSession();
-    };
-  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -161,7 +115,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
   const loadChapterData = async () => {
     try {
       console.log('📚 Loading chapter data for:', chapterId);
-      
+
       // Fetch all chapters for sidebar
       const chaptersResponse = await fetch('/api/chapters');
       if (chaptersResponse.ok) {
@@ -176,29 +130,24 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       if (!response.ok) {
         throw new Error('Failed to fetch chapter');
       }
-      
+
       const chapter = await response.json();
-      
+
       // Validate chapter data
       if (!chapter || !chapter.questions || chapter.questions.length === 0) {
         console.error('❌ Invalid chapter data:', chapter);
-        const errorMessage: ChatMessage = {
-          id: generateId(),
+        await addMessage({
           role: 'assistant',
-          content: currentLanguage === 'fr' 
-            ? '❌ Désolé, je ne peux pas charger ce chapitre. Les données sont manquantes ou invalides.'
-            : '❌ Sorry, I cannot load this chapter. The data is missing or invalid.',
-          timestamp: new Date(),
+          content: '❌ Désolé, je ne peux pas charger ce chapitre. Les données sont manquantes ou invalides.',
           aristoState: 'confused',
-        };
-        setMessages([errorMessage]);
+        });
         return;
       }
-      
+
       console.log('✅ Chapter loaded:', chapter.title, 'with', chapter.questions.length, 'questions');
       setCurrentChapter(chapter);
 
-      // Get progress for this chapter
+      // Get progress to determine current question
       let startQuestionNumber = 1;
       const progressResponse = await fetch(`/api/chapters/${chapterId}/progress`);
       if (progressResponse.ok) {
@@ -208,86 +157,149 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
         console.log('📈 Progress loaded, starting at question:', startQuestionNumber);
       }
 
-      // Add initial greeting only if starting from question 1
-      if (startQuestionNumber === 1) {
-        const localizedTitle = getLocalizedChapterTitle(chapter, currentLanguage);
-        
-        // Calculate points information
-        const pointsInfo = currentLanguage === 'fr' 
-          ? '• Questions 1-3 (QCM): 10 points chacune\n• Questions 4-5 (Réponse courte/Réflexive): 35 points chacune'
-          : '• Questions 1-3 (MCQ): 10 points each\n• Questions 4-5 (Short/Reflective): 35 points each';
-        
-        const greeting: ChatMessage = {
-          id: generateId(),
-          role: 'assistant',
-          content: `${translate('chat_greeting')}\n\n${translate('chat_intro', { title: localizedTitle })}\n\n${translate('chat_intro_mcq')}\n${translate('chat_intro_short')}\n${translate('chat_intro_reflective')}\n\n**${currentLanguage === 'fr' ? '🎯 Points par question' : '🎯 Points per question'}:**\n${pointsInfo}\n\n${translate('chat_ready')}`,
-          timestamp: new Date(),
-          aristoState: 'happy',
-        };
-        setMessages([greeting]);
+      // ✅ LOGIQUE CORRIGÉE : Vérifier l'historique ET la progression
+      const hasHistory = messages.length > 0;
+      
+      // Vérifier si l'introduction est déjà dans l'historique
+      const hasIntroduction = messages.some(msg =>
+        msg.role === 'assistant' &&
+        (msg.content.includes('Bonjour ! Je suis Aristo') || msg.content.includes('Bienvenue dans le chapitre'))
+      );
 
-        // Load first question with delay
+      if (!hasHistory && startQuestionNumber === 1) {
+        // 🆕 NOUVELLE SESSION: Aucun historique ET première question
+        console.log('🎉 New session (no history, question 1), adding greeting and first question');
+        const localizedTitle = getLocalizedChapterTitle(chapter, currentLanguage);
+
+        await addMessage({
+          role: 'assistant',
+          content: `👋 Bonjour ! Je suis Aristo, votre assistant d'apprentissage.\n\n📚 Bienvenue dans le chapitre **${localizedTitle}** !\n\nCe chapitre contient 5 questions pour tester votre compréhension. Chaque question ne peut être répondue qu'une seule fois. Je vous donnerai un feedback pédagogique après chaque réponse, puis nous passerons à la question suivante.\n\n**🎯 Points par question :**\n• Questions 1-3 (QCM) : 10 points chacune\n• Questions 4-5 (Réponse courte/Réflexive) : 35 points chacune\n\n**📝 Important :** Une seule tentative par question. Réfléchissez bien avant de répondre !\n\n✨ Commençons !`,
+          aristoState: 'happy',
+        });
+
+        // Charger la première question immédiatement après
         setTimeout(() => {
-          console.log('⏰ Loading first question after delay');
+          console.log('⏰ Loading first question');
           loadQuestion(1, chapter);
         }, 1500);
+      } else if (hasHistory) {
+        // 🔄 REPRISE DE SESSION: Historique de chat existant (REFRESH ou NAVIGATION)
+        console.log('✅ Chat history exists, resuming session (REFRESH detected)');
+        console.log('📊 Progress indicates current question:', startQuestionNumber);
+        console.log('💬 Chat contains', messages.length, 'messages');
+        console.log('🔍 Has introduction:', hasIntroduction);
+
+        // ✅ NE JAMAIS recharger l'introduction lors d'un refresh
+        // Simplement restaurer l'état de la question courante
+        
+        // Vérifier si la question courante est DÉJÀ dans l'historique
+        const currentQuestionAlreadyInHistory = messages.some(msg =>
+          msg.role === 'assistant' &&
+          msg.content.includes(`Question ${startQuestionNumber}`)
+        );
+
+        if (currentQuestionAlreadyInHistory) {
+          console.log(`✅ Question ${startQuestionNumber} déjà présente dans l'historique, pas de rechargement`);
+
+          // Restaurer la question courante depuis les données du chapitre
+          const question = chapter.questions.find((q: any) => q.questionNumber === startQuestionNumber);
+          if (question) {
+            setCurrentQuestion(question);
+            console.log('✅ Restored current question:', question.questionNumber, question.type);
+          }
+
+          // Vérifier si l'utilisateur a déjà répondu à cette question
+          const questionMessageIndex = messages.findIndex(msg =>
+            msg.role === 'assistant' &&
+            msg.content.includes(`Question ${startQuestionNumber}`)
+          );
+
+          const hasUserResponseAfterQuestion = messages.slice(questionMessageIndex + 1).some(
+            msg => msg.role === 'user'
+          );
+
+          if (hasUserResponseAfterQuestion) {
+            console.log(`✅ L'utilisateur a déjà répondu à Question ${startQuestionNumber}, en attente du feedback ou de la question suivante`);
+          } else {
+            console.log(`⏳ Question ${startQuestionNumber} affichée, en attente de la réponse de l'utilisateur`);
+          }
+
+        } else {
+          // La question courante n'est PAS dans l'historique
+          // C'est le seul cas où on doit la charger
+          console.log(`📝 Question ${startQuestionNumber} non trouvée dans l'historique, chargement...`);
+
+          const question = chapter.questions.find((q: any) => q.questionNumber === startQuestionNumber);
+          if (question) {
+            // ✅ IMPORTANT : Marquer la question comme déjà chargée AVANT de la charger
+            // pour éviter les doubles chargements
+            const questionKey = `${chapter.id}-${question.id}`;
+            if (!questionLoadedRef.current.has(questionKey)) {
+              setCurrentQuestion(question);
+              setTimeout(() => {
+                loadQuestion(startQuestionNumber, chapter);
+              }, 500);
+            } else {
+              console.log(`⚠️ Question ${startQuestionNumber} déjà marquée comme chargée, skip`);
+              setCurrentQuestion(question);
+            }
+          }
+        }
       } else {
-        // If resuming, load the current question with a small delay for state sync
-        console.log('🔄 Resuming session at question:', startQuestionNumber);
-        setTimeout(() => {
-          loadQuestion(startQuestionNumber, chapter);
-        }, 500);
+        // Cas rare : pas d'historique mais pas à la question 1
+        // Cela peut arriver si la progression a été sauvegardée mais l'historique perdu
+        console.log('⚠️ No history but not at question 1, loading current question without intro');
+        const question = chapter.questions.find((q: any) => q.questionNumber === startQuestionNumber);
+        if (question) {
+          // ✅ Vérifier aussi ici pour éviter les doubles chargements
+          const questionKey = `${chapter.id}-${question.id}`;
+          if (!questionLoadedRef.current.has(questionKey)) {
+            setCurrentQuestion(question);
+            setTimeout(() => {
+              loadQuestion(startQuestionNumber, chapter);
+            }, 500);
+          } else {
+            console.log(`⚠️ Question ${startQuestionNumber} déjà marquée comme chargée, skip`);
+            setCurrentQuestion(question);
+          }
+        }
       }
     } catch (error) {
       console.error('❌ Error loading chapter:', error);
-      const errorMessage: ChatMessage = {
-        id: generateId(),
+      await addMessage({
         role: 'assistant',
-        content: currentLanguage === 'fr' 
-          ? '❌ Une erreur est survenue lors du chargement du chapitre. Veuillez réessayer.'
-          : '❌ An error occurred while loading the chapter. Please try again.',
-        timestamp: new Date(),
+        content: '❌ Une erreur est survenue lors du chargement du chapitre. Veuillez réessayer.',
         aristoState: 'confused',
-      };
-      setMessages([errorMessage]);
+      });
     }
   };
 
   const loadQuestion = async (questionNumber: number, chapterData?: ChapterData) => {
     const chapter = chapterData || currentChapter;
-    
+
     console.log('🔍 loadQuestion called with:', questionNumber);
     console.log('📊 chapter:', chapter?.title);
     console.log('📝 questions available:', chapter?.questions?.length);
+    console.log('💬 messages in history:', messages.length);
     
-    // Validate chapter data
+    // Valider les données du chapitre
     if (!chapter) {
       console.error('❌ No chapter data available');
-      const errorMessage: ChatMessage = {
-        id: generateId(),
+      await addMessage({
         role: 'assistant',
-        content: currentLanguage === 'fr' 
-          ? '❌ Impossible de charger la question. Les données du chapitre sont manquantes.'
-          : '❌ Cannot load question. Chapter data is missing.',
-        timestamp: new Date(),
+        content: '❌ Impossible de charger la question. Les données du chapitre sont manquantes.',
         aristoState: 'confused',
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      });
       return;
     }
 
     if (!chapter.questions || chapter.questions.length === 0) {
       console.error('❌ No questions available in chapter');
-      const errorMessage: ChatMessage = {
-        id: generateId(),
+      await addMessage({
         role: 'assistant',
-        content: currentLanguage === 'fr' 
-          ? '❌ Ce chapitre ne contient aucune question.'
-          : '❌ This chapter contains no questions.',
-        timestamp: new Date(),
+        content: '❌ Ce chapitre ne contient aucune question.',
         aristoState: 'confused',
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      });
       return;
     }
 
@@ -295,30 +307,38 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
     if (!question) {
       console.error('❌ Question not found:', questionNumber);
       console.log('Available questions:', chapter.questions.map(q => q.questionNumber));
-      const errorMessage: ChatMessage = {
-        id: generateId(),
+      await addMessage({
         role: 'assistant',
-        content: currentLanguage === 'fr' 
-          ? `❌ Question ${questionNumber} introuvable dans ce chapitre.`
-          : `❌ Question ${questionNumber} not found in this chapter.`,
-        timestamp: new Date(),
+        content: `❌ Question ${questionNumber} introuvable dans ce chapitre.`,
         aristoState: 'confused',
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      });
       return;
     }
 
     // Create unique key for this question
     const questionKey = `${chapter.id}-${question.id}`;
-    
-    // Check if this exact question was already loaded to prevent duplicates
+
+    // ✅ Check if this exact question was already loaded to prevent duplicates
     if (questionLoadedRef.current.has(questionKey)) {
-      console.log('⚠️ Question already loaded, skipping:', questionKey);
+      console.log('⚠️ Question already loaded (in ref), skipping:', questionKey);
       return;
     }
 
-    console.log('✅ Found question:', question.id, question.type);
-    
+    // ✅ ALSO check if this question is already in the chat history
+    const questionAlreadyInHistory = messages.some(msg =>
+      msg.role === 'assistant' &&
+      (msg.content.includes(question!.question) || msg.content.includes(`Question ${questionNumber}`))
+    );
+
+    if (questionAlreadyInHistory) {
+      console.log('⚠️ Question already in chat history, skipping:', questionNumber);
+      // Still mark as loaded to prevent future attempts
+      questionLoadedRef.current.add(questionKey);
+      return;
+    }
+
+    console.log('✅ Found question:', question.id, question.type, '- not yet asked');
+
     // Mark this question as loaded BEFORE setting state
     questionLoadedRef.current.add(questionKey);
     
@@ -332,36 +352,29 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
     
     setCurrentQuestion(question);
     setCurrentQuestionNumber(questionNumber);
-    
+
     // Also update currentChapter if it was passed
     if (chapterData && !currentChapter) {
       setCurrentChapter(chapterData);
     }
 
-    // Save session when loading a question (creates or updates learning_session)
-    saveSession();
+    // Formater le message de la question
+    let questionContent = `**Question ${questionNumber} :** ${question.question}`;
 
-    // Format question message based on type
-    let questionContent = `**${translate('learn_question')} ${questionNumber}:** ${question.question}`;
-    
     if (question.type === 'mcq' && question.options) {
       questionContent += '\n\n';
-      questionContent += question.options.map((opt, idx) => 
+      questionContent += question.options.map((opt, idx) =>
         `${String.fromCharCode(65 + idx)}) ${opt}`
       ).join('\n');
-      questionContent += `\n\n${translate('chat_type_hint')}`;
+      questionContent += `\n\n💡 Tapez la lettre de votre réponse (A, B, C ou D)`;
     }
 
-    const questionMessage: ChatMessage = {
-      id: generateId(),
+    console.log('✅ Question loaded successfully, adding to messages');
+    await addMessage({
       role: 'assistant',
       content: questionContent,
-      timestamp: new Date(),
       aristoState: 'asking',
-    };
-    
-    console.log('✅ Question loaded successfully, adding to messages');
-    setMessages(prev => [...prev, questionMessage]);
+    });
   };
 
   const handleSendMessage = async () => {
@@ -369,35 +382,58 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
     console.log('📝 inputValue:', inputValue);
     console.log('⏳ isLoading:', isLoading);
     console.log('❓ currentQuestion:', currentQuestion?.id);
-    
+
     if (!inputValue.trim()) {
       console.log('❌ Empty input');
       return;
     }
-    
+
     if (isLoading) {
       console.log('❌ Already loading');
       return;
     }
-    
-    if (!currentQuestion) {
-      console.log('❌ No current question');
-      return;
-    }
-    
-    console.log('✅ Proceeding with submission');
 
-    const userMessage: ChatMessage = {
-      id: generateId(),
-      role: 'user',
-      content: inputValue,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     const userAnswer = inputValue;
     setInputValue('');
+
+    // ✅ Vérifier qu'il y a bien une question en cours
+    if (!currentQuestion) {
+      console.log('❌ No current question set');
+      return;
+    }
+
+    // ✅ BLOQUER LES RÉPONSES MULTIPLES À LA MÊME QUESTION
+    // Vérifier si cette question a déjà une réponse enregistrée dans la progression
+    const progress = chapterProgress.find(p => p.chapterId === chapterId);
+    const questionAlreadyAnswered = progress?.answers?.some(
+      (a: any) => a.questionNumber === currentQuestion.questionNumber
+    );
+
+    if (questionAlreadyAnswered) {
+      console.log('⚠️ Question already answered, blocking duplicate response');
+      await addMessage({
+        role: 'assistant',
+        content: `⚠️ Vous avez déjà répondu à la Question ${currentQuestion.questionNumber}. Une seule tentative est autorisée par question. Passons à la suite !`,
+        aristoState: 'confused',
+      });
+      // Charger la question suivante
+      const nextQuestionNumber = currentQuestion.questionNumber + 1;
+      if (nextQuestionNumber <= 5) {
+        setTimeout(() => {
+          loadQuestion(nextQuestionNumber);
+        }, 2000);
+      }
+      return;
+    }
+
+    console.log('✅ Proceeding with answer evaluation');
     setIsLoading(true);
+
+    // Ajouter le message de l'utilisateur
+    await addMessage({
+      role: 'user',
+      content: userAnswer,
+    });
 
     try {
       const response = await fetch('/api/chat/evaluate', {
@@ -410,7 +446,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
           questionType: currentQuestion.type,
           answer: userAnswer,
           correctAnswer: currentQuestion.correctAnswer,
-          language: getApiLanguage(currentLanguage),
+          language: 'FR', // Toujours forcer le français
         }),
       });
 
@@ -425,15 +461,11 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       }
       
       // Add Aristo's feedback
-      const feedbackMessage: ChatMessage = {
-        id: generateId(),
+      await addMessage({
         role: 'assistant',
         content: data.feedback,
-        timestamp: new Date(),
         aristoState: data.correct ? 'happy' : 'confused',
-      };
-      
-      setMessages(prev => [...prev, feedbackMessage]);
+      });
 
       // Update progress display
       if (data.progress) {
@@ -443,40 +475,36 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
         });
       }
 
-      // Move to next question or complete chapter
-      if (currentQuestionNumber < 5) {
-        // Load next question after delay
-        setTimeout(() => {
-          console.log('➡️ Moving to next question:', currentQuestionNumber + 1);
-          loadQuestion(currentQuestionNumber + 1);
+      // ✅ Après feedback, charger directement la question suivante
+      // Pas de message intermédiaire "Prêt pour la suite"
+
+      if (currentQuestionNumber >= 5) {
+        // Chapitre terminé - afficher le message de félicitations
+        setTimeout(async () => {
+          await addMessage({
+            role: 'assistant',
+            content: `🎉 Félicitations ! Vous avez terminé ce chapitre !\n\n📊 Votre score : ${data.progress?.score || 0} points\n\n${
+              chapters.length > 1
+                ? '➡️ Passez au chapitre suivant pour continuer votre apprentissage !'
+                : '✅ Vous avez terminé tous les chapitres disponibles !'
+            }`,
+            aristoState: 'success',
+          });
         }, 2000);
       } else {
-        // Chapter complete
+        // Charger automatiquement la question suivante après un court délai
+        console.log('✅ Answer processed. Loading next question:', currentQuestionNumber + 1);
         setTimeout(() => {
-          const completeMessage: ChatMessage = {
-            id: generateId(),
-            role: 'assistant',
-            content: `${translate('chat_complete')}\n\n${translate('chat_your_score', { score: String(data.progress?.score || 0) })}\n\n${
-              chapters.length > 1 
-                ? translate('chat_next_chapter')
-                : translate('chat_all_done')
-            }`,
-            timestamp: new Date(),
-            aristoState: 'success',
-          };
-          setMessages(prev => [...prev, completeMessage]);
+          loadQuestion(currentQuestionNumber + 1);
         }, 2000);
       }
     } catch (error) {
       console.error('Error evaluating answer:', error);
-      const errorMessage: ChatMessage = {
-        id: generateId(),
+      await addMessage({
         role: 'assistant',
-        content: translate('chat_error'),
-        timestamp: new Date(),
+        content: '❌ Une erreur est survenue lors de l\'évaluation de votre réponse. Veuillez réessayer.',
         aristoState: 'confused',
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      });
     } finally {
       setIsLoading(false);
     }
@@ -491,19 +519,16 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
 
     const message = actionMessages[actionId as keyof typeof actionMessages];
     if (message && !isLoading && currentQuestion) {
-      // Submit directly instead of just filling the input
-      const userMessage: ChatMessage = {
-        id: generateId(),
-        role: 'user',
-        content: message,
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, userMessage]);
       setIsLoading(true);
 
+      // Add user message
+      await addMessage({
+        role: 'user',
+        content: message,
+      });
+
       try {
-        // Call AI to get intelligent help based on the current question
+        // Appeler l'IA pour obtenir de l'aide sur la question actuelle
         const response = await fetch('/api/chat/help', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -511,33 +536,29 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
             action: actionId,
             question: currentQuestion.question,
             chapterTitle: currentChapter?.title || '',
-            language: getApiLanguage(currentLanguage),
+            language: 'FR', // Toujours forcer le français
+            correctAnswer: currentQuestion.correctAnswer, // Pour les QCM
+            questionType: currentQuestion.type, // mcq ou open
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
-          const helpMessage: ChatMessage = {
-            id: generateId(),
+          await addMessage({
             role: 'assistant',
             content: data.help,
-            timestamp: new Date(),
             aristoState: 'happy',
-          };
-          setMessages(prev => [...prev, helpMessage]);
+          });
         } else {
           throw new Error('Failed to get help');
         }
       } catch (error) {
         console.error('Error handling quick action:', error);
-        const errorMessage: ChatMessage = {
-          id: generateId(),
+        await addMessage({
           role: 'assistant',
-          content: translate('chat_help'),
-          timestamp: new Date(),
+          content: '💡 Bien sûr, je peux vous aider avec cette question ! N\'hésitez pas à me demander si quelque chose n\'est pas clair.',
           aristoState: 'happy',
-        };
-        setMessages(prev => [...prev, errorMessage]);
+        });
       } finally {
         setIsLoading(false);
       }
@@ -550,38 +571,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
 
   const handleChapterClick = (newChapterId: string) => {
     if (newChapterId !== chapterId) {
-      // Save current session before navigating
-      saveSession();
       router.push(`/learn/${newChapterId}`);
-    }
-  };
-
-  const saveSession = async () => {
-    if (!chapterId) return;
-
-    try {
-      console.log('💾 Saving learning session for chapter:', chapterId, 'question:', currentQuestionNumber);
-      
-      await fetch('/api/sessions/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chapterId: chapterId,
-          currentQuestion: currentQuestionNumber,
-          chatMessages: messages.map(msg => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.content,
-            timestamp: msg.timestamp.toISOString(),
-            aristoState: msg.aristoState,
-          })),
-          sessionState: currentQuestionNumber >= 5 ? 'completed' : 'active',
-        }),
-      });
-      
-      console.log('✅ Learning session saved successfully');
-    } catch (error) {
-      console.error('❌ Error saving session:', error);
     }
   };
 
@@ -604,7 +594,6 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
         currentChapterId={chapterId}
         onChapterClick={handleChapterClick}
         onHomeClick={() => {
-          saveSession();
           router.push('/dashboard');
         }}
         onCollapseChange={setIsSidebarCollapsed}
@@ -620,7 +609,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
               {currentChapter ? getLocalizedChapterTitle(currentChapter, currentLanguage) : translate('loading')}
             </h1>
             <p className="text-xs text-gray-600">
-              {translate('learn_question')} {currentQuestionNumber <= 3 ? 1 : currentQuestionNumber === 4 ? 2 : 3}: {phaseInfo.name} • {translate('learn_score')}: {
+              {translate('learn_question')} {currentQuestionNumber}: {phaseInfo.name} • {translate('learn_score')}: {
                 chapterProgress.find(p => p.chapterId === chapterId)?.score || 0
               } {translate('learn_pts')}
             </p>

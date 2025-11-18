@@ -25,6 +25,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📝 Saving learning session for user:', userId, 'chapter:', chapterId);
+    console.log('📊 Session data to save:', {
+      currentQuestion,
+      messageCount: chatMessages?.length || 0,
+      sessionState,
+      sampleMessage: chatMessages?.[0],
+    });
 
     // Use authenticated server client for RLS
     const serverClient = await createSupabaseServerClient();
@@ -57,6 +63,11 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Learning session saved successfully');
+    console.log('📊 Saved data:', {
+      id: data.id,
+      chapterId: data.chapter_id,
+      messageCount: data.chat_messages?.length || 0,
+    });
 
     return NextResponse.json({
       success: true,

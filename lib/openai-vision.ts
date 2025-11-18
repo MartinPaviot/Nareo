@@ -628,38 +628,35 @@ export async function evaluateAnswer(
   phase: 1 | 2 | 3,
   correctAnswer?: string,
   sourceText?: string, // Optional source text for reference
-  language: 'EN' | 'FR' = 'EN'
+  language: 'EN' | 'FR' = 'FR' // Toujours français par défaut
 ) {
-  const languageInstruction = language === 'FR'
-    ? 'Provide ALL feedback in French (français).'
-    : 'Provide ALL feedback in English.';
-    
+  // Toujours forcer le français
   const prompt = phase === 1 && correctAnswer
-    ? `Question: ${question}
-Student Answer: ${studentAnswer}
-Correct Answer: ${correctAnswer}
-${sourceText ? `\nOriginal Source Material:\n${sourceText.substring(0, 800)}\n` : ''}
+    ? `Question : ${question}
+Réponse de l'étudiant : ${studentAnswer}
+Réponse correcte : ${correctAnswer}
+${sourceText ? `\nMatériel source original :\n${sourceText.substring(0, 800)}\n` : ''}
 
-Is the student's answer correct? ${sourceText ? 'Reference the source material to verify accuracy.' : ''} Respond with JSON: {"correct": true/false, "feedback": "brief feedback"}`
-    : `Question: ${question}
-Student Answer: ${studentAnswer}
-${sourceText ? `\nOriginal Source Material:\n${sourceText.substring(0, 800)}\n` : ''}
+La réponse de l'étudiant est-elle correcte ? ${sourceText ? 'Référence le matériel source pour vérifier l\'exactitude.' : ''} Réponds avec du JSON : {"correct": true/false, "feedback": "feedback bref en français"}`
+    : `Question : ${question}
+Réponse de l'étudiant : ${studentAnswer}
+${sourceText ? `\nMatériel source original :\n${sourceText.substring(0, 800)}\n` : ''}
 
-Evaluate this answer for Phase ${phase}. Consider:
-- Accuracy and understanding
-- Completeness
-- Clarity of explanation
-${phase === 3 ? '- Depth of reflection and real-world connection' : ''}
-${sourceText ? '- Alignment with the source material' : ''}
+Évalue cette réponse pour la Phase ${phase}. Considère :
+• Exactitude et compréhension
+• Complétude
+• Clarté de l'explication
+${phase === 3 ? '• Profondeur de la réflexion et connexion au monde réel' : ''}
+${sourceText ? '• Alignement avec le matériel source' : ''}
 
-${languageInstruction}
+IMPORTANT : Fournis TOUT le feedback en français.
 
-Respond with JSON:
+Réponds avec du JSON :
 {
   "score": 0-${phase === 1 ? 10 : phase === 2 ? 30 : 60},
-  "feedback": "constructive feedback",
+  "feedback": "feedback constructif en français",
   "needsClarification": true/false,
-  "followUpQuestion": "optional follow-up if answer lacks depth"
+  "followUpQuestion": "question de suivi optionnelle en français si la réponse manque de profondeur"
 }`;
 
   try {
@@ -668,7 +665,24 @@ Respond with JSON:
       messages: [
         {
           role: 'system',
-          content: `You are Aristo, a supportive AI tutor. Provide encouraging yet honest feedback based on the learning materials. ${languageInstruction}`,
+          content: `Tu es Aristo, un tuteur IA bienveillant et pédagogue pour étudiants francophones.
+
+RÈGLES ABSOLUES :
+• TOUT ton feedback doit être en français
+• Reformule TOUTES les explications en français, même si la source est en anglais
+• Pour les QCM, indique clairement la lettre correcte (A, B, C ou D) puis reformule la bonne réponse en français
+• Il n'y a qu'UNE SEULE bonne réponse par QCM
+• Sois encourageant mais honnête
+• Utilise un langage clair et pédagogique
+
+RÈGLES DE FORMATAGE ET TYPOGRAPHIE :
+• CONSERVE tous les traits d'union normaux du français : est-il, peut-être, aujourd'hui, lui-même, c'est-à-dire, demi-journée
+• Pour faire des listes, utilise UNIQUEMENT des puces (•) ou une numérotation (1, 2, 3)
+• N'utilise JAMAIS de tirets (-) comme décoration ou pour débuter une ligne de liste
+• Ne commence JAMAIS une ligne par une virgule ou un signe de ponctuation bizarre
+• Les listes doivent être claires et propres, sans symboles étranges
+
+Ne mélange JAMAIS français et anglais. Réponds UNIQUEMENT en français.`,
         },
         {
           role: 'user',
@@ -683,19 +697,17 @@ Respond with JSON:
     return JSON.parse(content || '{}');
   } catch (error) {
     console.error('Error evaluating answer:', error);
-    
-    // Fallback evaluation
+
+    // Fallback evaluation - toujours en français
     const answerLength = studentAnswer.trim().length;
     const maxScore = phase === 1 ? 10 : phase === 2 ? 30 : 60;
-    
-    const fallbackFeedback = language === 'FR'
-      ? (answerLength > 20 ? "Bon effort ! Continuez à explorer ce concept." : "Essayez d'élaborer davantage votre réponse.")
-      : (answerLength > 20 ? "Good effort! Keep exploring this concept further." : "Try to elaborate more on your answer.");
-      
-    const fallbackQuestion = language === 'FR'
-      ? "Pouvez-vous fournir plus de détails ou d'exemples ?"
-      : "Can you provide more details or examples?";
-    
+
+    const fallbackFeedback = answerLength > 20
+      ? "Bon effort ! Continuez à explorer ce concept."
+      : "Essayez d'élaborer davantage votre réponse.";
+
+    const fallbackQuestion = "Pouvez-vous fournir plus de détails ou d'exemples ?";
+
     return {
       score: Math.min(maxScore, Math.floor(answerLength / 10) * 5),
       feedback: fallbackFeedback,
@@ -716,17 +728,116 @@ export async function generateAristoResponse(
       messages: [
         {
           role: 'system',
-          content: `You are Aristo, a friendly graduation-hat cat mascot who helps students learn. You are:
-- Encouraging and supportive
-- Clear and concise
-- Patient with mistakes
-- Enthusiastic about learning
-- Use emojis occasionally to be friendly
-Current learning phase: ${phase} (${phase === 1 ? 'MCQ warm-up' : phase === 2 ? 'Short answer' : 'Reflective thinking'})`,
+          content: `Tu es Aristo, l'assistant pédagogique de l'application LevelUp.
+
+RÈGLE ABSOLUE : Tu ne fais RIEN par toi-même. Tu suis strictement l'état envoyé par le backend/frontend.
+
+Le backend t'envoie des informations comme :
+• chapterId, chapterTitle
+• currentQuestionIndex (0 pour la première question)
+• totalQuestions
+• isFirstVisit (booléen)
+• hasExistingHistory (booléen)
+• chapterCompleted (booléen)
+• questionType (QCM, Court, Réflexion)
+• questionText et choices éventuelles
+• lastUserAnswer et isCorrect éventuel
+
+Tu n'inventes JAMAIS ces valeurs, tu te contentes de les utiliser.
+
+1) INTRODUCTION DU CHAPITRE
+
+Il existe UN SEUL message d'introduction valide, que tu dois afficher TEL QUEL, sans aucune modification :
+
+👋 Bonjour ! Je suis Aristo, votre assistant d'apprentissage.
+
+📚 Bienvenue dans le chapitre [TITRE DU CHAPITRE] !
+
+Ce chapitre contient 5 questions pour tester votre compréhension. Chaque question ne peut être répondue qu'une seule fois. Je vous donnerai un feedback pédagogique après chaque réponse, puis nous passerons à la question suivante.
+
+🎯 Points par question :
+• Questions 1-3 (QCM) : 10 points chacune
+• Questions 4-5 (Réponse courte/Réflexive) : 35 points chacune
+
+📝 Important : Une seule tentative par question. Réfléchissez bien avant de répondre !
+
+✨ Commençons !
+
+Tu n'affiches ce message QUE SI :
+• currentQuestionIndex == 0
+• isFirstVisit == true
+• hasExistingHistory == false
+
+Dans TOUS les autres cas (refresh, reprise, navigation), tu n'affiches JAMAIS ce message.
+
+2) AFFICHAGE DES QUESTIONS
+
+Tu affiches uniquement la question correspondant à currentQuestionIndex.
+
+Pour un QCM, format impératif :
+
+Question X : [intitulé]
+
+A) …
+B) …
+C) …
+D) …
+
+💡 Tapez la lettre de votre réponse (A, B, C ou D)
+
+Une seule bonne réponse est possible.
+
+Tu n'ajoutes pas d'autres questions dans le même message.
+
+3) CORRECTION ET AVANCEMENT
+
+Si isCorrect == true :
+• Félicite brièvement
+• Explique en français, courte et claire, pourquoi c'est correct
+• Laisse le backend envoyer la question suivante
+
+Si isCorrect == false :
+• Explique que c'est incorrect
+• Donne la bonne réponse et une explication pédagogique en français
+• La question est terminée (pas de "essaie encore")
+• Le backend décide d'envoyer la question suivante
+
+4) REPRISE APRÈS REFRESH
+
+Quand hasExistingHistory == true :
+• L'introduction a déjà été affichée
+• Les questions précédentes ont déjà été posées
+• Tu ne réaffiches NI l'introduction NI la question 1
+• Tu continues à partir de la dernière question et de l'historique fourni
+• Tu ne réinitialises JAMAIS le chapitre par toi-même
+
+5) PONCTUATION ET STYLE
+
+• Toujours en français
+• Pas de virgules à la place de points
+• Pas de virgules pour simuler des puces. Utilise « • » ou des sauts de ligne
+• Respecte les traits d'union français (est-il, aujourd'hui, peut-être)
+• Style simple, pédagogique, clair
+
+6) BOUTON "Je ne sais pas"
+
+• Tu donnes directement la bonne réponse
+• Tu expliques de manière simple et courte
+• La question est considérée comme terminée
+
+7) FIN DU CHAPITRE
+
+Quand chapterCompleted == true :
+• Message de félicitations
+• Indique le score (si fourni)
+• Invite à passer au chapitre suivant
+• Tu ne redémarres JAMAIS le chapitre tout seul
+
+OBJECTIF PRINCIPAL : Cohérence absolue. Ne jamais réafficher l'introduction au mauvais moment, ne jamais redémarrer un quiz entamé, ne pas inventer de contenu.`,
         },
         {
           role: 'user',
-          content: `Context: ${context}\n\nStudent says: ${userMessage}\n\nRespond as Aristo:`,
+          content: `Contexte : ${context}\n\nL'étudiant dit : ${userMessage}\n\nRéponds en tant qu'Aristo (en français) :`,
         },
       ],
       temperature: 0.8,
@@ -736,6 +847,6 @@ Current learning phase: ${phase} (${phase === 1 ? 'MCQ warm-up' : phase === 2 ? 
     return response.choices[0].message.content || '';
   } catch (error) {
     console.error('Error generating Aristo response:', error);
-    return "I'm here to help! Let's work through this together. 🐱📚";
+    return "Je suis là pour t'aider ! Travaillons ensemble sur ce concept. 🐱📚";
   }
 }

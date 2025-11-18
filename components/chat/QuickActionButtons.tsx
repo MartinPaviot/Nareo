@@ -15,9 +15,9 @@ export default function QuickActionButtons({
   const { translate } = useLanguage();
   
   const QUICK_ACTIONS = [
-    { id: 'clarify', label: translate('quick_clarify'), icon: '❓' },
     { id: 'simplify', label: translate('quick_simplify'), icon: '💡' },
     { id: 'example', label: translate('quick_example'), icon: '📝' },
+    { id: 'clarify', label: translate('quick_clarify'), icon: '❓' },
   ];
 
   return (

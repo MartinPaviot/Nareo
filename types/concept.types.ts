@@ -4,6 +4,13 @@ export type BadgeType = 'bronze' | 'silver' | 'gold' | null;
 export type QuestionType = 'mcq' | 'open';
 export type PhaseNameType = 'mcq' | 'short' | 'reflective';
 
+// ✅ MAPPING FRANÇAIS pour les types de questions (TOUJOURS utiliser ces labels)
+export const QUESTION_TYPE_LABELS_FR: Record<PhaseNameType, string> = {
+  'mcq': 'QCM',
+  'short': 'Court',
+  'reflective': 'Réflexion',
+} as const;
+
 export interface ConceptData {
   id: string;
   title: string;
@@ -47,25 +54,26 @@ export interface LearningPhase {
   type: 'mcq' | 'short' | 'reflective';
 }
 
+// ✅ Phases d'apprentissage (labels en FRANÇAIS)
 export const LEARNING_PHASES: LearningPhase[] = [
   {
     phase: 1,
-    name: 'MCQ Phase',
-    description: 'Multiple choice questions to test basic understanding',
+    name: QUESTION_TYPE_LABELS_FR['mcq'], // 'QCM'
+    description: 'Questions à choix multiples pour tester la compréhension de base',
     points: 10,
     type: 'mcq',
   },
   {
     phase: 2,
-    name: 'Short Answer',
-    description: 'Short answer to explain in your own words',
+    name: QUESTION_TYPE_LABELS_FR['short'], // 'Court'
+    description: 'Réponse courte pour expliquer avec vos propres mots',
     points: 35,
     type: 'short',
   },
   {
     phase: 3,
-    name: 'Reflective',
-    description: 'Open-ended reflection on real-world application',
+    name: QUESTION_TYPE_LABELS_FR['reflective'], // 'Réflexion'
+    description: 'Réflexion ouverte sur l\'application dans le monde réel',
     points: 35,
     type: 'reflective',
   },
@@ -114,31 +122,31 @@ export interface ChapterData {
   sourceText?: string; // Original extracted text
 }
 
-// Helper to get phase info for a question number
+// ✅ Helper pour obtenir les infos de phase d'une question (labels en FRANÇAIS)
 export function getPhaseForQuestion(questionNumber: number): {
   phase: PhaseNameType;
-  name: string;
+  name: string; // Label français (QCM, Court, Réflexion)
   type: QuestionType;
   points: number;
 } {
   if (questionNumber >= 1 && questionNumber <= 3) {
     return {
       phase: 'mcq',
-      name: 'MCQ Phase',
+      name: QUESTION_TYPE_LABELS_FR['mcq'], // "QCM"
       type: 'mcq',
       points: 10,
     };
   } else if (questionNumber === 4) {
     return {
       phase: 'short',
-      name: 'Short Answer',
+      name: QUESTION_TYPE_LABELS_FR['short'], // "Court"
       type: 'open',
       points: 35,
     };
   } else {
     return {
       phase: 'reflective',
-      name: 'Reflective',
+      name: QUESTION_TYPE_LABELS_FR['reflective'], // "Réflexion"
       type: 'open',
       points: 35,
     };

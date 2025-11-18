@@ -3,6 +3,40 @@ import { evaluateAnswer } from '@/lib/openai-vision';
 import { authenticateRequest } from '@/lib/api-auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { calculateBadge } from '@/lib/scoring';
+import { openai } from '@/lib/openai-vision';
+
+// ✅ Fonction helper pour traduire une option de QCM en français
+async function translateOptionToFrench(optionText: string): Promise<string> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'Tu es un traducteur professionnel. Traduis UNIQUEMENT le texte fourni en français, sans ajouter d\'explication. Si le texte est déjà en français, retourne-le tel quel.',
+        },
+        {
+          role: 'user',
+          content: optionText,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 100,
+    });
+
+    return response.choices[0].message.content?.trim() || optionText;
+  } catch (error) {
+    console.error('❌ Error translating option text:', error);
+    // Fallback: simple remplacement de mots courants
+    return optionText
+      .replace(/characters?/gi, 'caractères')
+      .replace(/posts?/gi, 'publications')
+      .replace(/views?/gi, 'vues')
+      .replace(/clicks?/gi, 'clics')
+      .replace(/professionally/gi, 'professionnellement')
+      .replace(/click-through rate/gi, 'taux de clic');
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -99,28 +133,33 @@ async function handleChapterEvaluation(request: NextRequest, body: any) {
     score = correct ? question.points : 0;
     
     console.log('📊 MCQ evaluation:', { userAnswer, correctAnswerLetter, correct, score });
-    
+
     if (correct) {
-      feedback = language === 'FR' 
-        ? `✅ Correct ! Excellent travail ! Vous avez gagné ${question.points} points.`
-        : `✅ Correct! Great job! You earned ${question.points} points.`;
+      // ✅ Pour réponse correcte, on peut aussi afficher l'option en français si besoin
+      const correctOptionIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 65 : 0;
+      const correctOptionText = question.options?.[correctOptionIndex] || '';
+      const correctOptionTextFR = await translateOptionToFrench(correctOptionText);
+
+      feedback = `✅ Correct ! Vous avez choisi **${correctAnswerLetter}) ${correctOptionTextFR}**. Excellent travail ! Vous avez gagné ${question.points} points.`;
     } else {
       // Use AI to explain why the answer is wrong
       const correctOptionIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 65 : 0;
       const correctOptionText = question.options?.[correctOptionIndex] || '';
-      
+
+      // ✅ TRADUIRE le texte de l'option correcte en français
+      const correctOptionTextFR = await translateOptionToFrench(correctOptionText);
+
       evaluation = await evaluateAnswer(
-        `Question: ${question.question}\n\nOptions:\n${question.options?.map((opt: string, idx: number) => `${String.fromCharCode(65 + idx)}) ${opt}`).join('\n')}\n\nStudent answered: ${userAnswer}\nCorrect answer: ${correctAnswerLetter}) ${correctOptionText}`,
-        `The student chose ${userAnswer} but the correct answer is ${correctAnswerLetter}. Explain why ${correctAnswerLetter} is correct and why ${userAnswer} is incorrect.`,
+        `Question: ${question.question}\n\nOptions:\n${question.options?.map((opt: string, idx: number) => `${String.fromCharCode(65 + idx)}) ${opt}`).join('\n')}\n\nRéponse de l'étudiant : ${userAnswer}\nBonne réponse : ${correctAnswerLetter}) ${correctOptionText}`,
+        `L'étudiant a choisi ${userAnswer} mais la bonne réponse est ${correctAnswerLetter}. Explique en français pourquoi ${correctAnswerLetter} est correct et pourquoi ${userAnswer} est incorrect. Reformule clairement la bonne réponse en français, même si le texte source était en anglais.`,
         questionNumber <= 3 ? 1 : questionNumber === 4 ? 2 : 3,
         undefined,
         chapter.source_text,
-        language
+        'FR' // Toujours forcer le français
       );
-      
-      feedback = language === 'FR'
-        ? `❌ Pas tout à fait. La bonne réponse était **${correctAnswerLetter}) ${correctOptionText}**.\n\n${evaluation.feedback}`
-        : `❌ Not quite. The correct answer was **${correctAnswerLetter}) ${correctOptionText}**.\n\n${evaluation.feedback}`;
+
+      // ✅ Utiliser la version française dans le feedback final
+      feedback = `❌ Pas tout à fait. La bonne réponse était **${correctAnswerLetter}) ${correctOptionTextFR}**.\n\n${evaluation.feedback}`;
     }
   } else {
     // For open-ended questions, use AI evaluation
@@ -133,13 +172,12 @@ async function handleChapterEvaluation(request: NextRequest, body: any) {
       chapter.source_text,
       language
     );
-    
+
+
     score = evaluation.score || 0;
-    feedback = evaluation.feedback || (language === 'FR' 
-      ? 'Bon effort ! Continuez à explorer ce concept.'
-      : 'Good effort! Keep exploring this concept.');
+    feedback = evaluation.feedback || 'Bon effort ! Continuez à explorer ce concept.';
     correct = score > (question.points * 0.6); // Consider correct if > 60% of points
-    
+
     console.log('📊 AI evaluation result:', { score, correct });
   }
 

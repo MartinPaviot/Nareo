@@ -199,7 +199,7 @@ export const translations: Record<Language, Translations> = {
     chat_help: 'I\'m here to help! Feel free to ask me to clarify, simplify, or give you an example.',
     
     // Quick Actions
-    quick_clarify: 'Can you clarify this question?',
+    quick_clarify: 'I don\'t know',
     quick_simplify: 'Can you simplify this?',
     quick_example: 'Can you give me an example?',
     
@@ -208,9 +208,9 @@ export const translations: Record<Language, Translations> = {
     sidebar_chapters: 'Chapters',
     sidebar_progress: 'Progress',
     sidebar_score: 'Score',
-    sidebar_phase_mcq: 'MCQ',
-    sidebar_phase_short: 'Short',
-    sidebar_phase_reflective: 'Reflective',
+    sidebar_phase_mcq: 'QCM',
+    sidebar_phase_short: 'Court',
+    sidebar_phase_reflective: 'Réflexion',
     sidebar_progress_label: 'Progress',
     sidebar_collapse: 'Collapse',
     sidebar_expand: 'Expand',
@@ -528,9 +528,9 @@ export const translations: Record<Language, Translations> = {
     chat_help: 'Je suis là pour vous aider ! N\'hésitez pas à me demander de clarifier, simplifier ou vous donner un exemple.',
     
     // Quick Actions
-    quick_clarify: 'Pouvez-vous clarifier cette question ?',
     quick_simplify: 'Pouvez-vous simplifier cela ?',
     quick_example: 'Pouvez-vous me donner un exemple ?',
+    quick_clarify: 'Je ne sais pas',
     
     // Sidebar
     sidebar_home: 'Accueil',

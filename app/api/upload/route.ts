@@ -7,6 +7,27 @@ import { memoryStore } from '@/lib/memory-store';
 import { generateId } from '@/lib/utils';
 import { ChapterQuestion } from '@/types/concept.types';
 import { requireAuth, isErrorResponse } from '@/lib/api-auth';
+import { validateExtractedText, truncateTextIntelligently } from '@/lib/openai-fallback';
+
+/**
+ * Detect file type from filename extension when MIME type is unreliable
+ */
+function detectFileTypeFromExtension(filename: string): string | null {
+  const extension = filename.toLowerCase().split('.').pop();
+  
+  const extensionMap: Record<string, string> = {
+    'pdf': 'application/pdf',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'doc': 'application/msword',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+  };
+  
+  return extension ? extensionMap[extension] || null : null;
+}
 
 export async function POST(request: NextRequest) {
   // Authenticate the request
@@ -29,8 +50,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check file type
-    const fileType = file.type;
+    // Robust file type detection
+    let fileType = file.type;
+    
+    // If file.type is empty, unknown, or generic, detect from extension
+    if (!fileType || fileType === 'application/octet-stream' || fileType === '') {
+      console.log('⚠️ File type is empty or generic, detecting from extension...');
+      const detectedType = detectFileTypeFromExtension(file.name);
+      if (detectedType) {
+        fileType = detectedType;
+        console.log('✅ Detected file type from extension:', fileType);
+      }
+    }
+    
     const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const validDocumentTypes = [
       'application/pdf',
@@ -43,7 +75,7 @@ export async function POST(request: NextRequest) {
     
     if (!isImage && !isDocument) {
       return NextResponse.json(
-        { error: 'Please upload an image (JPG, PNG, GIF, WebP) or document (PDF, DOCX)' },
+        { error: `Unsupported file type: ${fileType}. Please upload an image (JPG, PNG, GIF, WebP) or document (PDF, DOCX)` },
         { status: 400 }
       );
     }
@@ -89,8 +121,31 @@ export async function POST(request: NextRequest) {
       console.log('✅ Extracted', extractedText.length, 'characters from document');
       console.log('📚 Document title:', documentTitle);
       
+      // Validate extracted text quality
+      const validation = validateExtractedText(extractedText, 300);
+      
+      if (!validation.isValid) {
+        console.error('❌ Insufficient text extracted:', validation.reason);
+        return NextResponse.json(
+          { 
+            error: 'Insufficient text extracted from document',
+            details: validation.reason,
+            suggestion: 'The document may be empty, image-based, or encrypted. Please try a different document with readable text content.'
+          },
+          { status: 400 }
+        );
+      }
+      
+      console.log('✅ Text validation passed:', validation.length, 'characters');
+      
+      // Truncate text intelligently if too long
+      const processedText = truncateTextIntelligently(extractedText, 20000);
+      
       console.log('🤖 Analyzing document text with AI...');
-      extractedData = await extractConceptsFromText(extractedText, documentTitle);
+      extractedData = await extractConceptsFromText(processedText, documentTitle);
+      
+      // Store the full extracted text for reference
+      extractedData.extractedText = extractedText;
       
       console.log('✅ Successfully extracted', extractedData.concepts?.length || 0, 'concepts from document');
     }

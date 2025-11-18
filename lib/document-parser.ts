@@ -5,7 +5,7 @@
  * Uses mammoth first, falls back to OpenAI if needed
  */
 
-import { openai } from './openai-vision';
+import { extractTextWithOpenAIFromDocx, validateExtractedText } from './openai-fallback';
 
 /**
  * Parse a DOCX file and extract text content
@@ -13,8 +13,8 @@ import { openai } from './openai-vision';
 export async function parseDocx(buffer: Buffer): Promise<string> {
   console.log('📄 Parsing DOCX document (buffer size:', buffer.length, 'bytes)');
   
+  // Try mammoth first
   try {
-    // Try to use mammoth if available
     const mammoth = await import('mammoth');
     const result = await mammoth.extractRawText({ buffer });
     const text = result.value;
@@ -23,67 +23,49 @@ export async function parseDocx(buffer: Buffer): Promise<string> {
       console.log('⚠️ DOCX parsing warnings:', result.messages);
     }
     
-    if (text.trim().length < 100) {
-      console.log('⚠️ Limited text from mammoth, trying OpenAI...');
-      return await parseDocxWithOpenAI(buffer);
+    const cleaned = cleanDocumentText(text);
+    
+    // Check if text is sufficient (minimum 300 characters)
+    if (cleaned.length >= 300) {
+      console.log('✅ mammoth extraction successful:', cleaned.length, 'characters');
+      return cleaned;
     }
     
-    console.log('✅ Extracted', text.length, 'characters from DOCX');
-    return cleanDocumentText(text);
-  } catch (error: any) {
-    console.error('❌ Error parsing DOCX with mammoth:', error.message);
-    console.log('🤖 Falling back to OpenAI for DOCX parsing...');
-    return await parseDocxWithOpenAI(buffer);
-  }
-}
-
-/**
- * Parse DOCX using OpenAI as fallback
- */
-async function parseDocxWithOpenAI(buffer: Buffer): Promise<string> {
-  try {
-    // Convert DOCX buffer to base64
-    const base64Doc = buffer.toString('base64');
-    const docDataUrl = `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${base64Doc}`;
+    // Text is insufficient, try OpenAI fallback
+    console.log('⚠️ mammoth extracted insufficient text:', cleaned.length, 'characters (minimum: 300)');
+    console.log('🔄 Attempting OpenAI fallback...');
     
-    console.log('🤖 Using OpenAI to extract text from DOCX...');
+    const openaiText = await extractTextWithOpenAIFromDocx(buffer);
+    const cleanedOpenaiText = cleanDocumentText(openaiText);
     
-    // Use OpenAI to extract text
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert document analyzer. Extract ALL text content from documents accurately, preserving structure and formatting.',
-        },
-        {
-          role: 'user',
-          content: `Extract ALL text from this Word document. Include:
-- All headings, titles, and subtitles
-- All body text and paragraphs
-- Bullet points and lists
-- Tables and their content
-- Any other visible text
-
-Preserve the structure and order of the text as it appears in the document.
-Return ONLY the extracted text, no additional commentary.`,
-        },
-      ],
-      temperature: 0.3,
-      max_tokens: 4000,
-    });
-
-    const extractedText = response.choices[0].message.content || '';
-    
-    if (extractedText.trim().length < 100) {
-      return 'Word document uploaded. Content will be analyzed for learning concepts.';
+    if (cleanedOpenaiText.length >= 300) {
+      console.log('✅ OpenAI fallback successful:', cleanedOpenaiText.length, 'characters');
+      return cleanedOpenaiText;
     }
     
-    console.log('✅ Extracted', extractedText.length, 'characters from DOCX via OpenAI');
-    return cleanDocumentText(extractedText);
+    // Even OpenAI couldn't extract enough text
+    throw new Error(`Insufficient text extracted from DOCX: ${cleanedOpenaiText.length} characters (minimum: 300)`);
+    
   } catch (error: any) {
-    console.error('❌ Error parsing DOCX with OpenAI:', error.message);
-    return 'Word document uploaded. Content will be analyzed for learning concepts.';
+    console.error('❌ DOCX parsing failed:', error.message);
+    
+    // If mammoth failed completely, try OpenAI as last resort
+    if (error.message.includes('mammoth') || error.message.includes('Cannot find module')) {
+      console.log('🔄 mammoth failed, trying OpenAI as last resort...');
+      try {
+        const openaiText = await extractTextWithOpenAIFromDocx(buffer);
+        const cleanedOpenaiText = cleanDocumentText(openaiText);
+        
+        if (cleanedOpenaiText.length >= 300) {
+          console.log('✅ OpenAI fallback successful:', cleanedOpenaiText.length, 'characters');
+          return cleanedOpenaiText;
+        }
+      } catch (openaiError: any) {
+        console.error('❌ OpenAI fallback also failed:', openaiError.message);
+      }
+    }
+    
+    throw error;
   }
 }
 

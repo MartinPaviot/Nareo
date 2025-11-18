@@ -17,6 +17,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.82",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.81.1",
     "@tailwindcss/postcss": "^4.1.17",
@@ -36,6 +37,7 @@
     "next": "^16.0.3",
     "node-fetch": "^2.7.0",
     "openai": "^6.9.0",
+    "pdf-to-img": "^5.0.0",
     "pdf2json": "^4.0.0",
     "pdfjs-dist": "^5.4.394",
     "postcss": "^8.5.6",

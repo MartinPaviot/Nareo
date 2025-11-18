@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -d \"test\" ])",
+      "Bash(then ls -la test/)",
+      "Bash(fi)",
+      "Bash(if [ -d \"scripts\" ])",
+      "Bash(then ls -la scripts/)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,4 +1,4 @@
-# 🎓 LevelUp - Intelligent Learning Platform
+# 🎓 Aristo'Chat - Intelligent Learning Platform
 
 > Transform your documents into interactive learning experiences with artificial intelligence
 

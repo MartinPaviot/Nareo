@@ -75,7 +75,7 @@ export async function extractConceptsFromImage(imageDataUrl: string) {
       messages: [
         {
           role: 'system',
-          content: 'You are an expert educational content analyzer. Analyze images of course materials, notes, textbooks, or slides and extract structured learning concepts. You MUST respond with valid JSON only.',
+          content: 'You are an expert educational content analyzer. Analyze images of course materials, notes, textbooks, or slides and extract structured learning concepts. Always respond in the same language as the source course text; never translate into another language. You MUST respond with valid JSON only.',
         },
         {
           role: 'user',
@@ -215,7 +215,7 @@ export async function extractConceptsFromText(text: string, title?: string) {
       messages: [
         {
           role: 'system',
-          content: 'You are an expert educational content analyzer. Analyze text from course materials, documents, or textbooks and extract structured learning concepts. You MUST respond with valid JSON only.',
+          content: 'You are an expert educational content analyzer. Analyze text from course materials, documents, or textbooks and extract structured learning concepts. Always respond in the same language as the input course text. You MUST respond with valid JSON only.',
         },
         {
           role: 'user',
@@ -279,6 +279,135 @@ Guidelines:
       ...generateDefaultConcepts(),
       extractedText: text,
     };
+  }
+}
+
+/**
+ * Generate a chapter structure where each chapter equals exactly one key concept.
+ */
+export async function generateChapterStructureFromCourseText(
+  courseText: string,
+  courseTitle?: string,
+  contentLanguage: "EN" | "FR" | "DE" = "EN"
+) {
+  const prompt = `
+You are an expert learning designer.
+
+Your task is to transform a full course text into a list of chapters where
+each chapter corresponds to exactly ONE key concept that the student must
+master.
+
+Think in three stages
+
+1  Read the entire course and understand it globally
+2  Identify all the key concepts that a student must know to master about
+   ninety nine percent of the content
+3  For each concept create a chapter that will later hold quiz questions
+
+Definitions
+
+1  A concept is any unit of knowledge that deserves focused practice on its own
+   examples
+   a precise definition
+   a model or framework
+   a formula
+   a process with clear steps
+   a relationship between causes and effects
+   a strategic idea that is central to the course
+
+2  A chapter in LevelUp equals exactly one concept
+   If a concept has several sub aspects they stay inside the same chapter
+   Do NOT group several unrelated concepts into a single chapter
+   Do NOT create a generic chapter that mixes many ideas
+
+Your goals
+
+1  Cover all important concepts in the course
+2  Create as many chapters as there are concepts
+3  Make each chapter focused on ONE and only one concept
+4  Make chapter titles short and very clear for a student who revises under stress
+
+For each chapter you must output
+
+1  index  integer starting at one following the order in which concepts should
+   be revised
+2  title  short and clear name of the concept
+3  short_summary  two to three sentences that explain what this concept is about
+   in simple language
+4  difficulty  an integer from one to three where
+   one  basic or introductory concept
+   two  intermediate concept
+   three  advanced or central concept that will need more questions
+
+The order of chapters must follow a pedagogical logic
+
+1  Start with foundational concepts
+2  Then move to concepts that build on previous ones
+3  End with more advanced or synthetic concepts
+
+Output format
+
+Return a single JSON object with the following structure
+
+{
+  "chapters": [
+    {
+      "index": 1,
+      "title": "Short concept name",
+      "short_summary": "Two to three sentences in plain language.",
+      "difficulty": 2
+    }
+  ]
+}
+
+Constraints
+
+1  Every important concept must appear as its own chapter
+2  Do not create placeholder chapters such as "overview" or "exam mode"
+3  Do not drop concepts just to reduce the number of chapters
+4  If the course is very dense you may create many chapters  that is expected
+
+Now read the course text below and return only the JSON object described above
+with the list of chapters that each represent one concept.
+
+COURSE TEXT
+${courseText}
+`;
+
+  try {
+    const languageReminder = `Always respond in the same language as the input course text (${contentLanguage}). Do not translate to another language.`;
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert learning designer. Always respond with valid JSON only. ${languageReminder}`,
+        },
+        {
+          role: 'user',
+          content: `${languageReminder}\n\n${prompt}`,
+        },
+      ],
+      temperature: 0.4,
+      response_format: { type: 'json_object' },
+      max_tokens: 4000,
+    });
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content || '{}');
+    console.log('📑 Generated chapter structure', parsed.chapters?.length || 0);
+    return parsed.chapters || [];
+  } catch (error) {
+    console.error('⚠️ Error generating chapter structure, using fallback:', error);
+    // Fallback: single chapter for the course
+    return [
+      {
+        index: 1,
+        title: courseTitle || 'Chapitre 1',
+        short_summary: 'Synthèse du cours.',
+        difficulty: 2,
+      },
+    ];
   }
 }
 
@@ -371,13 +500,16 @@ export async function generateChapterQuestions(
   chapterTitle: string,
   chapterContent: string,
   sourceText?: string,
-  language: 'EN' | 'FR' = 'EN'
+  language: 'EN' | 'FR' | 'DE' = 'EN'
 ) {
   console.log('📝 Generating 5 questions for chapter:', chapterTitle);
   
   const languageInstruction = language === 'FR'
     ? 'Generate ALL questions and options in French (français).'
-    : 'Generate ALL questions and options in English.';
+    : language === 'DE'
+      ? 'Generate ALL questions and options in German (Deutsch).'
+      : 'Generate ALL questions and options in English.';
+  const languageReminder = `Always respond in the same language as the input course text (${language}). Never translate into any UI language.`;
   
   const prompt = `You are creating a learning quiz for the following chapter:
 
@@ -407,6 +539,7 @@ Generate EXACTLY 5 questions based on this content:
 ${sourceText ? 'Base ALL questions on the actual content from the source material.' : ''}
 
 ${languageInstruction}
+${languageReminder}
 
 Return a JSON object with this EXACT structure:
 {
@@ -461,7 +594,7 @@ Return a JSON object with this EXACT structure:
       messages: [
         {
           role: 'system',
-          content: `You are an expert educational content creator. Generate engaging, accurate questions based on learning materials. Always return valid JSON. ${languageInstruction}`,
+          content: `You are an expert educational content creator. Generate engaging, accurate questions based on learning materials. Always return valid JSON. ${languageInstruction} ${languageReminder}`,
         },
         {
           role: 'user',
@@ -483,6 +616,205 @@ Return a JSON object with this EXACT structure:
     
     // Fallback: Generate default questions
     return generateDefaultChapterQuestions(chapterTitle);
+  }
+}
+
+// New prompt for single-concept chapter question generation (variable count)
+export async function generateConceptChapterQuestions(
+  chapterMetadata: { index?: number; title: string; short_summary?: string; difficulty?: number },
+  chapterText: string,
+  language: 'EN' | 'FR' | 'DE' = 'EN'
+) {
+  console.log('🧠 Generating questions (concept prompt) for chapter:', chapterMetadata.title);
+
+  const languageInstruction = language === 'FR'
+    ? 'Generate ALL questions, options, and explanations in French (français).'
+    : language === 'DE'
+      ? 'Generate ALL questions, options, and explanations in German (Deutsch).'
+      : 'Generate ALL questions, options, and explanations in English.';
+  const languageReminder = `Always respond in the same language as the input chapter text (${language}). Never translate content into a different language.`;
+
+  const prompt = `You are an expert question writer for university level students.
+
+You will receive
+1) The text of one chapter from a course
+2) The metadata of the chapter which represents exactly ONE concept
+   index
+   title
+   short_summary
+   difficulty
+
+Your task is to generate a quiz for this single concept.
+
+  Goals
+  1) Help a motivated student learn and check that they truly understand this concept
+  2) Cover the concept from several angles: definition, understanding, application, nuance
+  3) Create between 5 and 20 questions depending on the complexity and difficulty of the concept
+  
+  Question types (MANDATORY)
+  - ONLY multiple_choice questions.
+  - EXACTLY 4 options per question.
+  - EXACTLY 1 correct option per question.
+  
+  Rules
+  1) All questions in this quiz must target this ONE concept (other ideas only support understanding)
+  2) Vary cognitive level: some recall facts, some check understanding, some ask for application or nuance
+  3) For each question provide: type (must be "multiple_choice"), prompt, options (array of 4), correct_option_index (0-based), explanation (1-2 sentences of feedback)
+  
+  Question count
+  - If difficulty is one: generate 5 to 8 questions
+  - If difficulty is two: generate 8 to 14 questions
+  - If difficulty is three: generate 12 to 20 questions
+  
+  Output JSON ONLY:
+  {
+    "questions": [
+      {
+        "type": "multiple_choice",
+        "prompt": "Question text",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "correct_option_index": 1,
+        "explanation": "Short feedback."
+      }
+    ]
+  }
+  
+  Make sure the set of questions, taken together, tests almost everything important about this single concept.
+
+CHAPTER METADATA
+${JSON.stringify(chapterMetadata, null, 2)}
+
+CHAPTER TEXT
+${chapterText}
+`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert educational content creator. Always return valid JSON. ${languageInstruction} ${languageReminder}`,
+        },
+        {
+          role: 'user',
+          content: `${languageReminder}\n\n${prompt}`,
+        },
+      ],
+      temperature: 0.6,
+      response_format: { type: 'json_object' },
+      max_tokens: 3000,
+    });
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content || '{}');
+
+    console.log('✅ Generated', parsed.questions?.length || 0, 'questions (concept prompt) for chapter');
+    return parsed.questions || [];
+  } catch (error) {
+    console.error('❌ Error generating concept-based questions:', error);
+    return generateDefaultChapterQuestions(chapterMetadata.title);
+  }
+}
+
+// Generate a REVIEW SUMMARY for a completed quiz attempt.
+export async function generateQuizReviewSummary(attempt: {
+  items: Array<{
+    index: number;
+    question: string;
+    student_answer: string;
+    correct_answer: string;
+    is_correct: boolean;
+    explanation?: string;
+    page_source?: string | null;
+  }>;
+}, language: 'EN' | 'FR' | 'DE' = 'EN') {
+  const languageReminder = `Always respond in the same language as the input course text (${language}). Never translate feedback into another language.`;
+  const reviewPrompt = `You are an expert learning coach.
+Your task is to generate a CLEAR and CONCRETE performance feedback for a student after completing a quiz on one chapter.
+
+You receive:
+1) The list of all quiz questions
+2) The student answers
+3) The correct answers
+4) The explanations for each question
+5) The page numbers from the student's uploaded document where each concept or answer can be found (page_source field)
+
+Your output MUST allow the UI to show:
+- On the left: Strong points (2 to 4 bullets)
+- In the center: Score summary based ONLY on correctness
+- On the right: Points to improve (2 to 6 bullets), each with the page reference
+- BELOW: A concrete list of items the student should review (actionable steps)
+
+MANDATORY RULES:
+1) Use ONLY the answer data and page_source to produce feedback.
+2) Each point must reference the exact question number(s), for example: “You answered Q4 correctly thanks to your understanding of X (page 12).”
+3) For mistakes, ALWAYS include: question number, correct idea, page where the correct information appears.
+4) Feedback must be SHORT, ACTIONABLE and SPECIFIC. No generic sentences.
+5) Tone: helpful, factual, direct.
+6) Do NOT regenerate or alter the questions; only summarize results.
+
+OUTPUT FORMAT (STRICT JSON):
+{
+  "score_summary": {
+    "correct_count": 5,
+    "total_questions": 9
+  },
+  "strengths": [
+    "Example: Strong understanding of customer churn drivers (Q2, page 7).",
+    "Example: Correctly identified cost structure impact in SaaS (Q5, page 11)."
+  ],
+  "weaknesses": [
+    "Example: Confusion around revenue expansion mechanics (Q3, page 9).",
+    "Example: Misinterpreted automation efficiency impact (Q6, page 14)."
+  ],
+  "recommended_review": [
+    "Re-read the section on expansion revenue (pages 8 to 10).",
+    "Revisit the part that explains automation vs human costs (page 14)."
+  ]
+}
+
+NOW generate ONLY the JSON feedback summary.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert learning coach. Always return valid JSON only. ${languageReminder}`,
+        },
+        {
+          role: 'user',
+          content: `${languageReminder}\n\n${reviewPrompt}\n\nATTEMPT DATA:\n${JSON.stringify(attempt, null, 2)}`,
+        },
+      ],
+      temperature: 0.4,
+      response_format: { type: 'json_object' },
+      max_tokens: 2000,
+    });
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content || '{}');
+    return parsed;
+  } catch (error) {
+    console.error('⚠️ Error generating review summary:', error);
+    // Fallback respecting the expected schema
+    return {
+      summary: attempt.items.map((item) => ({
+        index: item.index,
+        question: item.question,
+        student_answer: item.student_answer,
+        is_correct: item.is_correct,
+        correct_answer: item.correct_answer,
+        explanation: item.explanation || 'Review the key idea for this question.',
+      })),
+      global_feedback: {
+        strengths: 'Tu as bien maîtrisé plusieurs points clés. Bravo pour ces réussites !',
+        weaknesses: 'Quelques notions restent à consolider. Concentre-toi sur les items en rouge.',
+        next_steps: 'Revois rapidement les notions manquées puis pratique avec quelques exemples ciblés.',
+      },
+    };
   }
 }
 
@@ -628,35 +960,37 @@ export async function evaluateAnswer(
   phase: 1 | 2 | 3,
   correctAnswer?: string,
   sourceText?: string, // Optional source text for reference
-  language: 'EN' | 'FR' = 'FR' // Toujours français par défaut
+  language: 'EN' | 'FR' | 'DE' = 'EN'
 ) {
-  // Toujours forcer le français
+  const languageName = language === 'FR' ? 'French' : language === 'DE' ? 'German' : 'English';
+  const languageReminder = `Respond only in ${languageName} (the course content language). Never translate into another language or the UI language.`;
   const prompt = phase === 1 && correctAnswer
-    ? `Question : ${question}
-Réponse de l'étudiant : ${studentAnswer}
-Réponse correcte : ${correctAnswer}
-${sourceText ? `\nMatériel source original :\n${sourceText.substring(0, 800)}\n` : ''}
+    ? `Question: ${question}
+Student answer: ${studentAnswer}
+Correct answer: ${correctAnswer}
+${sourceText ? `\nSource material:\n${sourceText.substring(0, 800)}\n` : ''}
 
-La réponse de l'étudiant est-elle correcte ? ${sourceText ? 'Référence le matériel source pour vérifier l\'exactitude.' : ''} Réponds avec du JSON : {"correct": true/false, "feedback": "feedback bref en français"}`
-    : `Question : ${question}
-Réponse de l'étudiant : ${studentAnswer}
-${sourceText ? `\nMatériel source original :\n${sourceText.substring(0, 800)}\n` : ''}
+Is the student answer correct? ${sourceText ? 'Use the source material to verify accuracy.' : ''} ${languageReminder}
+Return JSON: {"correct": true/false, "feedback": "short feedback in ${languageName}"}`
+    : `Question: ${question}
+Student answer: ${studentAnswer}
+${sourceText ? `\nSource material:\n${sourceText.substring(0, 800)}\n` : ''}
 
-Évalue cette réponse pour la Phase ${phase}. Considère :
-• Exactitude et compréhension
-• Complétude
-• Clarté de l'explication
-${phase === 3 ? '• Profondeur de la réflexion et connexion au monde réel' : ''}
-${sourceText ? '• Alignement avec le matériel source' : ''}
+Evaluate this answer for Phase ${phase}. Consider:
+- Accuracy and understanding
+- Completeness
+- Clarity of the explanation
+${phase === 3 ? '- Depth of reflection and real-world connection' : ''}
+${sourceText ? '- Alignment with the source material' : ''}
 
-IMPORTANT : Fournis TOUT le feedback en français.
+${languageReminder}
 
-Réponds avec du JSON :
+Return JSON:
 {
   "score": 0-${phase === 1 ? 10 : phase === 2 ? 30 : 60},
-  "feedback": "feedback constructif en français",
+  "feedback": "constructive feedback in ${languageName}",
   "needsClarification": true/false,
-  "followUpQuestion": "question de suivi optionnelle en français si la réponse manque de profondeur"
+  "followUpQuestion": "optional follow-up question in ${languageName} if the answer lacks depth"
 }`;
 
   try {
@@ -665,24 +999,7 @@ Réponds avec du JSON :
       messages: [
         {
           role: 'system',
-          content: `Tu es Aristo, un tuteur IA bienveillant et pédagogue pour étudiants francophones.
-
-RÈGLES ABSOLUES :
-• TOUT ton feedback doit être en français
-• Reformule TOUTES les explications en français, même si la source est en anglais
-• Pour les QCM, indique clairement la lettre correcte (A, B, C ou D) puis reformule la bonne réponse en français
-• Il n'y a qu'UNE SEULE bonne réponse par QCM
-• Sois encourageant mais honnête
-• Utilise un langage clair et pédagogique
-
-RÈGLES DE FORMATAGE ET TYPOGRAPHIE :
-• CONSERVE tous les traits d'union normaux du français : est-il, peut-être, aujourd'hui, lui-même, c'est-à-dire, demi-journée
-• Pour faire des listes, utilise UNIQUEMENT des puces (•) ou une numérotation (1, 2, 3)
-• N'utilise JAMAIS de tirets (-) comme décoration ou pour débuter une ligne de liste
-• Ne commence JAMAIS une ligne par une virgule ou un signe de ponctuation bizarre
-• Les listes doivent être claires et propres, sans symboles étranges
-
-Ne mélange JAMAIS français et anglais. Réponds UNIQUEMENT en français.`,
+          content: `You are Aristo, a supportive AI tutor for motivated students. Always answer in ${languageName}. ${languageReminder} Keep explanations concise, specific, and aligned with the course content.`,
         },
         {
           role: 'user',
@@ -698,15 +1015,23 @@ Ne mélange JAMAIS français et anglais. Réponds UNIQUEMENT en français.`,
   } catch (error) {
     console.error('Error evaluating answer:', error);
 
-    // Fallback evaluation - toujours en français
+    // Fallback evaluation - keep in content language
     const answerLength = studentAnswer.trim().length;
     const maxScore = phase === 1 ? 10 : phase === 2 ? 30 : 60;
+    const fallbackFeedbackMap: Record<string, string> = {
+      EN: 'Good effort! Revisit the course text and expand your answer.',
+      FR: 'Bon effort ! Revois le texte du cours et développe ta réponse.',
+      DE: 'Gute Arbeit! Sieh dir den Kurstext noch einmal an und erläutere deine Antwort weiter.',
+    };
+    const fallbackFollowUpMap: Record<string, string> = {
+      EN: 'Can you add more detail or an example from the course text?',
+      FR: 'Peux-tu ajouter plus de détails ou un exemple tiré du cours ?',
+      DE: 'Kannst du mehr Details oder ein Beispiel aus dem Kurstext ergänzen?',
+    };
 
-    const fallbackFeedback = answerLength > 20
-      ? "Bon effort ! Continuez à explorer ce concept."
-      : "Essayez d'élaborer davantage votre réponse.";
+    const fallbackFeedback = fallbackFeedbackMap[language] || fallbackFeedbackMap.EN;
 
-    const fallbackQuestion = "Pouvez-vous fournir plus de détails ou d'exemples ?";
+    const fallbackQuestion = fallbackFollowUpMap[language] || fallbackFollowUpMap.EN;
 
     return {
       score: Math.min(maxScore, Math.floor(answerLength / 10) * 5),

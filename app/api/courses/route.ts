@@ -1,108 +1,113 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
-import { memoryStore } from '@/lib/memory-store';
-
-interface Course {
-  id: string;
-  title: string;
-  englishTitle: string;
-  frenchTitle: string;
-  englishDescription: string;
-  frenchDescription: string;
-  chapters: Array<{
-    id: string;
-    title: string;
-    difficulty: 'easy' | 'medium' | 'hard';
-    questions: any[];
-  }>;
-  totalQuestions: number;
-  totalPoints: number;
-  progress: number; // 0-100
-  createdAt: Date;
-}
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const authResult = await authenticateRequest(request);
-    if (!authResult) {
-      console.warn('⚠️ Unauthorized access attempt to /api/courses');
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    const auth = await authenticateRequest(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const userId = authResult.user.id;
-    console.log('📊 Fetching courses for user:', userId);
+    const supabase = await createSupabaseServerClient();
+    const userId = auth.user.id;
 
-    // Get all chapters FOR THIS USER ONLY
-    const allChapters = await memoryStore.getAllChapters(userId);
-    const allProgress = await memoryStore.getAllChapterProgress(userId);
+    // Fetch courses
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-    // Group chapters by course (assuming 3 chapters per course: easy, medium, hard)
-    const coursesMap = new Map<string, Course>();
+    if (coursesError) throw coursesError;
 
-    // Sort chapters by creation date to group them properly
-    const sortedChapters = allChapters.sort((a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    // For each course, get chapter count and progress
+    const coursesWithProgress = await Promise.all(
+      (courses || []).map(async (course) => {
+        // Get chapters count
+        const { count: chapterCount } = await supabase
+          .from('chapters')
+          .select('*', { count: 'exact', head: true })
+          .eq('course_id', course.id);
+
+        // Get quiz attempts for this course
+        const { data: attempts } = await supabase
+          .from('quiz_attempts')
+          .select('chapter_id, completed_at, score')
+          .eq('course_id', course.id)
+          .eq('user_id', userId);
+
+        const completedChapters = new Set(
+          (attempts || [])
+            .filter((a) => a.completed_at)
+            .map((a) => a.chapter_id)
+        ).size;
+
+        const inProgressChapters = new Set(
+          (attempts || [])
+            .filter((a) => !a.completed_at)
+            .map((a) => a.chapter_id)
+        ).size;
+
+        const totalScore = (attempts || []).reduce(
+          (sum, a) => sum + (a.score || 0),
+          0
+        );
+
+        // Get access tier
+        const { data: accessData } = await supabase
+          .from('user_course_access')
+          .select('access_tier')
+          .eq('user_id', userId)
+          .eq('course_id', course.id)
+          .single();
+
+        return {
+          id: course.id,
+          title: course.title || 'Untitled Course',
+          status: course.status,
+          content_language: course.content_language || course.language || 'en',
+          chapter_count: chapterCount || 0,
+          completed_chapters: completedChapters,
+          in_progress_chapters: inProgressChapters,
+          user_score: totalScore,
+          created_at: course.created_at,
+          has_access: !!accessData,
+          access_tier: accessData?.access_tier || null,
+        };
+      })
     );
 
-    // Group chapters into courses (3 chapters per course)
-    for (let i = 0; i < sortedChapters.length; i += 3) {
-      const courseChapters = sortedChapters.slice(i, i + 3);
-
-      if (courseChapters.length > 0) {
-        // Use the first chapter's ID as course ID (they're grouped together)
-        const courseId = courseChapters[0].id;
-
-        // Calculate total points and progress for this course
-        let totalPoints = 0;
-        let completedChapters = 0;
-
-        courseChapters.forEach(chapter => {
-          const progress = allProgress.find(p => p.chapterId === chapter.id);
-          if (progress) {
-            totalPoints += progress.score;
-            if (progress.completed) completedChapters++;
-          }
-        });
-
-        const progress = courseChapters.length > 0 ? (completedChapters / courseChapters.length) * 100 : 0;
-
-        const course: Course = {
-          id: courseId,
-          title: courseChapters[0].title, // Backward compatibility
-          englishTitle: courseChapters[0].englishTitle,
-          frenchTitle: courseChapters[0].frenchTitle,
-          englishDescription: courseChapters[0].englishDescription,
-          frenchDescription: courseChapters[0].frenchDescription,
-          chapters: courseChapters.map(ch => ({
-            id: ch.id,
-            title: ch.title,
-            difficulty: ch.difficulty || 'medium',
-            questions: ch.questions || [],
-          })),
-          totalQuestions: courseChapters.reduce((sum, ch) => sum + (ch.questions?.length || 0), 0),
-          totalPoints,
-          progress,
-          createdAt: courseChapters[0].createdAt,
-        };
-
-        coursesMap.set(courseId, course);
-      }
-    }
-
-    const courses = Array.from(coursesMap.values());
-
-    console.log(`✅ Returning ${courses.length} courses for user ${userId}`);
+    // Calculate global stats
+    const totalChapters = coursesWithProgress.reduce(
+      (sum, c) => sum + c.chapter_count,
+      0
+    );
+    const completedChapters = coursesWithProgress.reduce(
+      (sum, c) => sum + c.completed_chapters,
+      0
+    );
+    const inProgressChapters = coursesWithProgress.reduce(
+      (sum, c) => sum + c.in_progress_chapters,
+      0
+    );
+    const totalScore = coursesWithProgress.reduce(
+      (sum, c) => sum + c.user_score,
+      0
+    );
 
     return NextResponse.json({
       success: true,
-      courses,
+      courses: coursesWithProgress,
+      stats: {
+        totalChapters,
+        completedChapters,
+        inProgressChapters,
+        totalScore: Math.round(totalScore),
+      },
     });
   } catch (error) {
-    console.error('❌ Error fetching courses:', error);
+    console.error('Error fetching courses:', error);
     return NextResponse.json(
       { error: 'Failed to fetch courses' },
       { status: 500 }

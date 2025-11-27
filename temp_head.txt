@@ -1,0 +1,140 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowRight, CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { trackEvent } from '@/lib/posthog';
+import { loadDemoCourse } from '@/lib/demoCourse';
+
+type QuestionType = 'mcq' | 'open' | 'short';
+
+interface Question {
+  id: string;
+  question_text: string;
+  question_number: number;
+  type: QuestionType;
+  options?: Record<string, string> | string[];
+  optionsList?: { label: string; value: string; index: number }[];
+  correct_option_index?: number | null;
+  points: number;
+  answer_text?: string | null;
+  explanation?: string;
+}
+
+interface ReviewItem {
+  index: number;
+  question: string;
+  student_answer: string;
+  is_correct: boolean;
+  correct_answer: string;
+  explanation?: string;
+}
+
+export default function ChapterQuizPage() {
+  const router = useRouter();
+  const params = useParams();
+  const { user } = useAuth();
+  const { translate } = useLanguage();
+
+  const courseId = params?.courseId as string;
+  const chapterId = params?.chapterId as string;
+  const isDemoId = courseId?.startsWith('demo-');
+
+  const [loading, setLoading] = useState(true);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answer, setAnswer] = useState('');
+  const [feedback, setFeedback] = useState<{ isCorrect: boolean; message: string; points: number } | null>(null);
+  const [score, setScore] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [chapterTitle, setChapterTitle] = useState('');
+  const [courseTitle, setCourseTitle] = useState('');
+  const [summaryMode, setSummaryMode] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
+
+  const currentQuestion = questions[currentIndex];
+
+  useEffect(() => {
+    loadQuestions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapterId, user]);
+
+  const normalizeOptions = (options?: Record<string, string> | string[] | null) => {
+    if (!options) return undefined;
+    const entries = Array.isArray(options) ? options.map((v, idx) => [idx.toString(), v]) : Object.entries(options);
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    return entries.map(([_, value], idx) => ({
+      label: letters[idx] || String.fromCharCode(65 + idx),
+      value,
+      index: idx,
+    }));
+  };
+
+  const loadQuestions = async () => {
+    try {
+      setLoading(true);
+      // Demo path: load from demo store instead of API
+      if (isDemoId) {
+        const demo = loadDemoCourse(courseId);
+        const demoChapter = demo?.chapters.find((c) => c.id === chapterId);
+        if (demo && demoChapter) {
+          setCourseTitle(demo.title);
+          setChapterTitle(demoChapter.title);
+          setQuestions(
+            demoChapter.questions.map((q, idx) => ({
+              id: q.id,
+              question_text: q.prompt,
+              question_number: idx + 1,
+              type: q.type === 'mcq' ? 'mcq' : 'short',
+              options: q.options,
+              optionsList: normalizeOptions(q.options),
+              correct_option_index: Array.isArray(q.options)
+                ? q.options.findIndex((opt) => opt === q.answer)
+                : Object.values(q.options || {}).findIndex((opt) => opt === q.answer),
+              points: 10,
+              answer_text: q.answer,
+              explanation: q.explanation,
+            }))
+          );
+          return;
+        } else {
+          throw new Error('Demo chapter not found');
+        }
+      }
+
+      const response = await fetch(`/api/chapters/${chapterId}/questions`);
+      if (!response.ok) {
+        throw new Error('Failed to load questions');
+      }
+
+      const data = await response.json();
+      const normalized = data.questions.map((q: Question) => ({
+        ...q,
+        optionsList: normalizeOptions(q.options),
+      }));
+      setQuestions(normalized);
+      setChapterTitle(data.chapter.title);
+      setCourseTitle(data.course?.title || '');
+    } catch (error) {
+      console.error('Error loading questions', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const evaluateDemoAnswer = (question: Question, value: string) => {
+    if (question.type === 'mcq') {
+      const selectedIndex = question.optionsList?.find((o) => o.label === value)?.index ?? -1;
+      const expectedIndex =
+        question.correct_option_index ??
+        question.optionsList?.find((opt) => opt.value === question.answer_text)?.index ??
+        0;
+      const isCorrect = selectedIndex === expectedIndex;
+      const correctLabel = question.optionsList?.find((o) => o.index === expectedIndex)?.label ?? '';
+      return {
+        isCorrect,
+        message: isCorrect
+          ? translate('quiz_feedback_correct')

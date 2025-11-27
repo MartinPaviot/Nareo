@@ -5,15 +5,21 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { calculateBadge } from '@/lib/scoring';
 import { openai } from '@/lib/openai-vision';
 
-// ✅ Fonction helper pour traduire une option de QCM en français
-async function translateOptionToFrench(optionText: string): Promise<string> {
+function normalizeLanguageCode(language?: string | null): 'EN' | 'FR' | 'DE' {
+  const upper = (language || '').toUpperCase();
+  if (upper === 'FR' || upper === 'DE') return upper;
+  return 'EN';
+}
+
+// ✅ Fonction helper pour traduire une option de QCM dans la langue du contenu
+async function translateOptionToContentLanguage(optionText: string, targetLanguage: 'EN' | 'FR' | 'DE'): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: 'Tu es un traducteur professionnel. Traduis UNIQUEMENT le texte fourni en français, sans ajouter d\'explication. Si le texte est déjà en français, retourne-le tel quel.',
+          content: `You are a professional translator. Translate ONLY the provided text into ${targetLanguage === 'FR' ? 'French' : targetLanguage === 'DE' ? 'German' : 'English'}, without adding any explanation. If the text is already in that language, return it unchanged.`,
         },
         {
           role: 'user',
@@ -105,6 +111,12 @@ async function handleChapterEvaluation(request: NextRequest, body: any) {
   }
 
   console.log('✅ Chapter found:', chapter.title);
+  const { data: courseMeta } = await supabase
+    .from('courses')
+    .select('id,content_language,language')
+    .eq('id', chapter.course_id)
+    .maybeSingle();
+  const contentLanguage = normalizeLanguageCode(courseMeta?.content_language || courseMeta?.language || language);
 
   // Get the question
   const question = chapter.questions?.find((q: any) => q.id === questionId);
@@ -122,6 +134,16 @@ async function handleChapterEvaluation(request: NextRequest, body: any) {
   let score = 0;
   let correct: boolean | undefined;
   let feedback = '';
+  const correctTemplateMap: Record<string, string> = {
+    EN: '✅ Correct! You chose **{answer}**. Great work! You earned {points} points.',
+    FR: '✅ Correct ! Vous avez choisi **{answer}**. Excellent travail ! Vous avez gagné {points} points.',
+    DE: '✅ Richtig! Du hast **{answer}** gewählt. Gute Arbeit! Du hast {points} Punkte erhalten.',
+  };
+  const wrongTemplateMap: Record<string, string> = {
+    EN: '❌ Not quite. The correct answer was **{answer}**.',
+    FR: '❌ Pas tout à fait. La bonne réponse était **{answer}**.',
+    DE: '❌ Noch nicht ganz. Die richtige Antwort war **{answer}**.',
+  };
 
   // Handle MCQ differently from open-ended
   if (questionType === 'mcq') {
@@ -135,31 +157,35 @@ async function handleChapterEvaluation(request: NextRequest, body: any) {
     console.log('📊 MCQ evaluation:', { userAnswer, correctAnswerLetter, correct, score });
 
     if (correct) {
-      // ✅ Pour réponse correcte, on peut aussi afficher l'option en français si besoin
+      // ✅ Pour réponse correcte, on peut aussi afficher le texte dans la langue du contenu si besoin
       const correctOptionIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 65 : 0;
       const correctOptionText = question.options?.[correctOptionIndex] || '';
-      const correctOptionTextFR = await translateOptionToFrench(correctOptionText);
+      const correctOptionTextLocalized = await translateOptionToContentLanguage(correctOptionText, contentLanguage);
 
-      feedback = `✅ Correct ! Vous avez choisi **${correctAnswerLetter}) ${correctOptionTextFR}**. Excellent travail ! Vous avez gagné ${question.points} points.`;
+      const correctTemplate = correctTemplateMap[contentLanguage] || correctTemplateMap.EN;
+      feedback = correctTemplate
+        .replace('{answer}', `${correctAnswerLetter}) ${correctOptionTextLocalized}`)
+        .replace('{points}', `${question.points}`);
     } else {
       // Use AI to explain why the answer is wrong
       const correctOptionIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 65 : 0;
       const correctOptionText = question.options?.[correctOptionIndex] || '';
 
-      // ✅ TRADUIRE le texte de l'option correcte en français
-      const correctOptionTextFR = await translateOptionToFrench(correctOptionText);
+      // ✅ TRADUIRE le texte de l'option correcte dans la langue du contenu
+      const correctOptionTextLocalized = await translateOptionToContentLanguage(correctOptionText, contentLanguage);
 
       evaluation = await evaluateAnswer(
         `Question: ${question.question}\n\nOptions:\n${question.options?.map((opt: string, idx: number) => `${String.fromCharCode(65 + idx)}) ${opt}`).join('\n')}\n\nRéponse de l'étudiant : ${userAnswer}\nBonne réponse : ${correctAnswerLetter}) ${correctOptionText}`,
-        `L'étudiant a choisi ${userAnswer} mais la bonne réponse est ${correctAnswerLetter}. Explique en français pourquoi ${correctAnswerLetter} est correct et pourquoi ${userAnswer} est incorrect. Reformule clairement la bonne réponse en français, même si le texte source était en anglais.`,
+        `L'étudiant a choisi ${userAnswer} mais la bonne réponse est ${correctAnswerLetter}. Explique dans la langue du contenu pourquoi ${correctAnswerLetter} est correct et pourquoi ${userAnswer} est incorrect. Reformule clairement la bonne réponse dans la langue du contenu.`,
         questionNumber <= 3 ? 1 : questionNumber === 4 ? 2 : 3,
         undefined,
         chapter.source_text,
-        'FR' // Toujours forcer le français
+        contentLanguage
       );
 
-      // ✅ Utiliser la version française dans le feedback final
-      feedback = `❌ Pas tout à fait. La bonne réponse était **${correctAnswerLetter}) ${correctOptionTextFR}**.\n\n${evaluation.feedback}`;
+      // ✅ Utiliser la version localisée dans le feedback final
+      const wrongTemplate = wrongTemplateMap[contentLanguage] || wrongTemplateMap.EN;
+      feedback = `${wrongTemplate.replace('{answer}', `${correctAnswerLetter}) ${correctOptionTextLocalized}`)}\n\n${evaluation.feedback}`;
     }
   } else {
     // For open-ended questions, use AI evaluation
@@ -170,12 +196,17 @@ async function handleChapterEvaluation(request: NextRequest, body: any) {
       questionNumber <= 3 ? 1 : questionNumber === 4 ? 2 : 3,
       undefined,
       chapter.source_text,
-      language
+      contentLanguage
     );
 
 
     score = evaluation.score || 0;
-    feedback = evaluation.feedback || 'Bon effort ! Continuez à explorer ce concept.';
+    const fallbackFeedbackMap: Record<string, string> = {
+      EN: 'Good effort! Keep exploring this concept.',
+      FR: 'Bon effort ! Continuez à explorer ce concept.',
+      DE: 'Gute Arbeit! Erkunde dieses Konzept weiter.',
+    };
+    feedback = evaluation.feedback || fallbackFeedbackMap[contentLanguage] || fallbackFeedbackMap.EN;
     correct = score > (question.points * 0.6); // Consider correct if > 60% of points
 
     console.log('📊 AI evaluation result:', { score, correct });
@@ -298,6 +329,7 @@ async function handleChapterEvaluation(request: NextRequest, body: any) {
     progress: formattedProgress,
     phaseComplete: false, // Not used in chapter-based learning
     followUpQuestion: evaluation?.followUpQuestion,
+    content_language: contentLanguage.toLowerCase(),
   });
 }
 
@@ -349,13 +381,21 @@ async function handleConceptEvaluation(request: NextRequest, body: any) {
     );
   }
 
+  const { data: courseMeta } = await supabase
+    .from('courses')
+    .select('id,content_language,language')
+    .eq('id', concept.course_id)
+    .maybeSingle();
+  const contentLanguage = normalizeLanguageCode(courseMeta?.content_language || courseMeta?.language || 'EN');
+
   // Evaluate the answer with source text for better context
   const evaluation = await evaluateAnswer(
     question,
     answer,
     phase as 1 | 2 | 3,
     correctAnswer,
-    concept.source_text
+    concept.source_text,
+    contentLanguage
   );
 
   // Update score for the current phase
@@ -416,6 +456,7 @@ async function handleConceptEvaluation(request: NextRequest, body: any) {
 
   return NextResponse.json({
     success: true,
+    content_language: contentLanguage.toLowerCase(),
     evaluation: {
       correct: evaluation.correct,
       score: newPhaseScore,

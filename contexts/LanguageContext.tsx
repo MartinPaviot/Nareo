@@ -27,16 +27,22 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     // Check if language is already stored in localStorage
     const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language | null;
 
-    if (storedLanguage && (storedLanguage === 'fr' || storedLanguage === 'en')) {
+    if (storedLanguage && (storedLanguage === 'fr' || storedLanguage === 'en' || storedLanguage === 'de')) {
       // Use stored language preference
       setCurrentLanguage(storedLanguage);
     } else {
       // Detect browser language on first visit
       const browserLanguage = navigator.language || (navigator as any).userLanguage;
-      
-      // If browser language starts with 'fr', set to French, otherwise English
-      const detectedLanguage: Language = browserLanguage.toLowerCase().startsWith('fr') ? 'fr' : 'en';
-      
+      const langLower = browserLanguage.toLowerCase();
+
+      // Detect language based on browser settings
+      let detectedLanguage: Language = 'en';
+      if (langLower.startsWith('fr')) {
+        detectedLanguage = 'fr';
+      } else if (langLower.startsWith('de')) {
+        detectedLanguage = 'de';
+      }
+
       setCurrentLanguage(detectedLanguage);
       localStorage.setItem(LANGUAGE_STORAGE_KEY, detectedLanguage);
     }

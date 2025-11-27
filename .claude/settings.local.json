@@ -7,7 +7,21 @@
       "Bash(if [ -d \"scripts\" ])",
       "Bash(then ls -la scripts/)",
       "Bash(npm run build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npm install:*)",
+      "Bash(if [ -d \"app/api/courses/[courseId]\" ])",
+      "Bash(then ls -la \"app/api/courses/[courseId]/\")",
+      "Bash(npm run dev:*)",
+      "Bash(Get-Process node -ErrorAction SilentlyContinue)",
+      "Bash(Stop-Process -Force)",
+      "Bash(taskkill:*)",
+      "Bash(Select-Object Id, ProcessName, StartTime)",
+      "Bash(timeout /t 5)",
+      "Bash(npx tsc:*)",
+      "Bash(if [ -f \".next/dev/lock\" ])",
+      "Bash(then rm -f .next/dev/lock)",
+      "Bash(rm:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

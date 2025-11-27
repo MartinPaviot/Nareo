@@ -74,8 +74,8 @@ export default function FeedbackWidget() {
               <Image
                 src="/chat/Happy.png"
                 alt="Aristo"
-                width={64}
-                height={64}
+                width={84}
+                height={84}
                 className="object-contain"
               />
             </div>
@@ -84,10 +84,10 @@ export default function FeedbackWidget() {
           {/* Text Content */}
           <div className="flex-1">
             <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">
-              Aidez-nous à améliorer LevelUp
+              Aide-nous à améliorer l'appli
             </h3>
             <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-              Donnez-nous votre avis en 30 secondes
+              Donne-nous ton avis en 30 secondes
             </p>
 
             {/* CTA Button */}

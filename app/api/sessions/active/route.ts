@@ -4,72 +4,49 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate the request
-    const authResult = await authenticateRequest(request);
-    if (!authResult) {
-      return NextResponse.json(
-        { error: 'Authentication required. Please sign in.' },
-        { status: 401 }
-      );
+    const auth = await authenticateRequest(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Authentication required. Please sign in.' }, { status: 401 });
     }
 
-    const userId = authResult.user.id;
-    console.log('🔐 Fetching active sessions for user:', userId);
+    const userId = auth.user.id;
+    const supabase = await createSupabaseServerClient();
 
-    // Use authenticated server client for RLS
-    const serverClient = await createSupabaseServerClient();
-
-    // Get all active and paused learning sessions for the user
-    const { data: sessions, error: sessionsError } = await serverClient
-      .from('learning_sessions')
-      .select('*')
+    const { data: attempts, error } = await supabase
+      .from('quiz_attempts')
+      .select('id,chapter_id,course_id,answers,score,completed_at')
       .eq('user_id', userId)
-      .in('session_state', ['active', 'paused'])
-      .order('last_activity', { ascending: false });
+      .is('completed_at', null)
+      .order('started_at', { ascending: false });
 
-    if (sessionsError) {
-      console.error('❌ Error fetching learning sessions:', sessionsError);
-      return NextResponse.json(
-        { error: 'Failed to fetch sessions', details: sessionsError.message },
-        { status: 500 }
-      );
+    if (error) {
+      throw error;
     }
 
-    console.log('✅ Found', sessions?.length || 0, 'active sessions');
+    const chapterIds = (attempts || []).map(a => a.chapter_id);
+    const { data: chapters } = chapterIds.length
+      ? await supabase.from('chapters').select('id,title,summary,english_title,french_title').in('id', chapterIds)
+      : { data: [] as any[] };
 
-    // Get chapter details for each session
-    const sessionsWithChapters = await Promise.all(
-      (sessions || []).map(async (session) => {
-        const { data: chapter } = await serverClient
-          .from('chapters')
-          .select('id, title, summary, english_title, french_title')
-          .eq('id', session.chapter_id)
-          .maybeSingle();
+    const chapterMap = new Map((chapters || []).map(ch => [ch.id, ch]));
 
-        // Get progress for this chapter
-        const { data: progress } = await serverClient
-          .from('chapter_progress')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('chapter_id', session.chapter_id)
-          .maybeSingle();
+    const sessions = (attempts || []).map(attempt => ({
+      id: attempt.id,
+      chapter_id: attempt.chapter_id,
+      current_question: (attempt.answers || []).length + 1,
+      last_activity: new Date().toISOString(),
+      chapter: chapterMap.get(attempt.chapter_id) || null,
+      progress: {
+        score: attempt.score ?? 0,
+        currentQuestion: (attempt.answers || []).length + 1,
+        questionsAnswered: (attempt.answers || []).length,
+        completed: false,
+      },
+    }));
 
-        return {
-          ...session,
-          chapter,
-          progress,
-        };
-      })
-    );
-
-    return NextResponse.json({
-      sessions: sessionsWithChapters,
-    });
+    return NextResponse.json({ sessions });
   } catch (error) {
-    console.error('❌ Error in active sessions API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error in active sessions API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

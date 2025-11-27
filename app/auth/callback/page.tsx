@@ -1,0 +1,112 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { trackVisitor } from '@/lib/visitors';
+import { useLanguage } from '@/contexts/LanguageContext';
+import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
+
+export default function AuthCallbackPage() {
+  const router = useRouter();
+  const { translate } = useLanguage();
+  const [error, setError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(true);
+
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      try {
+        const supabase = createSupabaseBrowserClient();
+
+        // Get the user from the session
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+
+        if (!user) {
+          throw new Error('No user found');
+        }
+
+        console.log('✅ User authenticated:', user.id);
+
+        // Track visitor (add to visitors table if not exists)
+        await trackVisitor(user.id, user.email || '');
+
+        // Create a new session record if it doesn't exist
+        const { error: sessionError } = await supabase
+          .from('sessions')
+          .insert([{
+            user_id: user.id,
+            started_at: new Date().toISOString(),
+          }]);
+
+        if (sessionError && sessionError.code !== '23505') {
+          // Ignore duplicate key errors (23505), log others
+          console.error('Error creating session:', sessionError);
+        }
+
+        // Small delay to ensure everything is set
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Redirect to dashboard
+        router.push('/');
+        router.refresh();
+      } catch (err: any) {
+        console.error('❌ Auth callback error:', err);
+        setError(err.message || translate('auth_callback_error'));
+        setVerifying(false);
+      }
+    };
+
+    handleAuthCallback();
+  }, [router, translate]);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8">
+          <div className="text-center">
+            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {translate('auth_callback_error')}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {error}
+            </p>
+            <Link
+              href="/auth/signin"
+              className="inline-block px-6 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition"
+            >
+              {translate('auth_callback_back_to_signin')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8">
+        <div className="text-center">
+          <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+            <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {verifying ? translate('auth_callback_verifying') : translate('auth_callback_success')}
+          </h2>
+          {verifying && (
+            <p className="text-gray-600">
+              {translate('loading')}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

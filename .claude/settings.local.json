@@ -21,7 +21,8 @@
       "Bash(if [ -f \".next/dev/lock\" ])",
       "Bash(then rm -f .next/dev/lock)",
       "Bash(rm:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx kill-port:*)"
     ],
     "deny": [],
     "ask": []

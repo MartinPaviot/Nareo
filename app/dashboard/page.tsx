@@ -2,16 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, BookOpen, Loader2, Lock, Upload } from 'lucide-react';
+import { AlertCircle, BookOpen, Loader2, Lock, Upload, FolderPlus } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
 import TopBarActions from '@/components/layout/TopBarActions';
+import StreakBar from '@/components/dashboard/StreakBar';
+import TodayStatsCard from '@/components/dashboard/TodayStatsCard';
+import UploadCTA from '@/components/dashboard/UploadCTA';
+import EnhancedCourseCard from '@/components/courses/EnhancedCourseCard';
+import CourseActionMenu from '@/components/course-management/CourseActionMenu';
+import DeleteCourseDialog from '@/components/course-management/DeleteCourseDialog';
+import RenameCourseDialog from '@/components/course-management/RenameCourseDialog';
+import CreateFolderDialog from '@/components/course-management/CreateFolderDialog';
+import AddToFolderDialog from '@/components/course-management/AddToFolderDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useGamification } from '@/hooks/useGamification';
+import { useCourseManagement } from '@/hooks/useCourseManagement';
 import { trackEvent } from '@/lib/posthog';
+import { Folder, FolderWithCourses } from '@/types/course-management';
+import FolderCard from '@/components/course-management/FolderCard';
+import UploadZone from '@/components/upload/UploadZone';
 
 interface Course {
   id: string;
   title: string;
+  editable_title?: string | null;
   status: string;
   chapter_count: number;
   completed_chapters: number;
@@ -25,11 +40,26 @@ function MyCoursesScreen() {
   const { user } = useAuth();
   const { translate } = useLanguage();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [folders, setFolders] = useState<FolderWithCourses[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Course Management State
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
+  const [addToFolderDialogOpen, setAddToFolderDialogOpen] = useState(false);
+
+  // Gamification hook
+  const { stats, todayActivity, loading: gamificationLoading } = useGamification();
+
+  // Course Management hook
+  const { isLoading: courseManagementLoading } = useCourseManagement();
 
   useEffect(() => {
     if (user) {
       loadCourses();
+      loadFolders();
       trackEvent('dashboard_viewed', { userId: user.id });
     }
   }, [user]);
@@ -42,7 +72,9 @@ function MyCoursesScreen() {
         throw new Error('Failed to load courses');
       }
       const data = await response.json();
-      setCourses(data.courses || []);
+      // Filter out failed courses
+      const validCourses = (data.courses || []).filter((course: Course) => course.status !== 'failed');
+      setCourses(validCourses);
     } catch (error) {
       console.error('Error loading courses', error);
     } finally {
@@ -50,31 +82,153 @@ function MyCoursesScreen() {
     }
   };
 
-  const getStatusBadge = (course: Course) => {
-    if (course.status === 'pending' || course.status === 'processing') {
-      return (
-        <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full font-semibold bg-yellow-100 text-yellow-800">
-          <Loader2 className="w-3 h-3 animate-spin" />
-          {translate('course_status_preparing')}
-        </span>
-      );
+  const loadFolders = async () => {
+    try {
+      const response = await fetch('/api/folders');
+      if (!response.ok) {
+        throw new Error('Failed to load folders');
+      }
+      const data = await response.json();
+      setFolders(data.folders || []);
+    } catch (error) {
+      console.error('Error loading folders', error);
     }
-    if (course.status === 'failed') {
-      return (
-        <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full font-semibold bg-red-100 text-red-800">
-          <AlertCircle className="w-3 h-3" />
-          {translate('course_status_failed')}
-        </span>
-      );
-    }
-    return (
-      <span className="text-xs px-2 py-1 rounded-full font-semibold bg-green-100 text-green-800">
-        {translate('course_status_ready')}
-      </span>
-    );
   };
 
-  const handleUpload = () => router.push('/');
+  // Get all course IDs that are in folders
+  const getCourseIdsInFolders = () => {
+    const courseIds = new Set<string>();
+    folders.forEach((folder) => {
+      folder.courses.forEach((course) => {
+        courseIds.add(course.id);
+      });
+    });
+    return courseIds;
+  };
+
+  // Filter courses to exclude those already in folders
+  const coursesNotInFolders = courses.filter(
+    (course) => !getCourseIdsInFolders().has(course.id)
+  );
+
+  const handleDeleteCourse = (course: Course) => {
+    setSelectedCourse(course);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCourseById = (courseId: string, courseTitle: string) => {
+    // Find the course in the courses list or folders
+    let course = courses.find((c) => c.id === courseId);
+    if (!course) {
+      // Course might be in a folder, create a minimal course object
+      course = {
+        id: courseId,
+        title: '',
+        editable_title: courseTitle,
+        status: 'ready',
+        chapter_count: 0,
+        completed_chapters: 0,
+        in_progress_chapters: 0,
+        user_score: 0,
+        created_at: new Date().toISOString(),
+      };
+    }
+    handleDeleteCourse(course);
+  };
+
+  const handleRenameCourse = (course: Course) => {
+    setSelectedCourse(course);
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameCourseById = (courseId: string, currentTitle: string) => {
+    // Find the course in the courses list or folders
+    let course = courses.find((c) => c.id === courseId);
+    if (!course) {
+      // Course might be in a folder, create a minimal course object
+      course = {
+        id: courseId,
+        title: '',
+        editable_title: currentTitle,
+        status: 'ready',
+        chapter_count: 0,
+        completed_chapters: 0,
+        in_progress_chapters: 0,
+        user_score: 0,
+        created_at: new Date().toISOString(),
+      };
+    }
+    handleRenameCourse(course);
+  };
+
+  const handleAddToFolder = (course: Course) => {
+    setSelectedCourse(course);
+    setAddToFolderDialogOpen(true);
+  };
+
+  const handleCourseDeleted = () => {
+    loadCourses();
+    loadFolders(); // Also reload folders in case the deleted course was in a folder
+  };
+
+  const handleCourseAddedToFolder = () => {
+    loadFolders();
+    loadCourses();
+  };
+
+  const handleCourseRenamed = (newTitle: string) => {
+    if (selectedCourse) {
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.id === selectedCourse.id ? { ...c, editable_title: newTitle } : c
+        )
+      );
+      // Also reload folders in case the renamed course is in a folder
+      loadFolders();
+    }
+  };
+
+  const handleFolderCreated = (folder: Folder) => {
+    loadFolders();
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    try {
+      const response = await fetch(`/api/folders/${folderId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete folder');
+      }
+
+      loadFolders();
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+    }
+  };
+
+  const handleRemoveCourseFromFolder = async (folderId: string, courseId: string) => {
+    try {
+      const response = await fetch('/api/folders/courses', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder_id: folderId, course_id: courseId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove course from folder');
+      }
+
+      loadFolders();
+    } catch (error) {
+      console.error('Error removing course from folder:', error);
+    }
+  };
+
+  const getCourseDisplayTitle = (course: Course) => {
+    return course.editable_title || course.title;
+  };
 
   if (loading) {
     return (
@@ -90,38 +244,72 @@ function MyCoursesScreen() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">
-              {translate('my_courses_subtitle')}
+            <p className="text-sm font-semibold text-orange-600 mb-0.5">
+              Aristo'Chat est prêt à réviser avec toi
             </p>
-            <h1 className="text-2xl font-bold text-gray-900">{translate('my_courses_title')}</h1>
+            <h1 className="text-lg font-bold text-gray-900">{translate('my_courses_title')}</h1>
           </div>
-          <TopBarActions />
+          <TopBarActions hideMyCoursesButton={true} />
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-100 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-orange-600" />
+        {/* Upload CTA Card */}
+        <UploadCTA onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} />
+
+        {/* Stats Cards */}
+        {!gamificationLoading && stats && (
+          <div className="space-y-4">
+            <StreakBar currentStreak={stats.current_streak} longestStreak={stats.longest_streak} />
+            <TodayStatsCard
+              stats={{
+                quizzesCompleted: todayActivity?.quizzes_completed || 0,
+                questionsAnswered: todayActivity?.questions_answered || 0,
+                pointsEarned: todayActivity?.points_earned || 0,
+                accuracy: todayActivity && todayActivity.questions_answered && todayActivity.questions_answered > 0
+                  ? Math.round((todayActivity.questions_correct || 0) / todayActivity.questions_answered * 100)
+                  : 0,
+              }}
+            />
+          </div>
+        )}
+
+        {/* Folders Section */}
+        {folders.length > 0 && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">
+                {translate('my_folders_title')}
+              </h2>
+              <button
+                onClick={() => setCreateFolderDialogOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                <FolderPlus className="w-4 h-4" />
+                {translate('create_folder_button')}
+              </button>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{translate('home_promise')}</p>
-              <p className="text-xs text-gray-500">{translate('home_subpromise')}</p>
+
+            <div className="space-y-4">
+              {folders.map((folder) => (
+                <FolderCard
+                  key={folder.id}
+                  folder={folder}
+                  onDeleteFolder={handleDeleteFolder}
+                  onRemoveCourse={handleRemoveCourseFromFolder}
+                  onCourseClick={(courseId) => router.push(`/courses/${courseId}/learn`)}
+                  onRenameCourse={handleRenameCourseById}
+                  onDeleteCourse={handleDeleteCourseById}
+                />
+              ))}
             </div>
           </div>
-          <button
-            onClick={handleUpload}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
-          >
-            <Upload className="w-4 h-4" />
-            {translate('my_courses_empty_cta')}
-          </button>
-        </div>
+        )}
 
-        {courses.length === 0 ? (
+        {/* Courses Section */}
+        {courses.length === 0 && folders.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
             <div className="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto mb-4">
               <Upload className="w-6 h-6" />
@@ -140,42 +328,91 @@ function MyCoursesScreen() {
               {translate('my_courses_empty_cta')}
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {courses.map((course) => (
-              <button
-                key={course.id}
-                onClick={() => router.push(`/courses/${course.id}/learn`)}
-                className="text-left bg-white rounded-2xl border border-gray-200 hover:border-orange-300 hover:shadow-lg transition-all p-4 flex flex-col gap-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 line-clamp-2">
-                      {course.title}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {translate('course_card_last_updated')}: {new Date(course.created_at).toLocaleDateString()}
-                    </p>
+        ) : coursesNotInFolders.length > 0 ? (
+          <div className="space-y-4">
+            {/* Header with Create Folder Button */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">
+                {translate('my_courses_title')}
+              </h2>
+              {folders.length === 0 && (
+                <button
+                  onClick={() => setCreateFolderDialogOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  {translate('create_folder_button')}
+                </button>
+              )}
+            </div>
+
+            {/* Courses Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {coursesNotInFolders.map((course) => (
+                <div key={course.id} className="relative">
+                  {/* Course Card */}
+                  <div onClick={() => router.push(`/courses/${course.id}/learn`)}>
+                    <EnhancedCourseCard
+                      course={{
+                        ...course,
+                        title: getCourseDisplayTitle(course),
+                      }}
+                      hideStatusBadge={true}
+                    />
                   </div>
-                  {getStatusBadge(course)}
-                </div>
-                <div className="flex items-center gap-3 text-xs text-gray-600">
-                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100">
-                    <BookOpen className="w-3 h-3" />
-                    {course.chapter_count} {translate('course_card_chapters')}
+
+                  {/* Action Menu (Top Right Corner) */}
+                  <div className="absolute top-5 right-5 z-10">
+                    <CourseActionMenu
+                      onRename={() => handleRenameCourse(course)}
+                      onDelete={() => handleDeleteCourse(course)}
+                      onAddToFolder={() => handleAddToFolder(course)}
+                    />
                   </div>
-                  {course.status !== 'ready' && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs">
-                      <Lock className="w-3 h-3" />
-                      {translate('course_status_preparing')}
-                    </span>
-                  )}
                 </div>
-              </button>
-            ))}
+              ))}
+            </div>
           </div>
-        )}
+        ) : null}
+
+        {/* Upload Zone - Bottom */}
+        <UploadZone />
       </main>
+
+      {/* Dialogs */}
+      {selectedCourse && (
+        <>
+          <DeleteCourseDialog
+            courseId={selectedCourse.id}
+            courseTitle={getCourseDisplayTitle(selectedCourse)}
+            isOpen={deleteDialogOpen}
+            onClose={() => setDeleteDialogOpen(false)}
+            onDeleted={handleCourseDeleted}
+          />
+
+          <RenameCourseDialog
+            courseId={selectedCourse.id}
+            currentTitle={getCourseDisplayTitle(selectedCourse)}
+            isOpen={renameDialogOpen}
+            onClose={() => setRenameDialogOpen(false)}
+            onRenamed={handleCourseRenamed}
+          />
+
+          <AddToFolderDialog
+            courseId={selectedCourse.id}
+            courseTitle={getCourseDisplayTitle(selectedCourse)}
+            isOpen={addToFolderDialogOpen}
+            onClose={() => setAddToFolderDialogOpen(false)}
+            onAdded={handleCourseAddedToFolder}
+          />
+        </>
+      )}
+
+      <CreateFolderDialog
+        isOpen={createFolderDialogOpen}
+        onClose={() => setCreateFolderDialogOpen(false)}
+        onCreated={handleFolderCreated}
+      />
     </div>
   );
 }

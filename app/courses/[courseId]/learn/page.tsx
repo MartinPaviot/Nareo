@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AlertCircle, CheckCircle2, Loader2, Lock, Play } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Lock, Play, ArrowLeft } from 'lucide-react';
 import TopBarActions from '@/components/layout/TopBarActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -38,6 +38,7 @@ export default function CourseLearnPage() {
   const isDemoId = courseId?.startsWith('demo-');
 
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [signupModalContext, setSignupModalContext] = useState<'chapter' | 'dashboard'>('chapter');
 
   // Demo course state (separate from API-based courses)
   const [demoLoading, setDemoLoading] = useState(isDemoId);
@@ -45,7 +46,7 @@ export default function CourseLearnPage() {
   const [demoChapters, setDemoChapters] = useState<Chapter[]>([]);
   const [demoError, setDemoError] = useState<string | null>(null);
 
-  // Use the polling hook for API-based courses
+  // Use the Realtime hook for API-based courses
   // Disabled for demo courses to avoid unnecessary API calls
   const {
     loading: apiLoading,
@@ -54,9 +55,11 @@ export default function CourseLearnPage() {
     accessTier: apiAccessTier,
     error: apiError,
     isPolling,
+    isListening,
   } = useCourseChapters({
     courseId,
     enabled: !isDemoId, // Only enable for non-demo courses
+    useRealtime: true, // Use Supabase Realtime for instant updates
   });
 
   // Load demo course data
@@ -104,6 +107,15 @@ export default function CourseLearnPage() {
   const accessTier = isDemoId ? null : apiAccessTier;
   const error = isDemoId ? demoError : apiError;
 
+  const handleBackToCourses = () => {
+    if (user) {
+      router.push('/dashboard');
+    } else {
+      setSignupModalContext('dashboard');
+      setShowSignupModal(true);
+    }
+  };
+
   const handleChapterClick = (chapter: Chapter, index: number) => {
     if (index === 0) {
       router.push(`/courses/${courseId}/chapters/${chapter.id}`);
@@ -112,6 +124,7 @@ export default function CourseLearnPage() {
 
     if (index === 1) {
       if (!user) {
+        setSignupModalContext('chapter');
         setShowSignupModal(true);
         return;
       }
@@ -124,6 +137,36 @@ export default function CourseLearnPage() {
     }
   };
 
+  /**
+   * Get the appropriate CTA text for a chapter based on its state
+   * @param chapter - The chapter object with completion state
+   * @param index - The chapter index (0-based)
+   * @returns The translated CTA text
+   */
+  const getChapterCTA = (chapter: Chapter, index: number): string => {
+    // For locked chapters (index >= 2), show paywall CTA
+    if (index >= 2) {
+      return translate('course_detail_cta_paywall');
+    }
+
+    // For chapter 2 (index 1), if user not logged in, show create account
+    if (index === 1 && !user && !isDemoId) {
+      return translate('course_detail_cta_create_account');
+    }
+
+    // For accessible chapters, determine CTA based on quiz state
+    if (chapter.completed) {
+      // Quiz was completed - offer to retake
+      return translate('course_detail_cta_retake_quiz');
+    } else if (chapter.in_progress) {
+      // Quiz was started but not finished - offer to resume
+      return translate('course_detail_cta_resume_quiz');
+    } else {
+      // Quiz never started - offer to start
+      return translate('course_detail_cta_start_quiz');
+    }
+  };
+
   const bannerCopy = useMemo(() => {
     if (course?.status === 'processing' || course?.status === 'pending') {
       return translate('course_detail_processing');
@@ -131,7 +174,7 @@ export default function CourseLearnPage() {
     if (course?.status === 'failed') {
       return translate('course_detail_error');
     }
-    return translate('course_detail_intro');
+    return translate('course_detail_tagline');
   }, [course?.status, translate]);
 
   if (loading) {
@@ -159,28 +202,66 @@ export default function CourseLearnPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">
-              {isDemoId ? 'Demo' : translate('sidebar_chapters')}
-            </p>
-            <h1 className="text-2xl font-bold text-gray-900">{course.title}</h1>
-            <p className="text-sm text-gray-600 mt-1">{bannerCopy}</p>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3">
+          {/* Compact header - Line 1: Course label + Title + Back button */}
+          <div className="flex items-center justify-between gap-4 mb-1.5">
+            {/* Left side: Course label + Title */}
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="text-lg font-semibold text-orange-600 flex-shrink-0">
+                {isDemoId ? 'Demo' : 'Cours'}
+              </span>
+              <span className="text-lg font-semibold text-gray-900 truncate">
+                {course.title}
+              </span>
+            </div>
+
+            {/* Right side: Back button (hidden on mobile, replaced by TopBarActions) */}
+            <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
+              <button
+                onClick={handleBackToCourses}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 hover:text-orange-600 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {translate('course_detail_back_to_courses')}
+              </button>
+              <TopBarActions />
+            </div>
+
+            {/* Mobile: Only show TopBarActions */}
+            <div className="flex sm:hidden">
+              <TopBarActions />
+            </div>
           </div>
-          <TopBarActions />
+
+          {/* Line 2: Description text */}
+          {bannerCopy && (
+            <p className="text-xs text-gray-600 leading-relaxed">{bannerCopy}</p>
+          )}
+
+          {/* Mobile: Back button below on small screens */}
+          <div className="flex sm:hidden mt-2">
+            <button
+              onClick={handleBackToCourses}
+              className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-orange-600 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              {translate('course_detail_back_to_courses')}
+            </button>
+          </div>
         </div>
       </div>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
-        {/* Processing banner - shown when course is pending/processing OR when polling */}
-        {!isDemoId && (course?.status === 'pending' || course?.status === 'processing' || (isPolling && chapters.length === 0)) && (
+        {/* Processing banner - shown when course is pending/processing OR when waiting for chapters */}
+        {!isDemoId && (course?.status === 'pending' || course?.status === 'processing' || ((isPolling || isListening) && chapters.length === 0)) && (
           <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800 flex items-start gap-3">
             <Loader2 className="w-5 h-5 animate-spin mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="font-semibold">{translate('course_detail_processing')}</p>
               <p className="text-xs text-orange-700 mt-1">
                 {translate('upload_extracting')}
-                {isPolling && ' • Checking for updates...'}
+                {isListening && ' • Listening for updates...'}
+                {isPolling && !isListening && ' • Checking for updates...'}
               </p>
             </div>
           </div>
@@ -200,7 +281,7 @@ export default function CourseLearnPage() {
         )}
 
         {/* Chapters list or skeleton loading state */}
-        {chapters.length === 0 && (loading || isPolling) ? (
+        {chapters.length === 0 && (loading || isPolling || isListening) ? (
           // Skeleton placeholders while loading/polling
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
             {[1, 2, 3].map((i) => (
@@ -268,17 +349,13 @@ export default function CourseLearnPage() {
                 </div>
                 <button
                   onClick={() => handleChapterClick(chapter, index)}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold ${
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
                     (locked || premiumLock) && !isDemoId
                       ? 'bg-gray-100 text-gray-600'
                       : 'bg-orange-500 text-white hover:bg-orange-600'
                   }`}
                 >
-                  {index === 0
-                    ? translate('course_detail_cta_play')
-                    : premiumLock
-                    ? translate('course_detail_cta_paywall')
-                    : translate('course_detail_cta_create_account')}
+                  {getChapterCTA(chapter, index)}
                   <Play className="w-4 h-4" />
                 </button>
               </div>
@@ -297,10 +374,14 @@ export default function CourseLearnPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {translate('course_detail_locked_paywall')}
+              {signupModalContext === 'dashboard'
+                ? translate('course_detail_signup_dashboard_title')
+                : translate('course_detail_locked_paywall')}
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              {translate('course_detail_lock_two')}
+              {signupModalContext === 'dashboard'
+                ? translate('course_detail_signup_dashboard_message')
+                : translate('course_detail_lock_two')}
             </p>
             <div className="flex gap-3">
               <button

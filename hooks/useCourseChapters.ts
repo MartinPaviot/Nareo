@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Chapter {
   id: string;
@@ -29,7 +31,8 @@ interface CourseChaptersResponse {
 interface UseCourseChaptersOptions {
   courseId: string;
   enabled?: boolean; // Allow disabling the hook (e.g., for demo courses)
-  pollingInterval?: number; // Polling delay in ms (default: 3000)
+  useRealtime?: boolean; // Use Supabase Realtime instead of polling (default: true)
+  pollingInterval?: number; // Polling delay in ms (default: 3000) - only used if useRealtime is false
 }
 
 interface UseCourseChaptersReturn {
@@ -40,28 +43,33 @@ interface UseCourseChaptersReturn {
   error: string | null;
   refetch: () => Promise<void>;
   isPolling: boolean;
+  isListening: boolean; // Indicates if Realtime subscription is active
 }
 
 /**
- * Custom hook to fetch course chapters with automatic polling
+ * Custom hook to fetch course chapters with automatic updates via Supabase Realtime
  *
- * Polling behavior:
+ * Realtime behavior (default):
+ * - Subscribes to chapters table filtered by courseId
+ * - Automatically refetches when a chapter is inserted or updated
+ * - Unsubscribes when component unmounts
+ *
+ * Fallback polling behavior (if useRealtime=false):
  * - Starts polling if course status is "pending" or "processing"
  * - Starts polling if chapters array is empty
- * - Stops polling when:
- *   - Course status becomes "ready" or "failed"
- *   - At least one chapter is received
- *   - Component unmounts
+ * - Stops polling when course status becomes "ready" or "failed" AND at least one chapter exists
  *
  * @param options - Hook configuration
  * @param options.courseId - The ID of the course to fetch
  * @param options.enabled - Whether the hook should fetch data (default: true)
- * @param options.pollingInterval - Polling interval in milliseconds (default: 3000)
+ * @param options.useRealtime - Use Supabase Realtime instead of polling (default: true)
+ * @param options.pollingInterval - Polling interval in milliseconds (default: 3000) - only used if useRealtime is false
  */
 export function useCourseChapters({
   courseId,
   enabled = true,
-  pollingInterval = 3000, // 3 seconds - can be adjusted here
+  useRealtime = true,
+  pollingInterval = 3000,
 }: UseCourseChaptersOptions): UseCourseChaptersReturn {
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<CourseData | null>(null);
@@ -69,13 +77,15 @@ export function useCourseChapters({
   const [accessTier, setAccessTier] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
-  // Use refs to avoid stale closures in setInterval
+  // Use refs to avoid stale closures
   const courseRef = useRef<CourseData | null>(null);
   const chaptersRef = useRef<Chapter[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  // Determine if we should poll based on current state
+  // Determine if we should poll based on current state (used only in polling mode)
   const shouldPoll = useCallback((currentCourse: CourseData | null, currentChapters: Chapter[]) => {
     if (!currentCourse) return false;
 
@@ -107,12 +117,12 @@ export function useCourseChapters({
       setAccessTier(data.access_tier);
       setError(null);
 
-      // Update refs for polling decision
+      // Update refs
       courseRef.current = data.course;
       chaptersRef.current = data.chapters;
 
-      // If we have chapters and status is ready/failed, stop polling
-      if (!shouldPoll(data.course, data.chapters)) {
+      // If using polling mode, check if we should stop
+      if (!useRealtime && !shouldPoll(data.course, data.chapters)) {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
@@ -132,9 +142,9 @@ export function useCourseChapters({
     } finally {
       setLoading(false);
     }
-  }, [courseId, enabled, shouldPoll]);
+  }, [courseId, enabled, useRealtime, shouldPoll]);
 
-  // Setup polling effect
+  // Setup Realtime subscription or polling
   useEffect(() => {
     if (!enabled || !courseId) {
       setLoading(false);
@@ -144,35 +154,78 @@ export function useCourseChapters({
     // Initial fetch
     fetchCourseData();
 
-    // Check if we need to start polling after initial fetch
-    const checkAndStartPolling = () => {
-      if (shouldPoll(courseRef.current, chaptersRef.current)) {
-        // Clear any existing interval
+    if (useRealtime) {
+      // ===== REALTIME MODE =====
+      const supabase = createSupabaseBrowserClient();
+
+      // Create subscription to chapters table for this course
+      const channel = supabase
+        .channel(`course-${courseId}-chapters`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to INSERT, UPDATE, DELETE
+            schema: 'public',
+            table: 'chapters',
+            filter: `course_id=eq.${courseId}`,
+          },
+          (payload) => {
+            console.log('Chapter change detected:', payload);
+            // Refetch all data when any chapter changes
+            fetchCourseData();
+          }
+        )
+        .subscribe((status) => {
+          console.log('Realtime subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            setIsListening(true);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('Realtime subscription error, falling back to polling');
+            setIsListening(false);
+            // Fallback to polling on error
+            setIsPolling(true);
+            intervalRef.current = setInterval(fetchCourseData, pollingInterval);
+          }
+        });
+
+      channelRef.current = channel;
+
+      // Cleanup function
+      return () => {
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+          setIsListening(false);
+        }
+      };
+    } else {
+      // ===== POLLING MODE (fallback) =====
+      const checkAndStartPolling = () => {
+        if (shouldPoll(courseRef.current, chaptersRef.current)) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+
+          setIsPolling(true);
+          intervalRef.current = setInterval(() => {
+            fetchCourseData();
+          }, pollingInterval);
+        }
+      };
+
+      const timeoutId = setTimeout(checkAndStartPolling, 100);
+
+      // Cleanup function
+      return () => {
+        clearTimeout(timeoutId);
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
+          intervalRef.current = null;
         }
-
-        // Start polling
-        setIsPolling(true);
-        intervalRef.current = setInterval(() => {
-          fetchCourseData();
-        }, pollingInterval);
-      }
-    };
-
-    // Small delay to let initial fetch complete before checking polling
-    const timeoutId = setTimeout(checkAndStartPolling, 100);
-
-    // Cleanup function
-    return () => {
-      clearTimeout(timeoutId);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      setIsPolling(false);
-    };
-  }, [courseId, enabled, pollingInterval, fetchCourseData, shouldPoll]);
+        setIsPolling(false);
+      };
+    }
+  }, [courseId, enabled, useRealtime, pollingInterval, fetchCourseData, shouldPoll]);
 
   return {
     loading,
@@ -182,5 +235,6 @@ export function useCourseChapters({
     error,
     refetch: fetchCourseData,
     isPolling,
+    isListening,
   };
 }

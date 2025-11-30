@@ -535,7 +535,7 @@ export default function ChapterQuizPage() {
 
           {!feedback && currentQuestion?.type !== 'mcq' && (
             <button
-              onClick={handleValidate}
+              onClick={() => handleValidate()}
               disabled={!answer.trim()}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60"
             >

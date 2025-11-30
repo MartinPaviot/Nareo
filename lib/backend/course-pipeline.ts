@@ -24,6 +24,7 @@ interface UploadPayload {
   userId: string | null;
   file: File;
   isPublic?: boolean;
+  guestSessionId?: string | null;
 }
 
 interface ChapterInput {
@@ -72,7 +73,10 @@ function toModelLanguageCode(language: string): "EN" | "FR" | "DE" {
   return normalized.toUpperCase() as "EN" | "FR" | "DE";
 }
 
-export async function queueCourseProcessing({ userId, file, isPublic = false }: UploadPayload) {
+export async function queueCourseProcessing({ userId, file, isPublic = false, guestSessionId }: UploadPayload) {
+  // Allow guest uploads with guestSessionId
+  const effectiveUserId = userId || 'guest';
+
   const admin = getServiceSupabase();
   const courseId = randomUUID();
 
@@ -102,7 +106,7 @@ export async function queueCourseProcessing({ userId, file, isPublic = false }: 
     }
   }
 
-  const storagePath = buildStoragePath(userId, courseId, file.name || "upload.bin");
+  const storagePath = buildStoragePath(effectiveUserId, courseId, file.name || "upload.bin");
 
   const { error: uploadError } = await admin.storage
     .from(RAW_BUCKET)
@@ -117,7 +121,7 @@ export async function queueCourseProcessing({ userId, file, isPublic = false }: 
 
   const { error: courseInsertError } = await admin.from("courses").insert({
     id: courseId,
-    user_id: userId,
+    user_id: userId, // null for guests
     title: file.name || "Cours importe",
     original_filename: file.name || null,
     storage_bucket: RAW_BUCKET,
@@ -126,7 +130,8 @@ export async function queueCourseProcessing({ userId, file, isPublic = false }: 
     pages_count: pagesCount,
     language: "fr",
     content_language: null,
-    is_public: isPublic,
+    is_public: isPublic || !userId, // public for guests
+    guest_session_id: !userId ? guestSessionId : null, // store guest session ID
   });
   if (courseInsertError) {
     console.error("Course insert failed", courseInsertError);
@@ -143,7 +148,7 @@ export async function queueCourseProcessing({ userId, file, isPublic = false }: 
     throw jobInsertError;
   }
 
-  await logEvent("upload_started", { userId, courseId });
+  await logEvent("upload_started", { userId: userId ?? undefined, courseId });
   logStep("queued", { courseId, jobId: job?.id, ext, pagesCount });
 
   setImmediate(() => {
@@ -364,9 +369,9 @@ export async function processCourseJob(jobId: string) {
           const questionId = randomUUID();
 
           // Map concept ids coming from the LLM when present; fallback to a round-robin assignment.
-          const conceptIdsFromLLM = Array.isArray((q as any).concept_ids) ? (q as any).concept_ids.filter((id: string) => coverageMap.has(id)) : [];
+          const conceptIdsFromLLM: string[] = Array.isArray((q as any).concept_ids) ? (q as any).concept_ids.filter((id: string) => coverageMap.has(id)) : [];
           const fallbackConceptId = chapter.concepts[(idx + pass) % chapter.concepts.length]?.id;
-          const targetConceptIds = conceptIdsFromLLM.length > 0
+          const targetConceptIds: string[] = conceptIdsFromLLM.length > 0
             ? Array.from(new Set(conceptIdsFromLLM))
             : fallbackConceptId
               ? [fallbackConceptId]
@@ -374,14 +379,14 @@ export async function processCourseJob(jobId: string) {
           const primaryConceptId = targetConceptIds.find(id => coverageMap.has(id));
 
           // Enforce MCQ-only: ensure 4 options and a valid correct option index
-          const rawOptions = Array.isArray(q.options) ? q.options : [];
-          const fixedOptions =
+          const rawOptions: string[] = Array.isArray(q.options) ? q.options : [];
+          const fixedOptions: string[] =
             rawOptions.length === 4
               ? rawOptions
               : [...rawOptions, "Option C", "Option D"].slice(0, 4);
           const textCandidates = [q.expected_answer, q.correctAnswer, q.answer, q.answer_text].filter(Boolean) as string[];
           const findIndexFromText = () =>
-            fixedOptions.findIndex(opt =>
+            fixedOptions.findIndex((opt: string) =>
               textCandidates.some(txt => txt && opt.toLowerCase() === txt.toLowerCase())
             );
           const providedIndex =

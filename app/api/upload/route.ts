@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = auth?.user.id || null;
+    const guestSessionId = formData.get('guestSessionId') as string | null;
     const supabase = await createSupabaseServerClient();
 
     // Check upload limits for authenticated users
@@ -96,8 +97,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { courseId, jobId } = await queueCourseProcessing({ userId, file, isPublic: !userId });
-    await logEvent('upload_success', { userId: userId ?? undefined, courseId, payload: { jobId } });
+    const { courseId, jobId } = await queueCourseProcessing({
+      userId,
+      file,
+      isPublic: !userId,
+      guestSessionId: !userId ? guestSessionId : null,
+    });
+    await logEvent('upload_success', { userId: userId ?? undefined, courseId, payload: { jobId, guestSessionId: !userId ? guestSessionId : undefined } });
 
     return NextResponse.json({
       success: true,

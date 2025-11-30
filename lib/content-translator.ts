@@ -6,12 +6,14 @@
 import { ChatMessage } from '@/types/chat.types';
 import { ChapterQuestion } from '@/types/concept.types';
 
+import { Language } from '@/lib/translations';
+
 /**
  * Convert internal language code to API format
- * 'fr' | 'en' → 'FR' | 'EN'
+ * 'fr' | 'en' | 'de' → 'FR' | 'EN' | 'DE'
  */
-export function getApiLanguage(language: 'fr' | 'en'): 'FR' | 'EN' {
-  return language.toUpperCase() as 'FR' | 'EN';
+export function getApiLanguage(language: Language): 'FR' | 'EN' | 'DE' {
+  return language.toUpperCase() as 'FR' | 'EN' | 'DE';
 }
 
 /**
@@ -19,7 +21,7 @@ export function getApiLanguage(language: 'fr' | 'en'): 'FR' | 'EN' {
  */
 export async function translateQuestionObject(
   question: ChapterQuestion,
-  targetLanguage: 'fr' | 'en'
+  targetLanguage: Language
 ): Promise<ChapterQuestion> {
   try {
     // Translate the question text
@@ -55,7 +57,7 @@ export async function translateQuestionObject(
  */
 export async function translateMessageBatch(
   messages: ChatMessage[],
-  targetLanguage: 'fr' | 'en'
+  targetLanguage: Language
 ): Promise<ChatMessage[]> {
   try {
     const translatedMessages = await Promise.all(
@@ -83,7 +85,7 @@ export async function translateMessageBatch(
  */
 export async function translateText(
   text: string,
-  targetLanguage: 'fr' | 'en',
+  targetLanguage: Language,
   contentType: 'question' | 'option' | 'message' | 'feedback' | 'instruction' = 'message'
 ): Promise<string> {
   if (!text || text.trim().length === 0) {
@@ -130,7 +132,7 @@ export async function translateText(
  * Check if content needs translation based on language detection
  * Simple heuristic: check for common French/English words
  */
-export function detectLanguage(text: string): 'fr' | 'en' | 'unknown' {
+export function detectLanguage(text: string): Language | 'unknown' {
   const lowerText = text.toLowerCase();
   
   // Common French indicators
@@ -164,7 +166,7 @@ export function detectLanguage(text: string): 'fr' | 'en' | 'unknown' {
  */
 export async function formatForLanguage(
   content: string,
-  currentLanguage: 'fr' | 'en',
+  currentLanguage: Language,
   contentType: 'question' | 'option' | 'message' | 'feedback' | 'instruction' = 'message'
 ): Promise<string> {
   const detectedLang = detectLanguage(content);
@@ -189,7 +191,7 @@ export function getLocalizedChapterTitle(
     englishTitle?: string;
     frenchTitle?: string;
   },
-  language: 'fr' | 'en'
+  language: Language
 ): string {
   if (language === 'fr') {
     // Try frenchTitle first
@@ -199,6 +201,9 @@ export function getLocalizedChapterTitle(
     // Fallback to englishTitle or title (both assumed to be in English)
     // Note: For real-time translation, use getLocalizedChapterTitleAsync instead
     return chapter.englishTitle || chapter.title || 'Chapitre sans titre';
+  } else if (language === 'de') {
+    // For German, fallback to English (use async version for translation)
+    return chapter.englishTitle || chapter.title || 'Kapitel ohne Titel';
   } else {
     // For English, prefer englishTitle, then title
     if (chapter.englishTitle && chapter.englishTitle.trim().length > 0) {
@@ -218,7 +223,7 @@ export async function getLocalizedChapterTitleAsync(
     englishTitle?: string;
     frenchTitle?: string;
   },
-  language: 'fr' | 'en'
+  language: Language
 ): Promise<string> {
   if (language === 'fr') {
     // Try frenchTitle first
@@ -236,6 +241,18 @@ export async function getLocalizedChapterTitleAsync(
       }
     }
     return 'Chapitre sans titre';
+  } else if (language === 'de') {
+    // For German, translate from English on-the-fly
+    const sourceTitle = chapter.englishTitle || chapter.title;
+    if (sourceTitle) {
+      try {
+        return await translateText(sourceTitle, 'de', 'instruction');
+      } catch (error) {
+        console.error('Error translating chapter title to German:', error);
+        return sourceTitle; // Return English as fallback
+      }
+    }
+    return 'Kapitel ohne Titel';
   } else {
     // For English, prefer englishTitle, then title
     if (chapter.englishTitle && chapter.englishTitle.trim().length > 0) {
@@ -254,7 +271,7 @@ export function getLocalizedChapterDescription(
     englishDescription?: string;
     frenchDescription?: string;
   },
-  language: 'fr' | 'en'
+  language: Language
 ): string {
   if (language === 'fr') {
     return chapter.frenchDescription || chapter.summary || chapter.englishDescription || '';
@@ -273,7 +290,7 @@ export async function ensureChapterTitleTranslation(
     englishTitle?: string;
     frenchTitle?: string;
   },
-  targetLanguage: 'fr' | 'en'
+  targetLanguage: Language
 ): Promise<string> {
   const currentTitle = getLocalizedChapterTitle(chapter, targetLanguage);
   

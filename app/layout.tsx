@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Suspense } from 'react';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
@@ -22,17 +23,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <PosthogProvider>
-          <AuthProvider>
-            <LanguageProvider>
-              <div className="min-h-screen flex flex-col">
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </div>
-              <FeedbackWidget />
-            </LanguageProvider>
-          </AuthProvider>
-        </PosthogProvider>
+        <Suspense fallback={null}>
+          <PosthogProvider>
+            <AuthProvider>
+              <LanguageProvider>
+                <div className="min-h-screen flex flex-col">
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </div>
+                <FeedbackWidget />
+              </LanguageProvider>
+            </AuthProvider>
+          </PosthogProvider>
+        </Suspense>
       </body>
     </html>
   );

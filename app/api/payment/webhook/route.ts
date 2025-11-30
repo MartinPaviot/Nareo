@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-11-17.clover',
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -151,13 +151,18 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 
   const isActive = subscription.status === 'active' || subscription.status === 'trialing';
 
+  // Get the current period end from the first subscription item
+  const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
+
   try {
     const { error } = await supabase
       .from('profiles')
       .update({
         subscription_tier: isActive ? 'premium' : 'free',
         stripe_subscription_id: subscription.id,
-        subscription_expires_at: new Date(subscription.current_period_end * 1000).toISOString(),
+        ...(currentPeriodEnd && {
+          subscription_expires_at: new Date(currentPeriodEnd * 1000).toISOString(),
+        }),
       })
       .eq('user_id', userId);
 
@@ -202,7 +207,8 @@ async function handleSubscriptionCanceled(subscription: Stripe.Subscription) {
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   // This handles recurring payments (renewal)
-  const subscriptionId = invoice.subscription as string;
+  // In newer Stripe API versions, subscription is accessed via parent.subscription_details
+  const subscriptionId = invoice.parent?.subscription_details?.subscription as string | undefined;
 
   if (!subscriptionId) return;
 
@@ -218,12 +224,17 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
     const supabase = await createSupabaseServerClient();
 
+    // Get the current period end from the first subscription item
+    const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
+
     // Extend subscription expiry
     const { error } = await supabase
       .from('profiles')
       .update({
         subscription_tier: 'premium',
-        subscription_expires_at: new Date(subscription.current_period_end * 1000).toISOString(),
+        ...(currentPeriodEnd && {
+          subscription_expires_at: new Date(currentPeriodEnd * 1000).toISOString(),
+        }),
       })
       .eq('user_id', userId);
 

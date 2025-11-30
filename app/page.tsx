@@ -6,10 +6,15 @@ import Image from 'next/image';
 import {
   Camera,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
   FileText,
+  LayoutList,
   Loader2,
   ShieldCheck,
   Sparkles,
+  Target,
   Upload,
   X,
 } from 'lucide-react';
@@ -37,6 +42,18 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Generate or retrieve guest session ID for anonymous uploads
+function getOrCreateGuestSessionId(): string {
+  if (typeof window === 'undefined') return '';
+
+  let guestSessionId = localStorage.getItem('guestSessionId');
+  if (!guestSessionId) {
+    guestSessionId = crypto.randomUUID();
+    localStorage.setItem('guestSessionId', guestSessionId);
+  }
+  return guestSessionId;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { translate } = useLanguage();
@@ -45,26 +62,159 @@ export default function HomePage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Preview carousel data
+  const previewSlides = [
+    {
+      icon: LayoutList,
+      titleKey: 'home_preview_chapters_title' as const,
+      descKey: 'home_preview_chapters_desc' as const,
+      image: '/images/chapitres.png',
+      alt: 'Chapitres structurés',
+    },
+    {
+      icon: CircleHelp,
+      titleKey: 'home_preview_quiz_title' as const,
+      descKey: 'home_preview_quiz_desc' as const,
+      image: '/images/quizz.png',
+      alt: 'Quiz interactifs',
+    },
+    {
+      icon: Target,
+      titleKey: 'home_preview_feedback_title' as const,
+      descKey: 'home_preview_feedback_desc' as const,
+      image: '/images/feedback.png',
+      alt: 'Analyse de performance',
+    },
+  ];
+
+  // Track page view with comprehensive context
   useEffect(() => {
-    trackEvent('page_home_viewed', { userId: user?.id });
+    const startTime = Date.now();
+    const referrer = document.referrer;
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const isMobile = screenWidth < 768;
+    const isTablet = screenWidth >= 768 && screenWidth < 1024;
+    const deviceType = isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop';
+
+    trackEvent('home_page_viewed', {
+      userId: user?.id,
+      isAuthenticated: !!user,
+      referrer,
+      screenWidth,
+      screenHeight,
+      deviceType,
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+    });
+
+    // Track time spent on page when leaving
+    const handleBeforeUnload = () => {
+      const timeSpent = Math.round((Date.now() - startTime) / 1000);
+      trackEvent('home_page_exit', {
+        userId: user?.id,
+        timeSpentSeconds: timeSpent,
+        scrolledToUpload: document.getElementById('upload')?.getBoundingClientRect().top !== undefined,
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [user]);
 
-  const handleFiles = (incoming: FileList | null) => {
+  // Track scroll depth
+  useEffect(() => {
+    let maxScrollDepth = 0;
+    const sections = ['how-it-works', 'upload'];
+
+    const handleScroll = () => {
+      const scrollPercent = Math.round(
+        (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100
+      );
+
+      // Track 25%, 50%, 75%, 100% milestones
+      const milestones = [25, 50, 75, 100];
+      for (const milestone of milestones) {
+        if (scrollPercent >= milestone && maxScrollDepth < milestone) {
+          trackEvent('home_scroll_depth', {
+            userId: user?.id,
+            depth: milestone,
+          });
+          maxScrollDepth = milestone;
+        }
+      }
+
+      // Track section visibility
+      sections.forEach((sectionId) => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+          const rect = section.getBoundingClientRect();
+          const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+          if (isVisible && !section.dataset.tracked) {
+            section.dataset.tracked = 'true';
+            trackEvent('home_section_viewed', {
+              userId: user?.id,
+              section: sectionId,
+            });
+          }
+        }
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [user]);
+
+  // Auto-play carousel every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPreviewIndex((prev) => (prev === previewSlides.length - 1 ? 0 : prev + 1));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [previewSlides.length]);
+
+  const handleFiles = (incoming: FileList | null, source: 'drop' | 'file_picker' | 'camera' = 'file_picker') => {
     if (!incoming) return;
-    const selected = Array.from(incoming).filter((file) =>
-      ACCEPTED_TYPES.includes(file.type)
-    );
+
+    const allFiles = Array.from(incoming);
+    const selected = allFiles.filter((file) => ACCEPTED_TYPES.includes(file.type));
+    const rejected = allFiles.filter((file) => !ACCEPTED_TYPES.includes(file.type));
+
+    // Track file selection attempt
+    trackEvent('home_file_selected', {
+      userId: user?.id,
+      source,
+      totalFiles: allFiles.length,
+      acceptedFiles: selected.length,
+      rejectedFiles: rejected.length,
+      fileTypes: allFiles.map((f) => f.type),
+      fileSizes: allFiles.map((f) => f.size),
+      totalSize: allFiles.reduce((sum, f) => sum + f.size, 0),
+    });
 
     const imageCount = selected.filter((f) => f.type.startsWith('image/')).length;
     if (imageCount > MAX_IMAGES) {
+      trackEvent('home_file_error', {
+        userId: user?.id,
+        errorType: 'too_many_images',
+        imageCount,
+        maxAllowed: MAX_IMAGES,
+      });
       setError(translate('upload_limit_images'));
       return;
     }
 
     if (selected.length === 0) {
+      trackEvent('home_file_error', {
+        userId: user?.id,
+        errorType: 'invalid_format',
+        attemptedTypes: allFiles.map((f) => f.type),
+      });
       setError(translate('upload_error_state'));
       return;
     }
@@ -76,21 +226,48 @@ export default function HomePage() {
   const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    handleFiles(event.dataTransfer.files);
+    trackEvent('home_file_dropped', { userId: user?.id });
+    handleFiles(event.dataTransfer.files, 'drop');
+  };
+
+  const handleDragEnter = () => {
+    if (!isDragging) {
+      trackEvent('home_drag_started', { userId: user?.id });
+    }
+    setIsDragging(true);
   };
 
   const handleStart = async () => {
     if (!files.length) {
+      trackEvent('home_upload_clicked_empty', { userId: user?.id });
       setError(translate('upload_action_waiting'));
       return;
     }
+
+    const uploadStartTime = Date.now();
+    const file = files[0];
+
+    trackEvent('home_upload_started', {
+      userId: user?.id,
+      isGuest: !user,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      fileSizeMB: (file.size / (1024 * 1024)).toFixed(2),
+    });
 
     setIsProcessing(true);
     setError(null);
 
     try {
       const formData = new FormData();
-      formData.append('file', files[0]);
+      formData.append('file', file);
+
+      // For guests (not logged in), include guestSessionId for later linking
+      if (!user) {
+        const guestSessionId = getOrCreateGuestSessionId();
+        formData.append('guestSessionId', guestSessionId);
+      }
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -99,27 +276,74 @@ export default function HomePage() {
       });
 
       const data = await response.json();
+      const uploadDuration = Date.now() - uploadStartTime;
+
       if (!response.ok) {
+        trackEvent('home_upload_failed', {
+          userId: user?.id,
+          isGuest: !user,
+          error: data?.error,
+          statusCode: response.status,
+          uploadDurationMs: uploadDuration,
+        });
         throw new Error(data?.error || 'Upload failed');
       }
 
-      trackEvent('upload_success', { userId: user?.id, courseId: data.courseId });
-      // Toujours utiliser le courseId réel (public si invité)
+      trackEvent('home_upload_success', {
+        userId: user?.id,
+        isGuest: !user,
+        courseId: data.courseId,
+        uploadDurationMs: uploadDuration,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+
       router.push(`/courses/${data.courseId}/learn`);
     } catch (uploadError) {
       console.error('Upload error', uploadError);
-      setError(
-        uploadError instanceof Error
-          ? uploadError.message
-          : translate('upload_error_state')
-      );
+      const errorMessage = uploadError instanceof Error ? uploadError.message : translate('upload_error_state');
+
+      trackEvent('home_upload_error', {
+        userId: user?.id,
+        errorMessage,
+        uploadDurationMs: Date.now() - uploadStartTime,
+      });
+
+      setError(errorMessage);
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleRemove = (name: string) => {
+    trackEvent('home_file_removed', {
+      userId: user?.id,
+      fileName: name,
+      remainingFiles: files.length - 1,
+    });
     setFiles((prev) => prev.filter((f) => f.name !== name));
+  };
+
+  // Track CTA button clicks
+  const handleCtaClick = (ctaName: string, destination?: string) => {
+    trackEvent('home_cta_clicked', {
+      userId: user?.id,
+      ctaName,
+      destination,
+      isAuthenticated: !!user,
+    });
+  };
+
+  // Track carousel navigation
+  const handleCarouselNav = (direction: 'prev' | 'next' | 'dot', newIndex: number) => {
+    trackEvent('home_carousel_navigated', {
+      userId: user?.id,
+      direction,
+      fromIndex: previewIndex,
+      toIndex: newIndex,
+      slideName: previewSlides[newIndex]?.titleKey,
+    });
+    setPreviewIndex(newIndex);
   };
 
   const renderStateBadge = () => {
@@ -161,13 +385,19 @@ export default function HomePage() {
           {!user && (
             <>
               <button
-                onClick={() => router.push('/auth/signin')}
+                onClick={() => {
+                  handleCtaClick('header_signin', '/auth/signin');
+                  router.push('/auth/signin');
+                }}
                 className="hidden sm:inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 {translate('auth_signin_button')}
               </button>
               <button
-                onClick={() => router.push('/auth/signup')}
+                onClick={() => {
+                  handleCtaClick('header_signup', '/auth/signup');
+                  router.push('/auth/signup');
+                }}
                 className="hidden sm:inline-flex items-center justify-center h-10 px-4 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
               >
                 {translate('auth_signup_button')}
@@ -191,13 +421,19 @@ export default function HomePage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-2">
                 <button
-                  onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() => {
+                    handleCtaClick('hero_primary', '#upload');
+                    document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                   className="inline-flex items-center justify-center h-12 px-6 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 shadow-md"
                 >
                   {translate('home_hero_cta_primary')}
                 </button>
                 <button
-                  onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() => {
+                    handleCtaClick('hero_secondary', '#how-it-works');
+                    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                   className="inline-flex items-center justify-center h-12 px-6 rounded-xl border border-orange-200 text-orange-700 font-semibold bg-white hover:bg-orange-50"
                 >
                   {translate('home_hero_cta_secondary')}
@@ -272,7 +508,13 @@ export default function HomePage() {
               {/* Header - Title and subtitle with formats */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-lg font-bold text-gray-900">{translate('home_upload_title')}</h2>
+                  <h2 className="text-lg font-bold text-gray-900">
+                    {translate('home_upload_title')}{' '}
+                    <span className="relative inline-block">
+                      <span className="relative z-10">{translate('home_upload_title_highlight')}</span>
+                      <span className="absolute bottom-0 left-0 w-full h-[40%] bg-gradient-to-r from-orange-300 to-amber-300 -z-0 rounded-sm"></span>
+                    </span>
+                  </h2>
                   {renderStateBadge()}
                 </div>
                 <p className="text-sm text-gray-600">
@@ -284,7 +526,7 @@ export default function HomePage() {
               <label
                 onDragOver={(e) => {
                   e.preventDefault();
-                  setIsDragging(true);
+                  handleDragEnter();
                 }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
@@ -300,7 +542,7 @@ export default function HomePage() {
                   multiple
                   accept={ACCEPTED_TYPES.join(',')}
                   className="hidden"
-                  onChange={(e) => handleFiles(e.target.files)}
+                  onChange={(e) => handleFiles(e.target.files, 'file_picker')}
                 />
                 <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
                   {/* Icon */}
@@ -320,6 +562,7 @@ export default function HomePage() {
                       type="button"
                       onClick={(e) => {
                         e.preventDefault();
+                        handleCtaClick('upload_choose_file');
                         fileInputRef.current?.click();
                       }}
                       className="px-6 py-3 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
@@ -332,6 +575,7 @@ export default function HomePage() {
                       type="button"
                       onClick={(e) => {
                         e.preventDefault();
+                        handleCtaClick('upload_use_camera');
                         cameraInputRef.current?.click();
                       }}
                       className="md:hidden px-6 py-3 rounded-xl border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:border-orange-400 hover:text-orange-600 transition-colors flex items-center justify-center gap-2"
@@ -345,7 +589,7 @@ export default function HomePage() {
                       accept="image/*"
                       capture="environment"
                       className="hidden"
-                      onChange={(e) => handleFiles(e.target.files)}
+                      onChange={(e) => handleFiles(e.target.files, 'camera')}
                     />
                   </div>
 
@@ -462,47 +706,146 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Preview before/after */}
-          <section className="space-y-4">
+          {/* Preview - 2 Cards Carousel */}
+          <section className="space-y-6">
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold text-gray-900">{translate('home_preview_title')}</h2>
               <p className="text-sm text-gray-600">{translate('home_preview_subtitle')}</p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-5 space-y-3 flex flex-col">
-                <div className="flex items-center gap-2 text-orange-600 font-semibold">
-                  <FileText className="w-5 h-5" />
-                  <span>{translate('home_preview_left_title')}</span>
-                </div>
-                <p className="text-sm text-gray-600">{translate('home_preview_left_desc')}</p>
-                <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                  <div className="w-12 h-14 rounded-lg bg-orange-100 border border-orange-200 flex items-center justify-center text-orange-700 font-bold">
-                    PDF
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    <p>Course_Pack.pdf</p>
-                    <p>78 pages</p>
-                  </div>
-                </div>
+
+            {/* 2 Cards Grid with Navigation */}
+            <div className="relative">
+              {/* Navigation Arrows - Desktop */}
+              <div className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 z-10">
+                <button
+                  onClick={() => handleCarouselNav('prev', previewIndex === 0 ? previewSlides.length - 1 : previewIndex - 1)}
+                  className="w-10 h-10 rounded-full border border-gray-200 bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-orange-300 transition-colors"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
               </div>
-              <div className="rounded-3xl border border-orange-100 bg-white shadow-sm p-5 space-y-3 flex flex-col">
-                <div className="flex items-center gap-2 text-orange-600 font-semibold">
-                  <Sparkles className="w-5 h-5" />
-                  <span>{translate('home_preview_right_title')}</span>
-                </div>
-                <p className="text-sm text-gray-600">{translate('home_preview_right_desc')}</p>
-                <div className="space-y-2">
-                  {[1, 2, 3].map((q) => (
-                    <div key={q} className="rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs text-gray-800">
-                      <p className="font-semibold">Quiz Q{q}</p>
-                      <ul className="list-disc list-inside text-[11px] text-gray-700 space-y-1">
-                        <li>Option A</li>
-                        <li>Option B</li>
-                        <li>Option C</li>
-                      </ul>
+              <div className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-10">
+                <button
+                  onClick={() => handleCarouselNav('next', previewIndex === previewSlides.length - 1 ? 0 : previewIndex + 1)}
+                  className="w-10 h-10 rounded-full border border-gray-200 bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-orange-300 transition-colors"
+                  aria-label="Next"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Cards Grid - 2 visible at a time */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* First Card */}
+                {(() => {
+                  const firstSlide = previewSlides[previewIndex];
+                  const FirstIcon = firstSlide.icon;
+                  return (
+                    <div className="rounded-3xl border border-orange-100 bg-white shadow-lg p-5 space-y-3 flex flex-col">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                          <FirstIcon className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">
+                            {translate(firstSlide.titleKey)}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {translate(firstSlide.descKey)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="relative rounded-xl overflow-hidden bg-gray-50/50 border border-orange-100 shadow-sm flex-1">
+                        <div className="flex items-center justify-center p-3">
+                          <Image
+                            src={firstSlide.image}
+                            alt={firstSlide.alt}
+                            width={800}
+                            height={600}
+                            quality={100}
+                            priority
+                            unoptimized
+                            className="max-w-full h-auto object-contain rounded-lg"
+                            style={{ maxHeight: '350px' }}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
+
+                {/* Second Card */}
+                {(() => {
+                  const secondIndex = (previewIndex + 1) % previewSlides.length;
+                  const secondSlide = previewSlides[secondIndex];
+                  const SecondIcon = secondSlide.icon;
+                  return (
+                    <div className="rounded-3xl border border-orange-100 bg-white shadow-lg p-5 space-y-3 flex flex-col">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                          <SecondIcon className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">
+                            {translate(secondSlide.titleKey)}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {translate(secondSlide.descKey)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="relative rounded-xl overflow-hidden bg-gray-50/50 border border-orange-100 shadow-sm flex-1">
+                        <div className="flex items-center justify-center p-3">
+                          <Image
+                            src={secondSlide.image}
+                            alt={secondSlide.alt}
+                            width={800}
+                            height={600}
+                            quality={100}
+                            unoptimized
+                            className="max-w-full h-auto object-contain rounded-lg"
+                            style={{ maxHeight: '350px' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Navigation Arrows - Mobile (below cards) */}
+              <div className="flex md:hidden items-center justify-center gap-4 mt-4">
+                <button
+                  onClick={() => handleCarouselNav('prev', previewIndex === 0 ? previewSlides.length - 1 : previewIndex - 1)}
+                  className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-orange-300 transition-colors"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={() => handleCarouselNav('next', previewIndex === previewSlides.length - 1 ? 0 : previewIndex + 1)}
+                  className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-orange-300 transition-colors"
+                  aria-label="Next"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Indicator Dots */}
+              <div className="flex items-center justify-center gap-2 mt-4">
+                {previewSlides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleCarouselNav('dot', index)}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                      index === previewIndex
+                        ? 'bg-orange-500'
+                        : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
               </div>
             </div>
           </section>
@@ -532,7 +875,10 @@ export default function HomePage() {
             <p className="text-sm opacity-90">{translate('home_final_subtitle')}</p>
             <div className="flex justify-center">
               <button
-                onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => {
+                  handleCtaClick('final_cta', '#upload');
+                  document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+                }}
                 className="inline-flex items-center justify-center h-12 px-6 rounded-xl bg-white text-orange-600 font-semibold hover:bg-orange-50 shadow-md"
               >
                 {translate('home_final_cta')}

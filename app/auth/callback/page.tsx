@@ -34,6 +34,27 @@ export default function AuthCallbackPage() {
         // Track visitor (add to visitors table if not exists)
         await trackVisitor(user.id, user.email || '');
 
+        // Link any guest courses to this user
+        const guestSessionId = localStorage.getItem('guestSessionId');
+        if (guestSessionId) {
+          try {
+            const linkResponse = await fetch('/api/courses/link-guest', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ guestSessionId }),
+            });
+            const linkResult = await linkResponse.json();
+            if (linkResult.linked > 0) {
+              console.log(`✅ Linked ${linkResult.linked} guest course(s) to account`);
+            }
+            // Clear the guest session ID after linking
+            localStorage.removeItem('guestSessionId');
+          } catch (linkError) {
+            console.error('Error linking guest courses:', linkError);
+            // Non-blocking error - continue with auth flow
+          }
+        }
+
         // Create a new session record if it doesn't exist
         const { error: sessionError } = await supabase
           .from('sessions')

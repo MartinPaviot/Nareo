@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 // GET: Check access for a course
 export async function GET(
   request: NextRequest,
-  { params }: { params: { courseId: string } }
+  { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
     const auth = await authenticateRequest(request);
@@ -15,7 +15,7 @@ export async function GET(
 
     const supabase = await createSupabaseServerClient();
     const userId = auth.user.id;
-    const courseId = params.courseId;
+    const { courseId } = await params;
 
     // Get access data
     const { data: accessData } = await supabase
@@ -43,7 +43,7 @@ export async function GET(
 // POST: Grant free access to chapter 2 (automatic for authenticated users)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { courseId: string } }
+  { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
     const auth = await authenticateRequest(request);
@@ -53,7 +53,7 @@ export async function POST(
 
     const supabase = await createSupabaseServerClient();
     const userId = auth.user.id;
-    const courseId = params.courseId;
+    const { courseId } = await params;
 
     // Verify course exists and belongs to user
     const { data: course, error: courseError } = await supabase

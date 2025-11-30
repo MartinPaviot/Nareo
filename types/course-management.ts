@@ -32,6 +32,12 @@ export interface Course {
   file_name?: string | null;
   processing_status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message?: string | null;
+  // Progress tracking fields (populated by API)
+  status?: string;
+  chapter_count?: number;
+  completed_chapters?: number;
+  in_progress_chapters?: number;
+  user_score?: number;
 }
 
 export interface FolderWithCourses extends Folder {

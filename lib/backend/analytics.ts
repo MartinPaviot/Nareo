@@ -16,7 +16,10 @@ export type AnalyticsEventName =
   | 'signup_completed'
   | 'paywall_viewed'
   | 'payment_success'
-  | 'payment_failed';
+  | 'payment_failed'
+  | 'content_language_detected'
+  | 'guest_courses_linked'
+  | 'guest_courses_link_failed';
 
 interface LogPayload {
   userId?: string;

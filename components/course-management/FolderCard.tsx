@@ -112,11 +112,11 @@ export default function FolderCard({
                         course={{
                           id: course.id,
                           title: displayTitle,
-                          status: course.status,
-                          chapter_count: course.chapter_count,
-                          completed_chapters: course.completed_chapters,
-                          in_progress_chapters: course.in_progress_chapters,
-                          user_score: course.user_score,
+                          status: course.status || 'not_started',
+                          chapter_count: course.chapter_count || 0,
+                          completed_chapters: course.completed_chapters || 0,
+                          in_progress_chapters: course.in_progress_chapters || 0,
+                          user_score: course.user_score || 0,
                           created_at: course.created_at,
                         }}
                         hideStatusBadge={true}

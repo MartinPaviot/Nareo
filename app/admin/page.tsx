@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
 
 // Hardcoded list of admin emails
 const ADMIN_EMAILS = [
@@ -112,7 +113,13 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-bounce">📊</div>
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={400}
+            height={400}
+            className="mx-auto mb-4 animate-bounce"
+          />
           <p className="text-gray-600">Loading dashboard...</p>
         </div>
       </div>

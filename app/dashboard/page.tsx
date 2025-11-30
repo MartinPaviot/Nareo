@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Upload, FolderPlus } from 'lucide-react';
+import { Upload, FolderPlus } from 'lucide-react';
+import Image from 'next/image';
 import AuthGuard from '@/components/auth/AuthGuard';
 import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
 import ProgressZone from '@/components/dashboard/ProgressZone';
@@ -233,7 +234,13 @@ function MyCoursesScreen() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-orange-500 animate-spin mx-auto mb-4" />
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={400}
+            height={400}
+            className="mx-auto mb-4 animate-bounce"
+          />
           <p className="text-gray-600">{translate('dashboard_loading')}</p>
         </div>
       </div>

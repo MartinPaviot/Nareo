@@ -346,7 +346,15 @@ export default function ChapterQuizPage() {
       setCorrectOptionId(null);
       setHasAnswered(false);
     } else {
-      // Quiz completed - redirect to results
+      // Quiz completed - store review items for results page and redirect
+      try {
+        sessionStorage.setItem(
+          `quiz_review_${chapterId}`,
+          JSON.stringify(reviewItems)
+        );
+      } catch (e) {
+        console.error('Failed to store review items:', e);
+      }
       router.push(`/courses/${courseId}/chapters/${chapterId}/results?score=${score}&total=${totalPossiblePoints}&correct=${correctCount}&totalQuestions=${questions.length}`);
       trackEvent('quiz_completed', { userId: user?.id, chapterId, score, totalPossiblePoints });
     }
@@ -356,7 +364,13 @@ export default function ChapterQuizPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-orange-500 animate-spin mx-auto mb-4" />
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={400}
+            height={400}
+            className="mx-auto mb-4 animate-bounce"
+          />
           <p className="text-gray-600">{translate('learn_loading')}</p>
         </div>
       </div>

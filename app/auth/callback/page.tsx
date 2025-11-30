@@ -7,6 +7,7 @@ import { trackVisitor } from '@/lib/visitors';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -94,9 +95,13 @@ export default function AuthCallbackPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-            <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
-          </div>
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={400}
+            height={400}
+            className="mx-auto mb-4 animate-bounce"
+          />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             {verifying ? translate('auth_callback_verifying') : translate('auth_callback_success')}
           </h2>

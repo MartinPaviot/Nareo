@@ -6,6 +6,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
 });
 
+// Price IDs from environment variables
+const PRICE_IDS = {
+  monthly: process.env.STRIPE_PRICE_MONTHLY!,
+  annual: process.env.STRIPE_PRICE_ANNUAL!,
+};
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request);
@@ -14,36 +20,45 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { courseId, successUrl, cancelUrl } = body;
+    const { courseId, plan, successUrl, cancelUrl } = body;
 
     if (!courseId) {
       return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
     }
 
-    // Create Stripe checkout session
+    // Validate plan type
+    const selectedPlan = plan === 'monthly' ? 'monthly' : 'annual';
+    const priceId = PRICE_IDS[selectedPlan];
+
+    if (!priceId) {
+      return NextResponse.json({ error: 'Invalid plan or price not configured' }, { status: 400 });
+    }
+
+    // Create Stripe checkout session for subscription
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency: 'eur',
-            product_data: {
-              name: 'Course Full Access',
-              description: 'Unlock all chapters and features for this course',
-            },
-            unit_amount: 999, // 9.99 EUR in cents
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
-      mode: 'payment',
+      mode: 'subscription',
       success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}/learn?payment=success`,
-      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/paywall?courseId=${courseId}&payment=cancelled`,
+      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}/learn?payment=cancelled`,
       client_reference_id: courseId,
       customer_email: auth.user.email,
       metadata: {
         userId: auth.user.id,
         courseId: courseId,
+        plan: selectedPlan,
+      },
+      subscription_data: {
+        metadata: {
+          userId: auth.user.id,
+          courseId: courseId,
+          plan: selectedPlan,
+        },
       },
     });
 

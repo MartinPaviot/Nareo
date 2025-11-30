@@ -67,55 +67,54 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // Fetch stats for each course
+        // Fetch stats for each course using quiz_attempts (same as /api/courses)
         const coursesWithStats = await Promise.all(
           coursesData.map(async (course: any) => {
-              // Get chapter counts
-              const { data: chapters } = await supabase
-                .from('chapters')
-                .select('id')
-                .eq('course_id', course.id);
+            // Get chapter count
+            const { count: chapterCount } = await supabase
+              .from('chapters')
+              .select('*', { count: 'exact', head: true })
+              .eq('course_id', course.id);
 
-              const chapter_count = chapters?.length || 0;
+            // Get quiz attempts for this course
+            const { data: attempts, error: attemptsError } = await supabase
+              .from('quiz_attempts')
+              .select('chapter_id, completed_at, score')
+              .eq('course_id', course.id)
+              .eq('user_id', user.id);
 
-              // Get user progress
-              const { data: completedChapters } = await supabase
-                .from('user_chapter_progress')
-                .select('chapter_id')
-                .eq('user_id', user.id)
-                .in('chapter_id', chapters?.map((c: any) => c.id) || [])
-                .eq('is_completed', true);
+            // Group attempts by chapter and keep only the latest (by completed_at) for each
+            const latestAttemptsByChapter = new Map<string, { score: number; completed_at: string | null }>();
+            (attempts || []).forEach((a) => {
+              const existing = latestAttemptsByChapter.get(a.chapter_id);
+              if (!existing || (a.completed_at && (!existing.completed_at || a.completed_at > existing.completed_at))) {
+                latestAttemptsByChapter.set(a.chapter_id, { score: a.score, completed_at: a.completed_at });
+              }
+            });
 
-              const completed_chapters = completedChapters?.length || 0;
+            const completedChapters = Array.from(latestAttemptsByChapter.values())
+              .filter((a) => a.completed_at)
+              .length;
 
-              // Get in-progress chapters
-              const { data: inProgressChapters } = await supabase
-                .from('user_chapter_progress')
-                .select('chapter_id')
-                .eq('user_id', user.id)
-                .in('chapter_id', chapters?.map((c: any) => c.id) || [])
-                .eq('is_completed', false);
+            const inProgressChapters = Array.from(latestAttemptsByChapter.values())
+              .filter((a) => !a.completed_at)
+              .length;
 
-              const in_progress_chapters = inProgressChapters?.length || 0;
+            // Sum only the latest score per chapter
+            const totalScore = Array.from(latestAttemptsByChapter.values()).reduce(
+              (sum, a) => sum + (a.score ?? 0),
+              0
+            );
 
-              // Get user score (sum of points from user_answers for this course)
-              const { data: userAnswers } = await supabase
-                .from('user_answers')
-                .select('points_awarded')
-                .eq('user_id', user.id)
-                .in('chapter_id', chapters?.map((c: any) => c.id) || []);
-
-              const user_score = userAnswers?.reduce((sum, a) => sum + (a.points_awarded || 0), 0) || 0;
-
-              return {
-                ...course,
-                status: course.status,
-                chapter_count,
-                completed_chapters,
-                in_progress_chapters,
-                user_score,
-              };
-            })
+            return {
+              ...course,
+              status: course.status,
+              chapter_count: chapterCount || 0,
+              completed_chapters: completedChapters,
+              in_progress_chapters: inProgressChapters,
+              user_score: totalScore,
+            };
+          })
         );
 
         return {

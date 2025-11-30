@@ -98,7 +98,7 @@ export default function SignIn() {
         <div className="text-center mb-8">
           <Image
             src="/chat/Drag_and_Drop.png"
-            alt="Aristo Drag And Drop"
+            alt="Nareo Drag And Drop"
             width={240}
             height={240}
             className="mx-auto mb-6"

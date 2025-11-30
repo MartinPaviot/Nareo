@@ -141,8 +141,8 @@ export async function POST(
       }
     }
 
-    // Calculate points
-    const pointsEarned = isCorrect ? (question.points ?? 10) : 0;
+    // Calculate points - fixed at 10 points per question
+    const pointsEarned = isCorrect ? 10 : 0;
 
     // Never include explanations - they add no value and can be misleading
     return NextResponse.json({

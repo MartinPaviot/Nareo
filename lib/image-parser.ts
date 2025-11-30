@@ -1,5 +1,5 @@
 /**
- * Image Parser for LevelUp
+ * Image Parser for Nareo
  * Extracts text and concepts from uploaded images (screenshots, photos of notes, etc.)
  */
 

@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, BookOpen, Loader2, Lock, Upload, FolderPlus } from 'lucide-react';
+import { Loader2, Upload, FolderPlus } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
-import TopBarActions from '@/components/layout/TopBarActions';
-import StreakBar from '@/components/dashboard/StreakBar';
-import TodayStatsCard from '@/components/dashboard/TodayStatsCard';
-import UploadCTA from '@/components/dashboard/UploadCTA';
+import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
+import ProgressZone from '@/components/dashboard/ProgressZone';
+import DashboardTabs from '@/components/dashboard/DashboardTabs';
 import EnhancedCourseCard from '@/components/courses/EnhancedCourseCard';
 import CourseActionMenu from '@/components/course-management/CourseActionMenu';
 import DeleteCourseDialog from '@/components/course-management/DeleteCourseDialog';
 import RenameCourseDialog from '@/components/course-management/RenameCourseDialog';
 import CreateFolderDialog from '@/components/course-management/CreateFolderDialog';
 import AddToFolderDialog from '@/components/course-management/AddToFolderDialog';
+import DeleteFolderDialog from '@/components/course-management/DeleteFolderDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useGamification } from '@/hooks/useGamification';
@@ -49,6 +49,8 @@ function MyCoursesScreen() {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
   const [addToFolderDialogOpen, setAddToFolderDialogOpen] = useState(false);
+  const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<FolderWithCourses | null>(null);
 
   // Gamification hook
   const { stats, todayActivity, loading: gamificationLoading } = useGamification();
@@ -192,20 +194,17 @@ function MyCoursesScreen() {
     loadFolders();
   };
 
-  const handleDeleteFolder = async (folderId: string) => {
-    try {
-      const response = await fetch(`/api/folders/${folderId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete folder');
-      }
-
-      loadFolders();
-    } catch (error) {
-      console.error('Error deleting folder:', error);
+  const handleDeleteFolder = (folderId: string) => {
+    const folder = folders.find((f) => f.id === folderId);
+    if (folder) {
+      setSelectedFolder(folder);
+      setDeleteFolderDialogOpen(true);
     }
+  };
+
+  const handleFolderDeleted = () => {
+    loadFolders();
+    loadCourses(); // Reload courses as they may have been moved back to main list
   };
 
   const handleRemoveCourseFromFolder = async (folderId: string, courseId: string) => {
@@ -241,142 +240,189 @@ function MyCoursesScreen() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-orange-600 mb-0.5">
-              Aristo'Chat est prêt à réviser avec toi
-            </p>
-            <h1 className="text-lg font-bold text-gray-900">{translate('my_courses_title')}</h1>
+  // Courses Content for Tab
+  const coursesContent = (
+    <div className="space-y-4">
+      {courses.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
+          <div className="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto mb-4">
+            <Upload className="w-6 h-6" />
           </div>
-          <TopBarActions hideMyCoursesButton={true} />
+          <p className="text-lg font-semibold text-gray-900 mb-1">
+            {translate('my_courses_empty_title')}
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            {translate('dashboard_empty_desc')}
+          </p>
+          <button
+            onClick={() => {
+              const uploadZone = document.querySelector('[data-upload-zone]');
+              if (uploadZone) {
+                uploadZone.scrollIntoView({ behavior: 'smooth' });
+              } else {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+              }
+            }}
+            className="px-5 py-3 rounded-full bg-orange-500 text-white font-semibold hover:bg-orange-600 inline-flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            {translate('my_courses_empty_cta')}
+          </button>
         </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Upload CTA Card */}
-        <UploadCTA onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} />
-
-        {/* Stats Cards */}
-        {!gamificationLoading && stats && (
-          <div className="space-y-4">
-            <StreakBar currentStreak={stats.current_streak} longestStreak={stats.longest_streak} />
-            <TodayStatsCard
-              stats={{
-                quizzesCompleted: todayActivity?.quizzes_completed || 0,
-                questionsAnswered: todayActivity?.questions_answered || 0,
-                pointsEarned: todayActivity?.points_earned || 0,
-                accuracy: todayActivity && todayActivity.questions_answered && todayActivity.questions_answered > 0
-                  ? Math.round((todayActivity.questions_correct || 0) / todayActivity.questions_answered * 100)
-                  : 0,
-              }}
-            />
-          </div>
-        )}
-
-        {/* Folders Section */}
-        {folders.length > 0 && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">
-                {translate('my_folders_title')}
-              </h2>
-              <button
-                onClick={() => setCreateFolderDialogOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium"
-              >
-                <FolderPlus className="w-4 h-4" />
-                {translate('create_folder_button')}
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {folders.map((folder) => (
-                <FolderCard
-                  key={folder.id}
-                  folder={folder}
-                  onDeleteFolder={handleDeleteFolder}
-                  onRemoveCourse={handleRemoveCourseFromFolder}
-                  onCourseClick={(courseId) => router.push(`/courses/${courseId}/learn`)}
-                  onRenameCourse={handleRenameCourseById}
-                  onDeleteCourse={handleDeleteCourseById}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Courses Section */}
-        {courses.length === 0 && folders.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
-            <div className="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto mb-4">
-              <Upload className="w-6 h-6" />
-            </div>
-            <p className="text-lg font-semibold text-gray-900 mb-1">
-              {translate('my_courses_empty_title')}
-            </p>
-            <p className="text-sm text-gray-600 mb-4">
-              {translate('dashboard_empty_desc')}
-            </p>
+      ) : (
+        <>
+          {/* Create Folder Button */}
+          <div className="flex justify-end">
             <button
-              onClick={handleUpload}
-              className="px-5 py-3 rounded-full bg-orange-500 text-white font-semibold hover:bg-orange-600 inline-flex items-center gap-2"
+              onClick={() => setCreateFolderDialogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium"
             >
-              <Upload className="w-4 h-4" />
-              {translate('my_courses_empty_cta')}
+              <FolderPlus className="w-4 h-4" />
+              {translate('create_folder_button')}
             </button>
           </div>
-        ) : coursesNotInFolders.length > 0 ? (
-          <div className="space-y-4">
-            {/* Header with Create Folder Button */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">
-                {translate('my_courses_title')}
-              </h2>
-              {folders.length === 0 && (
-                <button
-                  onClick={() => setCreateFolderDialogOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium"
-                >
-                  <FolderPlus className="w-4 h-4" />
-                  {translate('create_folder_button')}
-                </button>
-              )}
-            </div>
 
-            {/* Courses Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {coursesNotInFolders.map((course) => (
-                <div key={course.id} className="relative">
-                  {/* Course Card */}
-                  <div onClick={() => router.push(`/courses/${course.id}/learn`)}>
-                    <EnhancedCourseCard
-                      course={{
-                        ...course,
-                        title: getCourseDisplayTitle(course),
-                      }}
-                      hideStatusBadge={true}
-                    />
-                  </div>
-
-                  {/* Action Menu (Top Right Corner) */}
-                  <div className="absolute top-5 right-5 z-10">
-                    <CourseActionMenu
-                      onRename={() => handleRenameCourse(course)}
-                      onDelete={() => handleDeleteCourse(course)}
-                      onAddToFolder={() => handleAddToFolder(course)}
-                    />
-                  </div>
+          {/* Courses Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {courses.map((course) => (
+              <div key={course.id} className="relative">
+                {/* Course Card */}
+                <div onClick={() => router.push(`/courses/${course.id}/learn`)}>
+                  <EnhancedCourseCard
+                    course={{
+                      ...course,
+                      title: getCourseDisplayTitle(course),
+                    }}
+                    hideStatusBadge={true}
+                  />
                 </div>
-              ))}
-            </div>
+
+                {/* Action Menu (Top Right Corner) */}
+                <div className="absolute top-5 right-5 z-10">
+                  <CourseActionMenu
+                    onRename={() => handleRenameCourse(course)}
+                    onDelete={() => handleDeleteCourse(course)}
+                    onAddToFolder={() => handleAddToFolder(course)}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
-        ) : null}
+        </>
+      )}
+    </div>
+  );
+
+  // Folders Content for Tab
+  const foldersContent = (
+    <div className="space-y-4">
+      {folders.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
+          <div className="w-14 h-14 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+            <FolderPlus className="w-6 h-6" />
+          </div>
+          <p className="text-lg font-semibold text-gray-900 mb-1">
+            {translate('add_to_folder_no_folders')}
+          </p>
+          <p className="text-sm text-gray-600 mb-4">
+            {translate('add_to_folder_create_hint')}
+          </p>
+          <button
+            onClick={() => setCreateFolderDialogOpen(true)}
+            className="px-5 py-3 rounded-full bg-indigo-600 text-white font-semibold hover:bg-indigo-700 inline-flex items-center gap-2"
+          >
+            <FolderPlus className="w-4 h-4" />
+            {translate('create_folder_button')}
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Create Folder Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setCreateFolderDialogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium"
+            >
+              <FolderPlus className="w-4 h-4" />
+              {translate('create_folder_button')}
+            </button>
+          </div>
+
+          {/* Folders List */}
+          <div className="space-y-4">
+            {folders.map((folder) => (
+              <FolderCard
+                key={folder.id}
+                folder={folder}
+                onDeleteFolder={handleDeleteFolder}
+                onRemoveCourse={handleRemoveCourseFromFolder}
+                onCourseClick={(courseId) => router.push(`/courses/${courseId}/learn`)}
+                onRenameCourse={handleRenameCourseById}
+                onDeleteCourse={handleDeleteCourseById}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
+      <PageHeaderWithMascot
+        title={translate('my_courses_title')}
+        subtitle={translate('dashboard_mascot_subtitle')}
+        hideMyCoursesButton={true}
+      />
+
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* Progress Zone - Unified gamified progress area */}
+        {!gamificationLoading && stats && (
+          <ProgressZone
+            currentStreak={stats.current_streak}
+            longestStreak={stats.longest_streak}
+            totalQuizzes={stats.total_quizzes_completed}
+            totalPoints={stats.total_points}
+            todayStats={{
+              quizzesCompleted: todayActivity?.quizzes_completed || 0,
+              questionsAnswered: todayActivity?.questions_answered || 0,
+              pointsEarned: todayActivity?.points_earned || 0,
+              accuracy: todayActivity && todayActivity.questions_answered && todayActivity.questions_answered > 0
+                ? Math.round((todayActivity.questions_correct || 0) / todayActivity.questions_answered * 100)
+                : 0,
+            }}
+            hasQuizAvailable={false}
+            onChooseChapter={() => {
+              document.getElementById('courses-section')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            onUploadClick={() => {
+              const uploadZone = document.querySelector('[data-upload-zone]');
+              if (uploadZone) {
+                uploadZone.scrollIntoView({ behavior: 'smooth' });
+              } else {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+              }
+            }}
+          />
+        )}
+
+        {/* Tabs Switcher: Courses / Folders */}
+        <div id="courses-section">
+          <DashboardTabs
+            initialView="courses"
+            coursesCount={courses.length}
+            foldersCount={folders.length}
+            coursesContent={coursesContent}
+            foldersContent={foldersContent}
+          >
+            {null}
+          </DashboardTabs>
+        </div>
 
         {/* Upload Zone - Bottom */}
-        <UploadZone />
+        <div data-upload-zone>
+          <UploadZone />
+        </div>
       </main>
 
       {/* Dialogs */}
@@ -413,6 +459,17 @@ function MyCoursesScreen() {
         onClose={() => setCreateFolderDialogOpen(false)}
         onCreated={handleFolderCreated}
       />
+
+      {selectedFolder && (
+        <DeleteFolderDialog
+          folderId={selectedFolder.id}
+          folderName={selectedFolder.name}
+          courseCount={selectedFolder.courses.length}
+          isOpen={deleteFolderDialogOpen}
+          onClose={() => setDeleteFolderDialogOpen(false)}
+          onDeleted={handleFolderDeleted}
+        />
+      )}
     </div>
   );
 }

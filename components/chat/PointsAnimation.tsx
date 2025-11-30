@@ -116,7 +116,7 @@ export default function PointsAnimation({ points, onComplete }: PointsAnimationP
           >
             <Image
               src="/chat/Happy.png"
-              alt="Aristo Happy"
+              alt="Nareo Happy"
               fill
               className="object-contain drop-shadow-2xl"
               priority

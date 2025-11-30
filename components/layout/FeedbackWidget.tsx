@@ -73,7 +73,7 @@ export default function FeedbackWidget() {
             <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-orange-50 ring-2 ring-orange-200/50 flex items-center justify-center">
               <Image
                 src="/chat/Happy.png"
-                alt="Aristo"
+                alt="Nareo"
                 width={84}
                 height={84}
                 className="object-contain"

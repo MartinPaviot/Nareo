@@ -11,7 +11,7 @@ interface MascotProps {
 }
 
 /**
- * Aristo'Chat Mascot Component
+ * Nareo Mascot Component
  * A friendly chat mascot that provides context-aware encouragement and feedback
  */
 export default function Mascot({
@@ -84,7 +84,7 @@ export default function Mascot({
           animated ? 'animate-bounce' : ''
         } select-none`}
         role="img"
-        aria-label="Aristo'Chat mascot"
+        aria-label="Nareo mascot"
       >
         {getMascotEmoji()}
       </div>

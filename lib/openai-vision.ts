@@ -315,7 +315,7 @@ Definitions
    a relationship between causes and effects
    a strategic idea that is central to the course
 
-2  A chapter in LevelUp equals exactly one concept
+2  A chapter in Nareo equals exactly one concept
    If a concept has several sub aspects they stay inside the same chapter
    Do NOT group several unrelated concepts into a single chapter
    Do NOT create a generic chapter that mixes many ideas
@@ -914,7 +914,7 @@ ${phase === 1 ? '{"question": "...", "options": ["A", "B", "C", "D"], "correctAn
       messages: [
         {
           role: 'system',
-          content: 'You are Aristo, a friendly AI tutor. Generate engaging educational questions based on the provided learning materials.',
+          content: 'You are Nareo, a friendly AI tutor. Generate engaging educational questions based on the provided learning materials.',
         },
         {
           role: 'user',
@@ -999,7 +999,7 @@ Return JSON:
       messages: [
         {
           role: 'system',
-          content: `You are Aristo, a supportive AI tutor for motivated students. Always answer in ${languageName}. ${languageReminder} Keep explanations concise, specific, and aligned with the course content.`,
+          content: `You are Nareo, a supportive AI tutor for motivated students. Always answer in ${languageName}. ${languageReminder} Keep explanations concise, specific, and aligned with the course content.`,
         },
         {
           role: 'user',
@@ -1042,7 +1042,7 @@ Return JSON:
   }
 }
 
-export async function generateAristoResponse(
+export async function generateNareoResponse(
   context: string,
   userMessage: string,
   phase: 1 | 2 | 3
@@ -1053,7 +1053,7 @@ export async function generateAristoResponse(
       messages: [
         {
           role: 'system',
-          content: `Tu es Aristo, l'assistant pédagogique de l'application LevelUp.
+          content: `Tu es Nareo, l'assistant pédagogique de l'application Nareo.
 
 RÈGLE ABSOLUE : Tu ne fais RIEN par toi-même. Tu suis strictement l'état envoyé par le backend/frontend.
 
@@ -1074,7 +1074,7 @@ Tu n'inventes JAMAIS ces valeurs, tu te contentes de les utiliser.
 
 Il existe UN SEUL message d'introduction valide, que tu dois afficher TEL QUEL, sans aucune modification :
 
-👋 Bonjour ! Je suis Aristo, votre assistant d'apprentissage.
+👋 Bonjour ! Je suis Nareo, votre assistant d'apprentissage.
 
 📚 Bienvenue dans le chapitre [TITRE DU CHAPITRE] !
 
@@ -1162,7 +1162,7 @@ OBJECTIF PRINCIPAL : Cohérence absolue. Ne jamais réafficher l'introduction au
         },
         {
           role: 'user',
-          content: `Contexte : ${context}\n\nL'étudiant dit : ${userMessage}\n\nRéponds en tant qu'Aristo (en français) :`,
+          content: `Contexte : ${context}\n\nL'étudiant dit : ${userMessage}\n\nRéponds en tant que Nareo (en français) :`,
         },
       ],
       temperature: 0.8,
@@ -1171,7 +1171,7 @@ OBJECTIF PRINCIPAL : Cohérence absolue. Ne jamais réafficher l'introduction au
 
     return response.choices[0].message.content || '';
   } catch (error) {
-    console.error('Error generating Aristo response:', error);
+    console.error('Error generating Nareo response:', error);
     return "Je suis là pour t'aider ! Travaillons ensemble sur ce concept. 🐱📚";
   }
 }

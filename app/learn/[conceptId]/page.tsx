@@ -163,7 +163,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       // Vérifier si l'introduction est déjà dans l'historique
       const hasIntroduction = messages.some(msg =>
         msg.role === 'assistant' &&
-        (msg.content.includes('Bonjour ! Je suis Aristo') || msg.content.includes('Bienvenue dans le chapitre'))
+        (msg.content.includes('Bonjour ! Je suis Nareo') || msg.content.includes('Bienvenue dans le chapitre'))
       );
 
       if (!hasHistory && startQuestionNumber === 1) {
@@ -173,7 +173,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
 
         await addMessage({
           role: 'assistant',
-          content: `👋 Bonjour ! Je suis Aristo, votre assistant d'apprentissage.\n\n📚 Bienvenue dans le chapitre **${localizedTitle}** !\n\nCe chapitre contient 5 questions pour tester votre compréhension. Chaque question ne peut être répondue qu'une seule fois. Je vous donnerai un feedback pédagogique après chaque réponse, puis nous passerons à la question suivante.\n\n**🎯 Points par question :**\n• Questions 1-3 (QCM) : 10 points chacune\n• Questions 4-5 (Réponse courte/Réflexive) : 35 points chacune\n\n**📝 Important :** Une seule tentative par question. Réfléchissez bien avant de répondre !\n\n✨ Commençons !`,
+          content: `👋 Bonjour ! Je suis Nareo, votre assistant d'apprentissage.\n\n📚 Bienvenue dans le chapitre **${localizedTitle}** !\n\nCe chapitre contient 5 questions pour tester votre compréhension. Chaque question ne peut être répondue qu'une seule fois. Je vous donnerai un feedback pédagogique après chaque réponse, puis nous passerons à la question suivante.\n\n**🎯 Points par question :**\n• Questions 1-3 (QCM) : 10 points chacune\n• Questions 4-5 (Réponse courte/Réflexive) : 35 points chacune\n\n**📝 Important :** Une seule tentative par question. Réfléchissez bien avant de répondre !\n\n✨ Commençons !`,
           aristoState: 'happy',
         });
 
@@ -460,7 +460,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
         setShowPointsAnimation(true);
       }
       
-      // Add Aristo's feedback
+      // Add Nareo's feedback
       await addMessage({
         role: 'assistant',
         content: data.feedback,
@@ -620,7 +620,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
             {/* Mascot Avatar */}
             <img
               src="/chat/mascotte.png"
-              alt="Aristo mascot"
+              alt="Nareo mascot"
               width={48}
               height={48}
               className="rounded-full object-cover shadow-lg"

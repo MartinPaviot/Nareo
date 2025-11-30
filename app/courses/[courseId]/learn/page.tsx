@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AlertCircle, CheckCircle2, Loader2, Lock, Play, ArrowLeft } from 'lucide-react';
-import TopBarActions from '@/components/layout/TopBarActions';
+import { AlertCircle, Loader2, Lock, Play, RotateCcw } from 'lucide-react';
+import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
+import ChapterScoreBadge from '@/components/course/ChapterScoreBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackEvent } from '@/lib/posthog';
@@ -38,7 +39,6 @@ export default function CourseLearnPage() {
   const isDemoId = courseId?.startsWith('demo-');
 
   const [showSignupModal, setShowSignupModal] = useState(false);
-  const [signupModalContext, setSignupModalContext] = useState<'chapter' | 'dashboard'>('chapter');
 
   // Demo course state (separate from API-based courses)
   const [demoLoading, setDemoLoading] = useState(isDemoId);
@@ -107,15 +107,6 @@ export default function CourseLearnPage() {
   const accessTier = isDemoId ? null : apiAccessTier;
   const error = isDemoId ? demoError : apiError;
 
-  const handleBackToCourses = () => {
-    if (user) {
-      router.push('/dashboard');
-    } else {
-      setSignupModalContext('dashboard');
-      setShowSignupModal(true);
-    }
-  };
-
   const handleChapterClick = (chapter: Chapter, index: number) => {
     if (index === 0) {
       router.push(`/courses/${courseId}/chapters/${chapter.id}`);
@@ -124,7 +115,6 @@ export default function CourseLearnPage() {
 
     if (index === 1) {
       if (!user) {
-        setSignupModalContext('chapter');
         setShowSignupModal(true);
         return;
       }
@@ -201,55 +191,11 @@ export default function CourseLearnPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3">
-          {/* Compact header - Line 1: Course label + Title + Back button */}
-          <div className="flex items-center justify-between gap-4 mb-1.5">
-            {/* Left side: Course label + Title */}
-            <div className="flex items-baseline gap-2 min-w-0">
-              <span className="text-lg font-semibold text-orange-600 flex-shrink-0">
-                {isDemoId ? 'Demo' : 'Cours'}
-              </span>
-              <span className="text-lg font-semibold text-gray-900 truncate">
-                {course.title}
-              </span>
-            </div>
-
-            {/* Right side: Back button (hidden on mobile, replaced by TopBarActions) */}
-            <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
-              <button
-                onClick={handleBackToCourses}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 hover:text-orange-600 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                {translate('course_detail_back_to_courses')}
-              </button>
-              <TopBarActions />
-            </div>
-
-            {/* Mobile: Only show TopBarActions */}
-            <div className="flex sm:hidden">
-              <TopBarActions />
-            </div>
-          </div>
-
-          {/* Line 2: Description text */}
-          {bannerCopy && (
-            <p className="text-xs text-gray-600 leading-relaxed">{bannerCopy}</p>
-          )}
-
-          {/* Mobile: Back button below on small screens */}
-          <div className="flex sm:hidden mt-2">
-            <button
-              onClick={handleBackToCourses}
-              className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-orange-600 transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              {translate('course_detail_back_to_courses')}
-            </button>
-          </div>
-        </div>
-      </div>
+      <PageHeaderWithMascot
+        title={course.title}
+        subtitle={isDemoId ? 'Demo' : translate('learn_course_subtitle')}
+        maxWidth="4xl"
+      />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
         {/* Processing banner - shown when course is pending/processing OR when waiting for chapters */}
@@ -311,7 +257,7 @@ export default function CourseLearnPage() {
               return (
                 <div
                   key={chapter.id}
-                  className="p-4 sm:p-5 flex items-start gap-4 hover:bg-orange-50/40 transition-colors"
+                  className="p-4 sm:p-5 flex items-center gap-4 hover:bg-orange-50/40 transition-colors"
                 >
                 <div className="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-semibold">
                   {index + 1}
@@ -340,48 +286,47 @@ export default function CourseLearnPage() {
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100">
                       {chapter.question_count} {translate('chapter_questions')}
                     </span>
-                    {chapter.score !== null && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 text-purple-700 font-semibold">
-                        {chapter.score} {translate('learn_pts')}
-                      </span>
-                    )}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleChapterClick(chapter, index)}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                    (locked || premiumLock) && !isDemoId
-                      ? 'bg-gray-100 text-gray-600'
-                      : 'bg-orange-500 text-white hover:bg-orange-600'
-                  }`}
-                >
-                  {getChapterCTA(chapter, index)}
-                  <Play className="w-4 h-4" />
-                </button>
+                <div className="flex flex-col items-center gap-2">
+                  {chapter.score !== null && chapter.question_count > 0 && (
+                    <ChapterScoreBadge
+                      scorePts={chapter.score}
+                      maxPts={chapter.question_count * 10}
+                    />
+                  )}
+                  <button
+                    onClick={() => handleChapterClick(chapter, index)}
+                    className={`inline-flex items-center justify-center gap-2 w-[180px] px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                      (locked || premiumLock) && !isDemoId
+                        ? 'bg-gray-100 text-gray-600'
+                        : 'bg-orange-500 text-white hover:bg-orange-600'
+                    }`}
+                  >
+                    {getChapterCTA(chapter, index)}
+                    {chapter.completed ? (
+                      <RotateCcw className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
             );
           })}
           </div>
         )}
 
-        <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">
-          {translate('course_detail_lock_two')} <br />
-          {translate('course_detail_lock_three')}
-        </div>
       </main>
 
       {showSignupModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
             <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {signupModalContext === 'dashboard'
-                ? translate('course_detail_signup_dashboard_title')
-                : translate('course_detail_locked_paywall')}
+              {translate('course_detail_locked_paywall')}
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              {signupModalContext === 'dashboard'
-                ? translate('course_detail_signup_dashboard_message')
-                : translate('course_detail_lock_two')}
+              {translate('course_detail_lock_two')}
             </p>
             <div className="flex gap-3">
               <button

@@ -1,10 +1,13 @@
-export type AristoState = 
+export type NareoState =
   | 'reading'      // Processing.png
   | 'asking'       // Talking.png
   | 'listening'    // mascotte.png
   | 'happy'        // Happy.png
   | 'confused'     // Disappointed.png
   | 'success';     // adcdebda.png (trophy)
+
+/** @deprecated Use NareoState instead */
+export type AristoState = NareoState;
 
 export interface ChatMessage {
   id: string;
@@ -22,7 +25,7 @@ export interface ChatContext {
   awaitingAnswer: boolean;
 }
 
-export const ARISTO_STATES: Record<AristoState, string> = {
+export const NAREO_STATES: Record<NareoState, string> = {
   reading: '/mascot/mascotte.png',
   asking: '/mascot/mascotte.png',
   listening: '/mascot/mascotte.png',

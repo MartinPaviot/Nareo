@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `Tu es Aristo, un tuteur IA amical et pédagogue. Tu enseignes le chapitre "${chapterTitle}". 
+          content: `Tu es Nareo, un tuteur IA amical et pédagogue. Tu enseignes le chapitre "${chapterTitle}". 
 
 RÈGLES IMPORTANTES :
 • Sois encourageant, clair et concis

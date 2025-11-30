@@ -3,7 +3,7 @@
 import React from 'react';
 import { ChatMessage } from '@/types/chat.types';
 import { formatTime } from '@/lib/utils';
-import AristoAvatar from './AristoAvatar';
+import NareoAvatar from './NareoAvatar';
 import UserMessageBubble from './UserMessageBubble';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -201,10 +201,10 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
   // Assistant message rendering
   return (
     <div className="flex gap-3 mb-4 justify-start">
-      {/* Aristo Avatar */}
+      {/* Nareo Avatar */}
       <div className="flex-shrink-0">
-        <AristoAvatar 
-          state={message.aristoState || 'listening'} 
+        <NareoAvatar
+          state={message.aristoState || 'listening'}
           size="md"
         />
       </div>

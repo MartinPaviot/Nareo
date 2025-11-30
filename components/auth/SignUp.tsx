@@ -108,7 +108,7 @@ export default function SignUp() {
         <div className="text-center mb-8">
           <Image
             src="/chat/mascotte.png"
-            alt="Aristo Mascotte"
+            alt="Nareo Mascotte"
             width={240}
             height={240}
             className="mx-auto mb-6"

@@ -1,7 +1,7 @@
 import { ChatCompletionMessageParam } from "openai/resources/chat";
 
 /**
- * Production-grade prompt templates for LevelUp.
+ * Production-grade prompt templates for Nareo.
  *
  * Each builder returns the full message array (system + user) ready for OpenAI chat completions
  * with the response_format set to { type: "json_object" } to enforce strict JSON outputs.

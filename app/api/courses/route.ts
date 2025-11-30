@@ -37,20 +37,26 @@ export async function GET(request: NextRequest) {
           .eq('course_id', course.id)
           .eq('user_id', userId);
 
-        const completedChapters = new Set(
-          (attempts || [])
-            .filter((a) => a.completed_at)
-            .map((a) => a.chapter_id)
-        ).size;
+        // Group attempts by chapter and keep only the latest (by completed_at) for each
+        const latestAttemptsByChapter = new Map<string, { score: number; completed_at: string | null }>();
+        (attempts || []).forEach((a) => {
+          const existing = latestAttemptsByChapter.get(a.chapter_id);
+          if (!existing || (a.completed_at && (!existing.completed_at || a.completed_at > existing.completed_at))) {
+            latestAttemptsByChapter.set(a.chapter_id, { score: a.score, completed_at: a.completed_at });
+          }
+        });
 
-        const inProgressChapters = new Set(
-          (attempts || [])
-            .filter((a) => !a.completed_at)
-            .map((a) => a.chapter_id)
-        ).size;
+        const completedChapters = Array.from(latestAttemptsByChapter.values())
+          .filter((a) => a.completed_at)
+          .length;
 
-        const totalScore = (attempts || []).reduce(
-          (sum, a) => sum + (a.score || 0),
+        const inProgressChapters = Array.from(latestAttemptsByChapter.values())
+          .filter((a) => !a.completed_at)
+          .length;
+
+        // Sum only the latest score per chapter
+        const totalScore = Array.from(latestAttemptsByChapter.values()).reduce(
+          (sum, a) => sum + (a.score ?? 0),
           0
         );
 

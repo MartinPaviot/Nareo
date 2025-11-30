@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2, Trophy, Unlock } from 'lucide-react';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { loadDemoCourse } from '@/lib/demoCourse';
@@ -153,7 +154,13 @@ export default function ChapterResultPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-orange-500 animate-spin mx-auto mb-4" />
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={400}
+            height={400}
+            className="mx-auto mb-4 animate-bounce"
+          />
           <p className="text-gray-600">{translate('loading')}</p>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedChapterTitle } from '@/lib/content-translator';
 import AuthGuard from '@/components/auth/AuthGuard';
 import NareoAvatar from '@/components/chat/NareoAvatar';
+import Image from 'next/image';
 import LanguageToggle from '@/components/layout/LanguageToggle';
 import SignOutButton from '@/components/layout/SignOutButton';
 import { 
@@ -189,7 +190,13 @@ function StudyPlanPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={400}
+            height={400}
+            className="mx-auto mb-4 animate-bounce"
+          />
           <p className="text-gray-600">{translate('study_plan_loading')}</p>
         </div>
       </div>

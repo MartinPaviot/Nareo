@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trophy, Clock, Mic, ArrowRight, RotateCcw } from 'lucide-react';
+import Image from 'next/image';
 import NareoAvatar from '@/components/chat/NareoAvatar';
 import BadgeDisplay from '@/components/concepts/BadgeDisplay';
 import { BadgeType } from '@/types/concept.types';
@@ -67,7 +68,13 @@ export default function SessionRecap({ params }: { params: Promise<{ sessionId: 
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={400}
+            height={400}
+            className="mx-auto mb-4 animate-bounce"
+          />
           <p className="text-gray-600">Loading session recap...</p>
         </div>
       </div>

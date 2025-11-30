@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSessionTracker } from '@/hooks/useSessionTracker';
 
@@ -27,7 +28,13 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4 animate-bounce">🎓🐱</div>
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={400}
+            height={400}
+            className="mx-auto mb-4 animate-bounce"
+          />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>

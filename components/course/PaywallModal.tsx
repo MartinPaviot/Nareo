@@ -1,59 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle2, Loader2, Lock, ShieldCheck, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import { CheckCircle2, Loader2, Lock, ShieldCheck, Sparkles, TrendingUp, X, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackEvent } from '@/lib/posthog';
 
-interface Course {
-  id: string;
-  title: string;
-  chapter_count: number;
+interface PaywallModalProps {
+  courseId: string;
+  courseTitle?: string;
+  onClose: () => void;
 }
 
-export default function PaywallPage() {
+export default function PaywallModal({ courseId, courseTitle, onClose }: PaywallModalProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { translate, currentLanguage } = useLanguage();
-  const courseId = searchParams?.get('courseId');
 
-  const [loading, setLoading] = useState(false);
-  const [course, setCourse] = useState<Course | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
-
-  useEffect(() => {
-    if (user && courseId) {
-      trackEvent('paywall_viewed', { userId: user.id, courseId });
-    }
-    loadCourseData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, user]);
-
-  const loadCourseData = async () => {
-    if (!courseId) return;
-    try {
-      setLoading(true);
-      const response = await fetch('/api/courses');
-      const data = await response.json();
-      const found = data.courses?.find((c: any) => c.id === courseId);
-      if (found) {
-        setCourse({
-          id: found.id,
-          title: found.title,
-          chapter_count: found.chapter_count,
-        });
-      }
-    } catch (error) {
-      console.error('Error loading course', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const monthlyPrice = () => {
     switch (currentLanguage) {
@@ -104,7 +71,7 @@ export default function PaywallPage() {
           courseId,
           plan: selectedPlan,
           successUrl: `${window.location.origin}/courses/${courseId}/learn?payment=success`,
-          cancelUrl: `${window.location.origin}/paywall?courseId=${courseId}&payment=cancelled`,
+          cancelUrl: `${window.location.origin}/courses/${courseId}/learn?payment=cancelled`,
         }),
       });
       const data = await response.json();
@@ -120,30 +87,17 @@ export default function PaywallPage() {
     }
   };
 
-  if (!courseId) {
-    return null;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
-        <div className="text-center">
-          <Image
-            src="/chat/mascotte.png"
-            alt="Nareo"
-            width={400}
-            height={400}
-            className="mx-auto mb-4 animate-bounce"
-          />
-          <p className="text-gray-600">{translate('loading')}</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="max-w-3xl w-full bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="relative max-w-3xl w-full bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden my-4">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white text-gray-600 hover:text-gray-900 transition-colors shadow-md"
+          aria-label="Fermer"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         {/* Header avec mascotte */}
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 sm:px-8 py-6 flex items-center gap-4">
@@ -154,12 +108,12 @@ export default function PaywallPage() {
             height={128}
             className="rounded-full bg-white/20 p-1 flex-shrink-0"
           />
-          <div className="text-white">
+          <div className="text-white pr-8">
             <h1 className="text-2xl sm:text-3xl font-bold">
-              {translate('paywall_title_benefit')}
+              {translate('paywall_modal_title')}
             </h1>
             <p className="text-orange-100 text-sm sm:text-base mt-1">
-              {translate('paywall_subtitle_course')} <span className="font-semibold text-white">{course?.title}</span>
+              {translate('paywall_modal_subtitle')}
             </p>
           </div>
         </div>
@@ -169,7 +123,35 @@ export default function PaywallPage() {
           {/* Grille: Blocs 1 et 2 côte à côte */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
 
-            {/* Bloc 1: Ce que tu obtiens */}
+            {/* Bloc 1: Comment Nareo t'aide vraiment (bénéfices) */}
+            <div className="flex flex-col gap-2">
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-orange-500" />
+                {translate('paywall_section_benefits')}
+              </h2>
+              <div className="bg-orange-50 rounded-2xl border border-orange-200 p-3 space-y-2 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700">{translate('paywall_benefit_1')}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700">{translate('paywall_benefit_2')}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700">{translate('paywall_benefit_3')}</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700">{translate('paywall_benefit_4')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bloc 2: Ton accès complet inclut (features) */}
             <div className="flex flex-col gap-2">
               <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
                 <Zap className="w-4 h-4 text-orange-500" />
@@ -196,34 +178,6 @@ export default function PaywallPage() {
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-700">{translate('paywall_access_4')}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bloc 2: Ce que ça t'apporte */}
-            <div className="flex flex-col gap-2">
-              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-orange-500" />
-                {translate('paywall_section_benefits')}
-              </h2>
-              <div className="bg-orange-50 rounded-2xl border border-orange-200 p-3 space-y-2 flex-1 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">{translate('paywall_benefit_1')}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">{translate('paywall_benefit_2')}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">{translate('paywall_benefit_3')}</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">{translate('paywall_benefit_4')}</span>
                   </div>
                 </div>
               </div>
@@ -312,26 +266,16 @@ export default function PaywallPage() {
             </button>
           </div>
 
-          {/* Pastilles de réassurance animées */}
+          {/* Pastilles de réassurance */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700 animate-pulse">
+            <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
               <CheckCircle2 className="w-4 h-4 text-green-500" />
               {translate('paywall_sub_monthly')}
             </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700 animate-pulse" style={{ animationDelay: '0.5s' }}>
+            <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
               <ShieldCheck className="w-4 h-4 text-green-500" />
               {translate('paywall_sub_cancel')}
             </span>
-          </div>
-
-          {/* Lien secondaire */}
-          <div className="text-center">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-sm text-gray-500 hover:text-orange-600 transition-colors"
-            >
-              {translate('paywall_back_dashboard')}
-            </button>
           </div>
 
           {/* Mention légale */}

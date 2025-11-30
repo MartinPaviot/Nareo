@@ -41,7 +41,20 @@ export async function GET(
 
     if (chaptersError) throw chaptersError;
 
-    // Get user's course access
+    // Get user's subscription tier from profile
+    const { data: profileData } = userId
+      ? await supabase
+          .from('profiles')
+          .select('subscription_tier, subscription_expires_at')
+          .eq('user_id', userId)
+          .single()
+      : { data: null };
+
+    // Check if user has active premium subscription
+    const isPremium = profileData?.subscription_tier === 'premium' &&
+      (!profileData?.subscription_expires_at || new Date(profileData.subscription_expires_at) > new Date());
+
+    // Get user's course access (legacy, for backwards compatibility)
     const { data: accessData } = userId
       ? await supabase
           .from('user_course_access')
@@ -51,19 +64,21 @@ export async function GET(
           .single()
       : { data: null };
 
-    const accessTier = accessData?.access_tier || null;
+    // User has full access if premium OR has paid access for this specific course
+    const accessTier = isPremium ? 'paid' : (accessData?.access_tier || null);
 
     // For each chapter, determine access and get progress
     const chaptersWithAccess = await Promise.all(
       (chapters || []).map(async (chapter, index) => {
-        // Access logic (guest allowed for chapter 1):
-        // Chapter 1 (index 0): always accessible
-        // Chapter 2 (index 1): requires auth (signup) or access tier free/paid
-        // Chapter 3+ (index 2+): requires paid
+        // Access logic:
+        // Chapter 1 (index 0): always accessible (even for guests)
+        // Chapter 2-3 (index 1-2): requires auth (signup) or access tier free/paid
+        // Chapter 4+ (index 3+): requires paid/premium
         let hasAccess = false;
         if (index === 0) {
           hasAccess = true;
-        } else if (index === 1) {
+        } else if (index === 1 || index === 2) {
+          // Chapters 2 and 3 are free for logged-in users
           hasAccess = !!userId || accessTier === 'paid' || accessTier === 'free';
         } else {
           hasAccess = accessTier === 'paid';

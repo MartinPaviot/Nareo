@@ -32,7 +32,7 @@ interface UseCourseChaptersOptions {
   courseId: string;
   enabled?: boolean; // Allow disabling the hook (e.g., for demo courses)
   useRealtime?: boolean; // Use Supabase Realtime instead of polling (default: true)
-  pollingInterval?: number; // Polling delay in ms (default: 3000) - only used if useRealtime is false
+  pollingInterval?: number; // Polling delay in ms (default: 3000) - used as fallback and during processing
 }
 
 interface UseCourseChaptersReturn {
@@ -45,6 +45,9 @@ interface UseCourseChaptersReturn {
   isPolling: boolean;
   isListening: boolean; // Indicates if Realtime subscription is active
 }
+
+// Aggressive polling interval during processing (2 seconds)
+const PROCESSING_POLL_INTERVAL = 2000;
 
 /**
  * Custom hook to fetch course chapters with automatic updates via Supabase Realtime
@@ -98,6 +101,28 @@ export function useCourseChapters({
     return statusRequiresPolling || noChapters;
   }, []);
 
+  // Ref to track if aggressive polling is active
+  const pollingActiveRef = useRef(false);
+
+  // Function to start aggressive polling during processing
+  const startAggressivePolling = useCallback(() => {
+    if (pollingActiveRef.current || intervalRef.current) return;
+
+    console.log('Starting aggressive polling for processing course');
+    pollingActiveRef.current = true;
+    setIsPolling(true);
+  }, []);
+
+  // Function to stop polling
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    pollingActiveRef.current = false;
+    setIsPolling(false);
+  }, []);
+
   // Fetch course data
   const fetchCourseData = useCallback(async () => {
     if (!enabled || !courseId) return;
@@ -121,30 +146,34 @@ export function useCourseChapters({
       courseRef.current = data.course;
       chaptersRef.current = data.chapters;
 
-      // If using polling mode, check if we should stop
+      // Check if course is processing and we need to start/continue polling
+      const isProcessing = data.course.status === 'pending' || data.course.status === 'processing';
+
+      if (isProcessing && !pollingActiveRef.current) {
+        // Start aggressive polling if not already active
+        startAggressivePolling();
+      } else if (!isProcessing && pollingActiveRef.current) {
+        // Course finished processing, stop polling
+        console.log('Course processing complete, stopping polling');
+        stopPolling();
+      }
+
+      // If using polling mode only, check if we should stop
       if (!useRealtime && !shouldPoll(data.course, data.chapters)) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-          setIsPolling(false);
-        }
+        stopPolling();
       }
     } catch (err) {
       console.error('Error loading course:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
 
       // Stop polling on error
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-        setIsPolling(false);
-      }
+      stopPolling();
     } finally {
       setLoading(false);
     }
-  }, [courseId, enabled, useRealtime, shouldPoll]);
+  }, [courseId, enabled, useRealtime, shouldPoll, startAggressivePolling, stopPolling]);
 
-  // Setup Realtime subscription or polling
+  // Setup Realtime subscription
   useEffect(() => {
     if (!enabled || !courseId) {
       setLoading(false);
@@ -158,9 +187,9 @@ export function useCourseChapters({
       // ===== REALTIME MODE =====
       const supabase = createSupabaseBrowserClient();
 
-      // Create subscription to chapters table for this course
+      // Create subscription to BOTH chapters AND courses tables
       const channel = supabase
-        .channel(`course-${courseId}-chapters`)
+        .channel(`course-${courseId}-updates`)
         .on(
           'postgres_changes',
           {
@@ -175,16 +204,27 @@ export function useCourseChapters({
             fetchCourseData();
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE', // Listen to course status updates
+            schema: 'public',
+            table: 'courses',
+            filter: `id=eq.${courseId}`,
+          },
+          (payload) => {
+            console.log('Course status change detected:', payload);
+            // Refetch all data when course status changes
+            fetchCourseData();
+          }
+        )
         .subscribe((status) => {
           console.log('Realtime subscription status:', status);
           if (status === 'SUBSCRIBED') {
             setIsListening(true);
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error('Realtime subscription error, falling back to polling');
+            console.error('Realtime subscription error');
             setIsListening(false);
-            // Fallback to polling on error
-            setIsPolling(true);
-            intervalRef.current = setInterval(fetchCourseData, pollingInterval);
           }
         });
 
@@ -198,34 +238,26 @@ export function useCourseChapters({
           setIsListening(false);
         }
       };
-    } else {
-      // ===== POLLING MODE (fallback) =====
-      const checkAndStartPolling = () => {
-        if (shouldPoll(courseRef.current, chaptersRef.current)) {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-          }
-
-          setIsPolling(true);
-          intervalRef.current = setInterval(() => {
-            fetchCourseData();
-          }, pollingInterval);
-        }
-      };
-
-      const timeoutId = setTimeout(checkAndStartPolling, 100);
-
-      // Cleanup function
-      return () => {
-        clearTimeout(timeoutId);
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        setIsPolling(false);
-      };
     }
-  }, [courseId, enabled, useRealtime, pollingInterval, fetchCourseData, shouldPoll]);
+  }, [courseId, enabled, useRealtime, fetchCourseData]);
+
+  // Separate effect for aggressive polling during processing
+  // This runs whenever isPolling changes
+  useEffect(() => {
+    if (!enabled || !courseId) return;
+
+    if (isPolling && !intervalRef.current) {
+      console.log('Setting up aggressive polling interval');
+      intervalRef.current = setInterval(fetchCourseData, PROCESSING_POLL_INTERVAL);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isPolling, courseId, enabled, fetchCourseData]);
 
   return {
     loading,

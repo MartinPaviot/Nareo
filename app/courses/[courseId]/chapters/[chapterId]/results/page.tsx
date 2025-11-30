@@ -43,25 +43,42 @@ export default function QuizResultsPage() {
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
   const isPerfectScore = percentage === 100;
 
-  // Record activity and check for new badges
+  // Save quiz attempt and record activity
   useEffect(() => {
-    const recordQuizCompletion = async () => {
-      if (!user) return;
+    const saveAndRecordQuizCompletion = async () => {
+      // Save quiz attempt to database (for logged-in users)
+      if (user) {
+        try {
+          await fetch('/api/quiz-attempts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chapterId,
+              courseId,
+              score,
+              completed: true,
+            }),
+          });
+        } catch (error) {
+          console.error('Error saving quiz attempt:', error);
+        }
 
-      const badges = await recordActivity({
-        quizzes_completed: 1,
-        questions_answered: totalQuestions,
-        questions_correct: correct,
-        points_earned: score,
-      });
+        // Record activity for badges
+        const badges = await recordActivity({
+          quizzes_completed: 1,
+          questions_answered: totalQuestions,
+          questions_correct: correct,
+          points_earned: score,
+        });
 
-      if (badges.length > 0) {
-        setNewBadges(badges);
-        setShowBadgeCelebration(true);
+        if (badges.length > 0) {
+          setNewBadges(badges);
+          setShowBadgeCelebration(true);
+        }
       }
     };
 
-    recordQuizCompletion();
+    saveAndRecordQuizCompletion();
     trackEvent('quiz_results_viewed', {
       userId: user?.id,
       courseId,

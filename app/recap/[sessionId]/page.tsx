@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trophy, Clock, Mic, ArrowRight, RotateCcw } from 'lucide-react';
-import AristoAvatar from '@/components/chat/AristoAvatar';
+import NareoAvatar from '@/components/chat/NareoAvatar';
 import BadgeDisplay from '@/components/concepts/BadgeDisplay';
 import { BadgeType } from '@/types/concept.types';
 
@@ -89,10 +89,10 @@ export default function SessionRecap({ params }: { params: Promise<{ sessionId: 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header with Aristo */}
+        {/* Header with Nareo */}
         <div className="text-center mb-8">
           <div className="inline-block mb-4">
-            <AristoAvatar state="success" size="lg" />
+            <NareoAvatar state="success" size="lg" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             🎉 Session Complete!
@@ -276,10 +276,10 @@ export default function SessionRecap({ params }: { params: Promise<{ sessionId: 
           </div>
         </div>
 
-        {/* Motivational Message from Aristo */}
+        {/* Motivational Message from Nareo */}
         <div className="bg-gradient-to-r from-orange-100 to-orange-50 rounded-2xl p-6 border border-orange-200">
           <div className="flex items-start gap-4">
-            <AristoAvatar state="happy" size="md" />
+            <NareoAvatar state="happy" size="md" />
             <div>
               <p className="text-gray-900 leading-relaxed">
                 {session.masteryPercentage >= 80 ? (

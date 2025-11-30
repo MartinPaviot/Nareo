@@ -97,7 +97,7 @@ export async function GET(
           has_access: hasAccess,
           completed: !!attempt?.completed_at,
           in_progress: !!attempt && !attempt.completed_at,
-          score: attempt?.score || null,
+          score: attempt?.score ?? null,
           content_language: course.content_language || course.language || 'en',
         };
       })

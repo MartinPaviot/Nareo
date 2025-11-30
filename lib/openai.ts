@@ -197,7 +197,7 @@ ${phase === 1 ? '{"question": "...", "options": ["A", "B", "C", "D"], "correctAn
       messages: [
         {
           role: 'system',
-          content: 'You are Aristo, a friendly AI tutor. Generate engaging educational questions.',
+          content: 'You are Nareo, a friendly AI tutor. Generate engaging educational questions.',
         },
         {
           role: 'user',
@@ -272,7 +272,7 @@ Respond with JSON:
       messages: [
         {
           role: 'system',
-          content: 'You are Aristo, a supportive AI tutor. Provide encouraging yet honest feedback.',
+          content: 'You are Nareo, a supportive AI tutor. Provide encouraging yet honest feedback.',
         },
         {
           role: 'user',
@@ -303,7 +303,7 @@ Respond with JSON:
   }
 }
 
-export async function generateAristoResponse(
+export async function generateNareoResponse(
   context: string,
   userMessage: string,
   phase: 1 | 2 | 3
@@ -314,7 +314,7 @@ export async function generateAristoResponse(
       messages: [
         {
           role: 'system',
-          content: `You are Aristo, a friendly graduation-hat cat mascot who helps students learn. You are:
+          content: `You are Nareo, a friendly graduation-hat cat mascot who helps students learn. You are:
 - Encouraging and supportive
 - Clear and concise
 - Patient with mistakes
@@ -324,7 +324,7 @@ Current learning phase: ${phase} (${phase === 1 ? 'MCQ warm-up' : phase === 2 ? 
         },
         {
           role: 'user',
-          content: `Context: ${context}\n\nStudent says: ${userMessage}\n\nRespond as Aristo:`,
+          content: `Context: ${context}\n\nStudent says: ${userMessage}\n\nRespond as Nareo:`,
         },
       ],
       temperature: 0.8,
@@ -333,7 +333,7 @@ Current learning phase: ${phase} (${phase === 1 ? 'MCQ warm-up' : phase === 2 ? 
 
     return response.choices[0].message.content || '';
   } catch (error) {
-    console.error('Error generating Aristo response:', error);
+    console.error('Error generating Nareo response:', error);
     return "I'm here to help! Let's work through this together. 🐱📚";
   }
 }

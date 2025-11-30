@@ -1,10 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import { AristoState } from '@/types/chat.types';
+import { NareoState } from '@/types/chat.types';
 
-interface AristoAvatarProps {
-  state: AristoState;
+interface NareoAvatarProps {
+  state: NareoState;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -15,11 +15,11 @@ const SIZE_CLASSES = {
   lg: 'w-16 h-16',
 };
 
-export default function AristoAvatar({ 
-  state, 
+export default function NareoAvatar({
+  state,
   size = 'md',
-  className = '' 
-}: AristoAvatarProps) {
+  className = ''
+}: NareoAvatarProps) {
   const sizeClass = SIZE_CLASSES[size];
 
   return (
@@ -28,7 +28,7 @@ export default function AristoAvatar({
       <div className="relative w-full h-full rounded-full overflow-hidden bg-orange-50 flex items-center justify-center border-2 border-orange-200 shadow-sm">
         <Image
           src="/chat/mascotte.png"
-          alt="Aristo"
+          alt="Nareo"
           fill
           className="object-cover"
           priority

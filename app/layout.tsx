@@ -5,12 +5,13 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { PosthogProvider } from '@/contexts/PosthogProvider';
 import FeedbackWidget from '@/components/layout/FeedbackWidget';
+import Footer from '@/components/layout/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Aristo\'Chat - AI-Powered Learning',
-  description: 'Transform your PDFs into interactive learning experiences with Aristo, your AI tutor',
+  title: 'Nareo - AI-Powered Learning',
+  description: 'Transform your PDFs into interactive learning experiences with Nareo, your AI tutor',
 };
 
 export default function RootLayout({
@@ -24,7 +25,10 @@ export default function RootLayout({
         <PosthogProvider>
           <AuthProvider>
             <LanguageProvider>
-              {children}
+              <div className="min-h-screen flex flex-col">
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </div>
               <FeedbackWidget />
             </LanguageProvider>
           </AuthProvider>

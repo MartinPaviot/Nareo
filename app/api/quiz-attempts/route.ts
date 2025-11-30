@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { chapterId, courseId, score, answers, completed } = body;
 
+    console.log('[quiz-attempts POST] Received:', {
+      userId,
+      chapterId,
+      courseId,
+      score,
+      completed,
+    });
+
     if (!chapterId || !courseId) {
       return NextResponse.json(
         { error: 'Chapter ID and Course ID are required' },
@@ -36,8 +44,9 @@ export async function POST(request: NextRequest) {
 
     if (existingAttempt) {
       // Update existing attempt
+      console.log('[quiz-attempts POST] Found existing incomplete attempt:', existingAttempt.id);
       const updateData: any = {
-        score: score || existingAttempt.score,
+        score: score ?? existingAttempt.score,
         answers: answers || existingAttempt.answers,
       };
 
@@ -54,19 +63,21 @@ export async function POST(request: NextRequest) {
 
       if (error) throw error;
 
+      console.log('[quiz-attempts POST] Updated attempt:', data);
       return NextResponse.json({
         success: true,
         attempt: data,
       });
     } else {
       // Create new attempt
+      console.log('[quiz-attempts POST] Creating new attempt');
       const { data, error } = await supabase
         .from('quiz_attempts')
         .insert({
           user_id: userId,
           course_id: courseId,
           chapter_id: chapterId,
-          score: score || 0,
+          score: score ?? 0,
           answers: answers || {},
           completed_at: completed ? new Date().toISOString() : null,
         })
@@ -75,6 +86,7 @@ export async function POST(request: NextRequest) {
 
       if (error) throw error;
 
+      console.log('[quiz-attempts POST] Created attempt:', data);
       return NextResponse.json({
         success: true,
         attempt: data,

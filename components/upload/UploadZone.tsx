@@ -130,12 +130,7 @@ export default function UploadZone() {
         </div>
       );
     }
-    return (
-      <div className="flex items-center gap-2 text-gray-700 bg-gray-100 border border-gray-200 px-3 py-2 rounded-full text-xs font-semibold">
-        <Upload className="w-4 h-4" />
-        {translate('upload_before_state_title')}
-      </div>
-    );
+    return null;
   };
 
   return (

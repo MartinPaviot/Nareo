@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowRight, CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackEvent } from '@/lib/posthog';
@@ -17,7 +18,7 @@ interface Question {
   question_number: number;
   type: QuestionType;
   options?: Record<string, string> | string[];
-  optionsList?: { label: string; value: string; index: number }[];
+  optionsList?: { label: string; value: string; index: number; originalIndex: number }[];
   correct_option_index?: number | null;
   points: number;
   answer_text?: string | null;
@@ -65,14 +66,13 @@ export default function ChapterQuizPage() {
   const currentQuestion = questions[currentIndex];
 
   // Progress label
-  const progressLabel = `${translate('quiz_question')} ${currentIndex + 1}/${questions.length}`;
+  const progressLabel = translate('quiz_progress')
+    .replace('{current}', String(currentIndex + 1))
+    .replace('{total}', String(questions.length));
 
-  // Calculate total possible points
+  // Calculate total possible points - fixed at 10 points per question
   const totalPossiblePoints = useMemo(() => {
-    return questions.reduce((sum, q) => {
-      const points = typeof q.points === 'number' ? q.points : 10;
-      return sum + points;
-    }, 0);
+    return questions.length * 10;
   }, [questions]);
 
   useEffect(() => {
@@ -95,15 +95,44 @@ export default function ChapterQuizPage() {
     translateChapterTitle();
   }, [originalChapterTitle, currentLanguage]);
 
-  const normalizeOptions = (options?: Record<string, string> | string[] | null) => {
-    if (!options) return undefined;
+  // Fisher-Yates shuffle algorithm
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const normalizeOptions = (options?: Record<string, string> | string[] | null, correctIndex?: number) => {
+    if (!options) return { optionsList: undefined, newCorrectIndex: undefined };
     const entries = Array.isArray(options) ? options.map((v, idx) => [idx.toString(), v]) : Object.entries(options);
     const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
-    return entries.map(([_, value], idx) => ({
-      label: letters[idx] || String.fromCharCode(65 + idx),
+
+    // Create array with original indices
+    const optionsWithOriginalIndex = entries.map(([_, value], idx) => ({
       value,
-      index: idx,
+      originalIndex: idx,
     }));
+
+    // Shuffle the options
+    const shuffled = shuffleArray(optionsWithOriginalIndex);
+
+    // Find the new index of the correct answer
+    const newCorrectIndex = correctIndex !== undefined
+      ? shuffled.findIndex(opt => opt.originalIndex === correctIndex)
+      : undefined;
+
+    // Assign labels A, B, C, D to shuffled options
+    const optionsList = shuffled.map((opt, idx) => ({
+      label: letters[idx] || String.fromCharCode(65 + idx),
+      value: opt.value,
+      index: idx, // New index after shuffle
+      originalIndex: opt.originalIndex, // Keep track of original for answer validation
+    }));
+
+    return { optionsList, newCorrectIndex };
   };
 
   const loadQuestions = async () => {
@@ -118,21 +147,25 @@ export default function ChapterQuizPage() {
           // Store original chapter title for translation
           setOriginalChapterTitle(demoChapter.title);
           setQuestions(
-            demoChapter.questions.map((q, idx) => ({
-              id: q.id,
-              question_text: q.prompt,
-              question_number: idx + 1,
-              type: q.type === 'mcq' ? 'mcq' : 'short',
-              options: q.options,
-              optionsList: normalizeOptions(q.options),
-              correct_option_index: Array.isArray(q.options)
+            demoChapter.questions.map((q, idx) => {
+              const originalCorrectIndex = Array.isArray(q.options)
                 ? q.options.findIndex((opt) => opt === q.answer)
-                : Object.values(q.options || {}).findIndex((opt) => opt === q.answer),
-              points: 10,
-              answer_text: q.answer,
-              explanation: q.explanation,
-              page_source: (q as any)?.page_source || null,
-            }))
+                : Object.values(q.options || {}).findIndex((opt) => opt === q.answer);
+              const { optionsList, newCorrectIndex } = normalizeOptions(q.options, originalCorrectIndex);
+              return {
+                id: q.id,
+                question_text: q.prompt,
+                question_number: idx + 1,
+                type: q.type === 'mcq' ? 'mcq' : 'short',
+                options: q.options,
+                optionsList,
+                correct_option_index: newCorrectIndex ?? originalCorrectIndex,
+                points: 10,
+                answer_text: q.answer,
+                explanation: q.explanation,
+                page_source: (q as any)?.page_source || null,
+              };
+            })
           );
           return;
         } else {
@@ -146,11 +179,16 @@ export default function ChapterQuizPage() {
       }
 
       const data = await response.json();
-      const normalized = data.questions.map((q: Question) => ({
-        ...q,
-        optionsList: normalizeOptions(q.options),
-        page_source: (q as any)?.page_source || null,
-      }));
+      const normalized = data.questions.map((q: Question) => {
+        const originalCorrectIndex = q.correct_option_index ?? 0;
+        const { optionsList, newCorrectIndex } = normalizeOptions(q.options, originalCorrectIndex);
+        return {
+          ...q,
+          optionsList,
+          correct_option_index: newCorrectIndex ?? originalCorrectIndex,
+          page_source: (q as any)?.page_source || null,
+        };
+      });
       setQuestions(normalized);
       // Store original chapter title for translation
       setOriginalChapterTitle(data.chapter.title);
@@ -230,22 +268,17 @@ export default function ChapterQuizPage() {
         return;
       }
 
-      console.log('[frontend] DEBUG STEP 1 - answerToValidate received:', answerToValidate);
-      console.log('[frontend] DEBUG STEP 2 - currentQuestion.optionsList:', currentQuestion.optionsList);
-
-      const selectedIndex =
+      // Send the ORIGINAL index to the API (before shuffle) for validation
+      const selectedOriginalIndex =
         currentQuestion.type === 'mcq'
-          ? currentQuestion.optionsList?.find((o) => o.label === answerToValidate)?.index
+          ? currentQuestion.optionsList?.find((o) => o.label === answerToValidate)?.originalIndex
           : undefined;
-
-      console.log('[frontend] DEBUG STEP 3 - selectedIndex calculated:', selectedIndex);
-      console.log('[frontend] DEBUG STEP 4 - willSend to API:', currentQuestion.type === 'mcq' ? selectedIndex : answerToValidate);
 
       const response = await fetch(`/api/questions/${currentQuestion.id}/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          answer: currentQuestion.type === 'mcq' ? selectedIndex : answerToValidate,
+          answer: currentQuestion.type === 'mcq' ? selectedOriginalIndex : answerToValidate,
         }),
       });
       const data = await response.json();
@@ -254,8 +287,11 @@ export default function ChapterQuizPage() {
       if (currentQuestion.type === 'mcq' && currentQuestion.optionsList) {
         setSelectedOptionId(answerToValidate);
 
-        const correctIndex = data.correctOptionIndex ?? currentQuestion.correct_option_index ?? 0;
-        const correctLabel = currentQuestion.optionsList.find((o) => o.index === correctIndex)?.label;
+        // API returns the ORIGINAL correct index, find the label by originalIndex
+        const correctOriginalIndex = data.correctOptionIndex;
+        const correctLabel = correctOriginalIndex !== undefined
+          ? currentQuestion.optionsList.find((o) => o.originalIndex === correctOriginalIndex)?.label
+          : currentQuestion.optionsList.find((o) => o.index === currentQuestion.correct_option_index)?.label;
         if (correctLabel) {
           setCorrectOptionId(correctLabel);
         }
@@ -285,7 +321,7 @@ export default function ChapterQuizPage() {
           correct_answer:
             data.correctAnswer ||
             currentQuestion.answer_text ||
-            currentQuestion.optionsList?.find((o) => o.index === data.correctOptionIndex)?.value ||
+            currentQuestion.optionsList?.find((o) => o.originalIndex === data.correctOptionIndex)?.value ||
             '',
           explanation: data.explanation || data.feedback,
           page_source: currentQuestion.page_source || null,
@@ -339,8 +375,19 @@ export default function ChapterQuizPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 p-4 sm:p-6">
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">{courseTitle}</p>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{chapterTitle}</h1>
+          <div className="flex items-center gap-3 mb-3">
+            <Image
+              src="/chat/mascotte.png"
+              alt="Nareo"
+              width={80}
+              height={80}
+              className="rounded-2xl flex-shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">{courseTitle}</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{chapterTitle}</h1>
+            </div>
+          </div>
           <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
             <span>{progressLabel}</span>
             <span className="font-semibold text-orange-600">

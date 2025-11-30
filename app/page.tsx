@@ -139,12 +139,7 @@ export default function HomePage() {
         </div>
       );
     }
-    return (
-      <div className="flex items-center gap-2 text-gray-700 bg-gray-100 border border-gray-200 px-3 py-2 rounded-full text-xs font-semibold">
-        <Upload className="w-4 h-4" />
-        {translate('upload_before_state_title')}
-      </div>
-    );
+    return null;
   };
 
   return (
@@ -153,13 +148,13 @@ export default function HomePage() {
         <div className="flex items-center gap-3">
           <Image
             src="/chat/mascotte.png"
-            alt="Aristo'Chat Mascotte"
+            alt="Nareo Mascotte"
             width={100}
             height={100}
             className="rounded-2xl"
           />
           <div>
-            <p className="text-sm font-semibold text-gray-900">Aristo'Chat</p>
+            <p className="text-sm font-semibold text-gray-900">Nareo</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -216,7 +211,7 @@ export default function HomePage() {
                   <div className="flex justify-center md:justify-start flex-shrink-0">
                     <Image
                       src="/chat/mascotte.png"
-                      alt="Aristo Chat mascot"
+                      alt="Nareo mascot"
                       width={160}
                       height={160}
                       className="object-contain"

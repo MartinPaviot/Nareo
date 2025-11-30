@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedChapterTitle } from '@/lib/content-translator';
 import AuthGuard from '@/components/auth/AuthGuard';
-import AristoAvatar from '@/components/chat/AristoAvatar';
+import NareoAvatar from '@/components/chat/NareoAvatar';
 import LanguageToggle from '@/components/layout/LanguageToggle';
 import SignOutButton from '@/components/layout/SignOutButton';
 import { 
@@ -228,7 +228,7 @@ function StudyPlanPage() {
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
-              <AristoAvatar state="happy" size="md" />
+              <NareoAvatar state="happy" size="md" />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
                   {translate('study_plan_title')}

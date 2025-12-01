@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}/learn?payment=cancelled`,
       client_reference_id: courseId,
       customer_email: auth.user.email,
+      billing_address_collection: 'required',
       metadata: {
         userId: auth.user.id,
         courseId: courseId,

@@ -103,7 +103,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         : session.customer.id;
     }
 
+    // Get customer email and name from session
+    const customerEmail = session.customer_email || session.customer_details?.email || null;
+    const customerName = session.customer_details?.name || null;
+
     console.log('Extracted IDs - customerId:', customerId, 'subscriptionId:', subscriptionId);
+    console.log('Customer info - email:', customerEmail, 'name:', customerName);
 
     // Calculate subscription expiry based on plan
     const now = new Date();
@@ -123,6 +128,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     const profileData = {
       user_id: userId,
+      email: customerEmail,
+      full_name: customerName,
       subscription_tier: 'premium',
       subscription_started_at: now.toISOString(),
       subscription_expires_at: expiresAt.toISOString(),
@@ -137,6 +144,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       const { error } = await supabase
         .from('profiles')
         .update({
+          email: customerEmail,
+          full_name: customerName,
           subscription_tier: 'premium',
           subscription_started_at: now.toISOString(),
           subscription_expires_at: expiresAt.toISOString(),

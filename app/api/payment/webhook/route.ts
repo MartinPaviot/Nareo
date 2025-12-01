@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-11-17.clover',
@@ -83,7 +83,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   console.log('Processing payment for userId:', userId, 'plan:', plan);
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = getServiceSupabase();
 
   try {
     // Get subscription details if it's a subscription checkout
@@ -189,7 +189,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     return;
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = getServiceSupabase();
 
   const isActive = subscription.status === 'active' || subscription.status === 'trialing';
 
@@ -226,7 +226,7 @@ async function handleSubscriptionCanceled(subscription: Stripe.Subscription) {
     return;
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = getServiceSupabase();
 
   try {
     const { error } = await supabase
@@ -264,7 +264,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
       return;
     }
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = getServiceSupabase();
 
     // Get the current period end from the first subscription item
     const currentPeriodEnd = subscription.items.data[0]?.current_period_end;

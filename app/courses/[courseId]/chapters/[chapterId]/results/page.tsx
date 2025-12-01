@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle2, XCircle, Award, ArrowLeft, RotateCcw, Trophy, Sparkles, Gift, X, Eye, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowLeft, RotateCcw, Trophy, Sparkles, Gift, X, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGamification } from '@/hooks/useGamification';
-import Mascot from '@/components/gamification/Mascot';
 import { trackEvent } from '@/lib/posthog';
 
 interface ConceptFeedback {
@@ -187,26 +186,6 @@ export default function QuizResultsPage() {
     return () => clearTimeout(timer);
   }, [chapterId, user?.id, courseId, percentage, currentLanguage]);
 
-  const getPerformanceMessage = () => {
-    if (percentage >= 90) return translate('results_excellent');
-    if (percentage >= 75) return translate('results_great');
-    if (percentage >= 60) return translate('results_good');
-    if (percentage >= 50) return translate('results_pass');
-    return translate('results_retry');
-  };
-
-  const getPerformanceColor = () => {
-    if (percentage >= 75) return 'text-green-600';
-    if (percentage >= 50) return 'text-orange-600';
-    return 'text-red-600';
-  };
-
-  const getPerformanceIcon = () => {
-    if (percentage >= 75) return <Award className="w-16 h-16 text-green-500" />;
-    if (percentage >= 50) return <CheckCircle2 className="w-16 h-16 text-orange-500" />;
-    return <XCircle className="w-16 h-16 text-red-500" />;
-  };
-
   const getBadgeName = (badge: BadgeEarned['badge']) => {
     if (currentLanguage === 'fr') return badge.name_fr;
     if (currentLanguage === 'de') return badge.name_de;
@@ -349,55 +328,24 @@ export default function QuizResultsPage() {
           </div>
         )}
 
-        {/* Header Card with Mascot */}
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-lg text-center space-y-4">
-          <div className="flex justify-center">
-            {isPerfectScore ? (
-              <Mascot
-                mood="celebrating"
-                context="perfect_score"
-                size="large"
-                animated={true}
-              />
-            ) : percentage >= 75 ? (
-              <Mascot
-                mood="celebrating"
-                context="quiz_complete"
-                size="large"
-                animated={true}
-              />
-            ) : (
-              <div className="flex justify-center">
-                {getPerformanceIcon()}
-              </div>
-            )}
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            {translate('results_title')}
-          </h1>
-
-          <p className={`text-xl font-semibold ${getPerformanceColor()}`}>
-            {getPerformanceMessage()}
-          </p>
-
-          {isPerfectScore && (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full">
-              <Trophy className="w-5 h-5" />
-              <span className="font-semibold">Score Parfait ! 🎉</span>
-            </div>
-          )}
-        </div>
-
         {/* Score Card */}
         <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-lg space-y-6">
-          <div className="text-center">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              {translate('results_title')}
+            </h1>
             <div className="inline-flex items-baseline gap-2">
               <span className="text-5xl sm:text-6xl font-bold text-orange-600">
                 {percentage}
               </span>
               <span className="text-3xl font-semibold text-gray-400">%</span>
             </div>
+            {isPerfectScore && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full">
+                <Trophy className="w-5 h-5" />
+                <span className="font-semibold">Score Parfait ! 🎉</span>
+              </div>
+            )}
           </div>
 
           {/* Stats Grid */}
@@ -419,21 +367,6 @@ export default function QuizResultsPage() {
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>{translate('results_progress')}</span>
-              <span className="font-semibold">{percentage}%</span>
-            </div>
-            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-1000 ${
-                  percentage >= 75 ? 'bg-green-500' : percentage >= 50 ? 'bg-orange-500' : 'bg-red-500'
-                }`}
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-          </div>
         </div>
 
         {/* Pedagogical Feedback Block */}
@@ -480,7 +413,9 @@ export default function QuizResultsPage() {
                   {/* Mastered concepts */}
                   <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
                     <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      </div>
                       <h4 className="font-semibold text-green-800">
                         {translate('results_feedback_mastered')}
                       </h4>
@@ -525,7 +460,9 @@ export default function QuizResultsPage() {
                   {/* Concepts to review */}
                   <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
                     <div className="flex items-center gap-2 mb-3">
-                      <XCircle className="w-5 h-5 text-orange-600" />
+                      <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                        <XCircle className="w-4 h-4 text-orange-600" />
+                      </div>
                       <h4 className="font-semibold text-orange-800">
                         {translate('results_feedback_to_review')}
                       </h4>
@@ -568,16 +505,6 @@ export default function QuizResultsPage() {
                   </div>
                 </div>
 
-                {/* Review errors button */}
-                {(toReviewItems.length > 0 || (aiFeedback?.points_a_revoir && aiFeedback.points_a_revoir.length > 0)) && (
-                  <button
-                    onClick={() => router.push(`/courses/${courseId}/chapters/${chapterId}`)}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-100 text-orange-700 font-semibold hover:bg-orange-200 transition-colors"
-                  >
-                    <Eye className="w-5 h-5" />
-                    {translate('results_feedback_review_errors')}
-                  </button>
-                )}
               </>
             )}
           </div>

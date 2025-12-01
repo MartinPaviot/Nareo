@@ -74,6 +74,7 @@ export default function HomePage() {
       descKey: 'home_preview_chapters_desc' as const,
       image: '/images/chapitres.png',
       alt: 'Chapitres structurés',
+      iconSize: 'w-7 h-7',
     },
     {
       icon: CircleHelp,
@@ -81,6 +82,7 @@ export default function HomePage() {
       descKey: 'home_preview_quiz_desc' as const,
       image: '/images/quizz.png',
       alt: 'Quiz interactifs',
+      iconSize: 'w-7 h-7',
     },
     {
       icon: Target,
@@ -88,6 +90,7 @@ export default function HomePage() {
       descKey: 'home_preview_feedback_desc' as const,
       image: '/images/feedback.png',
       alt: 'Analyse de performance',
+      iconSize: 'w-6 h-6',
     },
   ];
 
@@ -744,9 +747,7 @@ export default function HomePage() {
                   return (
                     <div className="rounded-3xl border border-orange-100 bg-white shadow-lg p-5 space-y-3 flex flex-col">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                          <FirstIcon className="w-5 h-5 text-orange-600" />
-                        </div>
+                        <FirstIcon className={`${firstSlide.iconSize} text-orange-500`} />
                         <div>
                           <h3 className="text-lg font-bold text-gray-900">
                             {translate(firstSlide.titleKey)}
@@ -783,9 +784,7 @@ export default function HomePage() {
                   return (
                     <div className="rounded-3xl border border-orange-100 bg-white shadow-lg p-5 space-y-3 flex flex-col">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                          <SecondIcon className="w-5 h-5 text-orange-600" />
-                        </div>
+                        <SecondIcon className={`${secondSlide.iconSize} text-orange-500`} />
                         <div>
                           <h3 className="text-lg font-bold text-gray-900">
                             {translate(secondSlide.titleKey)}

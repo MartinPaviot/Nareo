@@ -6,10 +6,9 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { trackVisitor } from '@/lib/visitors';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
-export default function AuthCallbackPage() {
+export default function AuthCallbackCompletePage() {
   const router = useRouter();
   const { translate } = useLanguage();
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +71,7 @@ export default function AuthCallbackPage() {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Redirect to dashboard
-        router.push('/');
+        router.push('/dashboard');
         router.refresh();
       } catch (err: any) {
         console.error('❌ Auth callback error:', err);

@@ -33,6 +33,23 @@ export default function AuthCallbackCompletePage() {
         // Track visitor (add to visitors table if not exists)
         await trackVisitor(user.id, user.email || '');
 
+        // Create profile if it doesn't exist (upsert to avoid duplicates)
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            user_id: user.id,
+            subscription_tier: 'free',
+          }, {
+            onConflict: 'user_id',
+            ignoreDuplicates: true,
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        } else {
+          console.log('✅ Profile ensured for user:', user.id);
+        }
+
         // Link any guest courses to this user
         const guestSessionId = localStorage.getItem('guestSessionId');
         if (guestSessionId) {

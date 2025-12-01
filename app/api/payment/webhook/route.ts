@@ -87,8 +87,23 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   try {
     // Get subscription details if it's a subscription checkout
-    let subscriptionId = session.subscription as string | null;
-    let customerId = session.customer as string | null;
+    // Handle both string IDs and expanded objects
+    let subscriptionId: string | null = null;
+    let customerId: string | null = null;
+
+    if (session.subscription) {
+      subscriptionId = typeof session.subscription === 'string'
+        ? session.subscription
+        : session.subscription.id;
+    }
+
+    if (session.customer) {
+      customerId = typeof session.customer === 'string'
+        ? session.customer
+        : session.customer.id;
+    }
+
+    console.log('Extracted IDs - customerId:', customerId, 'subscriptionId:', subscriptionId);
 
     // Calculate subscription expiry based on plan
     const now = new Date();
@@ -99,24 +114,51 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Upsert user profile to premium (creates if not exists, updates if exists)
-    const { error: profileError } = await supabase
+    // First try to update existing profile
+    const { data: existingProfile, error: selectError } = await supabase
       .from('profiles')
-      .upsert({
-        user_id: userId,
-        subscription_tier: 'premium',
-        subscription_started_at: now.toISOString(),
-        subscription_expires_at: expiresAt.toISOString(),
-        stripe_customer_id: customerId,
-        stripe_subscription_id: subscriptionId,
-      }, {
-        onConflict: 'user_id',
-      });
+      .select('user_id')
+      .eq('user_id', userId)
+      .single();
+
+    const profileData = {
+      user_id: userId,
+      subscription_tier: 'premium',
+      subscription_started_at: now.toISOString(),
+      subscription_expires_at: expiresAt.toISOString(),
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscriptionId,
+    };
+
+    let profileError;
+
+    if (existingProfile) {
+      // Update existing profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          subscription_tier: 'premium',
+          subscription_started_at: now.toISOString(),
+          subscription_expires_at: expiresAt.toISOString(),
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId,
+        })
+        .eq('user_id', userId);
+      profileError = error;
+      console.log('Updated existing profile for user:', userId);
+    } else {
+      // Insert new profile
+      const { error } = await supabase
+        .from('profiles')
+        .insert(profileData);
+      profileError = error;
+      console.log('Created new profile for user:', userId);
+    }
 
     if (profileError) {
-      console.error('Error upserting profile subscription:', profileError);
+      console.error('Error saving profile subscription:', profileError);
     } else {
-      console.log('SUCCESS: Profile upserted to premium for user:', userId);
+      console.log('SUCCESS: Profile saved to premium for user:', userId, 'with customerId:', customerId, 'subscriptionId:', subscriptionId);
     }
 
     // Create payment record

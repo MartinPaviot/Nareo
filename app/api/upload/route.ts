@@ -5,7 +5,7 @@ import { logEvent } from '@/lib/backend/analytics';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 // Upload limits
-const FREE_UPLOAD_LIMIT = 3; // Free users can upload 3 courses total
+const FREE_MONTHLY_LIMIT = 3; // Free users can upload 3 courses per month
 const PREMIUM_MONTHLY_LIMIT = 12; // Premium users can upload 12 courses per month
 
 const VALID_TYPES = [
@@ -82,18 +82,28 @@ export async function POST(request: NextRequest) {
           })
           .eq('user_id', userId);
       } else {
-        // Free user: check total course count
-        const { count: courseCount } = await supabase
-          .from('courses')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId);
+        // Free user: check monthly limit
+        const now = new Date();
+        const resetAt = profile?.monthly_upload_reset_at ? new Date(profile.monthly_upload_reset_at) : null;
+        const needsReset = !resetAt || resetAt < new Date(now.getFullYear(), now.getMonth(), 1);
 
-        if ((courseCount || 0) >= FREE_UPLOAD_LIMIT) {
+        let currentCount = needsReset ? 0 : (profile?.monthly_upload_count || 0);
+
+        if (currentCount >= FREE_MONTHLY_LIMIT) {
           return NextResponse.json(
-            { error: `Limite gratuite atteinte (${FREE_UPLOAD_LIMIT} cours). Passe à Premium pour uploader jusqu'à 12 cours/mois.` },
+            { error: 'UPLOAD_LIMIT_REACHED', code: 'UPLOAD_LIMIT_REACHED' },
             { status: 429 }
           );
         }
+
+        // Update monthly count
+        await supabase
+          .from('profiles')
+          .update({
+            monthly_upload_count: currentCount + 1,
+            monthly_upload_reset_at: needsReset ? now.toISOString() : profile?.monthly_upload_reset_at,
+          })
+          .eq('user_id', userId);
       }
     }
 

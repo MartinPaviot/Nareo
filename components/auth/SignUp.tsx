@@ -6,11 +6,13 @@ import { trackVisitor } from '@/lib/visitors';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SignUp() {
   const router = useRouter();
   const { translate } = useLanguage();
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,9 +20,13 @@ export default function SignUp() {
   const [emailVerificationSent, setEmailVerificationSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptedCGU, setAcceptedCGU] = useState(false);
+  const [acceptedMarketing, setAcceptedMarketing] = useState(false);
 
   const validateForm = () => {
-    if (!email || !password || !confirmPassword) {
+    if (!firstName || !email || !password || !confirmPassword) {
       setError(translate('auth_signup_error_empty'));
       return false;
     }
@@ -37,6 +43,11 @@ export default function SignUp() {
 
     if (password !== confirmPassword) {
       setError(translate('auth_reset_error_mismatch'));
+      return false;
+    }
+
+    if (!acceptedCGU) {
+      setError(translate('auth_signup_error_cgu'));
       return false;
     }
 
@@ -58,6 +69,11 @@ export default function SignUp() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            first_name: firstName,
+            marketing_consent: acceptedMarketing,
+            cgu_accepted_at: new Date().toISOString(),
+          },
         },
       });
 
@@ -68,9 +84,12 @@ export default function SignUp() {
         await trackVisitor(data.user.id, data.user.email || '');
 
         // Clear form
+        setFirstName('');
         setEmail('');
         setPassword('');
         setConfirmPassword('');
+        setAcceptedCGU(false);
+        setAcceptedMarketing(false);
 
         // Show verification message
         setEmailVerificationSent(true);
@@ -179,6 +198,25 @@ export default function SignUp() {
               </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* First Name */}
+            <div>
+              <label
+                htmlFor="firstName"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                {translate('auth_signup_firstname_label')}
+              </label>
+              <input
+                id="firstName"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                placeholder={translate('auth_signup_firstname_placeholder')}
+                disabled={loading}
+              />
+            </div>
+
             {/* Email */}
             <div>
               <label
@@ -206,15 +244,25 @@ export default function SignUp() {
               >
                 {translate('auth_signup_password_label')}
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                placeholder={translate('auth_signup_password_placeholder')}
-                disabled={loading}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                  placeholder={translate('auth_signup_password_placeholder')}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">{translate('auth_signup_password_hint')}</p>
             </div>
 
@@ -226,15 +274,63 @@ export default function SignUp() {
               >
                 {translate('auth_reset_confirm_label')}
               </label>
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                  placeholder={translate('auth_reset_confirm_placeholder')}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* CGU Checkbox - Required */}
+            <div className="flex items-start gap-3">
               <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
-                placeholder={translate('auth_reset_confirm_placeholder')}
+                type="checkbox"
+                id="acceptCGU"
+                checked={acceptedCGU}
+                onChange={(e) => setAcceptedCGU(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
                 disabled={loading}
               />
+              <label htmlFor="acceptCGU" className="text-sm text-gray-600">
+                {translate('auth_signup_cgu_label')}{' '}
+                <Link href="/cgu" className="text-orange-500 hover:text-orange-600 underline" target="_blank">
+                  {translate('auth_signup_cgu_link')}
+                </Link>{' '}
+                {translate('auth_signup_cgu_and')}{' '}
+                <Link href="/confidentialite" className="text-orange-500 hover:text-orange-600 underline" target="_blank">
+                  {translate('auth_signup_privacy_link')}
+                </Link>
+                <span className="text-red-500">*</span>
+              </label>
+            </div>
+
+            {/* Marketing Checkbox - Optional */}
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="acceptMarketing"
+                checked={acceptedMarketing}
+                onChange={(e) => setAcceptedMarketing(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                disabled={loading}
+              />
+              <label htmlFor="acceptMarketing" className="text-sm text-gray-600">
+                {translate('auth_signup_marketing_label')}
+              </label>
             </div>
 
             {/* Error Message */}
@@ -247,7 +343,7 @@ export default function SignUp() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || googleLoading}
+              disabled={loading || googleLoading || !acceptedCGU}
               className="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? translate('auth_signup_button_loading') : translate('auth_signup_button')}

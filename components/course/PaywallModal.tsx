@@ -75,15 +75,24 @@ export default function PaywallModal({ courseId, courseTitle, onClose }: Paywall
         }),
       });
       const data = await response.json();
+
+      // Check if user already has a subscription
+      if (data.alreadySubscribed) {
+        alert(translate('paywall_already_subscribed'));
+        setProcessingPayment(false);
+        onClose();
+        return;
+      }
+
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error('No checkout URL returned');
+        throw new Error(data.error || 'No checkout URL returned');
       }
     } catch (error) {
       console.error('Error creating checkout', error);
       setProcessingPayment(false);
-      alert('Payment failed. Please try again.');
+      alert(translate('paywall_error'));
     }
   };
 

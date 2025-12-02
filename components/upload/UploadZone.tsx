@@ -274,7 +274,7 @@ export default function UploadZone() {
         <button
           onClick={handleStart}
           disabled={isProcessing || !files.length}
-          className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex-1 inline-flex items-center justify-center gap-2 h-[60px] sm:h-12 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isProcessing ? (
             <>
@@ -288,7 +288,7 @@ export default function UploadZone() {
             </>
           )}
         </button>
-        <div className="sm:w-48 h-12 inline-flex items-center justify-center rounded-xl border border-gray-200 text-sm text-gray-700 bg-white">
+        <div className="flex-1 sm:flex-none sm:w-48 h-[60px] sm:h-12 inline-flex items-center justify-center rounded-xl border border-gray-200 text-sm text-gray-700 bg-white">
           {files.length ? translate('upload_after_state_title') : translate('upload_action_waiting')}
         </div>
       </div>

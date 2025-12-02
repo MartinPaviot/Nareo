@@ -12,6 +12,7 @@ import {
   FileText,
   LayoutList,
   Loader2,
+  Menu,
   ShieldCheck,
   Sparkles,
   Target,
@@ -19,7 +20,8 @@ import {
   X,
 } from 'lucide-react';
 import TopBarActions from '@/components/layout/TopBarActions';
-import { useLanguage } from '@/contexts/LanguageContext';
+import SignOutButton from '@/components/layout/SignOutButton';
+import { useLanguage, type Language } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackEvent } from '@/lib/posthog';
 import { HomeTestimonials } from '@/components/home/Testimonials';
@@ -56,13 +58,21 @@ function getOrCreateGuestSessionId(): string {
 
 export default function HomePage() {
   const router = useRouter();
-  const { translate } = useLanguage();
+  const { translate, currentLanguage, setLanguage } = useLanguage();
   const { user } = useAuth();
+
+  // Language options for mobile menu
+  const LANGUAGE_OPTIONS: { code: Language; label: string; flag: string }[] = [
+    { code: 'en', label: 'English', flag: '🇬🇧' },
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+    { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  ];
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -384,7 +394,9 @@ export default function HomePage() {
             <p className="text-sm font-semibold text-gray-900">Nareo</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* Desktop Navigation */}
+        <div className="hidden sm:flex items-center gap-3">
           {!user && (
             <>
               <button
@@ -392,7 +404,7 @@ export default function HomePage() {
                   handleCtaClick('header_signin', '/auth/signin');
                   router.push('/auth/signin');
                 }}
-                className="hidden sm:inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 {translate('auth_signin_button')}
               </button>
@@ -401,7 +413,7 @@ export default function HomePage() {
                   handleCtaClick('header_signup', '/auth/signup');
                   router.push('/auth/signup');
                 }}
-                className="hidden sm:inline-flex items-center justify-center h-10 px-4 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
+                className="inline-flex items-center justify-center h-10 px-4 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
               >
                 {translate('auth_signup_button')}
               </button>
@@ -409,6 +421,85 @@ export default function HomePage() {
           )}
           <TopBarActions />
         </div>
+
+        {/* Mobile Navigation - Only hamburger menu button */}
+        <div className="flex sm:hidden items-center">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+            aria-label="Menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+          </button>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg sm:hidden">
+            <div className="flex flex-col p-4 gap-3">
+              {/* My Courses */}
+              <button
+                onClick={() => {
+                  handleCtaClick('header_my_courses', '/dashboard');
+                  setMobileMenuOpen(false);
+                  router.push('/dashboard');
+                }}
+                className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                {translate('my_courses_button')}
+              </button>
+
+              {/* Language Selection */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <p className="px-4 py-2 text-xs font-semibold text-gray-500 bg-gray-50">{translate('language_label') || 'Langue'}</p>
+                <div className="flex">
+                  {LANGUAGE_OPTIONS.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code)}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
+                        currentLanguage === lang.code
+                          ? 'bg-orange-50 text-orange-600'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>{lang.flag}</span>
+                      <span>{lang.code.toUpperCase()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Auth buttons */}
+              {!user ? (
+                <>
+                  <button
+                    onClick={() => {
+                      handleCtaClick('header_signin', '/auth/signin');
+                      setMobileMenuOpen(false);
+                      router.push('/auth/signin');
+                    }}
+                    className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    {translate('auth_signin_button')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleCtaClick('header_signup', '/auth/signup');
+                      setMobileMenuOpen(false);
+                      router.push('/auth/signup');
+                    }}
+                    className="flex items-center justify-center h-12 px-4 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
+                  >
+                    {translate('auth_signup_button')}
+                  </button>
+                </>
+              ) : (
+                <SignOutButton className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50" />
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="px-4 sm:px-6 pb-12 pt-8">
@@ -437,7 +528,7 @@ export default function HomePage() {
                     handleCtaClick('hero_secondary', '#how-it-works');
                     document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center justify-center h-12 px-6 rounded-xl border border-orange-200 text-orange-700 font-semibold bg-white hover:bg-orange-50"
+                  className="sm:hidden inline-flex items-center justify-center h-12 px-6 rounded-xl border border-orange-200 text-orange-700 font-semibold bg-white hover:bg-orange-50"
                 >
                   {translate('home_hero_cta_secondary')}
                 </button>
@@ -655,7 +746,7 @@ export default function HomePage() {
                 <button
                   onClick={handleStart}
                   disabled={isProcessing || !files.length}
-                  className="flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex-1 inline-flex items-center justify-center gap-2 h-[60px] md:h-12 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isProcessing ? (
                     <>
@@ -669,7 +760,7 @@ export default function HomePage() {
                     </>
                   )}
                 </button>
-                <div className="sm:w-48 h-12 inline-flex items-center justify-center rounded-xl border border-gray-200 text-sm text-gray-700 bg-white">
+                <div className="flex-1 h-[60px] md:h-12 inline-flex items-center justify-center rounded-xl border border-gray-200 text-sm text-gray-700 bg-white">
                   {files.length ? translate('upload_after_state_title') : translate('upload_action_waiting')}
                 </div>
               </div>
@@ -738,9 +829,9 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* Cards Grid - 2 visible at a time */}
+              {/* Cards Grid - 1 on mobile, 2 on desktop */}
               <div className="grid gap-6 md:grid-cols-2">
-                {/* First Card */}
+                {/* First Card (visible on mobile and desktop) */}
                 {(() => {
                   const firstSlide = previewSlides[previewIndex];
                   const FirstIcon = firstSlide.icon;
@@ -776,13 +867,13 @@ export default function HomePage() {
                   );
                 })()}
 
-                {/* Second Card */}
+                {/* Second Card (hidden on mobile, visible on desktop) */}
                 {(() => {
                   const secondIndex = (previewIndex + 1) % previewSlides.length;
                   const secondSlide = previewSlides[secondIndex];
                   const SecondIcon = secondSlide.icon;
                   return (
-                    <div className="rounded-3xl border border-orange-100 bg-white shadow-lg p-5 space-y-3 flex flex-col">
+                    <div className="hidden md:flex rounded-3xl border border-orange-100 bg-white shadow-lg p-5 space-y-3 flex-col">
                       <div className="flex items-center gap-3">
                         <SecondIcon className={`${secondSlide.iconSize} text-orange-500`} />
                         <div>

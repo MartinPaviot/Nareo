@@ -329,41 +329,36 @@ export default function QuizResultsPage() {
         )}
 
         {/* Score Card */}
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-lg space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+        <div className="bg-white rounded-3xl border border-gray-200 p-4 sm:p-8 shadow-lg space-y-4 sm:space-y-6">
+          <div className="text-center space-y-1 sm:space-y-2">
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
               {translate('results_title')}
             </h1>
-            <div className="inline-flex items-baseline gap-2">
-              <span className="text-5xl sm:text-6xl font-bold text-orange-600">
+
+            {/* Score percentage */}
+            <div className="flex items-baseline justify-center gap-1 sm:gap-2">
+              <span className="text-4xl sm:text-6xl font-bold text-orange-600">
                 {percentage}
               </span>
-              <span className="text-3xl font-semibold text-gray-400">%</span>
+              <span className="text-2xl sm:text-3xl font-semibold text-gray-400">%</span>
             </div>
+
             {isPerfectScore && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full">
-                <Trophy className="w-5 h-5" />
-                <span className="font-semibold">Score Parfait ! 🎉</span>
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm sm:text-base">
+                <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="font-semibold">Score Parfait !</span>
               </div>
             )}
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-orange-50 rounded-2xl p-4 text-center">
-              <p className="text-sm text-gray-600 mb-1">{translate('results_score')}</p>
-              <p className="text-2xl font-bold text-orange-600">
+          {/* Score Points */}
+          <div className="flex justify-center">
+            <div className="bg-orange-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center min-w-[150px] sm:min-w-[200px]">
+              <p className="text-xs sm:text-sm text-gray-600 mb-0.5 sm:mb-1">{translate('results_score')}</p>
+              <p className="text-lg sm:text-2xl font-bold text-orange-600">
                 {score} / {total}
               </p>
-              <p className="text-xs text-gray-500">{translate('learn_pts')}</p>
-            </div>
-
-            <div className="bg-green-50 rounded-2xl p-4 text-center">
-              <p className="text-sm text-gray-600 mb-1">{translate('results_correct')}</p>
-              <p className="text-2xl font-bold text-green-600">
-                {correct} / {totalQuestions}
-              </p>
-              <p className="text-xs text-gray-500">{translate('results_questions')}</p>
+              <p className="text-[10px] sm:text-xs text-gray-500">{translate('learn_pts')}</p>
             </div>
           </div>
 
@@ -372,22 +367,22 @@ export default function QuizResultsPage() {
         {/* Pedagogical Feedback Block */}
         {reviewItems.length > 0 && (
           <div
-            className={`bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-lg space-y-6 transition-all duration-500 ${
+            className={`bg-white rounded-3xl border border-gray-200 p-4 sm:p-8 shadow-lg space-y-4 sm:space-y-6 transition-all duration-500 ${
               feedbackVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
           >
             {/* Loading state for AI feedback */}
             {feedbackLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-center space-y-3">
-                  <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto" />
-                  <p className="text-sm text-gray-500">{translate('results_feedback_loading')}</p>
+              <div className="flex items-center justify-center py-6 sm:py-8">
+                <div className="text-center space-y-2 sm:space-y-3">
+                  <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500 animate-spin mx-auto" />
+                  <p className="text-xs sm:text-sm text-gray-500">{translate('results_feedback_loading')}</p>
                 </div>
               </div>
             ) : (
               <>
                 {/* Mascot + Message Header */}
-                <div className="flex items-start gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <Image
                     src={aiFeedback?.mascotte_humeur === 'disappointed' ? '/chat/Disappointed.png' :
                          aiFeedback?.mascotte_humeur === 'neutral' ? '/chat/Drag_and_Drop.png' :
@@ -396,32 +391,34 @@ export default function QuizResultsPage() {
                     alt="Nareo"
                     width={80}
                     height={80}
-                    className="rounded-2xl flex-shrink-0"
+                    className="w-20 h-20 sm:w-20 sm:h-20 object-contain flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">
-                      {aiFeedback?.feedback_intro || getFeedbackTitle()}
+                    {/* Mobile: single short phrase, Desktop: full text */}
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 mb-0.5 sm:mb-1">
+                      <span className="sm:hidden">{getFeedbackTitle()}</span>
+                      <span className="hidden sm:inline">{aiFeedback?.feedback_intro || getFeedbackTitle()}</span>
                     </h3>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 text-xs sm:text-sm hidden sm:block">
                       {!aiFeedback && getFeedbackSubtitle()}
                     </p>
                   </div>
                 </div>
 
                 {/* Two-column concept lists */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {/* Mastered concepts */}
-                  <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <div className="bg-green-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-green-100">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" />
                       </div>
-                      <h4 className="font-semibold text-green-800">
+                      <h4 className="text-sm sm:text-base font-semibold text-green-800">
                         {translate('results_feedback_mastered')}
                       </h4>
                     </div>
                     {aiFeedback?.points_maitrises && aiFeedback.points_maitrises.length > 0 ? (
-                      <ul className="space-y-3">
+                      <ul className="space-y-2 sm:space-y-3">
                         {aiFeedback.points_maitrises.map((item, idx) => (
                           <li
                             key={idx}
@@ -430,45 +427,45 @@ export default function QuizResultsPage() {
                             }`}
                             style={{ transitionDelay: `${150 + idx * 50}ms` }}
                           >
-                            <p className="text-sm font-medium text-green-800">{item.concept}</p>
-                            <p className="text-xs text-green-600 mt-0.5">{item.explication}</p>
+                            <p className="text-xs sm:text-sm font-medium text-green-800">{item.concept}</p>
+                            <p className="text-[10px] sm:text-xs text-green-600 mt-0.5">{item.explication}</p>
                           </li>
                         ))}
                       </ul>
                     ) : masteredItems.length > 0 ? (
-                      <ul className="space-y-2">
-                        {masteredItems.slice(0, 4).map((item, idx) => (
+                      <ul className="space-y-1.5 sm:space-y-2">
+                        {masteredItems.slice(0, 3).map((item, idx) => (
                           <li
                             key={item.index}
-                            className={`text-sm text-green-700 flex items-start gap-2 transition-all duration-300 ${
+                            className={`text-xs sm:text-sm text-green-700 flex items-start gap-1.5 sm:gap-2 transition-all duration-300 ${
                               feedbackVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
                             }`}
                             style={{ transitionDelay: `${150 + idx * 50}ms` }}
                           >
-                            <span className="text-green-500 mt-0.5">•</span>
-                            <span className="line-clamp-2">{item.question.slice(0, 60)}...</span>
+                            <span className="text-green-500 mt-0.5 flex-shrink-0">•</span>
+                            <span>{item.question}</span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-green-600 italic">
+                      <p className="text-xs sm:text-sm text-green-600 italic">
                         {translate('results_feedback_no_mastered')}
                       </p>
                     )}
                   </div>
 
                   {/* Concepts to review */}
-                  <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                        <XCircle className="w-4 h-4 text-orange-600" />
+                  <div className="bg-orange-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-orange-100">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                        <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-600" />
                       </div>
-                      <h4 className="font-semibold text-orange-800">
+                      <h4 className="text-sm sm:text-base font-semibold text-orange-800">
                         {translate('results_feedback_to_review')}
                       </h4>
                     </div>
                     {aiFeedback?.points_a_revoir && aiFeedback.points_a_revoir.length > 0 ? (
-                      <ul className="space-y-3">
+                      <ul className="space-y-2 sm:space-y-3">
                         {aiFeedback.points_a_revoir.map((item, idx) => (
                           <li
                             key={idx}
@@ -477,28 +474,28 @@ export default function QuizResultsPage() {
                             }`}
                             style={{ transitionDelay: `${150 + idx * 50}ms` }}
                           >
-                            <p className="text-sm font-medium text-orange-800">{item.concept}</p>
-                            <p className="text-xs text-orange-600 mt-0.5">{item.explication}</p>
+                            <p className="text-xs sm:text-sm font-medium text-orange-800">{item.concept}</p>
+                            <p className="text-[10px] sm:text-xs text-orange-600 mt-0.5">{item.explication}</p>
                           </li>
                         ))}
                       </ul>
                     ) : toReviewItems.length > 0 ? (
-                      <ul className="space-y-2">
-                        {toReviewItems.slice(0, 4).map((item, idx) => (
+                      <ul className="space-y-1.5 sm:space-y-2">
+                        {toReviewItems.slice(0, 3).map((item, idx) => (
                           <li
                             key={item.index}
-                            className={`text-sm text-orange-700 flex items-start gap-2 transition-all duration-300 ${
+                            className={`text-xs sm:text-sm text-orange-700 flex items-start gap-1.5 sm:gap-2 transition-all duration-300 ${
                               feedbackVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'
                             }`}
                             style={{ transitionDelay: `${150 + idx * 50}ms` }}
                           >
-                            <span className="text-orange-500 mt-0.5">•</span>
-                            <span className="line-clamp-2">{item.question.slice(0, 60)}...</span>
+                            <span className="text-orange-500 mt-0.5 flex-shrink-0">•</span>
+                            <span>{item.question}</span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-orange-600 italic">
+                      <p className="text-xs sm:text-sm text-orange-600 italic">
                         {translate('results_feedback_all_mastered')}
                       </p>
                     )}
@@ -511,21 +508,21 @@ export default function QuizResultsPage() {
         )}
 
         {/* Actions */}
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           <button
-            onClick={() => router.push(`/courses/${courseId}/learn`)}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 shadow-md"
+            onClick={() => router.push(`/courses/${courseId}/chapters/${chapterId}`)}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-4 rounded-xl bg-orange-500 text-white text-sm sm:text-base font-semibold hover:bg-orange-600 shadow-md"
           >
-            <ArrowLeft className="w-5 h-5" />
-            {translate('results_back_to_course')}
+            <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+            {translate('results_retry')}
           </button>
 
           <button
-            onClick={() => router.push(`/courses/${courseId}/chapters/${chapterId}`)}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl border-2 border-orange-200 text-orange-700 font-semibold bg-white hover:bg-orange-50"
+            onClick={() => router.push(`/courses/${courseId}/learn`)}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-4 rounded-xl border-2 border-orange-200 text-orange-700 text-sm sm:text-base font-semibold bg-white hover:bg-orange-50"
           >
-            <RotateCcw className="w-5 h-5" />
-            {translate('results_retry')}
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            {translate('results_back_to_course')}
           </button>
         </div>
       </div>

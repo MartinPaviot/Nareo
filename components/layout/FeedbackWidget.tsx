@@ -10,16 +10,22 @@ export default function FeedbackWidget() {
   const [isClosing, setIsClosing] = useState(false);
   const pathname = usePathname();
 
+  // Hide widget on home page and quiz pages
+  const isHiddenPage = pathname === '/' || pathname.includes('/chapters/');
+
   useEffect(() => {
     // Reset visibility on page change (no localStorage check)
     setIsVisible(false);
     setIsClosing(false);
-    
+
+    // Don't show widget on hidden pages
+    if (isHiddenPage) return;
+
     // Show widget with a slight delay for smooth appearance
     setTimeout(() => {
       setIsVisible(true);
     }, 1000);
-  }, [pathname]); // Re-run when pathname changes
+  }, [pathname, isHiddenPage]); // Re-run when pathname changes
 
   const handleClose = () => {
     // Start closing animation

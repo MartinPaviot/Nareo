@@ -224,8 +224,8 @@ export default function CourseLearnPage() {
               <p className="font-semibold">{translate('course_detail_processing')}</p>
               <p className="text-xs text-orange-700 mt-1">
                 {translate('upload_extracting')}
-                {isListening && ' • Listening for updates...'}
-                {isPolling && !isListening && ' • Checking for updates...'}
+                {isListening && ` • ${translate('upload_listening')}`}
+                {isPolling && !isListening && ` • ${translate('upload_checking')}`}
               </p>
             </div>
           </div>
@@ -236,9 +236,9 @@ export default function CourseLearnPage() {
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <p className="font-semibold">Processing Failed</p>
+              <p className="font-semibold">{translate('upload_processing_failed')}</p>
               <p className="text-xs text-red-700 mt-1">
-                There was an error processing this course. Please try uploading again.
+                {translate('upload_processing_failed_desc')}
               </p>
             </div>
           </div>
@@ -277,62 +277,78 @@ export default function CourseLearnPage() {
               return (
                 <div
                   key={chapter.id}
-                  className="p-4 sm:p-5 flex items-center gap-4 hover:bg-orange-50/40 transition-colors"
+                  className="p-3 sm:p-5 flex items-center gap-2.5 sm:gap-4 hover:bg-orange-50/40 transition-colors"
                 >
-                <div className="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center font-semibold">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center font-semibold text-sm sm:text-base flex-shrink-0">
                   {index + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 line-clamp-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                    <h3 className="text-sm sm:text-lg font-semibold text-gray-900 truncate">
                       {chapter.title}
                     </h3>
-                    {index === 0 && (
-                      <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
-                        {translate('course_detail_free_badge')}
-                      </span>
-                    )}
-                    {(index === 1 || index === 2) && user && (
-                      <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
-                        {translate('course_detail_bonus_badge')}
-                      </span>
-                    )}
-                    {(locked || premiumLock) && (
-                      <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold inline-flex items-center gap-1">
-                        <Lock className="w-3 h-3" />
-                        {translate('course_detail_locked_badge')}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {index === 0 && (
+                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                          {translate('course_detail_free_badge')}
+                        </span>
+                      )}
+                      {(index === 1 || index === 2) && user && (
+                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                          {translate('course_detail_bonus_badge')}
+                        </span>
+                      )}
+                      {(locked || premiumLock) && (
+                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                          <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          {translate('course_detail_locked_badge')}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {chapter.summary && (
-                    <p className="text-sm text-gray-600 line-clamp-2 mb-2">{chapter.summary}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-1 sm:mb-2">{chapter.summary}</p>
                   )}
-                  <div className="flex items-center gap-3 text-xs text-gray-600">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100">
+                  <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600">
+                    <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100">
                       {chapter.question_count} {translate('chapter_questions')}
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-col items-center gap-2">
+                <div className="flex flex-col items-end gap-1.5 sm:gap-2 flex-shrink-0">
                   {chapter.score !== null && chapter.question_count > 0 && (
-                    <ChapterScoreBadge
-                      scorePts={chapter.score}
-                      maxPts={chapter.question_count * 10}
-                    />
+                    <>
+                      {/* Mobile: compact score badge - same width as button */}
+                      <div className="sm:hidden w-full">
+                        <ChapterScoreBadge
+                          scorePts={chapter.score}
+                          maxPts={chapter.question_count * 10}
+                          compact
+                        />
+                      </div>
+                      {/* Desktop: full score badge */}
+                      <div className="hidden sm:block">
+                        <ChapterScoreBadge
+                          scorePts={chapter.score}
+                          maxPts={chapter.question_count * 10}
+                        />
+                      </div>
+                    </>
                   )}
                   <button
                     onClick={() => handleChapterClick(chapter, index)}
-                    className={`inline-flex items-center justify-center gap-2 w-[180px] px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                    className={`inline-flex items-center justify-center gap-1 sm:gap-2 w-full sm:w-[180px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
                       (locked || premiumLock) && !isDemoId
                         ? 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
                         : 'bg-orange-500 text-white hover:bg-orange-600'
                     }`}
                   >
-                    {getChapterCTA(chapter, index)}
+                    <span className="hidden sm:inline">{getChapterCTA(chapter, index)}</span>
+                    <span className="sm:hidden">{translate('quiz_start_short')}</span>
                     {chapter.completed ? (
-                      <RotateCcw className="w-4 h-4" />
+                      <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
                     ) : (
-                      <Play className="w-4 h-4" />
+                      <Play className="w-3 h-3 sm:w-4 sm:h-4" />
                     )}
                   </button>
                 </div>

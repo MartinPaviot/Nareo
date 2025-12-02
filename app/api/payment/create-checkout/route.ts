@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
+import { getServiceSupabase } from '@/lib/supabase';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -24,6 +25,27 @@ export async function POST(request: NextRequest) {
 
     if (!courseId) {
       return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
+    }
+
+    // Check if user already has an active premium subscription
+    const supabase = getServiceSupabase();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier, subscription_expires_at')
+      .eq('user_id', auth.user.id)
+      .single();
+
+    if (profile?.subscription_tier === 'premium') {
+      const expiresAt = profile.subscription_expires_at ? new Date(profile.subscription_expires_at) : null;
+      const now = new Date();
+
+      // If subscription is still active (not expired)
+      if (!expiresAt || expiresAt > now) {
+        return NextResponse.json(
+          { error: 'You already have an active premium subscription', alreadySubscribed: true },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate plan type

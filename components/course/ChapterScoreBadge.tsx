@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 interface ChapterScoreBadgeProps {
   scorePts: number;
   maxPts: number;
+  compact?: boolean;
 }
 
 type ScoreLevel = 'low' | 'medium' | 'high';
@@ -43,7 +44,7 @@ const LEVEL_CONFIGS: Record<ScoreLevel, LevelConfig> = {
   },
 };
 
-export default function ChapterScoreBadge({ scorePts, maxPts }: ChapterScoreBadgeProps) {
+export default function ChapterScoreBadge({ scorePts, maxPts, compact = false }: ChapterScoreBadgeProps) {
   const { translate } = useLanguage();
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -65,6 +66,17 @@ export default function ChapterScoreBadge({ scorePts, maxPts }: ChapterScoreBadg
       percentage: Math.round(pct * 100),
     };
   }, [scorePts, maxPts]);
+
+  // Compact mode for mobile - just shows the score badge without mascot
+  if (compact) {
+    return (
+      <span
+        className={`w-full inline-flex items-center justify-center px-3 py-1 rounded-lg text-xs font-bold ${config.badgeBg} ${config.badgeText}`}
+      >
+        {scorePts}/{maxPts}
+      </span>
+    );
+  }
 
   return (
     <div

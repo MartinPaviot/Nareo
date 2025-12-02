@@ -386,8 +386,8 @@ export default function ChapterQuizPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 p-4 sm:p-6">
-      <div className="max-w-3xl mx-auto space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 p-3 sm:p-6">
+      <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
         <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <Image
@@ -416,8 +416,8 @@ export default function ChapterQuizPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-lg space-y-4">
-          <p className="text-base sm:text-lg font-semibold text-gray-900">{currentQuestion?.question_text}</p>
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-5 shadow-lg space-y-3 sm:space-y-4">
+          <p className="text-sm sm:text-lg font-semibold text-gray-900">{currentQuestion?.question_text}</p>
           {currentQuestion?.type === 'mcq' && currentQuestion.optionsList ? (
             <div className="space-y-2">
               {currentQuestion.optionsList.map((opt) => {
@@ -425,9 +425,9 @@ export default function ChapterQuizPage() {
                 const isCorrect = correctOptionId === opt.label;
                 const isSelectedAndWrong = hasAnswered && isSelected && !isCorrect;
 
-                let buttonClasses = 'w-full text-left p-3 rounded-xl border-2 transition-all ';
-                let labelClasses = 'font-semibold mr-2 ';
-                let textClasses = '';
+                let buttonClasses = 'w-full text-left p-2.5 sm:p-3 rounded-xl border-2 transition-all ';
+                let labelClasses = 'font-semibold mr-2 text-sm sm:text-base ';
+                let textClasses = 'text-sm sm:text-base ';
 
                 if (hasAnswered) {
                   // After answering: show green for correct, red for selected wrong
@@ -489,7 +489,7 @@ export default function ChapterQuizPage() {
 
           {feedback && (
             <div
-              className={`rounded-xl border-2 p-4 ${
+              className={`rounded-xl border-2 p-3 sm:p-4 ${
                 feedback.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
               }`}
             >
@@ -506,10 +506,10 @@ export default function ChapterQuizPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2.5">
                   <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="font-semibold text-red-800 text-sm mb-2">
+                    <p className="font-semibold text-red-800 text-sm mb-1">
                       Mauvaise réponse
                     </p>
                     <p className="text-sm text-gray-800 leading-relaxed">
@@ -537,7 +537,7 @@ export default function ChapterQuizPage() {
             <button
               onClick={() => handleValidate()}
               disabled={!answer.trim()}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white text-sm sm:text-base font-semibold hover:bg-orange-600 disabled:opacity-60"
             >
               {translate('quiz_validate')}
             </button>
@@ -546,7 +546,7 @@ export default function ChapterQuizPage() {
           {feedback && (
             <button
               onClick={handleNext}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-black"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gray-900 text-white text-sm sm:text-base font-semibold hover:bg-black"
             >
               {currentIndex < questions.length - 1 ? translate('quiz_next_question') : translate('quiz_end_continue')}
               <ArrowRight className="w-4 h-4" />

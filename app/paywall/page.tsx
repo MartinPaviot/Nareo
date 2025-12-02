@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle2, Loader2, Lock, ShieldCheck, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle2, Loader2, Lock, ShieldCheck, Sparkles, TrendingUp, Zap, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackEvent } from '@/lib/posthog';
@@ -25,12 +26,16 @@ export default function PaywallPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
+  const [acceptedCGV, setAcceptedCGV] = useState(false);
+  const [acceptedWaiver, setAcceptedWaiver] = useState(false);
 
   useEffect(() => {
-    if (user && courseId) {
-      trackEvent('paywall_viewed', { userId: user.id, courseId });
+    if (user) {
+      trackEvent('paywall_viewed', { userId: user.id, courseId: courseId || 'account' });
     }
-    loadCourseData();
+    if (courseId) {
+      loadCourseData();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, user]);
 
@@ -88,23 +93,28 @@ export default function PaywallPage() {
   const savingsPercent = '30%';
 
   const handleCheckout = async () => {
-    if (!courseId) return;
     if (!user) {
       router.push('/auth/signup');
       return;
     }
 
     setProcessingPayment(true);
-    trackEvent('payment_started', { userId: user.id, courseId, plan: selectedPlan });
+    trackEvent('payment_started', { userId: user.id, courseId: courseId || 'account', plan: selectedPlan });
     try {
       const response = await fetch('/api/payment/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          courseId,
+          courseId: courseId || 'account',
           plan: selectedPlan,
-          successUrl: `${window.location.origin}/courses/${courseId}/learn?payment=success`,
-          cancelUrl: `${window.location.origin}/paywall?courseId=${courseId}&payment=cancelled`,
+          waiverAccepted: acceptedWaiver,
+          waiverDate: new Date().toISOString(),
+          successUrl: courseId
+            ? `${window.location.origin}/courses/${courseId}/learn?payment=success`
+            : `${window.location.origin}/compte?payment=success`,
+          cancelUrl: courseId
+            ? `${window.location.origin}/paywall?courseId=${courseId}&payment=cancelled`
+            : `${window.location.origin}/paywall?payment=cancelled`,
         }),
       });
       const data = await response.json();
@@ -120,11 +130,7 @@ export default function PaywallPage() {
     }
   };
 
-  if (!courseId) {
-    return null;
-  }
-
-  if (loading) {
+  if (loading && courseId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
@@ -159,7 +165,11 @@ export default function PaywallPage() {
               {translate('paywall_title_benefit')}
             </h1>
             <p className="text-orange-100 text-sm sm:text-base mt-1">
-              {translate('paywall_subtitle_course')} <span className="font-semibold text-white">{course?.title}</span>
+              {course ? (
+                <>{translate('paywall_subtitle_course')} <span className="font-semibold text-white">{course.title}</span></>
+              ) : (
+                translate('paywall_subtitle_generic')
+              )}
             </p>
           </div>
         </div>
@@ -296,12 +306,65 @@ export default function PaywallPage() {
             </button>
           </div>
 
+          {/* Récapitulatif prix et renouvellement */}
+          <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">{translate('paywall_price_summary')}</span>
+              <span className="text-lg font-bold text-gray-900">
+                {selectedPlan === 'annual' ? annualTotal() : monthlyPrice()}
+                <span className="text-sm font-normal text-gray-500">
+                  {selectedPlan === 'annual' ? ` ${translate('paywall_per_year')}` : ` ${translate('paywall_per_month')}`}
+                </span>
+              </span>
+            </div>
+            <div className="flex items-start gap-2 text-xs text-gray-500">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{translate('paywall_auto_renewal')}</span>
+            </div>
+          </div>
+
+          {/* Checkboxes légales obligatoires */}
+          <div className="space-y-4">
+            {/* CGV Checkbox */}
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="acceptCGV"
+                checked={acceptedCGV}
+                onChange={(e) => setAcceptedCGV(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+              />
+              <label htmlFor="acceptCGV" className="text-sm text-gray-600">
+                {translate('paywall_cgv_label')}{' '}
+                <Link href="/cgv" className="text-orange-500 hover:text-orange-600 underline" target="_blank">
+                  {translate('paywall_cgv_link')}
+                </Link>
+                <span className="text-red-500">*</span>
+              </label>
+            </div>
+
+            {/* Renonciation au droit de rétractation */}
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="acceptWaiver"
+                checked={acceptedWaiver}
+                onChange={(e) => setAcceptedWaiver(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+              />
+              <label htmlFor="acceptWaiver" className="text-sm text-gray-600">
+                {translate('paywall_waiver_label')}
+                <span className="text-red-500">*</span>
+              </label>
+            </div>
+          </div>
+
           {/* CTA Principal */}
           <div className="text-center">
             <button
               onClick={handleCheckout}
-              disabled={processingPayment}
-              className="w-full max-w-md mx-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold text-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-60 shadow-lg shadow-orange-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-orange-500/30"
+              disabled={processingPayment || !acceptedCGV || !acceptedWaiver}
+              className="w-full max-w-md mx-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold text-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-orange-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-orange-500/30"
             >
               {processingPayment ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -310,6 +373,11 @@ export default function PaywallPage() {
               )}
               {user ? translate('paywall_cta_subscribe') : translate('result_cta_unlock_chapter_two')}
             </button>
+            {(!acceptedCGV || !acceptedWaiver) && (
+              <p className="text-xs text-gray-500 mt-2">
+                {translate('paywall_checkbox_required')}
+              </p>
+            )}
           </div>
 
           {/* Pastilles de réassurance animées */}

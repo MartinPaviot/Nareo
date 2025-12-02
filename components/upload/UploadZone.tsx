@@ -14,6 +14,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackEvent } from '@/lib/posthog';
+import UploadLimitModal from './UploadLimitModal';
 
 const ACCEPTED_TYPES = [
   'image/jpeg',
@@ -41,6 +42,7 @@ export default function UploadZone() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showUploadLimitModal, setShowUploadLimitModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -92,6 +94,12 @@ export default function UploadZone() {
 
       const data = await response.json();
       if (!response.ok) {
+        // Check if it's an upload limit error
+        if (data?.code === 'UPLOAD_LIMIT_REACHED') {
+          setShowUploadLimitModal(true);
+          setIsProcessing(false);
+          return;
+        }
         throw new Error(data?.error || 'Upload failed');
       }
 
@@ -307,6 +315,10 @@ export default function UploadZone() {
             {translate('upload_processing_subtitle')}
           </p>
         </div>
+      )}
+
+      {showUploadLimitModal && (
+        <UploadLimitModal onClose={() => setShowUploadLimitModal(false)} />
       )}
     </div>
   );

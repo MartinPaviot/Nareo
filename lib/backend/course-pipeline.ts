@@ -13,6 +13,7 @@ import {
 import { validateExtractedText, truncateTextIntelligently } from "@/lib/openai-fallback";
 import { logEvent } from "./analytics";
 import { detectContentLanguageFromText } from "./language-detection";
+import { extractChapterText, LLM_CONFIG, CourseDeduplicationTracker, type ChapterBoundary } from "@/lib/llm";
 
 const RAW_BUCKET = "courses_raw";
 const MAX_PAGES = 100;
@@ -33,6 +34,9 @@ interface ChapterInput {
   summary: string;
   difficulty: "easy" | "medium" | "hard";
   orderIndex: number;
+  // Added for better chunking and question generation
+  learning_objectives?: string[];
+  key_concepts?: string[];
   concepts: Array<{
     id: string;
     title: string;
@@ -219,7 +223,7 @@ export async function processCourseJob(jobId: string) {
     logStep("llm_structuring_start", { courseId: course.id });
     await admin.from("pipeline_jobs").update({ stage: "structuring" }).eq("id", jobId);
 
-    const cleanText = truncateTextIntelligently(extractedText, 20000);
+    const cleanText = truncateTextIntelligently(extractedText, LLM_CONFIG.truncation.courseText);
     const detectedLanguage = await detectContentLanguageFromText(cleanText);
     const contentLanguage = normalizeContentLanguage(detectedLanguage.language || course.language || DEFAULT_CONTENT_LANGUAGE);
     const modelLanguage = toModelLanguageCode(contentLanguage);
@@ -243,6 +247,7 @@ export async function processCourseJob(jobId: string) {
     await admin.from("courses").update({
       content_language: contentLanguage,
       language: contentLanguage,
+      source_text: cleanText, // Store source text for quality audit
     }).eq("id", course.id);
 
     const chapterStructure = await generateChapterStructureFromCourseText(
@@ -271,6 +276,9 @@ export async function processCourseJob(jobId: string) {
         summary: ch.short_summary || fallbackSummary,
         difficulty: difficultyLabel,
         orderIndex: (ch.index && Number.isFinite(ch.index)) ? ch.index - 1 : idx,
+        // Store learning objectives and key concepts for better chunking and question generation
+        learning_objectives: ch.learning_objectives || [],
+        key_concepts: ch.key_concepts || [],
         concepts: [
           {
             id: conceptId,
@@ -285,12 +293,31 @@ export async function processCourseJob(jobId: string) {
 
     logStep("llm_structuring_done", { courseId: course.id, chapters: chapters.length });
 
-    // Découpage simple du texte extrait pour ancrer les questions dans le contenu réel
-    const chunkSize = Math.max(1000, Math.floor(cleanText.length / Math.max(chapters.length, 1)));
+    // Intelligent chapter text extraction based on markers, titles, and key concepts
+    const chapterBoundaries = extractChapterText(
+      cleanText,
+      chapters.map(ch => ({
+        index: ch.orderIndex + 1,
+        title: ch.title,
+        short_summary: ch.summary,
+        key_concepts: ch.key_concepts,  // Pass key_concepts for better text matching
+      })),
+      { minChunkSize: 500, maxChunkSize: LLM_CONFIG.truncation.chapterText, useMarkerDetection: true }
+    );
+
+    logStep("chapter_boundaries_computed", {
+      courseId: course.id,
+      boundariesCount: chapterBoundaries.length,
+      avgLength: Math.round(chapterBoundaries.reduce((sum, b) => sum + b.text.length, 0) / Math.max(1, chapterBoundaries.length)),
+    });
+
+    // Initialize course-level deduplication tracker to prevent cross-chapter duplicates
+    const deduplicationTracker = new CourseDeduplicationTracker(0.65); // 65% similarity threshold
 
     for (const chapter of chapters) {
-      const chapterText =
-        cleanText.substring(chapter.orderIndex * chunkSize, (chapter.orderIndex + 1) * chunkSize) || cleanText;
+      // Find matching boundary or fall back to equal division
+      const boundary = chapterBoundaries.find(b => b.index === chapter.orderIndex + 1);
+      const chapterText = boundary?.text || cleanText.substring(0, LLM_CONFIG.truncation.chapterText);
       const { error: chapterInsertError } = await admin.from("chapters").insert({
         id: chapter.id,
         course_id: course.id,
@@ -300,8 +327,8 @@ export async function processCourseJob(jobId: string) {
         title: chapter.title,
         summary: chapter.summary,
         importance: Math.min(3, Math.max(1, chapter.orderIndex + 1)),
-        source_text: chapterText.substring(0, 4000),
-        extracted_text: chapterText.substring(0, 4000),
+        source_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
+        extracted_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
       });
       if (chapterInsertError) {
         console.error("Chapter insert failed", chapterInsertError);
@@ -349,13 +376,41 @@ export async function processCourseJob(jobId: string) {
             title: chapter.title,
             short_summary: chapter.summary,
             difficulty: chapter.concepts[0]?.importance || 1,
+            // Pass learning objectives and key concepts for better question generation
+            learning_objectives: chapter.learning_objectives,
+            key_concepts: chapter.key_concepts,
           },
           chapterText,
-          modelLanguage
+          modelLanguage,
+          {
+            // Enable semantic validation to reject questions that aren't well-supported by source text
+            enableSemanticValidation: true,
+          }
         );
 
-        // The helper may return either an array or an object with a questions array
-        const questions = Array.isArray(generated) ? generated : generated.questions || [];
+        // The helper now always returns an array after validation/deduplication
+        const rawQuestions: any[] = Array.isArray(generated) ? generated : (generated as any).questions || [];
+
+        // Apply cross-chapter deduplication to remove questions similar to previous chapters
+        const dedupeResult = deduplicationTracker.filterQuestions(
+          rawQuestions.map(q => ({ prompt: q.prompt || q.question, ...q })),
+          chapter.orderIndex
+        );
+        const questions: any[] = dedupeResult.filtered as any[]; // Keep as any[] to preserve original properties
+
+        if (dedupeResult.duplicatesRemoved > 0) {
+          logStep("cross_chapter_deduplication", {
+            courseId: course.id,
+            chapterId: chapter.id,
+            chapterIndex: chapter.orderIndex,
+            originalCount: rawQuestions.length,
+            afterDeduplication: questions.length,
+            duplicatesRemoved: dedupeResult.duplicatesRemoved,
+            duplicateDetails: dedupeResult.duplicateDetails.slice(0, 3), // Log first 3 for debugging
+          });
+          console.log(`🔄 Removed ${dedupeResult.duplicatesRemoved} cross-chapter duplicate(s) in chapter ${chapter.orderIndex + 1}`);
+        }
+
         logStep("questions_parsed", {
           courseId: course.id,
           chapterId: chapter.id,
@@ -414,6 +469,9 @@ export async function processCourseJob(jobId: string) {
             // store correct option index in options payload for clarity
             correct_option_index: correctIndex,
             explanation: q.explanation || null,
+            // Phase 1: Store source_reference and cognitive_level for quality audit
+            source_reference: q.source_reference || null,
+            cognitive_level: q.cognitive_level || null,
           });
           if (questionInsertError) {
             console.error("Question insert failed", questionInsertError);

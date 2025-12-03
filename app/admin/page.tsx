@@ -5,13 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
-
-// Hardcoded list of admin emails
-const ADMIN_EMAILS = [
-  'admin@levelup.com',
-  'admin@example.com',
-  // Add more admin emails here
-];
+import { LogOut } from 'lucide-react';
 
 interface VisitorData {
   user_id: string;
@@ -36,25 +30,45 @@ export default function AdminDashboard() {
   const [visitors, setVisitors] = useState<VisitorData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
-  // Check if user is admin
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
-
+  // Check admin session
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth/signin');
+    // Wait for auth to finish loading before doing anything
+    if (authLoading) return;
+
+    // If not logged in, redirect to login page
+    if (!user) {
+      router.push('/admin/login');
       return;
     }
 
-    if (!authLoading && user && !isAdmin) {
-      router.push('/');
+    // Check if admin session exists and is valid
+    const adminAuth = sessionStorage.getItem('adminAuthenticated');
+    const adminExpiry = sessionStorage.getItem('adminExpiry');
+
+    if (adminAuth !== 'true' || !adminExpiry) {
+      router.push('/admin/login');
       return;
     }
 
-    if (isAdmin) {
-      loadDashboardData();
+    // Check if session expired
+    if (new Date(adminExpiry) < new Date()) {
+      sessionStorage.removeItem('adminAuthenticated');
+      sessionStorage.removeItem('adminExpiry');
+      router.push('/admin/login');
+      return;
     }
-  }, [user, authLoading, isAdmin, router]);
+
+    setIsAdminAuthenticated(true);
+    loadDashboardData();
+  }, [user, authLoading, router]);
+
+  const handleLogoutAdmin = () => {
+    sessionStorage.removeItem('adminAuthenticated');
+    sessionStorage.removeItem('adminExpiry');
+    router.push('/');
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -126,7 +140,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdminAuthenticated) {
     return null;
   }
 
@@ -134,13 +148,22 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Admin Dashboard
-          </h1>
-          <p className="text-gray-600">
-            Monitor user activity and platform statistics
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              Admin Dashboard
+            </h1>
+            <p className="text-gray-600">
+              Monitor user activity and platform statistics
+            </p>
+          </div>
+          <button
+            onClick={handleLogoutAdmin}
+            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout Admin
+          </button>
         </div>
 
         {/* Error Message */}
@@ -149,6 +172,33 @@ export default function AdminDashboard() {
             {error}
           </div>
         )}
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <button
+            onClick={() => router.push('/admin/quality')}
+            className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="text-4xl">📊</div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Quality Audit</h3>
+                <p className="text-sm text-gray-500">
+                  Analyze course quality and question relevance
+                </p>
+              </div>
+            </div>
+          </button>
+          <div className="bg-white rounded-2xl shadow-lg p-6 opacity-50">
+            <div className="flex items-center gap-4">
+              <div className="text-4xl">🔧</div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">More Tools</h3>
+                <p className="text-sm text-gray-500">Coming soon...</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

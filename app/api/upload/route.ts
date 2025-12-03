@@ -8,6 +8,11 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 const FREE_MONTHLY_LIMIT = 3; // Free users can upload 3 courses per month
 const PREMIUM_MONTHLY_LIMIT = 12; // Premium users can upload 12 courses per month
 
+// Admin emails with unlimited uploads
+const UNLIMITED_UPLOAD_EMAILS = [
+  'contact@usenareo.com',
+];
+
 const VALID_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -58,7 +63,25 @@ export async function POST(request: NextRequest) {
       const isPremium = profile?.subscription_tier === 'premium' &&
         (!profile?.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
 
-      if (isPremium) {
+      // Check if user has unlimited uploads (admin) - use email from auth
+      const userEmail = auth?.user.email?.toLowerCase();
+      const hasUnlimitedUploads = userEmail && UNLIMITED_UPLOAD_EMAILS.includes(userEmail);
+
+      if (hasUnlimitedUploads) {
+        // Admin user: unlimited uploads, just track for analytics
+        const now = new Date();
+        const resetAt = profile?.monthly_upload_reset_at ? new Date(profile.monthly_upload_reset_at) : null;
+        const needsReset = !resetAt || resetAt < new Date(now.getFullYear(), now.getMonth(), 1);
+        let currentCount = needsReset ? 0 : (profile?.monthly_upload_count || 0);
+
+        await supabase
+          .from('profiles')
+          .update({
+            monthly_upload_count: currentCount + 1,
+            monthly_upload_reset_at: needsReset ? now.toISOString() : profile?.monthly_upload_reset_at,
+          })
+          .eq('user_id', userId);
+      } else if (isPremium) {
         // Premium user: check monthly limit
         const now = new Date();
         const resetAt = profile?.monthly_upload_reset_at ? new Date(profile.monthly_upload_reset_at) : null;

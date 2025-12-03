@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
+// Admin emails with unlimited uploads (same as in upload route)
+const UNLIMITED_UPLOAD_EMAILS = [
+  'contact@usenareo.com',
+];
+
 export async function GET(request: NextRequest) {
   const auth = await authenticateRequest(request);
 
@@ -32,11 +37,16 @@ export async function GET(request: NextRequest) {
     const isPremium = profile?.subscription_tier === 'premium' &&
       (!profile?.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
 
+    // Check if user has unlimited uploads
+    const userEmail = auth.user.email?.toLowerCase();
+    const hasUnlimitedUploads = userEmail && UNLIMITED_UPLOAD_EMAILS.includes(userEmail);
+
     return NextResponse.json({
       profile: {
         ...profile,
         email: auth.user.email,
         isPremium,
+        hasUnlimitedUploads,
         courseCount: courseCount || 0,
       },
     });

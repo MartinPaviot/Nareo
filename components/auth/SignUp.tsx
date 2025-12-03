@@ -3,14 +3,16 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { trackVisitor } from '@/lib/visitors';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SignUp() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/';
   const { translate } = useLanguage();
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
@@ -123,6 +125,15 @@ export default function SignUp() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push(returnTo)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>{translate('account_back')}</span>
+        </button>
+
         {/* Header */}
         <div className="text-center mb-8">
           <Image
@@ -355,7 +366,7 @@ export default function SignUp() {
             <p className="text-sm text-gray-600">
               {translate('auth_signup_have_account')}{' '}
               <Link
-                href="/auth/signin"
+                href={`/auth/signin${returnTo !== '/' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}
                 className="text-orange-500 hover:text-orange-600 font-semibold"
               >
                 {translate('auth_signup_signin_link')}

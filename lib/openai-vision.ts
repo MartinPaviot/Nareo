@@ -1,31 +1,53 @@
 import OpenAI from 'openai';
+import {
+  withRetry,
+  withCircuitBreaker,
+  openaiCircuitBreaker,
+  openaiVisionCircuitBreaker,
+  llmLogger,
+  LLM_CONFIG,
+  generateContextualConcepts,
+  generateContextualChapters,
+  generateContextualQuestions,
+  validateQuestionBatch,
+  deduplicateQuestions,
+  // Semantic validation (Phase 2)
+  extractVerifiableFacts,
+  validateQuestionBatchSemantically,
+  type MCQQuestion,
+  type VerifiableFact,
+} from './llm';
 
 // Configuration pour utiliser l'API OpenAI directement
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  // Utilise l'API OpenAI directement (pas de proxy Blackbox)
 });
 
 /**
  * Extract raw text from an image using GPT-4 Vision (OCR)
  */
 export async function extractTextFromImage(imageDataUrl: string): Promise<string> {
+  const logContext = llmLogger.createContext('extractTextFromImage', LLM_CONFIG.models.vision);
   console.log('📝 Extracting raw text from image...');
-  
+
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert OCR system. Extract ALL text from images accurately, preserving structure and formatting as much as possible.',
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Extract ALL text from this image. Include:
+    const response = await withCircuitBreaker(
+      openaiVisionCircuitBreaker,
+      () => withRetry(
+        async () => {
+          const result = await openai.chat.completions.create({
+            model: LLM_CONFIG.models.vision,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert OCR system. Extract ALL text from images accurately, preserving structure and formatting as much as possible.',
+              },
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: `Extract ALL text from this image. Include:
 - All visible text (typed or handwritten)
 - Headings, titles, and subtitles
 - Body text and paragraphs
@@ -35,26 +57,48 @@ export async function extractTextFromImage(imageDataUrl: string): Promise<string
 
 Preserve the structure and order of the text as it appears in the image.
 Return ONLY the extracted text, no additional commentary.`,
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageDataUrl,
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: imageDataUrl,
+                    },
+                  },
+                ],
               },
-            },
-          ],
+            ],
+            temperature: LLM_CONFIG.temperatures.extraction,
+            max_tokens: LLM_CONFIG.maxTokens.ocr,
+          });
+          return result;
         },
-      ],
-      temperature: 0.3, // Lower temperature for more accurate extraction
-      max_tokens: 3000,
-    });
+        { maxRetries: 2 }
+      ),
+      async () => {
+        logContext.setFallbackUsed();
+        return null;
+      }
+    );
+
+    if (!response) {
+      console.log('⚠️ Circuit breaker open for vision, returning empty text');
+      logContext.setFallbackUsed().success();
+      return '';
+    }
 
     const extractedText = response.choices[0].message.content || '';
+
+    if (response.usage) {
+      logContext.setTokens(response.usage);
+    }
+
     console.log('✅ Extracted', extractedText.length, 'characters of text from image');
+    logContext.success();
     return extractedText;
   } catch (error: any) {
     console.error('❌ Error extracting text from image:', error.message);
-    return ''; // Return empty string on error
+    logContext.setFallbackUsed().failure(error, error?.status);
+    return '';
   }
 }
 
@@ -207,11 +251,11 @@ function createConceptsFromText(text: string) {
  * Similar to extractConceptsFromImage but works with text input
  */
 export async function extractConceptsFromText(text: string, title?: string) {
-  console.log('🔍 Analyzing text document with GPT-4...');
-  
+  console.log('🔍 Analyzing text document with GPT-4o-mini...');
+
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: LLM_CONFIG.models.fast,
       messages: [
         {
           role: 'system',
@@ -284,130 +328,139 @@ Guidelines:
 
 /**
  * Generate a chapter structure where each chapter equals exactly one key concept.
+ * Optimized with retry, circuit breaker, logging, and condensed prompt with few-shot example.
  */
 export async function generateChapterStructureFromCourseText(
   courseText: string,
   courseTitle?: string,
   contentLanguage: "EN" | "FR" | "DE" = "EN"
 ) {
-  const prompt = `
-You are an expert learning designer.
+  const logContext = llmLogger.createContext('generateChapterStructureFromCourseText', LLM_CONFIG.models.primary);
 
-Your task is to transform a full course text into a list of chapters where
-each chapter corresponds to exactly ONE key concept that the student must
-master.
+  // Truncate text intelligently
+  const truncatedText = courseText.substring(0, LLM_CONFIG.truncation.courseText);
 
-Think in three stages
+  // Enhanced prompt with learning objectives and key concepts for better question generation
+  const prompt = `Transform this course into chapters where each chapter = ONE key concept that students must master.
 
-1  Read the entire course and understand it globally
-2  Identify all the key concepts that a student must know to master about
-   ninety nine percent of the content
-3  For each concept create a chapter that will later hold quiz questions
+A concept is: a definition, formula, process, framework, theorem, or strategic idea that deserves focused practice.
 
-Definitions
+For EACH chapter, you MUST provide:
+1. "title": Clear, concise name of the concept
+2. "short_summary": 1-2 sentences explaining what the student will learn
+3. "difficulty": 1=basic/foundational, 2=intermediate/application, 3=advanced/critical
+4. "learning_objectives": Array of 2-4 specific, measurable learning outcomes (use action verbs: define, calculate, explain, compare, analyze, apply)
+5. "key_concepts": Array of 3-6 specific facts, formulas, or terms from the text that students must memorize/understand for this chapter
+6. "prerequisites": Array of chapter indices (0-based) that should be completed before this one (empty for foundational chapters)
 
-1  A concept is any unit of knowledge that deserves focused practice on its own
-   examples
-   a precise definition
-   a model or framework
-   a formula
-   a process with clear steps
-   a relationship between causes and effects
-   a strategic idea that is central to the course
+Rules:
+- One chapter per concept (no mixing unrelated ideas)
+- Order: foundational → intermediate → advanced
+- Extract SPECIFIC facts and terms from the text for key_concepts (not generic descriptions)
+- Learning objectives must be testable via MCQ questions
 
-2  A chapter in Nareo equals exactly one concept
-   If a concept has several sub aspects they stay inside the same chapter
-   Do NOT group several unrelated concepts into a single chapter
-   Do NOT create a generic chapter that mixes many ideas
-
-Your goals
-
-1  Cover all important concepts in the course
-2  Create as many chapters as there are concepts
-3  Make each chapter focused on ONE and only one concept
-4  Make chapter titles short and very clear for a student who revises under stress
-
-For each chapter you must output
-
-1  index  integer starting at one following the order in which concepts should
-   be revised
-2  title  short and clear name of the concept
-3  short_summary  two to three sentences that explain what this concept is about
-   in simple language
-4  difficulty  an integer from one to three where
-   one  basic or introductory concept
-   two  intermediate concept
-   three  advanced or central concept that will need more questions
-
-The order of chapters must follow a pedagogical logic
-
-1  Start with foundational concepts
-2  Then move to concepts that build on previous ones
-3  End with more advanced or synthetic concepts
-
-Output format
-
-Return a single JSON object with the following structure
-
+Example output:
 {
   "chapters": [
     {
+      "index": 0,
+      "title": "Customer Lifetime Value (CLV)",
+      "short_summary": "How to calculate and interpret CLV for strategic business decisions.",
+      "difficulty": 2,
+      "learning_objectives": [
+        "Define Customer Lifetime Value and its business importance",
+        "Calculate CLV using the basic formula: CLV = Average Purchase Value × Purchase Frequency × Customer Lifespan",
+        "Interpret CLV results to inform marketing budget allocation"
+      ],
+      "key_concepts": [
+        "CLV = Average Purchase Value × Purchase Frequency × Customer Lifespan",
+        "CLV helps determine maximum customer acquisition cost",
+        "High CLV customers justify higher retention investments",
+        "CLV varies by customer segment and acquisition channel"
+      ],
+      "prerequisites": []
+    },
+    {
       "index": 1,
-      "title": "Short concept name",
-      "short_summary": "Two to three sentences in plain language.",
-      "difficulty": 2
+      "title": "Churn Rate Analysis",
+      "short_summary": "Understanding customer churn metrics and their impact on business growth.",
+      "difficulty": 2,
+      "learning_objectives": [
+        "Define churn rate and calculate monthly/annual churn",
+        "Identify the main drivers of customer churn",
+        "Explain the relationship between churn rate and CLV"
+      ],
+      "key_concepts": [
+        "Churn Rate = (Customers Lost / Total Customers) × 100",
+        "1% monthly churn ≈ 11.4% annual churn (compounding effect)",
+        "Churn directly reduces CLV and company valuation",
+        "Voluntary vs involuntary churn require different interventions"
+      ],
+      "prerequisites": [0]
     }
   ]
 }
 
-Constraints
-
-1  Every important concept must appear as its own chapter
-2  Do not create placeholder chapters such as "overview" or "exam mode"
-3  Do not drop concepts just to reduce the number of chapters
-4  If the course is very dense you may create many chapters  that is expected
-
-Now read the course text below and return only the JSON object described above
-with the list of chapters that each represent one concept.
-
-COURSE TEXT
-${courseText}
-`;
+COURSE TEXT:
+${truncatedText}`;
 
   try {
-    const languageReminder = `Always respond in the same language as the input course text (${contentLanguage}). Do not translate to another language.`;
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert learning designer. Always respond with valid JSON only. ${languageReminder}`,
+    const languageReminder = `Respond in ${contentLanguage === 'FR' ? 'French' : contentLanguage === 'DE' ? 'German' : 'English'} (same as course text).`;
+
+    const response = await withCircuitBreaker(
+      openaiCircuitBreaker,
+      () => withRetry(
+        async () => {
+          const result = await openai.chat.completions.create({
+            model: LLM_CONFIG.models.structuring,
+            messages: [
+              {
+                role: 'system',
+                content: `You are an expert learning designer. Return valid JSON only. ${languageReminder}`,
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: LLM_CONFIG.temperatures.structuring,
+            response_format: { type: 'json_object' },
+            max_tokens: LLM_CONFIG.maxTokens.chapterStructure,
+          });
+          return result;
         },
-        {
-          role: 'user',
-          content: `${languageReminder}\n\n${prompt}`,
-        },
-      ],
-      temperature: 0.4,
-      response_format: { type: 'json_object' },
-      max_tokens: 4000,
-    });
+        { maxRetries: 3 }
+      ),
+      async () => {
+        logContext.setFallbackUsed();
+        return null;
+      }
+    );
+
+    if (!response) {
+      // Circuit breaker is open, use contextual fallback
+      console.log('⚠️ Circuit breaker open, using contextual chapter fallback...');
+      const fallbackChapters = generateContextualChapters(courseText, courseTitle || 'Course', contentLanguage);
+      logContext.setFallbackUsed().success();
+      return fallbackChapters;
+    }
 
     const content = response.choices[0].message.content;
     const parsed = JSON.parse(content || '{}');
+
+    if (response.usage) {
+      logContext.setTokens(response.usage);
+    }
+
     console.log('📑 Generated chapter structure', parsed.chapters?.length || 0);
+    logContext.success();
     return parsed.chapters || [];
-  } catch (error) {
-    console.error('⚠️ Error generating chapter structure, using fallback:', error);
-    // Fallback: single chapter for the course
-    return [
-      {
-        index: 1,
-        title: courseTitle || 'Chapitre 1',
-        short_summary: 'Synthèse du cours.',
-        difficulty: 2,
-      },
-    ];
+  } catch (error: any) {
+    console.error('⚠️ Error generating chapter structure, using contextual fallback:', error);
+    logContext.setFallbackUsed().failure(error, error?.status);
+
+    // Use contextual fallback instead of generic single chapter
+    return generateContextualChapters(courseText, courseTitle || 'Course', contentLanguage);
   }
 }
 
@@ -619,12 +672,55 @@ Return a JSON object with this EXACT structure:
   }
 }
 
-// New prompt for single-concept chapter question generation (variable count)
+/**
+ * Calculate adaptive question count based on content to cover
+ * Formula: (learning_objectives × 2) + (key_concepts × 1) + (facts × 0.5)
+ * Min: 6, Max: 20
+ */
+function calculateAdaptiveQuestionCount(
+  learningObjectives: string[],
+  keyConcepts: string[],
+  facts: VerifiableFact[]
+): { count: number; breakdown: { objectives: number; concepts: number; facts: number } } {
+  const objectiveScore = learningObjectives.length * 2;
+  const conceptScore = keyConcepts.length * 1;
+  const factScore = Math.floor(facts.length * 0.5);
+
+  const rawCount = objectiveScore + conceptScore + factScore;
+  const count = Math.max(6, Math.min(20, rawCount));
+
+  return {
+    count,
+    breakdown: {
+      objectives: learningObjectives.length,
+      concepts: keyConcepts.length,
+      facts: facts.length,
+    },
+  };
+}
+
+// New prompt for single-concept chapter question generation (adaptive count)
+// Now with retry, logging, validation, deduplication, and semantic validation
+// Phase 3: Pre-extract facts BEFORE generation to ensure questions are grounded in verifiable content
+// Phase 4: Adaptive question count based on content coverage
 export async function generateConceptChapterQuestions(
-  chapterMetadata: { index?: number; title: string; short_summary?: string; difficulty?: number },
+  chapterMetadata: {
+    index?: number;
+    title: string;
+    short_summary?: string;
+    difficulty?: number;
+    learning_objectives?: string[];  // Phase 1: Learning objectives from chapter prompt
+    key_concepts?: string[];          // Phase 1: Key concepts from chapter prompt
+    prerequisites?: number[];         // Prerequisites (chapter indices)
+  },
   chapterText: string,
-  language: 'EN' | 'FR' | 'DE' = 'EN'
+  language: 'EN' | 'FR' | 'DE' = 'EN',
+  options?: {
+    enableSemanticValidation?: boolean;  // Phase 2: Enable LLM-based semantic validation
+    facts?: VerifiableFact[];             // Pre-extracted facts for validation
+  }
 ) {
+  const logContext = llmLogger.createContext('generateConceptChapterQuestions', LLM_CONFIG.models.primary);
   console.log('🧠 Generating questions (concept prompt) for chapter:', chapterMetadata.title);
 
   const languageInstruction = language === 'FR'
@@ -632,88 +728,246 @@ export async function generateConceptChapterQuestions(
     : language === 'DE'
       ? 'Generate ALL questions, options, and explanations in German (Deutsch).'
       : 'Generate ALL questions, options, and explanations in English.';
-  const languageReminder = `Always respond in the same language as the input chapter text (${language}). Never translate content into a different language.`;
 
-  const prompt = `You are an expert question writer for university level students.
+  // Truncate chapter text
+  const truncatedText = chapterText.substring(0, LLM_CONFIG.truncation.chapterText);
 
-You will receive
-1) The text of one chapter from a course
-2) The metadata of the chapter which represents exactly ONE concept
-   index
-   title
-   short_summary
-   difficulty
-
-Your task is to generate a quiz for this single concept.
-
-  Goals
-  1) Help a motivated student learn and check that they truly understand this concept
-  2) Cover the concept from several angles: definition, understanding, application, nuance
-  3) Create between 5 and 20 questions depending on the complexity and difficulty of the concept
-  
-  Question types (MANDATORY)
-  - ONLY multiple_choice questions.
-  - EXACTLY 4 options per question.
-  - EXACTLY 1 correct option per question.
-  
-  Rules
-  1) All questions in this quiz must target this ONE concept (other ideas only support understanding)
-  2) Vary cognitive level: some recall facts, some check understanding, some ask for application or nuance
-  3) For each question provide: type (must be "multiple_choice"), prompt, options (array of 4), correct_option_index (0-based), explanation (1-2 sentences of feedback)
-  
-  Question count
-  - If difficulty is one: generate 5 to 8 questions
-  - If difficulty is two: generate 8 to 14 questions
-  - If difficulty is three: generate 12 to 20 questions
-  
-  Output JSON ONLY:
-  {
-    "questions": [
-      {
-        "type": "multiple_choice",
-        "prompt": "Question text",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
-        "correct_option_index": 1,
-        "explanation": "Short feedback."
-      }
-    ]
+  // Phase 3: Pre-extract verifiable facts BEFORE generating questions
+  // This ensures questions are grounded in actual content from the source
+  let preExtractedFacts: VerifiableFact[] = options?.facts || [];
+  if (preExtractedFacts.length === 0) {
+    console.log('📚 Pre-extracting verifiable facts from source text...');
+    preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
+    console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
   }
-  
-  Make sure the set of questions, taken together, tests almost everything important about this single concept.
 
-CHAPTER METADATA
-${JSON.stringify(chapterMetadata, null, 2)}
+  // Format facts for the prompt - this is the key change
+  // Instead of letting LLM invent source_references, we give it verified facts to use
+  const factsForPrompt = preExtractedFacts.length > 0
+    ? `\nVERIFIED FACTS FROM SOURCE (use these as source_reference for questions):
+${preExtractedFacts.map((f, i) => `${i + 1}. [${f.category}] "${f.statement}"
+   Source: "${f.source_quote.substring(0, 100)}${f.source_quote.length > 100 ? '...' : ''}"`).join('\n')}
 
-CHAPTER TEXT
-${chapterText}
-`;
+IMPORTANT: Each question's source_reference MUST be one of these verified facts or their source quotes (copy exactly or paraphrase closely).
+Only create questions that can be directly answered using one of these facts.`
+    : '';
+
+  // Phase 4: Calculate adaptive question count based on content to cover
+  const learningObjectivesArray = chapterMetadata.learning_objectives || [];
+  const keyConceptsArray = chapterMetadata.key_concepts || [];
+  const adaptiveCount = calculateAdaptiveQuestionCount(
+    learningObjectivesArray,
+    keyConceptsArray,
+    preExtractedFacts
+  );
+
+  console.log(`📊 Adaptive question count: ${adaptiveCount.count} (objectives: ${adaptiveCount.breakdown.objectives}, concepts: ${adaptiveCount.breakdown.concepts}, facts: ${adaptiveCount.breakdown.facts})`);
+
+  // Enhanced prompt with source_reference, cognitive_level, and strict quality rules
+  const learningObjectives = learningObjectivesArray.length
+    ? `\nLEARNING OBJECTIVES TO TEST (${learningObjectivesArray.length} objectives - generate at least one question per objective):\n${learningObjectivesArray.map((obj: string, i: number) => `${i + 1}. ${obj}`).join('\n')}`
+    : '';
+  const keyConcepts = keyConceptsArray.length
+    ? `\nKEY CONCEPTS TO COVER (${keyConceptsArray.length} concepts - ensure each is tested):\n${keyConceptsArray.map((c: string, i: number) => `${i + 1}. ${c}`).join('\n')}`
+    : '';
+
+  const prompt = `Generate MCQ quiz for this chapter concept. Each question MUST include:
+- "type": "multiple_choice"
+- "prompt": The question text
+- "options": Exactly 4 unique options
+- "correct_option_index": 0-based index of correct answer
+- "explanation": Brief explanation of why the answer is correct
+- "source_reference": REQUIRED - The exact quote or paraphrase from the source text that supports the correct answer (15-50 words)
+- "cognitive_level": One of "remember" (recall facts), "understand" (explain concepts), "apply" (use knowledge in new situations)
+- "concept_tested": Which key concept or learning objective this question tests
+
+CRITICAL RULES FOR QUESTION QUALITY:
+1. ONLY ONE CORRECT ANSWER: Each question must have exactly ONE unambiguously correct option. The other 3 must be clearly wrong based on the source text.
+2. NO PARTIAL TRUTHS: Never create questions where multiple options could be partially correct. If the text mentions multiple valid items (e.g., "A and B both cause X"), do NOT ask "What causes X?" with A and B as separate options.
+3. PRECISE WORDING: Questions must be specific. Use phrases like "According to the text...", "Which BEST describes...", "The PRIMARY reason is...".
+4. MANDATORY SOURCE REFERENCE: Every question MUST have a source_reference field with the exact text passage that proves the correct answer. If you cannot find explicit support in the text, DO NOT create that question.
+5. AVOID TRAP QUESTIONS: If the text lists multiple related concepts, ask about distinguishing features, not shared characteristics.
+6. COVER ALL LEARNING OBJECTIVES: Generate at least one question per learning objective listed below.
+7. TEST KEY CONCEPTS: Generate questions that directly test the key concepts extracted from the text.
+8. NO MEMORIZATION OF CALCULATION RESULTS: NEVER ask students to memorize specific numerical results from example calculations (e.g., "What is the WACC?" with answer "8.5%", "What is the NPV?" with answer "$1.2M"). This is pedagogically useless because:
+   - Students cannot derive the answer without knowing the inputs
+   - Memorizing example results has no educational value
+   INSTEAD, do one of these:
+   a) Ask about the FORMULA or METHODOLOGY: "What components are used to calculate WACC?"
+   b) PROVIDE THE INPUTS and ask to calculate: "Given cost of equity = 10%, cost of debt = 5%, calculate WACC"
+   c) Ask about INTERPRETATION: "What does a high WACC indicate for investment decisions?"
+   d) Ask about CONCEPTS: "Why is the cost of debt tax-adjusted in WACC?"
+
+9. FORMULA QUESTIONS ARE ENCOURAGED - BUT FORMAT OPTIONS CORRECTLY:
+   Asking about formulas is EXCELLENT pedagogy! But format the options correctly:
+   - NEVER start an option with the variable name followed by "=" (e.g., "FCFF = ...")
+   - Show ONLY the formula itself without the variable prefix
+   - This applies to ALL options, not just the correct one
+
+   EXAMPLE - Question: "What is the formula for FCFF?"
+   ❌ BAD options: "FCFF = EBIT(1-t) + D&A - CapEx - ΔNWC", "FCFE = ...", "WACC = ..."
+   ✅ GOOD options: "EBIT(1-t) + D&A - CapEx - ΔNWC", "Net Income + D&A - CapEx - ΔNWC", "EBITDA - Taxes - CapEx"
+
+   Why? If only one option starts with "FCFF = ", students know it's the answer without understanding the formula.
+
+DISTRACTOR QUALITY RULES (for wrong answers):
+- Distractors CAN reference concepts from the text, but must NOT be valid answers to THIS specific question
+- Good distractors are PLAUSIBLE (related to the topic) but CLEARLY INCORRECT for this question
+- Types of good distractors:
+  a) Common misconceptions about the concept
+  b) True statements about related concepts that don't answer THIS question
+  c) Partially correct statements that miss a key element
+  d) Similar-sounding terms with different meanings
+- BAD distractors: completely unrelated topics, obviously absurd answers, or items that could also be correct
+
+ADAPTIVE QUESTION COUNT - CONTENT COVERAGE APPROACH:
+Generate EXACTLY ${adaptiveCount.count} questions to ensure complete coverage of the content.
+This count is calculated based on:
+- ${adaptiveCount.breakdown.objectives} learning objectives (each needs at least 1 question)
+- ${adaptiveCount.breakdown.concepts} key concepts (each needs at least 1 question)
+- ${adaptiveCount.breakdown.facts} verified facts (coverage distribution)
+
+COVERAGE REQUIREMENTS:
+1. Every learning objective MUST be tested by at least one question
+2. Every key concept MUST be covered by at least one question
+3. Questions should be distributed across all verified facts when possible
+4. If content overlaps, one question can test multiple objectives/concepts (indicate in concept_tested field)
+
+Do NOT generate more or fewer than ${adaptiveCount.count} questions. Prioritize quality and coverage.
+
+Balance cognitive levels: 40% remember, 40% understand, 20% apply.
+
+Example with GOOD distractors:
+{
+  "questions": [
+    {
+      "type": "multiple_choice",
+      "prompt": "According to the neoclassical hypothesis, merger waves are PRIMARILY driven by:",
+      "options": [
+        "Managerial overconfidence and empire-building",
+        "Economic shocks and industry restructuring",
+        "Stock market overvaluation by investors",
+        "Regulatory changes in antitrust policy"
+      ],
+      "correct_option_index": 1,
+      "explanation": "The neoclassical hypothesis attributes merger waves to economic factors and industry shocks. Options A and C describe the behavioral hypothesis instead, while D is a factor but not the primary driver according to this theory.",
+      "source_reference": "The neoclassical hypothesis posits that merger waves occur in response to economic shocks that affect industry structure.",
+      "cognitive_level": "understand",
+      "concept_tested": "Neoclassical hypothesis definition"
+    }
+  ]
+}
+
+CHAPTER: ${chapterMetadata.title}
+DIFFICULTY: ${chapterMetadata.difficulty || 2}
+SUMMARY: ${chapterMetadata.short_summary || ''}
+${learningObjectives}
+${keyConcepts}
+${factsForPrompt}
+
+SOURCE TEXT:
+${truncatedText}`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert educational content creator. Always return valid JSON. ${languageInstruction} ${languageReminder}`,
+    const response = await withCircuitBreaker(
+      openaiCircuitBreaker,
+      () => withRetry(
+        async () => {
+          const result = await openai.chat.completions.create({
+            model: LLM_CONFIG.models.questionGeneration,
+            messages: [
+              {
+                role: 'system',
+                content: `Expert quiz creator. Return valid JSON only. ${languageInstruction}`,
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: LLM_CONFIG.temperatures.questionGeneration,
+            response_format: { type: 'json_object' },
+            max_tokens: LLM_CONFIG.maxTokens.questionGeneration,
+          });
+          return result;
         },
-        {
-          role: 'user',
-          content: `${languageReminder}\n\n${prompt}`,
-        },
-      ],
-      temperature: 0.6,
-      response_format: { type: 'json_object' },
-      max_tokens: 3000,
-    });
+        { maxRetries: 3 } // Increased from 2 to compensate for gpt-4o-mini
+      ),
+      async () => {
+        logContext.setFallbackUsed();
+        return null;
+      }
+    );
+
+    if (!response) {
+      // Circuit breaker is open
+      console.log('⚠️ Circuit breaker open, using contextual question fallback...');
+      const fallbackQuestions = generateContextualQuestions(chapterMetadata.title, chapterText, language, 8);
+      logContext.setFallbackUsed().success();
+      return fallbackQuestions;
+    }
 
     const content = response.choices[0].message.content;
     const parsed = JSON.parse(content || '{}');
+    let questions: MCQQuestion[] = parsed.questions || [];
 
-    console.log('✅ Generated', parsed.questions?.length || 0, 'questions (concept prompt) for chapter');
-    return parsed.questions || [];
-  } catch (error) {
+    if (response.usage) {
+      logContext.setTokens(response.usage);
+    }
+
+    // Validate and fix questions
+    const validationResult = validateQuestionBatch(questions);
+    console.log(`📊 Question validation: ${validationResult.stats.valid} valid, ${validationResult.stats.fixed} fixed, ${validationResult.stats.rejected} rejected`);
+
+    if (validationResult.stats.rejected > 0) {
+      console.warn(`⚠️ ${validationResult.stats.rejected} questions rejected due to validation errors`);
+    }
+
+    // Use validated questions
+    questions = validationResult.valid;
+
+    // Deduplicate questions
+    const deduplicatedQuestions = deduplicateQuestions(questions, 0.65); // Lowered from 0.75 for stricter deduplication
+    if (deduplicatedQuestions.length < questions.length) {
+      console.log(`🔄 Removed ${questions.length - deduplicatedQuestions.length} duplicate questions`);
+    }
+
+    // Phase 2: Optional semantic validation
+    // Now uses the pre-extracted facts from Phase 3 (no double extraction)
+    let finalQuestions = deduplicatedQuestions;
+    if (options?.enableSemanticValidation && deduplicatedQuestions.length > 0 && preExtractedFacts.length > 0) {
+      console.log('🔍 Running semantic validation on questions (using pre-extracted facts)...');
+
+      const semanticResult = await validateQuestionBatchSemantically(
+        deduplicatedQuestions,
+        preExtractedFacts,  // Reuse the facts we already extracted
+        chapterText,
+        language,
+        { minConfidence: 0.6, maxConcurrentValidations: 3 }
+      );
+
+      console.log(`🔍 Semantic validation: ${semanticResult.stats.valid}/${semanticResult.stats.total} questions passed`);
+
+      if (semanticResult.stats.invalid > 0) {
+        console.warn(`⚠️ ${semanticResult.stats.invalid} questions failed semantic validation`);
+        // Log issues for debugging
+        for (const invalid of semanticResult.invalidQuestions.slice(0, 3)) {
+          console.warn(`  - Q: "${invalid.question.prompt?.substring(0, 50)}..." Issues: ${invalid.result.issues.join(', ')}`);
+        }
+      }
+
+      finalQuestions = semanticResult.validQuestions;
+    }
+
+    console.log('✅ Generated', finalQuestions.length, 'validated questions for chapter');
+    logContext.success();
+    return finalQuestions;
+  } catch (error: any) {
     console.error('❌ Error generating concept-based questions:', error);
-    return generateDefaultChapterQuestions(chapterMetadata.title);
+    logContext.setFallbackUsed().failure(error, error?.status);
+
+    // Use contextual fallback instead of generic questions
+    return generateContextualQuestions(chapterMetadata.title, chapterText, language, 8);
   }
 }
 

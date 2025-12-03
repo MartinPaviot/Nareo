@@ -1,12 +1,13 @@
 /**
  * OpenAI Fallback Utilities
- * 
+ *
  * Provides fallback text extraction using OpenAI GPT-4o Vision
  * when traditional parsers fail or extract corrupted/insufficient text
  */
 
 import { openai } from './openai-vision';
 import { extractTextFromImage } from './openai-vision';
+import { LLM_CONFIG } from './llm';
 
 /**
  * Calculate readability score for extracted text
@@ -222,10 +223,10 @@ export function validateExtractedText(
 /**
  * Truncate text intelligently at sentence boundaries
  * @param text - Text to truncate
- * @param maxLength - Maximum length (default: 20000)
+ * @param maxLength - Maximum length (default from LLM_CONFIG)
  * @returns Truncated text
  */
-export function truncateTextIntelligently(text: string, maxLength: number = 20000): string {
+export function truncateTextIntelligently(text: string, maxLength: number = LLM_CONFIG.truncation.courseText): string {
   if (text.length <= maxLength) {
     return text;
   }

@@ -647,6 +647,7 @@ export const translations: Record<Language, Translations> = {
     contact_footer: 'Thank you for being part of the Nareo community!',
 
     // Account Settings
+    account_back: 'Back',
     account_back_dashboard: 'Back to dashboard',
     account_title: 'Account Settings',
     account_subtitle: 'Manage your profile and subscription',
@@ -1471,6 +1472,7 @@ export const translations: Record<Language, Translations> = {
     contact_footer: 'Merci de faire partie de la communauté Nareo !',
 
     // Account Settings
+    account_back: 'Retour',
     account_back_dashboard: 'Retour au tableau de bord',
     account_title: 'Paramètres du compte',
     account_subtitle: 'Gère ton profil et ton abonnement',
@@ -2281,6 +2283,7 @@ export const translations: Record<Language, Translations> = {
     contact_footer: 'Danke, dass du Teil der Nareo-Community bist!',
 
     // Account Settings
+    account_back: 'Zurück',
     account_back_dashboard: 'Zurück zum Dashboard',
     account_title: 'Kontoeinstellungen',
     account_subtitle: 'Verwalte dein Profil und Abonnement',

@@ -33,6 +33,7 @@ interface Profile {
   monthly_upload_count: number;
   monthly_upload_reset_at: string | null;
   isPremium: boolean;
+  hasUnlimitedUploads: boolean;
   courseCount: number;
 }
 
@@ -62,7 +63,12 @@ export default function ComptePage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/auth/signin');
+      // Pass the current referrer as returnTo so user can go back to where they came from
+      const returnTo = typeof window !== 'undefined' ? document.referrer : '';
+      const returnPath = returnTo && new URL(returnTo).origin === window.location.origin
+        ? new URL(returnTo).pathname
+        : '/';
+      router.push(`/auth/signin?returnTo=${encodeURIComponent(returnPath)}`);
     }
   }, [authLoading, user, router]);
 
@@ -240,13 +246,13 @@ export default function ComptePage() {
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
       {/* Header */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <Link
-          href="/dashboard"
+        <button
+          onClick={() => router.back()}
           className="inline-flex items-center gap-2 text-gray-600 hover:text-orange-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm font-medium">{translate('account_back_dashboard')}</span>
-        </Link>
+          <span className="text-sm font-medium">{translate('account_back')}</span>
+        </button>
       </div>
 
       {/* Main Content */}
@@ -385,7 +391,10 @@ export default function ComptePage() {
                     {translate('account_uploads_this_month')}
                   </span>
                   <span className="font-medium text-gray-900">
-                    {profile?.monthly_upload_count || 0} / {profile?.isPremium ? 12 : 3}
+                    {profile?.hasUnlimitedUploads
+                      ? `${profile?.monthly_upload_count || 0} / ∞`
+                      : `${profile?.monthly_upload_count || 0} / ${profile?.isPremium ? 12 : 3}`
+                    }
                   </span>
                 </div>
 

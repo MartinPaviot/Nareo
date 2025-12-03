@@ -10,8 +10,8 @@ export default function FeedbackWidget() {
   const [isClosing, setIsClosing] = useState(false);
   const pathname = usePathname();
 
-  // Hide widget on home page and quiz pages
-  const isHiddenPage = pathname === '/' || pathname.includes('/chapters/');
+  // Hide widget on home page, quiz pages, and admin pages
+  const isHiddenPage = pathname === '/' || pathname.includes('/chapters/') || pathname.startsWith('/admin');
 
   useEffect(() => {
     // Reset visibility on page change (no localStorage check)

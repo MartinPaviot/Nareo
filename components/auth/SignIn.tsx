@@ -3,14 +3,16 @@
 import { useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { trackVisitor } from '@/lib/visitors';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SignIn() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/';
   const { translate } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,8 +63,8 @@ export default function SignIn() {
           console.error('Error creating session:', sessionError);
         }
 
-        // Redirect to home page
-        router.push('/');
+        // Redirect to returnTo page (or home if not specified)
+        router.push(returnTo);
         router.refresh();
       }
     } catch (err: any) {
@@ -96,6 +98,15 @@ export default function SignIn() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push(returnTo)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>{translate('account_back')}</span>
+        </button>
+
         {/* Header */}
         <div className="text-center mb-8">
           <Image
@@ -221,7 +232,7 @@ export default function SignIn() {
             <p className="text-sm text-gray-600">
               {translate('auth_signin_no_account')}{' '}
               <Link
-                href="/auth/signup"
+                href={`/auth/signup${returnTo !== '/' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}
                 className="text-orange-500 hover:text-orange-600 font-semibold"
               >
                 {translate('auth_signin_signup_link')}

@@ -13,6 +13,7 @@ import VoiceInput from '@/components/chat/VoiceInput';
 import ChapterSidebar from '@/components/layout/ChapterSidebar';
 import TopBarActions from '@/components/layout/TopBarActions';
 import PointsAnimation from '@/components/chat/PointsAnimation';
+import LoadingProgress, { LoadingStep } from '@/components/learn/LoadingProgress';
 import { ChatMessage } from '@/types/chat.types';
 import { ChapterData, ChapterProgress, ChapterQuestion, getPhaseForQuestion } from '@/types/concept.types';
 import { generateId } from '@/lib/utils';
@@ -54,6 +55,8 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
   const [pointsEarned, setPointsEarned] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<LoadingStep | null>('memory');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const questionLoadedRef = useRef<Set<string>>(new Set());
   const isInitializedRef = useRef<boolean>(false);
@@ -68,6 +71,8 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       isInitializedRef.current = false;
       questionLoadedRef.current.clear();
       previousChapterIdRef.current = chapterId;
+      setIsInitialLoading(true);
+      setLoadingStep('memory');
     }
 
     // ✅ ATTENDRE que la mémoire soit chargée AVANT d'initialiser le chapitre
@@ -115,6 +120,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
   const loadChapterData = async () => {
     try {
       console.log('📚 Loading chapter data for:', chapterId);
+      setLoadingStep('chapters');
 
       // Fetch all chapters for sidebar
       const chaptersResponse = await fetch('/api/chapters');
@@ -124,6 +130,8 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
         setChapters(chaptersData.chapters || []);
         setChapterProgress(chaptersData.progress || []);
       }
+
+      setLoadingStep('chapter');
 
       // Fetch current chapter
       const response = await fetch(`/api/chapters/${chapterId}`);
@@ -147,6 +155,8 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       console.log('✅ Chapter loaded:', chapter.title, 'with', chapter.questions.length, 'questions');
       setCurrentChapter(chapter);
 
+      setLoadingStep('progress');
+
       // Get progress to determine current question
       let startQuestionNumber = 1;
       const progressResponse = await fetch(`/api/chapters/${chapterId}/progress`);
@@ -156,6 +166,8 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
         setCurrentQuestionNumber(startQuestionNumber);
         console.log('📈 Progress loaded, starting at question:', startQuestionNumber);
       }
+
+      setLoadingStep('questions');
 
       // ✅ LOGIQUE CORRIGÉE : Vérifier l'historique ET la progression
       const hasHistory = messages.length > 0;
@@ -264,8 +276,17 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
           }
         }
       }
+
+      // Mark loading as complete
+      setLoadingStep('ready');
+      setTimeout(() => {
+        setIsInitialLoading(false);
+        setLoadingStep(null);
+      }, 500);
     } catch (error) {
       console.error('❌ Error loading chapter:', error);
+      setIsInitialLoading(false);
+      setLoadingStep(null);
       await addMessage({
         role: 'assistant',
         content: '❌ Une erreur est survenue lors du chargement du chapitre. Veuillez réessayer.',
@@ -576,6 +597,11 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
   };
 
   const phaseInfo = getPhaseForQuestion(currentQuestionNumber);
+
+  // Show loading progress during initial load
+  if (isInitialLoading && loadingStep) {
+    return <LoadingProgress currentStep={loadingStep} />;
+  }
 
   return (
     <div className="h-screen flex bg-gray-50">

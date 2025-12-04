@@ -198,6 +198,15 @@ export const translations: Record<Language, Translations> = {
     upload_listening: 'Listening for updates...',
     upload_checking: 'Checking for updates...',
     upload_processing_failed: 'Processing Failed',
+
+    // Course loading progress steps
+    course_loading_title: 'Preparing your course...',
+    course_loading_step_uploading: 'Uploading document...',
+    course_loading_step_extracting: 'Extracting text content...',
+    course_loading_step_analyzing: 'Analyzing key concepts...',
+    course_loading_step_generating: 'Generating chapters and questions...',
+    course_loading_step_finalizing: 'Finalizing your course...',
+    course_loading_tip: 'This usually takes 30-60 seconds depending on document size',
     upload_processing_failed_desc: 'There was an error processing this course. Please try uploading again.',
     upload_success: 'Upload successful!',
     upload_error: 'Upload failed. Please try again.',
@@ -211,6 +220,12 @@ export const translations: Record<Language, Translations> = {
     
     // Learn
     learn_loading: 'Loading your learning session...',
+    learn_loading_step_memory: 'Loading chat history...',
+    learn_loading_step_chapters: 'Fetching chapters...',
+    learn_loading_step_chapter: 'Loading chapter content...',
+    learn_loading_step_progress: 'Checking your progress...',
+    learn_loading_step_questions: 'Preparing questions...',
+    learn_loading_step_ready: 'Almost ready!',
     learn_welcome: 'Welcome! Let\'s start learning.',
     learn_question: 'Question',
     learn_question_of: 'Question {current} of {total}',
@@ -1108,6 +1123,15 @@ export const translations: Record<Language, Translations> = {
     upload_listening: 'En attente de mises à jour...',
     upload_checking: 'Vérification des mises à jour...',
     upload_processing_failed: 'Échec du traitement',
+
+    // Course loading progress steps
+    course_loading_title: 'Préparation de votre cours...',
+    course_loading_step_uploading: 'Téléchargement du document...',
+    course_loading_step_extracting: 'Extraction du contenu...',
+    course_loading_step_analyzing: 'Analyse des concepts clés...',
+    course_loading_step_generating: 'Génération des chapitres et questions...',
+    course_loading_step_finalizing: 'Finalisation du cours...',
+    course_loading_tip: 'Cela prend généralement 30 à 60 secondes selon la taille du document',
     upload_processing_failed_desc: 'Une erreur est survenue lors du traitement de ce cours. Veuillez réessayer.',
     upload_success: 'Téléchargement réussi !',
     upload_error: 'Échec du téléchargement. Veuillez réessayer.',
@@ -1121,6 +1145,12 @@ export const translations: Record<Language, Translations> = {
     
     // Learn
     learn_loading: 'Chargement de votre session...',
+    learn_loading_step_memory: 'Chargement de l\'historique...',
+    learn_loading_step_chapters: 'Récupération des chapitres...',
+    learn_loading_step_chapter: 'Chargement du contenu...',
+    learn_loading_step_progress: 'Vérification de la progression...',
+    learn_loading_step_questions: 'Préparation des questions...',
+    learn_loading_step_ready: 'Presque prêt !',
     learn_welcome: 'Bienvenue ! Commençons à apprendre.',
     learn_question: 'Question',
     learn_question_of: 'Question {current} sur {total}',
@@ -2018,6 +2048,15 @@ export const translations: Record<Language, Translations> = {
     upload_listening: 'Warten auf Updates...',
     upload_checking: 'Überprüfe auf Updates...',
     upload_processing_failed: 'Verarbeitung fehlgeschlagen',
+
+    // Course loading progress steps
+    course_loading_title: 'Ihr Kurs wird vorbereitet...',
+    course_loading_step_uploading: 'Dokument wird hochgeladen...',
+    course_loading_step_extracting: 'Textinhalt wird extrahiert...',
+    course_loading_step_analyzing: 'Schlüsselkonzepte werden analysiert...',
+    course_loading_step_generating: 'Kapitel und Fragen werden generiert...',
+    course_loading_step_finalizing: 'Kurs wird finalisiert...',
+    course_loading_tip: 'Dies dauert normalerweise 30-60 Sekunden je nach Dokumentgröße',
     upload_processing_failed_desc: 'Bei der Verarbeitung dieses Kurses ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
     upload_success: 'Upload erfolgreich!',
     upload_error: 'Upload fehlgeschlagen. Bitte versuchen Sie es erneut.',
@@ -2031,6 +2070,12 @@ export const translations: Record<Language, Translations> = {
 
     // Learn
     learn_loading: 'Ihre Lernsitzung wird geladen...',
+    learn_loading_step_memory: 'Chat-Verlauf wird geladen...',
+    learn_loading_step_chapters: 'Kapitel werden abgerufen...',
+    learn_loading_step_chapter: 'Kapitelinhalt wird geladen...',
+    learn_loading_step_progress: 'Fortschritt wird überprüft...',
+    learn_loading_step_questions: 'Fragen werden vorbereitet...',
+    learn_loading_step_ready: 'Fast bereit!',
     learn_welcome: 'Willkommen! Lassen Sie uns mit dem Lernen beginnen.',
     learn_question: 'Frage',
     learn_question_of: 'Frage {current} von {total}',

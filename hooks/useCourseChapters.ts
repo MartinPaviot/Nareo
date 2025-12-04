@@ -131,7 +131,9 @@ export function useCourseChapters({
       const response = await fetch(`/api/courses/${courseId}/chapters`);
 
       if (!response.ok) {
-        throw new Error('Failed to load course');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData?.error || `Failed to load course (${response.status})`;
+        throw new Error(errorMessage);
       }
 
       const data: CourseChaptersResponse = await response.json();

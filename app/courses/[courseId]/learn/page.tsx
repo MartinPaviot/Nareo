@@ -111,6 +111,10 @@ export default function CourseLearnPage() {
   const accessTier = isDemoId ? null : apiAccessTier;
   const error = isDemoId ? demoError : apiError;
 
+  // Check if at least one chapter is ready (has questions)
+  const hasReadyChapter = chapters.some(ch => ch.question_count > 0);
+  const isStillProcessing = course?.status === 'pending' || course?.status === 'processing';
+
   const handleChapterClick = (chapter: Chapter, index: number) => {
     // Chapter 1 is always accessible
     if (index === 0) {
@@ -217,14 +221,24 @@ export default function CourseLearnPage() {
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
-        {/* Processing progress - shown when course is pending/processing OR when waiting for chapters */}
-        {!isDemoId && (course?.status === 'pending' || course?.status === 'processing' || ((isPolling || isListening) && chapters.length === 0)) && (
+        {/* Processing progress - shown when course is pending/processing AND no chapter is ready yet */}
+        {!isDemoId && isStillProcessing && !hasReadyChapter && (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <CourseLoadingProgress
               courseStatus={course?.status || 'pending'}
               chaptersCount={chapters.length}
               courseTitle={course?.title}
             />
+          </div>
+        )}
+
+        {/* Partial loading banner - shown when processing but at least one chapter is ready */}
+        {!isDemoId && isStillProcessing && hasReadyChapter && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
+            <p className="text-sm text-orange-700">
+              {translate('course_loading_partial')}
+            </p>
           </div>
         )}
 
@@ -241,8 +255,8 @@ export default function CourseLearnPage() {
           </div>
         )}
 
-        {/* Chapters list - only show when NOT processing */}
-        {!isDemoId && (course?.status === 'pending' || course?.status === 'processing') ? null : chapters.length === 0 && (loading || isPolling || isListening) ? (
+        {/* Chapters list - show when ready OR when at least one chapter is ready during processing */}
+        {!isDemoId && isStillProcessing && !hasReadyChapter ? null : chapters.length === 0 && (loading || isPolling || isListening) ? (
           // Skeleton placeholders while loading/polling (fallback)
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
             {[1, 2, 3].map((i) => (
@@ -271,6 +285,8 @@ export default function CourseLearnPage() {
               const locked = (index === 1 || index === 2) && !user && !isDemoId;
               // Chapters 4+ (index >= 3) require premium
               const premiumLock = index >= 3 && !chapter.has_access;
+              // Check if chapter is ready (has questions generated)
+              const isChapterReady = chapter.question_count > 0;
               return (
                 <div
                   key={chapter.id}
@@ -299,6 +315,12 @@ export default function CourseLearnPage() {
                         <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
                           <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                           {translate('course_detail_locked_badge')}
+                        </span>
+                      )}
+                      {!isChapterReady && (
+                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-orange-100 text-orange-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                          <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
+                          {translate('chapter_preparing')}
                         </span>
                       )}
                     </div>
@@ -334,18 +356,31 @@ export default function CourseLearnPage() {
                   )}
                   <button
                     onClick={() => handleChapterClick(chapter, index)}
+                    disabled={!isChapterReady}
                     className={`inline-flex items-center justify-center gap-1 sm:gap-2 w-full sm:w-[180px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
-                      (locked || premiumLock) && !isDemoId
+                      !isChapterReady
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : (locked || premiumLock) && !isDemoId
                         ? 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
                         : 'bg-orange-500 text-white hover:bg-orange-600'
                     }`}
                   >
-                    <span className="hidden sm:inline">{getChapterCTA(chapter, index)}</span>
-                    <span className="sm:hidden">{translate('quiz_start_short')}</span>
-                    {chapter.completed ? (
-                      <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
+                    {!isChapterReady ? (
+                      <>
+                        <span className="hidden sm:inline">{translate('chapter_preparing')}</span>
+                        <span className="sm:hidden">{translate('chapter_preparing')}</span>
+                        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                      </>
                     ) : (
-                      <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <>
+                        <span className="hidden sm:inline">{getChapterCTA(chapter, index)}</span>
+                        <span className="sm:hidden">{translate('quiz_start_short')}</span>
+                        {chapter.completed ? (
+                          <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
+                        ) : (
+                          <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                        )}
+                      </>
                     )}
                   </button>
                 </div>

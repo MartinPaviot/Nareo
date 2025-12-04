@@ -22,7 +22,7 @@ const testimonials = [
     roleKey: "home_testimonials_3_role",
     quoteKey: "home_testimonials_3_quote",
     src: "/images/will_linley.jpg",
-    alt: "Will Linley",
+    alt: "Arjun Sharma",
   },
 ];
 

@@ -41,8 +41,9 @@ export default function ContactModal({ onClose }: ContactModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-      <div className="relative w-full max-w-[calc(100vw-1rem)] sm:max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-xl overflow-hidden my-2 sm:my-4">
+    <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+      <div className="min-h-full flex items-center justify-center p-2 sm:p-4">
+        <div className="relative w-full max-w-[calc(100vw-1rem)] sm:max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-xl overflow-hidden my-2 sm:my-4">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -183,6 +184,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

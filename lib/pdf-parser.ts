@@ -76,8 +76,8 @@ const LIGATURE_CORRUPTION_PATTERNS: Array<{ pattern: RegExp; replacement: string
   { pattern: /poten\)al/gi, replacement: 'potential', description: 'potential' },
   { pattern: /substan\)al/gi, replacement: 'substantial', description: 'substantial' },
   { pattern: /essen\)al/gi, replacement: 'essential', description: 'essential' },
-  // fi ligature corruption
-  { pattern: /(\w)fi(\w)/g, replacement: '$1fi$2', description: 'fi ligature' },
+  // fi ligature corruption - specific patterns only (not generic fi matching)
+  // Note: /(\w)fi(\w)/g was removed as it matches normal French words like "définition"
   { pattern: /bene\?t/gi, replacement: 'benefit', description: 'benefit' },
   { pattern: /pro\?t/gi, replacement: 'profit', description: 'profit' },
   { pattern: /signi\?cant/gi, replacement: 'significant', description: 'significant' },
@@ -163,11 +163,26 @@ function detectHangulCJKCorruption(text: string): {
   }
 
   // For academic/financial documents in Latin script, ANY Hangul/CJK is corruption
-  // For PUA characters: use ratio-based detection (>30% of text) instead of absolute count
-  // PUA chars are common in academic PDFs for math symbols, arrows, special fonts
+  // For PUA characters: they are very common in academic PDFs for:
+  // - Math symbols, arrows, geometric shapes
+  // - Custom fonts for diagrams and graphs
+  // - Special typography
+  //
+  // NEW STRATEGY: Check if the READABLE text is sufficient, not just PUA ratio
+  // A PDF with lots of PUA but also lots of readable text is likely fine
+  // (PUA chars are just symbols/decorations that don't affect text comprehension)
   const textLength = text.length;
+
+  // Count readable Latin characters (letters, numbers, common punctuation)
+  const readableChars = text.match(/[a-zA-ZÀ-ÿ0-9\s.,;:!?'"()\-]/g) || [];
+  const readableCount = readableChars.length;
+
+  // Only consider PUA as corruption if:
+  // 1. PUA is > 50% of text AND
+  // 2. Readable text is < 40% of total (meaning most content is PUA garbage)
   const puaRatio = textLength > 0 ? privateUseCount / textLength : 0;
-  const puaCorrupted = puaRatio > 0.3; // Only flag if >30% of text is PUA
+  const readableRatio = textLength > 0 ? readableCount / textLength : 0;
+  const puaCorrupted = puaRatio > 0.5 && readableRatio < 0.4;
 
   const detected = hangulCount > 0 || cjkCount > 0 || puaCorrupted;
 
@@ -271,13 +286,20 @@ function hasCorruptedText(text: string): {
   }
 
   // === CHECK 3: Math Symbol Corruption ===
-  const mathSymbolChars = text.match(/[úûùêëé](?![a-zA-Z])/g) || [];
-  // Filter out French accents in valid words
-  const mathSymbolDensity = normalize(mathSymbolChars.length);
-  if (mathSymbolDensity > 3) {
-    corruptionScore += Math.min(40, mathSymbolDensity * 3);
+  // Only flag accented characters that appear ISOLATED (not in words)
+  // French text legitimately contains: é, è, ê, ë, à, â, ù, û, ô, î, ï, ç, etc.
+  // Corruption looks like: standalone accented chars, or sequences like "úûùêëé"
+  //
+  // Strategy: Count accented chars that are NOT part of letter sequences
+  // A legitimate French word: "économie" (é followed by letters)
+  // Corruption: "ú û ù" (accented chars with spaces or alone)
+  const isolatedAccents = text.match(/(?<![a-zA-ZÀ-ÿ])[úûùêëéèàâäôöïîüç](?![a-zA-ZÀ-ÿ])/g) || [];
+  const isolatedAccentDensity = normalize(isolatedAccents.length);
+  // Only flag if we have many isolated accents (> 5 per 1000 chars)
+  if (isolatedAccentDensity > 5) {
+    corruptionScore += Math.min(40, isolatedAccentDensity * 3);
     corruptionTypes.push('math_symbols');
-    evidence.push(`Math symbol corruption: ${mathSymbolChars.length} suspicious chars (density: ${mathSymbolDensity.toFixed(1)}/1000)`);
+    evidence.push(`Math symbol corruption: ${isolatedAccents.length} isolated accented chars (density: ${isolatedAccentDensity.toFixed(1)}/1000)`);
   }
 
   // === CHECK 4: Greek Letter Corruption in Formula Context ===

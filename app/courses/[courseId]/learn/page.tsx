@@ -7,6 +7,7 @@ import Image from 'next/image';
 import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
 import ChapterScoreBadge from '@/components/course/ChapterScoreBadge';
 import PaywallModal from '@/components/course/PaywallModal';
+import CourseLoadingProgress from '@/components/course/CourseLoadingProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackEvent } from '@/lib/posthog';
@@ -216,18 +217,14 @@ export default function CourseLearnPage() {
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
-        {/* Processing banner - shown when course is pending/processing OR when waiting for chapters */}
+        {/* Processing progress - shown when course is pending/processing OR when waiting for chapters */}
         {!isDemoId && (course?.status === 'pending' || course?.status === 'processing' || ((isPolling || isListening) && chapters.length === 0)) && (
-          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800 flex items-start gap-3">
-            <Loader2 className="w-5 h-5 animate-spin mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="font-semibold">{translate('course_detail_processing')}</p>
-              <p className="text-xs text-orange-700 mt-1">
-                {translate('upload_extracting')}
-                {isListening && ` • ${translate('upload_listening')}`}
-                {isPolling && !isListening && ` • ${translate('upload_checking')}`}
-              </p>
-            </div>
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+            <CourseLoadingProgress
+              courseStatus={course?.status || 'pending'}
+              chaptersCount={chapters.length}
+              courseTitle={course?.title}
+            />
           </div>
         )}
 
@@ -244,9 +241,9 @@ export default function CourseLearnPage() {
           </div>
         )}
 
-        {/* Chapters list or skeleton loading state */}
-        {chapters.length === 0 && (loading || isPolling || isListening) ? (
-          // Skeleton placeholders while loading/polling
+        {/* Chapters list - only show when NOT processing */}
+        {!isDemoId && (course?.status === 'pending' || course?.status === 'processing') ? null : chapters.length === 0 && (loading || isPolling || isListening) ? (
+          // Skeleton placeholders while loading/polling (fallback)
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
             {[1, 2, 3].map((i) => (
               <div key={i} className="p-4 sm:p-5 flex items-start gap-4 animate-pulse">

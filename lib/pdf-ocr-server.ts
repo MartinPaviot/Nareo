@@ -9,7 +9,16 @@
  * NEW: Targeted OCR - Only OCR pages with corrupted formulas
  */
 
-import { pdf } from 'pdf-to-img';
+// Dynamic import to avoid build-time evaluation issues with pdf-to-img
+// pdf-to-img uses pdfjs-dist which tries to configure workers at import time
+let pdfModule: typeof import('pdf-to-img') | null = null;
+async function getPdf() {
+  if (!pdfModule) {
+    pdfModule = await import('pdf-to-img');
+  }
+  return pdfModule.pdf;
+}
+
 import { openai } from './openai-vision';
 import {
   withRetry,
@@ -113,6 +122,7 @@ export async function extractTextFromPdfWithOCR(buffer: Buffer): Promise<string>
   try {
     // Load PDF document using pdf-to-img
     // This library properly handles PDF rendering to images
+    const pdf = await getPdf();
     const document = await pdf(buffer, {
       scale: 2.0,  // Higher scale = better OCR accuracy
     });
@@ -184,6 +194,7 @@ export async function extractTextFromSpecificPages(
   }
 
   try {
+    const pdf = await getPdf();
     const document = await pdf(buffer, {
       scale: 2.0,
     });

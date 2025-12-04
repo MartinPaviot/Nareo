@@ -5,6 +5,8 @@
  * by rendering each page as an image and using OCR
  *
  * Enhanced with specialized math formula extraction
+ *
+ * NEW: Targeted OCR - Only OCR pages with corrupted formulas
  */
 
 import { pdf } from 'pdf-to-img';
@@ -18,52 +20,87 @@ import {
 } from './llm';
 
 /**
- * Specialized OCR prompt for PDFs with mathematical content
- * This prompt is optimized to correctly extract formulas, Greek letters, and financial notation
+ * Represents a corrupted formula zone in a PDF
  */
-const MATH_OCR_SYSTEM_PROMPT = `You are an expert OCR system specialized in extracting text from academic and financial documents that contain mathematical formulas, equations, and financial notation.
+export interface CorruptedZone {
+  pageNum: number;
+  x: number;
+  y: number;
+  text: string;
+  corruptionType: 'hangul' | 'greek' | 'garbage' | 'pua';
+}
 
-CRITICAL INSTRUCTIONS:
-1. Extract ALL text exactly as it appears in the image
-2. For mathematical formulas:
-   - Use standard notation: subscripts with _ (e.g., k_wacc, FCFF_n)
-   - Use ^ for superscripts (e.g., x^2, (1+r)^n)
-   - Preserve Greek letters: β (beta), α (alpha), Σ (sigma), Δ (delta), etc.
-   - Write fractions as: numerator / denominator
-   - For summations: Σ(i=1 to n) or SUM from i=1 to n
+/**
+ * Result of targeted OCR on specific pages
+ */
+export interface TargetedOCRResult {
+  pageNum: number;
+  originalText: string;
+  ocrText: string;
+  success: boolean;
+}
 
-3. For financial formulas specifically:
-   - WACC, CAPM, DCF, NPV, IRR should be clearly identified
-   - k_e (cost of equity), k_d (cost of debt), r_f (risk-free rate)
-   - FCFF (Free Cash Flow to Firm), FCFE (Free Cash Flow to Equity)
-   - Terminal Value, Enterprise Value, Equity Value
+/**
+ * Specialized OCR prompt for PDFs with mathematical content
+ * This prompt is optimized to correctly extract formulas exactly as they appear visually
+ */
+const MATH_OCR_SYSTEM_PROMPT = `You are an expert OCR system. Your goal is to extract text EXACTLY as it appears visually in the document.
 
-4. Preserve document structure:
-   - Keep headings and titles
-   - Maintain paragraph breaks
-   - Preserve bullet points and numbered lists
-   - Keep table structures readable
+CRITICAL - FORMULA FORMATTING:
+DO NOT use LaTeX syntax (\frac, \sum, etc.). Instead, write formulas EXACTLY as they appear visually:
 
-5. If a formula is complex, describe it in a readable format, e.g.:
-   "WACC = (E/V) × k_e + (D/V) × k_d × (1 - t)"
+CORRECT examples:
+- "EV₀ = Σ(i=1 to n) FCFFᵢ / (1 + k_wacc)ⁱ + [TVₙ / (1 + k_wacc)ⁿ]"
+- "β_L = β_U × [1 + (1 - T) × D/E]"
+- "WACC = k_e × E/V + k_d × D/V × (1 - T)"
+- "r_e = r_f + E(MRP) × β"
+
+WRONG (do NOT do this):
+- "\\frac{FCFF_i}{(1+k)^i}" → Write: "FCFFᵢ / (1 + k)ⁱ"
+- "\\sum_{i=1}^{n}" → Write: "Σ(i=1 to n)" or just "Σ"
+- "\\beta" → Write: "β"
+
+FORMATTING RULES:
+1. Use Unicode subscripts when possible: ₀₁₂₃₄₅₆₇₈₉ₐₑᵢₙ
+2. Use Unicode superscripts when possible: ⁰¹²³⁴⁵⁶⁷⁸⁹ⁿⁱ
+3. Use actual Greek letters: α β γ δ Σ Δ
+4. Write fractions with / : "numerator / denominator"
+5. Use × for multiplication (not * or x)
+6. Preserve brackets exactly: [ ] ( ) { }
+
+FINANCIAL NOTATION:
+- k_e = cost of equity, k_d = cost of debt, r_f = risk-free
+- FCFF, FCFE, EV, TV (keep abbreviations)
+- WACC, CAPM, DCF, NPV, IRR
+
+STRUCTURE:
+- Keep bullet points (§ or -)
+- Preserve headings and titles
+- Maintain paragraph breaks
+
+TABLES: Use Markdown pipes:
+| Col1 | Col2 | Col3 |
+| val1 | val2 | val3 |
 
 Return ONLY the extracted text, preserving structure. No commentary.`;
 
-const MATH_OCR_USER_PROMPT = `Extract ALL text from this document page. This is an academic/financial document that likely contains:
-- Mathematical formulas and equations
-- Financial ratios and metrics (WACC, CAPM, DCF, NPV, etc.)
-- Greek letters (α, β, Σ, Δ, etc.)
-- Subscripts and superscripts
+const MATH_OCR_USER_PROMPT = `Extract ALL text from this slide/page EXACTLY as it appears visually.
 
-IMPORTANT:
-- Write formulas in a clear, readable format
-- Use underscores for subscripts: k_wacc, FCFF_n
-- Use carets for exponents: (1+r)^n
-- Preserve ALL Greek letters correctly
-- Keep the document structure (headings, paragraphs, lists)
-- Extract text from any graphs, charts, or diagrams
+CRITICAL RULES:
+1. NO LaTeX - write formulas as plain text with Unicode symbols
+2. Use actual symbols: Σ β α Δ × ÷ ≤ ≥ ≠ ≈
+3. Use subscripts: ₀₁₂₃₄₅₆₇₈₉ₐₑᵢₙ (e.g., EV₀, FCFFᵢ)
+4. Use superscripts: ⁰¹²³⁴⁵⁶⁷⁸⁹ⁿⁱ (e.g., (1+k)ⁿ)
+5. Fractions: write as "numerator / denominator"
 
-Return the complete extracted text:`;
+Example - if you see a DCF formula, write:
+"EV₀ = Σ(i=1 to n) FCFFᵢ / (1 + k_wacc)ⁱ + [TVₙ / (1 + k_wacc)ⁿ]"
+
+NOT: "\\frac{FCFF_i}{(1+k)^i}"
+
+Tables: use Markdown | Col1 | Col2 |
+
+Extract now:`;
 
 /**
  * Extract text from PDF using page-by-page OCR
@@ -125,6 +162,71 @@ export async function extractTextFromPdfWithOCR(buffer: Buffer): Promise<string>
   }
 }
 
+
+/**
+ * Extract text from ONLY specific pages that have corrupted formulas
+ * This is much faster than full-document OCR as it only processes affected pages
+ *
+ * @param buffer - PDF file buffer
+ * @param corruptedPages - Set of page numbers (1-indexed) with corrupted formulas
+ * @returns Map of pageNum -> OCR text for each processed page
+ */
+export async function extractTextFromSpecificPages(
+  buffer: Buffer,
+  corruptedPages: Set<number>
+): Promise<Map<number, string>> {
+  console.log(`🎯 Starting TARGETED OCR on ${corruptedPages.size} pages: [${[...corruptedPages].join(', ')}]`);
+
+  const results = new Map<number, string>();
+
+  if (corruptedPages.size === 0) {
+    return results;
+  }
+
+  try {
+    const document = await pdf(buffer, {
+      scale: 2.0,
+    });
+
+    const numPages = document.length;
+    console.log(`📄 PDF has ${numPages} pages, OCR-ing only ${corruptedPages.size} pages`);
+
+    let pageNum = 0;
+    for await (const imageBuffer of document) {
+      pageNum++;
+
+      // Skip pages that don't have corruption
+      if (!corruptedPages.has(pageNum)) {
+        continue;
+      }
+
+      console.log(`🔍 OCR page ${pageNum}...`);
+
+      try {
+        const base64Image = imageBuffer.toString('base64');
+        const imageDataUrl = `data:image/png;base64,${base64Image}`;
+
+        const pageText = await extractTextWithMathOCR(imageDataUrl);
+
+        if (pageText && pageText.trim().length > 0) {
+          results.set(pageNum, pageText.trim());
+          console.log(`✅ Page ${pageNum}: extracted ${pageText.length} characters via OCR`);
+        } else {
+          console.log(`⚠️ Page ${pageNum}: OCR returned empty`);
+        }
+      } catch (pageError: any) {
+        console.error(`❌ Error OCR-ing page ${pageNum}:`, pageError.message);
+      }
+    }
+
+    console.log(`✅ Targeted OCR complete: ${results.size}/${corruptedPages.size} pages processed`);
+    return results;
+
+  } catch (error: any) {
+    console.error('❌ Error in targeted OCR:', error.message);
+    throw new Error(`Failed targeted OCR: ${error.message}`);
+  }
+}
 
 /**
  * Extract text from an image using specialized Math-aware OCR

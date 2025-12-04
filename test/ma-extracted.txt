@@ -1,0 +1,275 @@
+Investment Banking
+1. Mergers & Acquisitions
+Mergers & Acquisitions
+Introduction
+Value Creation and Strategy
+Valuation
+Introduction
+M&A
+§ Acquisitions or takeovers includes different
+transactions
+§ Merger (F) Introduction
+§ Consolidation
+§ Tender Offer (H)
+§ Acquisition of assets
+§ Buyout M&A
+Basic Concepts § Acquisition premium vs. Goodwill
+§ Friendly vs. Hostile acquisition
+§ Merger activity in the United States, UK and Continental
+Europe has occurred in waves
+§ Neoclassical hypothesis (PEST and Q - theory)
+§ Behavioral hypothesis
+§ Reducing costs or increasing market power
+§ Strategic realignment
+§ Technological change Introduction
+§ Deregulation
+§ Synergy
+§ Economies of scale/scope
+§ Cross - selling
+M&A
+§ Diversification (Related/Unrelated)
+Motives
+§ Financial considerations
+§ Booming stock market
+§ Falling interest rates
+§ Tax considerations
+§ Agency problems
+§ Ego/Hubris
+§ Empirical studies using event - study methodology
+§ The evidence indicates that the stockholders of target
+firms are the clear winners in takeovers
+Introduction § These gains are much larger in TO (hostile) than in
+mergers (friendly)
+§ The effect of takeover announcements on bidder firm
+stock prices is not as clear cut
+M&A § Studies indicate that approximately half of all bidding
+firms earn negative excess returns around the Successful or failed transactions?
+announcement date
+§ Since acquirers are substantially larger than targets, the
+above results translate to small positive overall gains
+§ In the long run, acquirers in mergers suffer wealth losses,
+significant in many studies, but in tender offers they earn
+insignificantly positive returns in many studies
+§ Results are similar to US, UK and Europe
+Introduction
+§ Positive abnormal returns to bidders is associated to
+the following situations:
+§ Target is a private firm or a subsidiary of another firm
+M&A § The acquirer is relatively small
+Successful when … § The target is small relative to the acquirer
+§ Cash rather than equity is used to finance the transaction
+§ Transaction occurs early in the M&A cycle
+Introduction
+§ Primary reasons some M&As fail to meet expectations
+§ Overpayment
+§ Agency conflicts of the acquirer
+M&A § Over - estimating synergy because of hubris
+Failure … § Winner’s curse when multiple bidders
+§ Slow pace of integration
+§ Poor strategy
+§ Coherent acquisition strategy has to be based on one or
+more of these motives
+Value Creation and Strategy § Create operating or financial synergy (synergy value)
+§ V(AB) > V( A ) + V( B )
+§ Take over poorly managed firms and change
+management (control value)
+M&A § In the last two decades, has been increasingly cited as a
+reason for hostile acquisitions Sources of value
+§ Diversify to reduce risk
+§ Open question whether it can be accomplished more
+efficiently by investors (through traded stocks) or by firms
+§ Acquire undervalued firms
+§ Very difficult strategy especially when acquiring publicly
+traded firms in reasonably efficient markets
+Valuation § 1. Status quo valuation of the firm (“as it is”)
+§ Value the target firm by estimating the firm value with
+existing investing, financing and dividend policies
+§ 2. Control value
+M&A § The value of controlling a firm comes from changes made
+3 steps in value the acquisition to existing management policy that can increase the firm
+value (”as it should be”) of a firm
+§ Value of Control = Value of firm, optimally managed (“as
+it should be”) – Value of firm with current management
+(“as it is”)
+§ 3. Synergy value
+§ Value the firms involved in the merger independently
+(target firm, optimally managed, i.e., “as it should be”)
+Valuation
+§ Estimate the value of the combined firm with no synergy,
+V(A) + V(B)
+§ Build in the effects of synergy into expected growth rates
+and cash flows, and value the combined firm with: V(AB)
+M&A
+§ V(AB) – [V(A)+V(B)]
+3 steps in value the acquisition § In the case the two firms (acquirer and target) are
+of a firm managed independently after the acquisition you only
+need to estimate the value of the target firm
+§ However, in the valuation of the target firm, optimally
+managed, should be included any proceeds resulting
+from the sale of non - operating assets and the savings due
+to redundancy costs.
+```plaintext
+KOZMINSKIUNIVERSITY
+Valuation
+M&ADCF
+▪ Estimation of Enterprise Value
+EV₀ = Σ(i=1 to n) FCFFᵢ / (1 + k_wacc)ⁱ + [TVₙ / (1 + k_wacc)ⁿ]
+▪ Estimation of Equity Value
+EqV₀ = EV₀ - D₀
+EqV₀ = Σ(i=1 to n) FCFEᵢ / (1 + kₑ)ⁱ + [TVₙ / (1 + kₑ)ⁿ]
+```
+Valuation § FCFF (Free Cash - Flow to Firm)
+§ EBIT x (1 - T) + D&A – DWC - CAPEX
+§ Cash - flow available to remunerate all capital (debt and
+equity
+M&ADCF
+§ FCFE (Free Cash - Flow to Equity)
+§ FCFF – Interest (net of taxes) + D Debt
+§ Cash - flow available to remunerate equity
+```plaintext
+KOZMINSKIUNIVERSITY
+Valuation
+M&ADCF
+▪ kₑ - Cost of equity
+▪ CAPM: rₑ = rₑ + E(MRP) × β
+▪ β change with debt – Hamada formula:
+β_L = β_U× [1 + (1 - T) × D/E] ⇆ β_U = β_L / [1 + (1 - T) × D/E]
+▪ k_d = risk-free rate + default spread
+▪ Rating
+▪ YTM
+▪ k_wacc – Weighted average cost of capital
+▪ k_wacc = kₑ × E/V + k_d × D/V× (1-T)
+▪ V = E+D
+▪ E and D – Market values (NOT accounting values)
+```
+```plaintext
+KOZMINSKIUNIVERSITY
+Valuation
+M&ADCF
+▪ Terminal (Residual) Value
+TVₙ = [FCFF(E)ₙ₊₁ / (k_wacc(e) - g_FCFF(E))]
+▪ n – forecast horizon
+▪ FCFF(E)ₙ – FCFF(E) projected to the period n
+▪ k_wacc(e) – cost of capital
+▪ g_FCFF(E) – FCFF(E) perpetual growth rate after n
+▪ g_FCFF = ROC×EBIT Reinvestment rate
+▪ g_FCFE = ROE× (1 - Payout ratio)
+▪ Some authors state that can also be estimated through EV multiples (more on that later)
+TVₙ = EBITₙ × [EV / EBIT]₍benchmark₎
+```
+§ 1. Estimate cash flows, based on the assumptions for its
+post - acquisition management
+§ 2. Estimate the terminal value at end of forecast horizon
+Valuation
+§ 3. Estimate the cost of capital appropriate, given its
+projected post - acquisition risk and capital structure
+§ 4. Discount the estimated cash flows
+M&A
+§ 5. Add in cash - flows from asset disposals or subtract out
+DCF
+cash - flows from business investments
+§ 6. Subtract debt to give a value for the equity of the
+target
+§ 7. Compare the estimated equity value with the pre -
+acquisition stand - alone value to determine the added
+value from the acquisition.
+| 2018                              | 2019       | 2020                         | 2021            | 2022       | 2023   |        |      |      |      |
+| --------------------------------- | ---------- | ---------------------------- | --------------- | ---------- | ------ | ------ | ---- | ---- | ---- |
+| Sales                             | 1620.0     | 1750.0                       | 1890.0          | 2040.0     | 2204.0 | 2204.0 |      |      |      |
+| Operating profit                  | 64.8       | 70.0                         | 75.6            | 81.6       | 88.2   | 88.2   |      |      |      |
+| (                                 | -          | )                            | Corporation tax | 21.4       | 23.1   | 24.9   | 26.9 | 29.1 | 29.1 |
+| (                                 | -          | ) Additional fixed assets    | 20.4            | 22.0       | 23.8   | 25.7   | 27.8 | 0    |      |
+| (                                 | -          | ) Additional working capital | 4.8             | 5.2        | 5.6    | 6.0    | 6.5  | 0    |      |
+| Free cash flow to the firm (FCFF) | 18.2       | 19.7                         | 21.3            | 23.0       | 24.8   | 59.1   |      |      |      |
+| Valuation                         | PV of FCFF | 2018                         | to              | 2022       | 78     |        |      |      |      |
+| PV of TV @                        | 2022       | 319                          | 537             | (59.1/11%) |        |        |      |      |      |
+PV of FCFF 397
+(+) Divestment of associate 30
+(+) Sale of Target head office 70
+( - ) Long - term loans 90 M&A
+Value of Target equity 407
+DCF - Example
+§ The forecast assumes the following values :
+§ Actual (2017) sales = 1500
+§ Expected sales growth = 8% until 2022 and 0% thereafter.
+§ Operating profit margin = 4% of sales.
+§ Tax rate = 33%
+§ Additional fixed capital = 17% of incremental sales.
+§ Additional working capital = 4% of incremental sales.
+§ Cost of capital (WACC) = 11%.
+Valuation § Most used ratios
+§ Equity Value
+§ PER – P/E (Price Earnings Ratio)
+§ Price/Book – Price Bool Value (Market - to - Book Value)
+M&A
+Multiples § Enterprise Value
+§ Tobin’sq = Market value of firm/Replacement Cost = EV /
+(Book Value of Equity + Book Value of Debt)
+§ EV/EBIT(DA)
+§ EV = Market Value of Equity + Market Value of (net) Debt
+§ PER – P/E (Price Earnings Ratio)
+§ PER = Share Price/EPS
+Valuation
+§ Application of the PER (or other ratio) model implies the
+following steps:
+§ 1. Examine the most recent and project the future
+performance under the current target management
+M&A § 2. Identify those elements of revenue and costs that will be
+raised or lowered under the acquirer management Multiples
+§ 3. Re - estimate the target’s future, post - acquisition earnings.
+on a sustainable basis
+§ 4. Select a benchmark PER (comparable companies in terms
+of risk and growth)
+§ 5. Multiply the sustainable earnings by the benchmark PER
+to arrive at a value for equity.
+Pre - bid profit/loss of target firm ($m)
+Turnover 1500
+Cost of sales 1380
+Gross profit 120
+Valuation Administrative costs 80
+Associate company loss 5
+Operating profit (before D&A, EBITDA) 35
+Depreciation and amortization (DA) 16
+EBIT 19
+M&A Interest ($90 x 10%) 9
+Multiples - Example Tax (40%) 4
+Profit for shareholders 6
+§ Effects of Acquisition
+§ Gains:
+§ Increase sales by 8% and gross margin to 9% (from 8%)
+§ Sell of associated company for $30m and head office for
+$70m (both value are net of taxes)
+Pro forma income statement ($m)
+Turnover 1620
+Cost of sales 1474
+Valuation Gross profit 146
+Administrative costs 80
+Operating profit (before D&A, EBITDA) 66
+Depreciation and amortization (DA) 16
+EBIT 50
+M&A Interest ($90 x 10%) 9
+Multiples - Example Tax (40%) 16
+Profit for shareholders 25
+§ Valuation of the target
+§ P/E sector ratio – 12
+§ Value based on earnings – 12 x 25 = 300
+§ (+) Sell head office* – 70
+§ (+) Sell of associated company* – 30 400
+*Only sustainable earnings enter into the P/E model, elements
+of a transitory nature are identified and valued separately
+§ EV/EBITDA
+§ Similar to PER model
+§ Used heavily by analysts, in recent years, as an alternative
+Valuation
+measure of valuation
+§ Allows the comparison between firms with different
+capital structures
+§ Main measure in leverage buy - out acquisitions since
+M&A avoids the problem with the change of the target capital
+Multiples structure after the acquisition
+§ Equity = EV – Debt
+§ Example
+§ EV/EBITDA comparable firm ratio equal to 7
+§ Valuation of the target
+§ EV = 7 x 66 + 30 + 70 = $562m
+§ Equity = 562 - 90 = $472m

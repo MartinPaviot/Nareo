@@ -5,6 +5,7 @@ import { Loader2, Download, Copy, Check, Sparkles, RotateCcw, Pencil, X, Save } 
 import { useLanguage } from '@/contexts/LanguageContext';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import '@/styles/golden-note.css';
@@ -381,7 +382,7 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
         ) : (
           <div ref={contentRef} className="golden-note-content">
             <ReactMarkdown
-              remarkPlugins={[remarkMath]}
+              remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
             >
               {parsedNote.content}

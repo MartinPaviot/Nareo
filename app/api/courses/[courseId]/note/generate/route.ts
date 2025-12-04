@@ -7,71 +7,86 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const APLUS_NOTE_PROMPT = `Tu es un assistant pédagogique expert. Génère une "A+ Note" EXHAUSTIVE en Markdown.
+const APLUS_NOTE_PROMPT = `Tu es un transcripteur expert. Ta tâche est de RETRANSCRIRE intégralement le contenu d'un cours dans un format Markdown structuré et lisible.
 
-OBJECTIF : Créer une fiche de révision COMPLÈTE. Un étudiant doit pouvoir réviser et comprendre le cours uniquement avec cette note.
+RÈGLE ABSOLUE : Tu ne résumes PAS. Tu RETRANSCRIS. Chaque information du cours doit apparaître dans ta note.
 
-=== INSTRUCTIONS (NE PAS INCLURE DANS LA NOTE) ===
+=== CE QUE TU FAIS ===
 
-EXCLURE :
-- Noms d'auteurs, professeurs
-- Informations administratives
-- Références aux TD, TP, exercices
-- Phrases introductives ("Cette section...", "Nous allons voir...")
+1. Tu lis le cours du début à la fin
+2. Tu retranscris TOUT le contenu pédagogique dans un format structuré
+3. Tu organises par thèmes/sections logiques
+4. Tu conserves chaque définition, chaque formule, chaque exemple, chaque liste
 
-INCLURE POUR CHAQUE CONCEPT :
-1. **Définition complète** - pas juste une phrase, mais une explication suffisante
-2. **Hypothèses/conditions** - quand ce concept s'applique, les conditions requises
-3. **Intuition** - ce que ça signifie concrètement, pourquoi c'est important
-4. **Exemples** - UNIQUEMENT reprendre les exemples EXACTEMENT comme ils apparaissent dans le cours source, avec les mêmes chiffres et résultats. Ne JAMAIS inventer d'exemples chiffrés.
-5. **Catégories/cas particuliers** - les différents cas avec leurs seuils (ex: >1, <0, etc.)
-6. **Liens avec autres concepts** - comment ce concept se connecte aux autres
+=== CE QUE TU NE FAIS PAS ===
 
-ATTENTION AUX EXEMPLES :
-- Ne jamais inventer d'exemples chiffrés
-- Reprendre UNIQUEMENT les exemples présents dans le cours source
-- Conserver les valeurs exactes (noms, chiffres, résultats) du cours original
-- Si le cours ne contient pas d'exemple pour un concept, ne pas en créer
+- Tu ne résumes pas
+- Tu n'omets rien
+- Tu n'inventes rien
+- Tu ne traduis pas les termes techniques
 
-FORMULES :
-- Donner la formule en LaTeX bloc $$
-- Expliquer CHAQUE variable avec symboles LaTeX inline ($\\varepsilon$, $\\Delta$, etc.)
-- Interpréter : "Si élasticité élevée, alors... Si faible, alors..."
+=== ÉLÉMENTS À RETRANSCRIRE ===
 
-=== FORMAT DE LA NOTE ===
+- Toutes les définitions (complètes, pas abrégées)
+- Toutes les formules et équations
+- Tous les exemples chiffrés (exactement comme dans le cours)
+- Toutes les listes et énumérations
+- Tous les cas particuliers et conditions
+- Tous les acronymes avec leur signification
 
-# ✦ A+ Note for [Titre du cours]
+=== FORMULES (CRITIQUE) ===
 
-**Course:** [Titre] | **Topics:** \`concept1\` \`concept2\` \`concept3\`
+TOUTES les formules doivent utiliser les délimiteurs LaTeX :
+- Formule en ligne : $formule$
+- Formule centrée : $$formule$$
 
-## Overview
+JAMAIS de parenthèses simples pour les formules. Toujours $$ ou $.
 
-1. **[Thème 1]** — liste exhaustive des concepts de ce thème
-2. **[Thème 2]** — liste exhaustive des concepts
-
-## Topic Deep Dives
-
-### 1. [Thème]
-
-[Phrase de contexte expliquant l'idée centrale du thème.]
-
-- **[Concept]** : Définition complète. Hypothèses/conditions d'application. Intuition : ce que ça signifie concrètement. [Si un exemple existe dans le cours, le reprendre EXACTEMENT]. Cas particuliers avec seuils si applicable.
-
+Exemple CORRECT :
 $$
-formule
+EV_0 = \sum_{i=1}^{n} \frac{FCFF_i}{(1+k_{wacc})^i} + \frac{TV_n}{(1+k_{wacc})^n}
 $$
 
-*où $X$ = signification, $Y$ = signification*
+Exemple INCORRECT (ne fais pas ça) :
+( EV_0 = \sum_{i=1}^{n} ... )
 
-Interprétation : Si $X$ est élevé, cela signifie... Si $X$ est faible...
+Les formules importantes peuvent être mises en valeur :
 
-[Continuer pour TOUS les concepts du thème]
+> **Formule : [Nom]**
+> $$
+> formule
+> $$
+> *où $variable$ = définition*
+
+=== FORMAT ===
+
+# [Titre]
+
+## [Section 1]
+
+[Contenu retranscrit de la section]
+
+### [Sous-section si nécessaire]
+
+[Contenu]
+
+**Formule :** (si présente dans le cours)
+$$
+formule exacte du cours
+$$
+*où chaque variable = sa définition*
+
+## [Section 2]
+
+[etc.]
 
 ---
 
-## Sources
+## Glossaire
 
-- **[Document]** — description précise du contenu couvert`;
+| Terme | Définition |
+|-------|------------|
+| ... | ... |`;
 
 export async function POST(
   request: NextRequest,
@@ -112,9 +127,15 @@ export async function POST(
     // Determine language for generation
     const language = course.content_language?.toUpperCase() || 'EN';
     const languageName = language === 'FR' ? 'French' : language === 'DE' ? 'German' : 'English';
-    const languageInstruction = `Generate the A+ Note in ${languageName}. All content must be in ${languageName}.`;
+    const languageInstruction = `Retranscris en ${languageName}.`;
 
     // Generate A+ Note using GPT-4o
+    // GPT-4o supports 128k context - use up to 100k chars for course content
+    const maxSourceLength = 100000;
+    const sourceText = course.source_text.length > maxSourceLength
+      ? course.source_text.substring(0, maxSourceLength) + '\n\n[... document tronqué pour longueur ...]'
+      : course.source_text;
+
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -124,16 +145,13 @@ export async function POST(
         },
         {
           role: 'user',
-          content: `Create an A+ Note for this course:
+          content: `Retranscris ce cours intégralement dans un format structuré :
 
-Title: ${course.title}
-
-Content:
-${course.source_text.substring(0, 15000)}`,
+${sourceText}`,
         },
       ],
       temperature: 0.3,
-      max_tokens: 6000,
+      max_tokens: 16000,
     });
 
     const noteContent = response.choices[0].message.content;

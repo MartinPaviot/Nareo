@@ -17,6 +17,10 @@ import {
   extractTextFromPdfWithVision,
   validateExtractedText
 } from './openai-fallback';
+import {
+  extractTextFromSpecificPages,
+  type CorruptedZone
+} from './pdf-ocr-server';
 
 /**
  * Common ligature corruption patterns found in PDFs
@@ -527,10 +531,10 @@ function isTextUnreadable(text: string): {
 export async function parsePDF(buffer: Buffer): Promise<string> {
   console.log('📄 Parsing PDF document (buffer size:', buffer.length, 'bytes)');
 
-  // Try pdf2json first
+  // Try pdf2json first with page-level detail
   try {
-    const text = await parsePDFWithPdf2Json(buffer);
-    const cleaned = cleanPDFText(text);
+    const parseResult = await parsePDFWithPageDetail(buffer);
+    const cleaned = cleanPDFText(parseResult.fullText);
 
     // Comprehensive readability and corruption check
     const readabilityCheck = isTextUnreadable(cleaned);
@@ -543,6 +547,52 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
       console.log('   - Corruption types:', readabilityCheck.corruptionTypes.join(', '));
       console.log('   - Should use OCR:', readabilityCheck.shouldUseOCR ? 'YES' : 'NO');
       console.log('   - Can be text-fixed:', readabilityCheck.canBeFixed ? 'YES' : 'NO');
+    }
+
+    // Check if we have corrupted formula pages that need targeted OCR
+    if (parseResult.corruptedPages.size > 0 && parseResult.corruptedZones.length > 0) {
+      console.log(`🎯 TARGETED OCR: ${parseResult.corruptedPages.size} pages have corrupted formulas`);
+
+      // Only do targeted OCR if:
+      // 1. We have corrupted pages
+      // 2. The rest of the text is mostly readable (not severe corruption)
+      // 3. The number of corrupted pages is reasonable (< 50% of document)
+      const totalPages = parseResult.pageTexts.size;
+      const corruptedRatio = parseResult.corruptedPages.size / totalPages;
+
+      if (corruptedRatio < 0.5) {
+        console.log(`   - Corrupted pages ratio: ${(corruptedRatio * 100).toFixed(1)}% - using targeted OCR`);
+
+        try {
+          // Get OCR text for corrupted pages only
+          const ocrResults = await extractTextFromSpecificPages(buffer, parseResult.corruptedPages);
+
+          // Rebuild full text, replacing corrupted pages with OCR results
+          let rebuiltText = '';
+          for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+            if (ocrResults.has(pageNum)) {
+              // Use OCR result for this page
+              rebuiltText += ocrResults.get(pageNum) + '\n\n';
+              console.log(`   ✅ Page ${pageNum}: replaced with OCR (${ocrResults.get(pageNum)?.length} chars)`);
+            } else {
+              // Use original text for this page
+              const originalPageText = parseResult.pageTexts.get(pageNum) || '';
+              rebuiltText += originalPageText + '\n\n';
+            }
+          }
+
+          const finalCleaned = cleanPDFText(rebuiltText);
+          console.log('✅ Targeted OCR complete - rebuilt document with formula fixes');
+          console.log('📋 First 300 chars:', finalCleaned.substring(0, 300));
+          return finalCleaned;
+
+        } catch (ocrError: any) {
+          console.error('⚠️ Targeted OCR failed, continuing with text-based fixes:', ocrError.message);
+          // Fall through to text-based fixes
+        }
+      } else {
+        console.log(`   - Corrupted pages ratio: ${(corruptedRatio * 100).toFixed(1)}% - too high, will use full OCR if needed`);
+      }
     }
 
     // Text is readable - return as-is
@@ -601,7 +651,7 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
       return cleanedVisionText;
     }
 
-    // Strategy 3: If OCR also failed but we have fixable text, use the fixed version
+    // Strategy 4: If OCR also failed but we have fixable text, use the fixed version
     if (readabilityCheck.canBeFixed) {
       console.log('⚠️ OCR validation failed, using text-fixed version as fallback');
       const fixResult = fixLigatureCorruption(cleaned);
@@ -636,72 +686,319 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
 }
 
 /**
- * Parse PDF using pdf2json library
+ * Result of PDF parsing with page-level detail
+ */
+interface PDFParseResult {
+  fullText: string;
+  pageTexts: Map<number, string>;
+  corruptedPages: Set<number>;
+  corruptedZones: CorruptedZone[];
+}
+
+/**
+ * Detect if a text fragment contains corrupted formulas
+ * Enhanced to detect more corruption patterns including spaced-out garbage sequences
+ */
+function isFormulaCorrupted(text: string): { corrupted: boolean; type: CorruptedZone['corruptionType'] | null } {
+  // Hangul characters (Korean) - often appear when Greek letters are corrupted
+  if (/[\uAC00-\uD7AF\u1100-\u11FF]/.test(text)) {
+    return { corrupted: true, type: 'hangul' };
+  }
+
+  // Greek letter corruption (å, æ, ø near math operators)
+  if (/[åæø]\s*[=+\-*/×÷]|[=+\-*/×÷]\s*[åæø]/.test(text)) {
+    return { corrupted: true, type: 'greek' };
+  }
+
+  // Formula garbage - consecutive accented chars (3+)
+  if (/[úûùêëéàâäôöïîüç]{3,}/.test(text)) {
+    return { corrupted: true, type: 'garbage' };
+  }
+
+  // Formula garbage - spaced-out accented chars (common in corrupted formulas)
+  // Pattern: "ú û ù ê ë é" - accented chars separated by single spaces
+  const spacedAccentPattern = /[úûùêëéàâäôöïîüç]\s+[úûùêëéàâäôöïîüç]\s+[úûùêëéàâäôöïîüç]/;
+  if (spacedAccentPattern.test(text)) {
+    return { corrupted: true, type: 'garbage' };
+  }
+
+  // Corrupted summation/formula patterns: å = n (Sigma looks like å after corruption)
+  // This catches formulas like "å = n wacc" where å is corrupted Σ
+  if (/å\s*=\s*[a-z0-9]/i.test(text)) {
+    return { corrupted: true, type: 'greek' };
+  }
+
+  // Private Use Area characters
+  if (/[\uE000-\uF8FF]/.test(text)) {
+    return { corrupted: true, type: 'pua' };
+  }
+
+  return { corrupted: false, type: null };
+}
+
+/**
+ * Parse PDF using pdf2json library with page-level extraction
  * @param buffer - PDF file buffer
- * @returns Extracted text
+ * @returns Extracted text with page-level detail and corruption info
  */
 async function parsePDFWithPdf2Json(buffer: Buffer): Promise<string> {
+  const result = await parsePDFWithPageDetail(buffer);
+  return result.fullText;
+}
+
+/**
+ * Parse PDF with full page-level detail for targeted OCR
+ * Now includes smart table detection using Y-position clustering
+ */
+async function parsePDFWithPageDetail(buffer: Buffer): Promise<PDFParseResult> {
   return new Promise((resolve, reject) => {
     const pdfParser = new PDFParser();
-    
+
     pdfParser.on('pdfParser_dataError', (errData: any) => {
       console.error('❌ Error parsing PDF with pdf2json:', errData.parserError);
       reject(new Error(`Failed to parse PDF: ${errData.parserError}`));
     });
-    
+
     pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
       try {
         console.log('🔍 Extracting text from parsed PDF data...');
-        
-        // Extract text from all pages
-        let extractedText = '';
-        
+
+        const pageTexts = new Map<number, string>();
+        const corruptedPages = new Set<number>();
+        const corruptedZones: CorruptedZone[] = [];
+        let fullText = '';
+
         if (pdfData.Pages && Array.isArray(pdfData.Pages)) {
-          for (const page of pdfData.Pages) {
-            if (page.Texts && Array.isArray(page.Texts)) {
-              for (const textItem of page.Texts) {
-                if (textItem.R && Array.isArray(textItem.R)) {
-                  for (const run of textItem.R) {
-                    if (run.T) {
-                      // Decode URI component (pdf2json encodes text)
-                      try {
-                        const decodedText = decodeURIComponent(run.T);
-                        extractedText += decodedText + ' ';
-                      } catch (decodeError) {
-                        // If decoding fails, use raw text
-                        extractedText += run.T + ' ';
-                      }
-                    }
-                  }
-                }
+          for (let pageIdx = 0; pageIdx < pdfData.Pages.length; pageIdx++) {
+            const page = pdfData.Pages[pageIdx];
+            const pageNum = pageIdx + 1;
+
+            // Extract text with position awareness for table detection
+            const pageText = extractPageTextWithTables(page, pageNum, corruptedPages, corruptedZones);
+
+            pageTexts.set(pageNum, pageText.trim());
+            fullText += pageText + '\n';
+
+            // Also check the full page text for corruption patterns that span fragments
+            // This catches cases where corruption is only visible in the assembled text
+            if (!corruptedPages.has(pageNum)) {
+              const fullPageCorruption = isFormulaCorrupted(pageText);
+              if (fullPageCorruption.corrupted && fullPageCorruption.type) {
+                corruptedPages.add(pageNum);
+                corruptedZones.push({
+                  pageNum,
+                  x: 0,
+                  y: 0,
+                  text: pageText.substring(0, 100),
+                  corruptionType: fullPageCorruption.type
+                });
               }
-              extractedText += '\n'; // New line after each text block
             }
           }
         }
-        
-        extractedText = extractedText.trim();
-        
-        if (!extractedText || extractedText.length === 0) {
+
+        fullText = fullText.trim();
+
+        if (!fullText || fullText.length === 0) {
           reject(new Error('No text could be extracted from the PDF. The PDF might be image-based or encrypted.'));
           return;
         }
-        
+
         console.log('✅ pdf2json extracted text');
-        console.log('📝 Extracted text length:', extractedText.length, 'characters');
+        console.log('📝 Extracted text length:', fullText.length, 'characters');
         console.log('📄 Number of pages:', pdfData.Pages?.length || 0);
-        console.log('📋 First 300 characters:', extractedText.substring(0, 300));
-        
-        resolve(extractedText);
+        console.log('📋 First 300 characters:', fullText.substring(0, 300));
+
+        if (corruptedPages.size > 0) {
+          console.log(`⚠️ Found ${corruptedZones.length} corrupted formulas on ${corruptedPages.size} pages: [${[...corruptedPages].join(', ')}]`);
+        }
+
+        resolve({ fullText, pageTexts, corruptedPages, corruptedZones });
       } catch (error: any) {
         console.error('❌ Error processing PDF data:', error.message);
         reject(error);
       }
     });
-    
-    // Parse the buffer
+
     pdfParser.parseBuffer(buffer);
   });
+}
+
+/**
+ * Text item with position for table detection
+ */
+interface PositionedText {
+  x: number;
+  y: number;
+  text: string;
+}
+
+/**
+ * Extract text from a page with smart table detection
+ * Groups text items by Y position to detect table rows
+ */
+function extractPageTextWithTables(
+  page: any,
+  pageNum: number,
+  corruptedPages: Set<number>,
+  corruptedZones: CorruptedZone[]
+): string {
+  if (!page.Texts || !Array.isArray(page.Texts)) {
+    return '';
+  }
+
+  // Collect all text items with positions
+  const textItems: PositionedText[] = [];
+
+  for (const textItem of page.Texts) {
+    if (textItem.R && Array.isArray(textItem.R)) {
+      for (const run of textItem.R) {
+        if (run.T) {
+          let decodedText: string;
+          try {
+            decodedText = decodeURIComponent(run.T);
+          } catch {
+            decodedText = run.T;
+          }
+
+          textItems.push({
+            x: textItem.x || 0,
+            y: textItem.y || 0,
+            text: decodedText
+          });
+
+          // Check for formula corruption
+          const corruption = isFormulaCorrupted(decodedText);
+          if (corruption.corrupted && corruption.type) {
+            corruptedPages.add(pageNum);
+            corruptedZones.push({
+              pageNum,
+              x: textItem.x || 0,
+              y: textItem.y || 0,
+              text: decodedText,
+              corruptionType: corruption.type
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (textItems.length === 0) {
+    return '';
+  }
+
+  // Sort by Y then X
+  textItems.sort((a, b) => {
+    const yDiff = a.y - b.y;
+    if (Math.abs(yDiff) > 0.3) return yDiff;
+    return a.x - b.x;
+  });
+
+  // Group items by Y position (rows)
+  const rows: PositionedText[][] = [];
+  let currentRow: PositionedText[] = [];
+  let currentY: number | null = null;
+
+  for (const item of textItems) {
+    if (currentY === null || Math.abs(item.y - currentY) > 0.5) {
+      if (currentRow.length > 0) {
+        rows.push(currentRow);
+      }
+      currentRow = [item];
+      currentY = item.y;
+    } else {
+      currentRow.push(item);
+    }
+  }
+  if (currentRow.length > 0) {
+    rows.push(currentRow);
+  }
+
+  // Detect table regions: consecutive rows with similar column count and numeric content
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < rows.length) {
+    const row = rows[i];
+
+    // Check if this could be the start of a table (multiple items with numbers)
+    if (isLikelyTableRowFromPosition(row)) {
+      // Collect consecutive table-like rows
+      const tableRows: PositionedText[][] = [];
+      while (i < rows.length && isLikelyTableRowFromPosition(rows[i])) {
+        tableRows.push(rows[i]);
+        i++;
+      }
+
+      // If we have multiple rows, format as table
+      if (tableRows.length >= 2) {
+        const tableMarkdown = formatPositionedRowsAsTable(tableRows);
+        result.push(tableMarkdown);
+      } else {
+        // Single row, just join as text
+        result.push(tableRows.map(r => r.map(item => item.text).join(' ')).join('\n'));
+      }
+    } else {
+      // Regular text row
+      result.push(row.map(item => item.text).join(' '));
+      i++;
+    }
+  }
+
+  return result.join('\n');
+}
+
+/**
+ * Check if a row looks like it's part of a table based on positions
+ */
+function isLikelyTableRowFromPosition(row: PositionedText[]): boolean {
+  // Must have multiple items
+  if (row.length < 3) return false;
+
+  // Count numeric items
+  const numericCount = row.filter(item => /^[\d.,\-+%$€£]+$/.test(item.text.trim())).length;
+
+  // If more than half are numbers, likely a table row
+  if (numericCount >= row.length / 2) return true;
+
+  // Check for year patterns (2018, 2019, etc.)
+  const yearCount = row.filter(item => /^20\d{2}$/.test(item.text.trim())).length;
+  if (yearCount >= 3) return true;
+
+  return false;
+}
+
+/**
+ * Format collected positioned rows as a Markdown table
+ */
+function formatPositionedRowsAsTable(rows: PositionedText[][]): string {
+  if (rows.length === 0) return '';
+
+  // Determine number of columns based on max items in any row
+  const maxCols = Math.max(...rows.map(r => r.length));
+
+  // Build table
+  const tableLines: string[] = [];
+
+  for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+    const row = rows[rowIdx];
+    const cells = row.map(item => item.text.trim());
+
+    // Pad to max columns
+    while (cells.length < maxCols) {
+      cells.push('');
+    }
+
+    tableLines.push('| ' + cells.join(' | ') + ' |');
+
+    // Add separator after first row (header)
+    if (rowIdx === 0) {
+      tableLines.push('| ' + cells.map(() => '---').join(' | ') + ' |');
+    }
+  }
+
+  return tableLines.join('\n');
 }
 
 /**
@@ -756,10 +1053,144 @@ export function cleanAndNormalizePdfText(text: string): string {
 
   text = cleanedLines.join('\n');
 
+  // Step 9: Detect and format tables from OCR output
+  text = formatTablesFromOCR(text);
+
   console.log('✅ Normalized length:', text.length);
   console.log('📋 First 300 chars after normalization:', text.substring(0, 300));
 
   return text.trim();
+}
+
+/**
+ * Detect and format tables from OCR output into proper Markdown tables
+ * OCR often outputs tables as pipe-separated text like:
+ * | Year | Sales | Profit |
+ * | 2018 | 1620 | 64.8 |
+ *
+ * This function cleans them up into proper Markdown format
+ */
+function formatTablesFromOCR(text: string): string {
+  const lines = text.split('\n');
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    // Check if this line looks like a table row (has multiple | separators)
+    if (isTableRow(line)) {
+      // Collect consecutive table rows
+      const tableLines: string[] = [];
+      while (i < lines.length && (isTableRow(lines[i].trim()) || isSeparatorRow(lines[i].trim()))) {
+        const tableLine = lines[i].trim();
+        // Skip pure separator rows like |---|---|---|
+        if (!isSeparatorRow(tableLine)) {
+          tableLines.push(tableLine);
+        }
+        i++;
+      }
+
+      // If we have at least 2 rows (header + data), format as table
+      if (tableLines.length >= 2) {
+        const formattedTable = formatMarkdownTable(tableLines);
+        result.push(formattedTable);
+      } else {
+        // Not enough rows, just add as text
+        result.push(...tableLines);
+      }
+    } else {
+      result.push(line);
+      i++;
+    }
+  }
+
+  return result.join('\n');
+}
+
+/**
+ * Check if a line looks like a table row
+ */
+function isTableRow(line: string): boolean {
+  // Must have at least 2 pipe characters and some content
+  const pipeCount = (line.match(/\|/g) || []).length;
+  if (pipeCount < 2) return false;
+
+  // Must have actual content between pipes (not just dashes)
+  const cells = line.split('|').map(c => c.trim()).filter(c => c.length > 0);
+  if (cells.length < 2) return false;
+
+  // At least one cell should have non-dash content
+  return cells.some(cell => !/^[-─]+$/.test(cell));
+}
+
+/**
+ * Check if a line is a table separator row (e.g., |---|---|---|)
+ */
+function isSeparatorRow(line: string): boolean {
+  // Remove pipes and spaces, check if only dashes remain
+  const content = line.replace(/[\|\s]/g, '');
+  return /^[-─:]+$/.test(content) && content.length > 0;
+}
+
+/**
+ * Format table lines into proper Markdown table
+ */
+function formatMarkdownTable(tableLines: string[]): string {
+  if (tableLines.length === 0) return '';
+
+  // Parse each line into cells
+  const rows = tableLines.map(line => {
+    // Split by | and clean up
+    return line
+      .split('|')
+      .map(cell => cell.trim())
+      .filter((cell, idx, arr) => {
+        // Remove empty first/last cells from leading/trailing |
+        if (idx === 0 && cell === '') return false;
+        if (idx === arr.length - 1 && cell === '') return false;
+        return true;
+      });
+  });
+
+  if (rows.length === 0) return '';
+
+  // Find the maximum number of columns
+  const maxCols = Math.max(...rows.map(r => r.length));
+
+  // Pad rows to have same number of columns
+  const paddedRows = rows.map(row => {
+    while (row.length < maxCols) {
+      row.push('');
+    }
+    return row;
+  });
+
+  // Calculate column widths for alignment
+  const colWidths = Array(maxCols).fill(0);
+  for (const row of paddedRows) {
+    for (let col = 0; col < maxCols; col++) {
+      colWidths[col] = Math.max(colWidths[col], (row[col] || '').length);
+    }
+  }
+
+  // Build the formatted table
+  const formattedLines: string[] = [];
+
+  // Header row
+  const headerRow = paddedRows[0];
+  formattedLines.push('| ' + headerRow.map((cell, i) => cell.padEnd(colWidths[i])).join(' | ') + ' |');
+
+  // Separator row
+  formattedLines.push('| ' + colWidths.map(w => '-'.repeat(Math.max(w, 3))).join(' | ') + ' |');
+
+  // Data rows
+  for (let r = 1; r < paddedRows.length; r++) {
+    const row = paddedRows[r];
+    formattedLines.push('| ' + row.map((cell, i) => cell.padEnd(colWidths[i])).join(' | ') + ' |');
+  }
+
+  return formattedLines.join('\n');
 }
 
 /**

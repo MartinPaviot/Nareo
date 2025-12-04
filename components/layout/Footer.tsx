@@ -44,13 +44,13 @@ export default function Footer() {
                 {translate('legal_page_title_cgu')}
               </Link>
               <button onClick={() => setShowContactModal(true)} className="text-left text-gray-600 hover:text-orange-600">
-                Contact
+                {translate('footer_contact')}
               </button>
               <Link href="/cgv" className="text-gray-600 hover:text-orange-600">
                 {translate('legal_page_title_cgv')}
               </Link>
               <Link href="/compte" className="text-gray-600 hover:text-orange-600">
-                Mon compte
+                {translate('footer_my_account')}
               </Link>
               <Link href="/mentions-legales" className="text-gray-600 hover:text-orange-600">
                 {translate('legal_page_title_mentions')}
@@ -97,13 +97,13 @@ export default function Footer() {
                   <span className="text-lg font-bold text-gray-900">Nareo</span>
                 </div>
                 <p className="text-sm text-gray-600">
-                  Ta plateforme intelligente pour réviser mieux et plus vite.
+                  {translate('footer_tagline')}
                 </p>
               </div>
 
               {/* Bloc Informations légales */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900">Informations légales</h3>
+                <h3 className="text-sm font-semibold text-gray-900">{translate('footer_legal_title')}</h3>
                 <ul className="space-y-2">
                   <li>
                     <Link href="/cgu" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
@@ -143,16 +143,16 @@ export default function Footer() {
 
               {/* Bloc Support */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900">Support</h3>
+                <h3 className="text-sm font-semibold text-gray-900">{translate('footer_support_title')}</h3>
                 <ul className="space-y-2">
                   <li>
                     <button onClick={() => setShowContactModal(true)} className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
-                      Contact
+                      {translate('footer_contact')}
                     </button>
                   </li>
                   <li>
                     <Link href="/compte" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
-                      Paramètres du compte
+                      {translate('footer_account_settings')}
                     </Link>
                   </li>
                 </ul>
@@ -160,7 +160,7 @@ export default function Footer() {
 
               {/* Bloc Réseaux sociaux */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900">Suivez-nous</h3>
+                <h3 className="text-sm font-semibold text-gray-900">{translate('footer_follow_us')}</h3>
                 <ul className="space-y-2">
                   <li>
                     <a

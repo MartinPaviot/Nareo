@@ -315,10 +315,13 @@ function hasCorruptedText(text: string): {
   }
 
   // === CHECK 5: Number-in-Word Corruption (ti→5, fi→1, etc.) ===
-  // More specific pattern to avoid false positives
+  // Be more strict to avoid false positives from PDF resource identifiers like t3srv, r3dcouleur
+  // Only flag if: many instances AND high density relative to text length
   const numberInWord = text.match(/[a-z][0-9][a-z]{2,}/gi) || [];
-  if (numberInWord.length >= 2) {
-    corruptionScore += numberInWord.length * 12;
+  const numberInWordDensity = normalize(numberInWord.length);
+  // Only flag if we have high density (>2 per 1000 chars) AND many instances (>10)
+  if (numberInWord.length > 10 && numberInWordDensity > 2) {
+    corruptionScore += Math.min(30, numberInWord.length * 3); // Reduced weight
     corruptionTypes.push('number_in_word');
     evidence.push(`Number-in-word corruption: ${numberInWord.slice(0, 5).join(', ')}`);
   }

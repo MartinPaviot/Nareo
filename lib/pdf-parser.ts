@@ -162,29 +162,33 @@ function detectHangulCJKCorruption(text: string): {
     privateUseCount += matches.length;
   }
 
-  // For academic/financial documents in Latin script, ANY Hangul/CJK is corruption
-  // For PUA characters: they are very common in academic PDFs for:
-  // - Math symbols, arrows, geometric shapes
-  // - Custom fonts for diagrams and graphs
-  // - Special typography
+  // For academic/financial documents in Latin script, Hangul/CJK/PUA characters
+  // may appear from corrupted math fonts (Greek letters like β decoded as Hangul).
+  // However, if the readable text is mostly fine, these are just formula artifacts.
   //
-  // NEW STRATEGY: Check if the READABLE text is sufficient, not just PUA ratio
-  // A PDF with lots of PUA but also lots of readable text is likely fine
-  // (PUA chars are just symbols/decorations that don't affect text comprehension)
+  // NEW STRATEGY: Check if the READABLE text is sufficient, not just presence of foreign chars.
+  // A PDF with some Hangul/PUA but mostly readable text should be processed via text-fix,
+  // not expensive OCR.
   const textLength = text.length;
 
   // Count readable Latin characters (letters, numbers, common punctuation)
   const readableChars = text.match(/[a-zA-ZÀ-ÿ0-9\s.,;:!?'"()\-]/g) || [];
   const readableCount = readableChars.length;
-
-  // Only consider PUA as corruption if:
-  // 1. PUA is > 50% of text AND
-  // 2. Readable text is < 40% of total (meaning most content is PUA garbage)
-  const puaRatio = textLength > 0 ? privateUseCount / textLength : 0;
   const readableRatio = textLength > 0 ? readableCount / textLength : 0;
+
+  // Calculate foreign character density (per 1000 chars)
+  const totalForeignChars = hangulCount + cjkCount;
+  const foreignDensity = textLength > 0 ? (totalForeignChars / textLength) * 1000 : 0;
+  const puaRatio = textLength > 0 ? privateUseCount / textLength : 0;
+
+  // Only flag as severe corruption if:
+  // - High foreign char density (> 5 per 1000 chars) AND readable ratio is low (< 60%), OR
+  // - PUA is > 50% of text AND readable text is < 40% of total
+  const foreignCorrupted = foreignDensity > 5 && readableRatio < 0.6;
   const puaCorrupted = puaRatio > 0.5 && readableRatio < 0.4;
 
-  const detected = hangulCount > 0 || cjkCount > 0 || puaCorrupted;
+  // Small amounts of foreign chars with good readable ratio = formula artifacts, not severe
+  const detected = foreignCorrupted || puaCorrupted;
 
   return { detected, hangulCount, cjkCount, privateUseCount, examples };
 }
@@ -549,8 +553,17 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
     console.log('⚠️ Text corruption detected');
     console.log('📋 Sample of problematic text:', cleaned.substring(0, 300));
 
-    // Strategy 1: Try to fix ligature corruption if possible
-    if (readabilityCheck.canBeFixed && !readabilityCheck.shouldUseOCR) {
+    // Strategy 1: If OCR is NOT required, the cleaned text is usable despite minor issues
+    // The cleanPDFText function already applied ligature fixes, so if shouldUseOCR=false,
+    // the remaining "corruption" is just formula artifacts that don't affect readability
+    if (!readabilityCheck.shouldUseOCR) {
+      console.log('✅ Text has minor corruption but is readable - using cleaned text');
+      console.log('📋 First 300 chars:', cleaned.substring(0, 300));
+      return cleaned;
+    }
+
+    // Strategy 2: Try to fix ligature corruption if possible (legacy path for edge cases)
+    if (readabilityCheck.canBeFixed) {
       console.log('🔧 Attempting text-based corruption fix...');
 
       const fixResult = fixLigatureCorruption(cleaned);
@@ -561,7 +574,7 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
 
       // Re-check after fix
       const recheck = isTextUnreadable(fixResult.text);
-      if (!recheck.unreadable) {
+      if (!recheck.unreadable || !recheck.shouldUseOCR) {
         console.log('✅ Text-based fix successful!');
         console.log('📋 First 300 chars after fix:', fixResult.text.substring(0, 300));
         return fixResult.text;
@@ -570,8 +583,8 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
       console.log('⚠️ Text-based fix was not sufficient, falling back to OCR');
     }
 
-    // Strategy 2: Use Vision OCR for severe corruption or when fix failed
-    console.log('🔄 Activating Vision OCR fallback...');
+    // Strategy 3: Use Vision OCR for severe corruption
+    console.log('🔄 Activating Vision OCR fallback (severe corruption detected)...');
 
     const visionText = await extractTextFromPdfWithVision(buffer);
     const cleanedVisionText = cleanPDFText(visionText);

@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AlertCircle, Loader2, Lock, Play, RotateCcw } from 'lucide-react';
+import { AlertCircle, Loader2, Lock, Play, RotateCcw, BookOpen, Layers, FileText } from 'lucide-react';
 import Image from 'next/image';
 import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
 import ChapterScoreBadge from '@/components/course/ChapterScoreBadge';
 import PaywallModal from '@/components/course/PaywallModal';
 import CourseLoadingProgress from '@/components/course/CourseLoadingProgress';
+import FlashcardsView from '@/components/course/FlashcardsView';
+import APlusNoteView from '@/components/course/APlusNoteView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackEvent } from '@/lib/posthog';
@@ -43,6 +45,7 @@ export default function CourseLearnPage() {
 
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'quiz' | 'flashcards' | 'note'>('quiz');
 
   // Demo course state (separate from API-based courses)
   const [demoLoading, setDemoLoading] = useState(isDemoId);
@@ -221,6 +224,43 @@ export default function CourseLearnPage() {
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+        {/* Tabs - Quiz / Flashcards / A+ Note */}
+        <div className="flex gap-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-2">
+          <button
+            onClick={() => setActiveTab('quiz')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === 'quiz'
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span className="hidden sm:inline">Quiz</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('flashcards')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === 'flashcards'
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span className="hidden sm:inline">Flashcards</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('note')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === 'note'
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span className="hidden sm:inline">A+ Note</span>
+          </button>
+        </div>
+
         {/* Processing progress - shown when course is pending/processing AND no chapter is ready yet */}
         {!isDemoId && isStillProcessing && !hasReadyChapter && (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -255,139 +295,152 @@ export default function CourseLearnPage() {
           </div>
         )}
 
-        {/* Chapters list - show when ready OR when at least one chapter is ready during processing */}
-        {!isDemoId && isStillProcessing && !hasReadyChapter ? null : chapters.length === 0 && (loading || isPolling || isListening) ? (
-          // Skeleton placeholders while loading/polling (fallback)
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="p-4 sm:p-5 flex items-start gap-4 animate-pulse">
-                <div className="w-10 h-10 rounded-2xl bg-gray-200"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-                </div>
-                <div className="w-20 h-10 bg-gray-200 rounded-xl"></div>
+        {/* Tab Content */}
+        {activeTab === 'quiz' && (
+          <>
+            {/* Chapters list - show when ready OR when at least one chapter is ready during processing */}
+            {!isDemoId && isStillProcessing && !hasReadyChapter ? null : chapters.length === 0 && (loading || isPolling || isListening) ? (
+              // Skeleton placeholders while loading/polling (fallback)
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4 sm:p-5 flex items-start gap-4 animate-pulse">
+                    <div className="w-10 h-10 rounded-2xl bg-gray-200"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                    <div className="w-20 h-10 bg-gray-200 rounded-xl"></div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : chapters.length === 0 ? (
-          // No chapters and not loading
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
-            <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No chapters available yet.</p>
-          </div>
-        ) : (
-          // Chapters loaded - show list
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
-            {chapters.map((chapter, index) => {
-              // Chapters 2-3 (index 1-2) require login but are free once logged in
-              const locked = (index === 1 || index === 2) && !user && !isDemoId;
-              // Chapters 4+ (index >= 3) require premium
-              const premiumLock = index >= 3 && !chapter.has_access;
-              // Check if chapter is ready (has questions generated)
-              const isChapterReady = chapter.question_count > 0;
-              return (
-                <div
-                  key={chapter.id}
-                  className="p-3 sm:p-5 flex items-center gap-2.5 sm:gap-4 hover:bg-orange-50/40 transition-colors"
-                >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center font-semibold text-sm sm:text-base flex-shrink-0">
-                  {index + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                    <h3 className="text-sm sm:text-lg font-semibold text-gray-900 truncate">
-                      {chapter.title}
-                    </h3>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {index === 0 && (
-                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
-                          {translate('course_detail_free_badge')}
-                        </span>
+            ) : chapters.length === 0 ? (
+              // No chapters and not loading
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No chapters available yet.</p>
+              </div>
+            ) : (
+              // Chapters loaded - show list
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
+                {chapters.map((chapter, index) => {
+                  // Chapters 2-3 (index 1-2) require login but are free once logged in
+                  const locked = (index === 1 || index === 2) && !user && !isDemoId;
+                  // Chapters 4+ (index >= 3) require premium
+                  const premiumLock = index >= 3 && !chapter.has_access;
+                  // Check if chapter is ready (has questions generated)
+                  const isChapterReady = chapter.question_count > 0;
+                  return (
+                    <div
+                      key={chapter.id}
+                      className="p-3 sm:p-5 flex items-center gap-2.5 sm:gap-4 hover:bg-orange-50/40 transition-colors"
+                    >
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center font-semibold text-sm sm:text-base flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                        <h3 className="text-sm sm:text-lg font-semibold text-gray-900 truncate">
+                          {chapter.title}
+                        </h3>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {index === 0 && (
+                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                              {translate('course_detail_free_badge')}
+                            </span>
+                          )}
+                          {(index === 1 || index === 2) && user && (
+                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                              {translate('course_detail_bonus_badge')}
+                            </span>
+                          )}
+                          {(locked || premiumLock) && (
+                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                              <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                              {translate('course_detail_locked_badge')}
+                            </span>
+                          )}
+                          {!isChapterReady && (
+                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-orange-100 text-orange-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                              <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
+                              {translate('chapter_preparing')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {chapter.summary && (
+                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-1 sm:mb-2">{chapter.summary}</p>
                       )}
-                      {(index === 1 || index === 2) && user && (
-                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
-                          {translate('course_detail_bonus_badge')}
+                      <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600">
+                        <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100">
+                          {chapter.question_count} {translate('chapter_questions')}
                         </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 sm:gap-2 flex-shrink-0">
+                      {chapter.score !== null && chapter.question_count > 0 && (
+                        <>
+                          {/* Mobile: compact score badge - same width as button */}
+                          <div className="sm:hidden w-full">
+                            <ChapterScoreBadge
+                              scorePts={chapter.score}
+                              maxPts={chapter.question_count * 10}
+                              compact
+                            />
+                          </div>
+                          {/* Desktop: full score badge */}
+                          <div className="hidden sm:block">
+                            <ChapterScoreBadge
+                              scorePts={chapter.score}
+                              maxPts={chapter.question_count * 10}
+                            />
+                          </div>
+                        </>
                       )}
-                      {(locked || premiumLock) && (
-                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
-                          <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                          {translate('course_detail_locked_badge')}
-                        </span>
-                      )}
-                      {!isChapterReady && (
-                        <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-orange-100 text-orange-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
-                          <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
-                          {translate('chapter_preparing')}
-                        </span>
-                      )}
+                      <button
+                        onClick={() => handleChapterClick(chapter, index)}
+                        disabled={!isChapterReady}
+                        className={`inline-flex items-center justify-center gap-1 sm:gap-2 w-full sm:w-[180px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
+                          !isChapterReady
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : (locked || premiumLock) && !isDemoId
+                            ? 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
+                            : 'bg-orange-500 text-white hover:bg-orange-600'
+                        }`}
+                      >
+                        {!isChapterReady ? (
+                          <>
+                            <span className="hidden sm:inline">{translate('chapter_preparing')}</span>
+                            <span className="sm:hidden">{translate('chapter_preparing')}</span>
+                            <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                          </>
+                        ) : (
+                          <>
+                            <span className="hidden sm:inline">{getChapterCTA(chapter, index)}</span>
+                            <span className="sm:hidden">{translate('quiz_start_short')}</span>
+                            {chapter.completed ? (
+                              <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
+                            ) : (
+                              <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                            )}
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                  {chapter.summary && (
-                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-1 sm:mb-2">{chapter.summary}</p>
-                  )}
-                  <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600">
-                    <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100">
-                      {chapter.question_count} {translate('chapter_questions')}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1.5 sm:gap-2 flex-shrink-0">
-                  {chapter.score !== null && chapter.question_count > 0 && (
-                    <>
-                      {/* Mobile: compact score badge - same width as button */}
-                      <div className="sm:hidden w-full">
-                        <ChapterScoreBadge
-                          scorePts={chapter.score}
-                          maxPts={chapter.question_count * 10}
-                          compact
-                        />
-                      </div>
-                      {/* Desktop: full score badge */}
-                      <div className="hidden sm:block">
-                        <ChapterScoreBadge
-                          scorePts={chapter.score}
-                          maxPts={chapter.question_count * 10}
-                        />
-                      </div>
-                    </>
-                  )}
-                  <button
-                    onClick={() => handleChapterClick(chapter, index)}
-                    disabled={!isChapterReady}
-                    className={`inline-flex items-center justify-center gap-1 sm:gap-2 w-full sm:w-[180px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
-                      !isChapterReady
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : (locked || premiumLock) && !isDemoId
-                        ? 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
-                        : 'bg-orange-500 text-white hover:bg-orange-600'
-                    }`}
-                  >
-                    {!isChapterReady ? (
-                      <>
-                        <span className="hidden sm:inline">{translate('chapter_preparing')}</span>
-                        <span className="sm:hidden">{translate('chapter_preparing')}</span>
-                        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
-                      </>
-                    ) : (
-                      <>
-                        <span className="hidden sm:inline">{getChapterCTA(chapter, index)}</span>
-                        <span className="sm:hidden">{translate('quiz_start_short')}</span>
-                        {chapter.completed ? (
-                          <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
-                        ) : (
-                          <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-                        )}
-                      </>
-                    )}
-                  </button>
-                </div>
+                );
+              })}
               </div>
-            );
-          })}
-          </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'flashcards' && (
+          <FlashcardsView courseId={courseId} courseTitle={course.title} />
+        )}
+
+        {activeTab === 'note' && (
+          <APlusNoteView courseId={courseId} courseTitle={course.title} />
         )}
 
       </main>

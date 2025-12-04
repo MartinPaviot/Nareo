@@ -320,7 +320,45 @@ export const translations: Record<Language, Translations> = {
     chapter_not_started: 'Not started yet',
     chapter_in_progress: 'In progress',
     chapter_completed: 'Completed',
-    
+
+    // Flashcards
+    flashcards_title: 'Flashcards',
+    flashcards_description: 'Generate flashcards to memorize key concepts from your course. Perfect for quick revision!',
+    flashcards_generate: 'Generate Flashcards',
+    flashcards_generating: 'Generating...',
+    flashcards_regenerate: 'Regenerate',
+    flashcards_progress: '{current} / {total}',
+    flashcards_concept: 'Concept',
+    flashcards_definition: 'Definition',
+    flashcards_tap_to_flip: 'Tap to flip',
+    flashcards_answer: 'Answer',
+    flashcards_rate_answer: 'Rate your answer below',
+    flashcards_knew_it: 'I knew it',
+    flashcards_didnt_know: "Didn't know",
+    flashcard_type_definition: 'Definition',
+    flashcard_type_formula: 'Formula',
+    flashcard_type_condition: 'Condition',
+    flashcard_type_intuition: 'Intuition',
+    flashcard_type_link: 'Connection',
+
+    // A+ Note
+    aplus_note_title: 'A+ Note',
+    aplus_note_description: 'Generate a comprehensive study note with all key concepts, formulas, and definitions from your course.',
+    aplus_note_generate: 'Generate A+ Note',
+    aplus_note_generating: 'Generating...',
+    golden_note_help: 'What is an A+ Note?',
+    golden_note_help_title: 'What is an A+ Note?',
+    golden_note_help_description: 'An A+ Note is an AI-generated comprehensive study summary that extracts and organizes all key concepts, definitions, formulas, and methodologies from your course material into a structured, easy-to-review format.',
+
+    aplus_note_edit_hint: 'Edit the Markdown content below. LaTeX formulas use $...$ for inline and $$...$$ for blocks.',
+    aplus_note_for: 'for',
+
+    // Common
+    copy: 'Copy',
+    copied: 'Copied!',
+    download: 'Download',
+    regenerate: 'Regenerate',
+
     // Concept Card
     concept_locked: 'Locked',
     concept_unlocked: 'Unlocked',
@@ -1247,7 +1285,44 @@ export const translations: Record<Language, Translations> = {
     chapter_not_started: 'Pas encore commencé',
     chapter_in_progress: 'En cours',
     chapter_completed: 'Terminé',
-    
+
+    // Flashcards
+    flashcards_title: 'Flashcards',
+    flashcards_description: 'Génère des flashcards pour mémoriser les concepts clés de ton cours. Parfait pour réviser rapidement !',
+    flashcards_generate: 'Générer les Flashcards',
+    flashcards_generating: 'Génération...',
+    flashcards_regenerate: 'Régénérer',
+    flashcards_progress: '{current} / {total}',
+    flashcards_concept: 'Concept',
+    flashcards_definition: 'Définition',
+    flashcards_tap_to_flip: 'Touche pour retourner',
+    flashcards_answer: 'Réponse',
+    flashcards_rate_answer: 'Évalue ta réponse ci-dessous',
+    flashcards_knew_it: 'Je savais',
+    flashcards_didnt_know: 'Je ne savais pas',
+    flashcard_type_definition: 'Définition',
+    flashcard_type_formula: 'Formule',
+    flashcard_type_condition: 'Condition',
+    flashcard_type_intuition: 'Intuition',
+    flashcard_type_link: 'Lien',
+
+    // A+ Note
+    aplus_note_title: 'A+ Note',
+    aplus_note_description: 'Génère une fiche de révision complète avec tous les concepts clés, formules et définitions de ton cours.',
+    aplus_note_generate: 'Générer la A+ Note',
+    aplus_note_generating: 'Génération...',
+    golden_note_help: "Qu'est-ce qu'une A+ Note ?",
+    golden_note_help_title: "Qu'est-ce qu'une A+ Note ?",
+    golden_note_help_description: "Une A+ Note est un résumé d'étude complet généré par IA qui extrait et organise tous les concepts clés, définitions, formules et méthodologies de ton cours dans un format structuré et facile à réviser.",
+    aplus_note_edit_hint: 'Modifie le contenu Markdown ci-dessous. Les formules LaTeX utilisent $...$ pour inline et $$...$$ pour les blocs.',
+    aplus_note_for: 'pour',
+
+    // Common
+    copy: 'Copier',
+    copied: 'Copié !',
+    download: 'Télécharger',
+    regenerate: 'Régénérer',
+
     // Concept Card
     concept_locked: 'Verrouillé',
     concept_unlocked: 'Déverrouillé',
@@ -2174,6 +2249,43 @@ export const translations: Record<Language, Translations> = {
     chapter_not_started: 'Noch nicht begonnen',
     chapter_in_progress: 'In Bearbeitung',
     chapter_completed: 'Abgeschlossen',
+
+    // Flashcards
+    flashcards_title: 'Karteikarten',
+    flashcards_description: 'Erstelle Karteikarten, um die Schlüsselkonzepte deines Kurses zu lernen. Perfekt für schnelles Wiederholen!',
+    flashcards_generate: 'Karteikarten erstellen',
+    flashcards_generating: 'Wird erstellt...',
+    flashcards_regenerate: 'Neu erstellen',
+    flashcards_progress: '{current} / {total}',
+    flashcards_concept: 'Konzept',
+    flashcards_definition: 'Definition',
+    flashcards_tap_to_flip: 'Tippen zum Umdrehen',
+    flashcards_answer: 'Antwort',
+    flashcards_rate_answer: 'Bewerte deine Antwort unten',
+    flashcards_knew_it: 'Wusste ich',
+    flashcards_didnt_know: 'Wusste ich nicht',
+    flashcard_type_definition: 'Definition',
+    flashcard_type_formula: 'Formel',
+    flashcard_type_condition: 'Bedingung',
+    flashcard_type_intuition: 'Intuition',
+    flashcard_type_link: 'Verbindung',
+
+    // A+ Note
+    aplus_note_title: 'A+ Note',
+    aplus_note_description: 'Erstelle eine umfassende Lernnotiz mit allen Schlüsselkonzepten, Formeln und Definitionen aus deinem Kurs.',
+    aplus_note_generate: 'A+ Note erstellen',
+    aplus_note_generating: 'Wird erstellt...',
+    golden_note_help: 'Was ist eine A+ Note?',
+    golden_note_help_title: 'Was ist eine A+ Note?',
+    golden_note_help_description: 'Eine A+ Note ist eine KI-generierte umfassende Lernzusammenfassung, die alle Schlüsselkonzepte, Definitionen, Formeln und Methoden aus deinem Kursmaterial in ein strukturiertes, leicht zu überprüfendes Format extrahiert und organisiert.',
+    aplus_note_edit_hint: 'Bearbeite den Markdown-Inhalt unten. LaTeX-Formeln verwenden $...$ für Inline und $$...$$ für Blöcke.',
+    aplus_note_for: 'für',
+
+    // Common
+    copy: 'Kopieren',
+    copied: 'Kopiert!',
+    download: 'Herunterladen',
+    regenerate: 'Neu erstellen',
 
     // Concept Card
     concept_locked: 'Gesperrt',

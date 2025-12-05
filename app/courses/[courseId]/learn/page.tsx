@@ -60,6 +60,8 @@ export default function CourseLearnPage() {
     course: apiCourse,
     chapters: apiChapters,
     accessTier: apiAccessTier,
+    isPremium: apiIsPremium,
+    isFreeMonthlyCourse: apiIsFreeMonthlyCourse,
     error: apiError,
     isPolling,
     isListening,
@@ -112,7 +114,13 @@ export default function CourseLearnPage() {
   const course = isDemoId ? demoCourse : apiCourse;
   const chapters = isDemoId ? demoChapters : apiChapters;
   const accessTier = isDemoId ? null : apiAccessTier;
+  const isPremium = isDemoId ? false : apiIsPremium;
+  const isFreeMonthlyCourse = isDemoId ? false : apiIsFreeMonthlyCourse;
   const error = isDemoId ? demoError : apiError;
+
+  // User has full access if they are premium OR viewing their free monthly course
+  // In this case, we don't need to show "Free" or "Bonus" badges
+  const hasFullAccess = isPremium || isFreeMonthlyCourse;
 
   // Check if at least one chapter is ready (has questions)
   const hasReadyChapter = chapters.some(ch => ch.question_count > 0);
@@ -344,12 +352,13 @@ export default function CourseLearnPage() {
                           {chapter.title}
                         </h3>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {index === 0 && (
+                          {/* Free/Bonus badges - hidden when user has full access (premium or free monthly course) */}
+                          {index === 0 && !hasFullAccess && (
                             <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
                               {translate('course_detail_free_badge')}
                             </span>
                           )}
-                          {(index === 1 || index === 2) && user && (
+                          {(index === 1 || index === 2) && user && !hasFullAccess && (
                             <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
                               {translate('course_detail_bonus_badge')}
                             </span>

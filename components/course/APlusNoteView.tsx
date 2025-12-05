@@ -269,57 +269,57 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="border-b border-gray-100 p-6">
-        {/* Title row with actions */}
-        <div className="flex items-start justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            ✦ A+ Note {translate('aplus_note_for')} {parsedNote.title}
-          </h1>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              {copied ? (
-                <Check className="w-4 h-4 text-green-500" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-              {translate('copy')}
-            </button>
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {downloading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              {translate('download')}
-            </button>
-            <button
-              onClick={handleEdit}
-              disabled={isEditing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-            >
-              <Pencil className="w-4 h-4" />
-              {translate('edit')}
-            </button>
-            <button
-              onClick={handleGenerate}
-              disabled={generating || isEditing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {generating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RotateCcw className="w-4 h-4" />
-              )}
-              {translate('regenerate')}
-            </button>
-          </div>
+      <div className="border-b border-gray-100 p-4 sm:p-6">
+        {/* Title */}
+        <h1 className="text-lg sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
+          ✦ A+ Note {translate('aplus_note_for')} {parsedNote.title}
+        </h1>
+
+        {/* Action buttons - wrap on mobile */}
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+          <button
+            onClick={handleCopy}
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+            <span className="hidden xs:inline">{translate('copy')}</span>
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {downloading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            <span className="hidden xs:inline">{translate('download')}</span>
+          </button>
+          <button
+            onClick={handleEdit}
+            disabled={isEditing}
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <Pencil className="w-4 h-4" />
+            <span className="hidden xs:inline">{translate('edit')}</span>
+          </button>
+          <button
+            onClick={handleGenerate}
+            disabled={generating || isEditing}
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {generating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RotateCcw className="w-4 h-4" />
+            )}
+            <span className="hidden xs:inline">{translate('regenerate')}</span>
+          </button>
         </div>
 
         {/* Topics */}
@@ -340,19 +340,19 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
       </div>
 
       {/* Note content */}
-      <div className="p-6 sm:p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         {isEditing ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* Edit toolbar */}
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <p className="text-xs sm:text-sm text-gray-500">
                 {translate('aplus_note_edit_hint')}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCancelEdit}
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
                   {translate('cancel')}
@@ -360,7 +360,7 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
                 <button
                   onClick={handleSaveEdit}
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 text-xs sm:text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
                 >
                   {saving ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -375,12 +375,12 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
             <textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              className="w-full h-[600px] p-4 font-mono text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+              className="w-full h-[400px] sm:h-[600px] p-3 sm:p-4 font-mono text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
               placeholder="Markdown content..."
             />
           </div>
         ) : (
-          <div ref={contentRef} className="golden-note-content">
+          <div ref={contentRef} className="golden-note-content prose prose-sm sm:prose-base max-w-none">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}

@@ -225,22 +225,23 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
   return (
     <div className="space-y-4">
       {/* Progress indicator and points */}
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
         <span className="text-gray-600">{translate('flashcards_progress', { current: String(currentIndex + 1), total: String(flashcards.length) })}</span>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {sessionPoints > 0 && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 text-orange-600 rounded-full font-semibold">
-              <Star className="w-4 h-4 fill-orange-400" />
+            <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-orange-100 text-orange-600 rounded-full font-semibold text-xs sm:text-sm">
+              <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-orange-400" />
               {sessionPoints} pts
             </span>
           )}
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700"
+            className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700 text-xs sm:text-sm"
           >
-            <RotateCcw className="w-4 h-4" />
-            {translate('flashcards_regenerate')}
+            <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">{translate('flashcards_regenerate')}</span>
+            <span className="xs:hidden">{translate('regenerate')}</span>
           </button>
         </div>
       </div>
@@ -248,7 +249,7 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
       {/* Flashcard */}
       <div
         onClick={handleFlip}
-        className="relative w-full aspect-[3/2] cursor-pointer perspective-1000"
+        className="relative w-full aspect-[4/3] sm:aspect-[3/2] cursor-pointer perspective-1000"
       >
         <div
           className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${
@@ -261,21 +262,21 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
         >
           {/* Front - Question */}
           <div
-            className="absolute inset-0 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 flex flex-col items-center justify-center backface-hidden"
+            className="absolute inset-0 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center backface-hidden"
             style={{ backfaceVisibility: 'hidden' }}
           >
             <span className="text-xs text-orange-500 font-semibold uppercase tracking-wide mb-2">
               {translate(`flashcard_type_${currentCard.type}`) || currentCard.type}
             </span>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 text-center">
+            <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-center px-2">
               {currentCard.front}
             </h3>
-            <p className="text-sm text-gray-400 mt-4">{translate('flashcards_tap_to_flip')}</p>
+            <p className="text-xs sm:text-sm text-gray-400 mt-3 sm:mt-4">{translate('flashcards_tap_to_flip')}</p>
           </div>
 
           {/* Back - Answer */}
           <div
-            className="absolute inset-0 bg-orange-50 rounded-2xl border border-orange-200 shadow-sm p-6 sm:p-8 flex flex-col items-center justify-center"
+            className="absolute inset-0 bg-orange-50 rounded-2xl border border-orange-200 shadow-sm p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center overflow-y-auto"
             style={{
               backfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)',
@@ -284,11 +285,11 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
             <span className="text-xs text-orange-600 font-semibold uppercase tracking-wide mb-2">
               {translate('flashcards_answer')}
             </span>
-            <p className="text-base sm:text-lg text-gray-800 text-center leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg text-gray-800 text-center leading-relaxed px-2">
               {currentCard.back}
             </p>
             {!hasAnswered && (
-              <p className="text-sm text-orange-400 mt-4">{translate('flashcards_rate_answer')}</p>
+              <p className="text-xs sm:text-sm text-orange-400 mt-3 sm:mt-4">{translate('flashcards_rate_answer')}</p>
             )}
           </div>
         </div>
@@ -296,21 +297,22 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
 
       {/* Feedback buttons - only show when flipped */}
       {isFlipped && (
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-2 sm:gap-4">
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleFeedback(false);
             }}
             disabled={hasAnswered}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
+            className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-sm sm:text-base transition-all ${
               hasAnswered
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
             }`}
           >
-            <ThumbsDown className="w-5 h-5" />
-            {translate('flashcards_didnt_know')}
+            <ThumbsDown className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden xs:inline">{translate('flashcards_didnt_know')}</span>
+            <span className="xs:hidden">Non</span>
           </button>
           <button
             onClick={(e) => {
@@ -318,48 +320,55 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
               handleFeedback(true);
             }}
             disabled={hasAnswered}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
+            className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-sm sm:text-base transition-all ${
               hasAnswered
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
             }`}
           >
-            <ThumbsUp className="w-5 h-5" />
-            {translate('flashcards_knew_it')}
+            <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden xs:inline">{translate('flashcards_knew_it')}</span>
+            <span className="xs:hidden">Oui</span>
           </button>
         </div>
       )}
 
       {/* Navigation */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-2 sm:gap-4">
         <button
           onClick={handlePrev}
-          className="p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+          className="p-2 sm:p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
 
-        {/* Dots indicator */}
-        <div className="flex gap-1">
-          {flashcards.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                setIsFlipped(false);
-                setCurrentIndex(idx);
-              }}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                idx === currentIndex ? 'bg-orange-500' : 'bg-gray-300'
-              }`}
-            />
-          ))}
+        {/* Dots indicator - hide on small screens if too many cards */}
+        <div className="flex gap-1 max-w-[200px] sm:max-w-none overflow-hidden">
+          {flashcards.length <= 15 ? (
+            flashcards.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setIsFlipped(false);
+                  setCurrentIndex(idx);
+                }}
+                className={`w-2 h-2 rounded-full transition-colors flex-shrink-0 ${
+                  idx === currentIndex ? 'bg-orange-500' : 'bg-gray-300'
+                }`}
+              />
+            ))
+          ) : (
+            <span className="text-xs sm:text-sm text-gray-500">
+              {currentIndex + 1} / {flashcards.length}
+            </span>
+          )}
         </div>
 
         <button
           onClick={handleNext}
-          className="p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+          className="p-2 sm:p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
         >
-          <ChevronRight className="w-6 h-6" />
+          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
       </div>
     </div>

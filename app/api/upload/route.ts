@@ -5,7 +5,7 @@ import { logEvent } from '@/lib/backend/analytics';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 // Upload limits
-const FREE_MONTHLY_LIMIT = 3; // Free users can upload 3 courses per month
+const FREE_MONTHLY_LIMIT = 1; // Free users can upload 1 course per month (with full access)
 const PREMIUM_MONTHLY_LIMIT = 12; // Premium users can upload 12 courses per month
 
 // Admin emails with unlimited uploads

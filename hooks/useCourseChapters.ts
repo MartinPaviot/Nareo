@@ -26,6 +26,8 @@ interface CourseChaptersResponse {
   course: CourseData;
   chapters: Chapter[];
   access_tier: string | null;
+  is_premium?: boolean;
+  is_free_monthly_course?: boolean;
 }
 
 interface UseCourseChaptersOptions {
@@ -40,6 +42,8 @@ interface UseCourseChaptersReturn {
   course: CourseData | null;
   chapters: Chapter[];
   accessTier: string | null;
+  isPremium: boolean;
+  isFreeMonthlyCourse: boolean;
   error: string | null;
   refetch: () => Promise<void>;
   isPolling: boolean;
@@ -78,6 +82,8 @@ export function useCourseChapters({
   const [course, setCourse] = useState<CourseData | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [accessTier, setAccessTier] = useState<string | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isFreeMonthlyCourse, setIsFreeMonthlyCourse] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -142,6 +148,8 @@ export function useCourseChapters({
       setCourse(data.course);
       setChapters(data.chapters);
       setAccessTier(data.access_tier);
+      setIsPremium(data.is_premium || false);
+      setIsFreeMonthlyCourse(data.is_free_monthly_course || false);
       setError(null);
 
       // Update refs
@@ -266,6 +274,8 @@ export function useCourseChapters({
     course,
     chapters,
     accessTier,
+    isPremium,
+    isFreeMonthlyCourse,
     error,
     refetch: fetchCourseData,
     isPolling,

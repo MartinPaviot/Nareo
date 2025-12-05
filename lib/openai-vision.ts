@@ -327,8 +327,9 @@ Guidelines:
 }
 
 /**
- * Generate a chapter structure where each chapter equals exactly one key concept.
- * Optimized with retry, circuit breaker, logging, and condensed prompt with few-shot example.
+ * Generate a chapter structure from course text.
+ * Detects and respects the document's natural structure (table of contents, numbered sections, etc.)
+ * Works with any type of educational document: slides, textbooks, notes, articles.
  */
 export async function generateChapterStructureFromCourseText(
   courseText: string,
@@ -340,63 +341,65 @@ export async function generateChapterStructureFromCourseText(
   // Truncate text intelligently
   const truncatedText = courseText.substring(0, LLM_CONFIG.truncation.courseText);
 
-  // Enhanced prompt with learning objectives and key concepts for better question generation
-  const prompt = `Transform this course into chapters where each chapter = ONE key concept that students must master.
+  // Universal prompt that works with any course structure
+  const prompt = `Analyze this educational document and extract its REAL chapter structure.
 
-A concept is: a definition, formula, process, framework, theorem, or strategic idea that deserves focused practice.
+PRIORITY: Detect and follow the document's EXISTING structure:
+1. Look for TABLE OF CONTENTS, PLAN, SOMMAIRE, AGENDA at the beginning
+2. Look for numbered sections (I., II., 1., 2., Chapter 1, Chapitre 1, Part A, etc.)
+3. Look for recurring headers/titles that indicate section boundaries
+4. If no clear structure exists, create logical thematic chapters
 
-For EACH chapter, you MUST provide:
-1. "title": Clear, concise name of the concept
-2. "short_summary": 1-2 sentences explaining what the student will learn
-3. "difficulty": 1=basic/foundational, 2=intermediate/application, 3=advanced/critical
-4. "learning_objectives": Array of 2-4 specific, measurable learning outcomes (use action verbs: define, calculate, explain, compare, analyze, apply)
-5. "key_concepts": Array of 3-6 specific facts, formulas, or terms from the text that students must memorize/understand for this chapter
-6. "prerequisites": Array of chapter indices (0-based) that should be completed before this one (empty for foundational chapters)
+IMPORTANT RULES:
+- RESPECT the document's own chapter/section organization exactly as defined
+- Extract ALL chapters from the document - do not limit the number
+- Do NOT split what the document treats as a single section
+- Do NOT merge sections that the document treats separately
+- Skip exercises, QCM, TD sections (focus on CONTENT chapters only)
 
-Rules:
-- One chapter per concept (no mixing unrelated ideas)
-- Order: foundational → intermediate → advanced
-- Extract SPECIFIC facts and terms from the text for key_concepts (not generic descriptions)
-- Learning objectives must be testable via MCQ questions
+For EACH chapter provide:
+1. "title": The exact or cleaned-up title from the document
+2. "short_summary": 1-2 sentences describing what the chapter covers
+3. "difficulty": 1=basic, 2=intermediate, 3=advanced
+4. "learning_objectives": 2-4 measurable outcomes (define, calculate, explain, compare, apply...)
+5. "key_concepts": 3-8 specific facts, formulas, or terms students must master
+6. "prerequisites": Array of chapter indices (0-based) that should come before
 
-Example output:
+DOCUMENT TYPE EXAMPLES:
+
+Example 1 - Slides with Plan:
+If the document has: "Plan: I.1 La courbe de demande, I.2 La courbe d'offre, I.3 Équilibres"
+→ Create 3 chapters following this exact structure
+
+Example 2 - Business Course with Topics:
+If sections are: "Introduction, Valuation, Mergers & Acquisitions, Private Equity"
+→ Create chapters matching these topics
+
+Example 3 - Textbook with Chapters:
+If numbered: "Chapter 1: Basics, Chapter 2: Advanced, Chapter 3: Applications"
+→ Create 3 chapters following the textbook's own numbering
+
+OUTPUT FORMAT:
 {
+  "detected_structure": "plan|toc|numbered|thematic|none",
   "chapters": [
     {
       "index": 0,
-      "title": "Customer Lifetime Value (CLV)",
-      "short_summary": "How to calculate and interpret CLV for strategic business decisions.",
-      "difficulty": 2,
+      "title": "La courbe de demande",
+      "short_summary": "Comprendre la courbe de demande et le surplus du consommateur.",
+      "difficulty": 1,
       "learning_objectives": [
-        "Define Customer Lifetime Value and its business importance",
-        "Calculate CLV using the basic formula: CLV = Average Purchase Value × Purchase Frequency × Customer Lifespan",
-        "Interpret CLV results to inform marketing budget allocation"
+        "Définir la disposition marginale à payer (DMP)",
+        "Construire une courbe de demande à partir des DMP individuelles",
+        "Calculer le surplus du consommateur"
       ],
       "key_concepts": [
-        "CLV = Average Purchase Value × Purchase Frequency × Customer Lifespan",
-        "CLV helps determine maximum customer acquisition cost",
-        "High CLV customers justify higher retention investments",
-        "CLV varies by customer segment and acquisition channel"
+        "DMP = prix maximum qu'un consommateur est prêt à payer pour une unité",
+        "La courbe de demande est décroissante",
+        "Surplus du consommateur = DMP - prix payé",
+        "Élasticité-prix de la demande"
       ],
       "prerequisites": []
-    },
-    {
-      "index": 1,
-      "title": "Churn Rate Analysis",
-      "short_summary": "Understanding customer churn metrics and their impact on business growth.",
-      "difficulty": 2,
-      "learning_objectives": [
-        "Define churn rate and calculate monthly/annual churn",
-        "Identify the main drivers of customer churn",
-        "Explain the relationship between churn rate and CLV"
-      ],
-      "key_concepts": [
-        "Churn Rate = (Customers Lost / Total Customers) × 100",
-        "1% monthly churn ≈ 11.4% annual churn (compounding effect)",
-        "Churn directly reduces CLV and company valuation",
-        "Voluntary vs involuntary churn require different interventions"
-      ],
-      "prerequisites": [0]
     }
   ]
 }

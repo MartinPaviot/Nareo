@@ -64,8 +64,30 @@ export async function GET(
           .single()
       : { data: null };
 
-    // User has full access if premium OR has paid access for this specific course
-    const accessTier = isPremium ? 'paid' : (accessData?.access_tier || null);
+    // Check if this is the user's free monthly course (owner + first course created this month)
+    let isFreeMonthlyCourse = false;
+    if (userId && course.user_id === userId && !isPremium) {
+      const courseCreatedAt = new Date(course.created_at);
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Check if course was created this month
+      if (courseCreatedAt >= firstDayOfMonth) {
+        // Count how many courses user uploaded this month before this one
+        const { count: coursesBeforeThis } = await supabase
+          .from('courses')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .gte('created_at', firstDayOfMonth.toISOString())
+          .lt('created_at', course.created_at);
+
+        // First course of the month gets full access (0 courses before this one)
+        isFreeMonthlyCourse = (coursesBeforeThis || 0) === 0;
+      }
+    }
+
+    // User has full access if premium OR has paid access OR it's their free monthly course
+    const accessTier = (isPremium || isFreeMonthlyCourse) ? 'paid' : (accessData?.access_tier || null);
 
     // For each chapter, determine access and get progress
     const chaptersWithAccess = await Promise.all(
@@ -128,6 +150,8 @@ export async function GET(
       },
       chapters: chaptersWithAccess,
       access_tier: accessTier,
+      is_premium: isPremium,
+      is_free_monthly_course: isFreeMonthlyCourse,
     });
   } catch (error) {
     console.error('Error fetching course chapters:', error);

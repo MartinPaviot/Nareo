@@ -89,12 +89,20 @@ const LIGATURE_CORRUPTION_PATTERNS: Array<{ pattern: RegExp; replacement: string
   { pattern: /\?nancial/gi, replacement: 'financial', description: 'financial' },
   { pattern: /\?rm/gi, replacement: 'firm', description: 'firm' },
   { pattern: /\?rst/gi, replacement: 'first', description: 'first' },
-  // Number-in-word corruption (ti→5)
+  // Number-in-word corruption (ti→5 or ti→2)
   { pattern: /Valua5on/gi, replacement: 'Valuation', description: 'Valua5on' },
+  { pattern: /Valua2on/gi, replacement: 'Valuation', description: 'Valua2on' },
   { pattern: /defini5on/gi, replacement: 'definition', description: 'defini5on' },
+  { pattern: /defini2on/gi, replacement: 'definition', description: 'defini2on' },
   { pattern: /acquisi5on/gi, replacement: 'acquisition', description: 'acquisi5on' },
+  { pattern: /acquisi2on/gi, replacement: 'acquisition', description: 'acquisi2on' },
   { pattern: /opera5ng/gi, replacement: 'operating', description: 'opera5ng' },
+  { pattern: /opera2ng/gi, replacement: 'operating', description: 'opera2ng' },
   { pattern: /es5mate/gi, replacement: 'estimate', description: 'es5mate' },
+  { pattern: /es2mate/gi, replacement: 'estimate', description: 'es2mate' },
+  { pattern: /introduc2on/gi, replacement: 'introduction', description: 'introduc2on' },
+  { pattern: /mul2ple/gi, replacement: 'multiple', description: 'mul2ple' },
+  { pattern: /compe2t/gi, replacement: 'competit', description: 'compe2t' },
 ];
 
 /**
@@ -1206,7 +1214,7 @@ export function extractTitle(text: string, filename: string = 'PDF Document'): s
   const lines = text.split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0);
-  
+
   if (lines.length > 0) {
     // Look for a title-like line (not too short, not too long, has letters)
     for (const line of lines.slice(0, 5)) {
@@ -1218,7 +1226,155 @@ export function extractTitle(text: string, filename: string = 'PDF Document'): s
       }
     }
   }
-  
+
   // Fallback to filename without extension
   return filename.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
+}
+
+/**
+ * Result of parsing PDF with both text and pages
+ */
+export interface ParsedPDFResult {
+  text: string;
+  pages: string[];
+}
+
+/**
+ * Parse PDF and return both the full extracted text AND the pages array
+ * This avoids parsing the PDF twice (which can cause buffer consumption issues)
+ * @param buffer - PDF file buffer
+ * @returns Object with text and pages array
+ */
+export async function parsePDFWithPages(buffer: Buffer): Promise<ParsedPDFResult> {
+  console.log('📄 Parsing PDF with pages (buffer size:', buffer.length, 'bytes)');
+
+  // Try pdf2json first with page-level detail
+  try {
+    const parseResult = await parsePDFWithPageDetail(buffer);
+    const cleaned = cleanPDFText(parseResult.fullText);
+
+    // Build pages array
+    const pageCount = parseResult.pageTexts.size;
+    const pages: string[] = [];
+    for (let i = 1; i <= pageCount; i++) {
+      const pageText = parseResult.pageTexts.get(i) || '';
+      pages.push(cleanPDFText(pageText));
+    }
+
+    // Comprehensive readability and corruption check
+    const readabilityCheck = isTextUnreadable(cleaned);
+
+    console.log('📊 PDF Extraction Analysis:');
+    console.log('   - Text length:', cleaned.length, 'characters');
+    console.log('   - Pages:', pages.length);
+    console.log('   - Status:', readabilityCheck.unreadable ? '❌ CORRUPTED' : '✅ READABLE');
+    console.log('   - Reason:', readabilityCheck.reason);
+    if (readabilityCheck.corruptionTypes.length > 0) {
+      console.log('   - Corruption types:', readabilityCheck.corruptionTypes.join(', '));
+      console.log('   - Should use OCR:', readabilityCheck.shouldUseOCR ? 'YES' : 'NO');
+      console.log('   - Can be text-fixed:', readabilityCheck.canBeFixed ? 'YES' : 'NO');
+    }
+
+    // Check if we have corrupted formula pages that need targeted OCR
+    if (parseResult.corruptedPages.size > 0 && parseResult.corruptedZones.length > 0) {
+      console.log(`🎯 TARGETED OCR: ${parseResult.corruptedPages.size} pages have corrupted formulas`);
+
+      const totalPages = parseResult.pageTexts.size;
+      const corruptedRatio = parseResult.corruptedPages.size / totalPages;
+
+      if (corruptedRatio < 0.5) {
+        console.log(`   - Corrupted pages ratio: ${(corruptedRatio * 100).toFixed(1)}% - using targeted OCR`);
+
+        try {
+          const ocrResults = await extractTextFromSpecificPages(buffer, parseResult.corruptedPages);
+
+          // Rebuild pages with OCR results
+          const rebuiltPages: string[] = [];
+          for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+            if (ocrResults.has(pageNum)) {
+              rebuiltPages.push(ocrResults.get(pageNum)!);
+              console.log(`   ✅ Page ${pageNum}: replaced with OCR (${ocrResults.get(pageNum)?.length} chars)`);
+            } else {
+              const originalPageText = parseResult.pageTexts.get(pageNum) || '';
+              rebuiltPages.push(cleanPDFText(originalPageText));
+            }
+          }
+
+          const rebuiltText = rebuiltPages.join('\n\n');
+          const finalCleaned = cleanPDFText(rebuiltText);
+          console.log('✅ Targeted OCR complete - rebuilt document with formula fixes');
+
+          return {
+            text: finalCleaned,
+            pages: rebuiltPages,
+          };
+        } catch (ocrError: any) {
+          console.error('⚠️ Targeted OCR failed, continuing with text-based fixes:', ocrError.message);
+        }
+      }
+    }
+
+    // Text is readable - return as-is
+    if (!readabilityCheck.unreadable) {
+      console.log('✅ pdf2json extraction successful: text is readable');
+      return { text: cleaned, pages };
+    }
+
+    // === CORRUPTION DETECTED ===
+    console.log('⚠️ Text corruption detected');
+
+    if (!readabilityCheck.shouldUseOCR) {
+      console.log('✅ Text has minor corruption but is readable - using cleaned text');
+      return { text: cleaned, pages };
+    }
+
+    // Fall back to full OCR if needed
+    if (readabilityCheck.shouldUseOCR) {
+      console.log('🔄 Falling back to full-document OCR...');
+      try {
+        const { extractTextFromPdfWithOCR } = await import('./pdf-ocr-server');
+        const ocrText = await extractTextFromPdfWithOCR(buffer);
+        const ocrCleaned = cleanPDFText(ocrText);
+
+        // For OCR, we don't have reliable page boundaries
+        // Use cleaned pages from initial parse as best effort
+        return { text: ocrCleaned, pages };
+      } catch (ocrErr: any) {
+        console.error('❌ Full OCR fallback failed:', ocrErr.message);
+      }
+    }
+
+    // Last resort: return what we have
+    return { text: cleaned, pages };
+
+  } catch (error: any) {
+    console.error('❌ pdf2json parsing failed:', error.message);
+
+    // Try Vision OCR as fallback
+    console.log('🔄 Trying Vision OCR fallback...');
+    try {
+      const { extractTextFromPdfWithOCR } = await import('./pdf-ocr-server');
+      const ocrText = await extractTextFromPdfWithOCR(buffer);
+      const ocrCleaned = cleanPDFText(ocrText);
+
+      // Split OCR text into pages by double newlines as fallback
+      const ocrPages = ocrText.split(/\n\n+/).filter(p => p.trim().length > 0);
+
+      return { text: ocrCleaned, pages: ocrPages };
+    } catch (ocrErr: any) {
+      console.error('❌ Vision OCR fallback failed:', ocrErr.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * Parse PDF and return an array of page texts (for structure detection)
+ * NOTE: If you also need the full text, use parsePDFWithPages instead to avoid parsing twice
+ * @param buffer - PDF file buffer
+ * @returns Array of strings, one per page
+ */
+export async function parsePDFToPages(buffer: Buffer): Promise<string[]> {
+  const result = await parsePDFWithPages(buffer);
+  return result.pages;
 }

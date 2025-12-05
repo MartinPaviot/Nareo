@@ -1,7 +1,7 @@
 import path from "path";
 import { randomUUID } from "crypto";
 import { getServiceSupabase } from "@/lib/supabase";
-import { parsePDF } from "@/lib/pdf-parser";
+import { parsePDF, parsePDFWithPages } from "@/lib/pdf-parser";
 import { parseDocx } from "@/lib/document-parser";
 import { parseImage } from "@/lib/image-parser";
 import {
@@ -17,10 +17,7 @@ import {
   extractChapterText,
   LLM_CONFIG,
   CourseDeduplicationTracker,
-  detectDocumentStructure,
-  structureToChapters,
   type ChapterBoundary,
-  type DocumentStructure,
 } from "@/lib/llm";
 
 const RAW_BUCKET = "courses_raw";
@@ -45,9 +42,9 @@ interface ChapterInput {
   // Added for better chunking and question generation
   learning_objectives?: string[];
   key_concepts?: string[];
-  // Real chapter positions (from document structure detection)
-  _startPosition?: number;
-  _endPosition?: number;
+  // Real chapter page positions (from document structure detection)
+  _startPage?: number;
+  _endPage?: number;
   _hasFormulas?: boolean;
   concepts: Array<{
     id: string;
@@ -216,14 +213,23 @@ export async function processCourseJob(jobId: string) {
     await admin.from("pipeline_jobs").update({ stage: "extraction" }).eq("id", jobId);
 
     let extractedText = "";
+    let documentPages: string[] = [];
     if (ext === ".pdf") {
-      extractedText = await parsePDF(buffer);
+      // Use combined function to get both text and pages in a single parse
+      // This avoids buffer consumption issues when parsing twice
+      const pdfResult = await parsePDFWithPages(buffer);
+      extractedText = pdfResult.text;
+      documentPages = pdfResult.pages;
     } else if (ext === ".docx" || ext === ".doc") {
       extractedText = await parseDocx(buffer);
+      // For non-PDFs, split by page breaks or paragraphs
+      documentPages = extractedText.split(/\n\n+/).filter(p => p.trim().length > 0);
     } else {
       const dataUrl = await parseImage(buffer);
       await logEvent("vision_success", { userId: course.user_id, courseId: course.id });
       extractedText = await extractTextFromImage(dataUrl);
+      // For images, treat as single page
+      documentPages = [extractedText];
     }
 
     const validation = validateExtractedText(extractedText, MIN_TEXT_LENGTH);
@@ -262,64 +268,23 @@ export async function processCourseJob(jobId: string) {
       source_text: extractedText, // Store FULL source text (not truncated) for A+ Note generation
     }).eq("id", course.id);
 
-    // === PHASE 1: Detect REAL chapters from the document structure ===
-    logStep("detecting_real_chapters", { courseId: course.id });
-
-    let documentStructure: DocumentStructure | null = null;
-    let useRealChapters = false;
-
-    try {
-      // Detect real document structure (uses LLM for refinement)
-      documentStructure = await detectDocumentStructure(extractedText, modelLanguage, true);
-
-      // Use real chapters if detection has good confidence (>= 0.6) and found at least 2 sections
-      useRealChapters = documentStructure.confidence >= 0.6 && documentStructure.sections.length >= 2;
-
-      logStep("document_structure_detected", {
-        courseId: course.id,
-        confidence: documentStructure.confidence,
-        sectionsFound: documentStructure.sections.length,
-        documentType: documentStructure.documentType,
-        useRealChapters,
-      });
-    } catch (structureError: any) {
-      logStep("document_structure_detection_failed", {
-        courseId: course.id,
-        error: structureError?.message,
-      });
-    }
+    // === PHASE 1: Detect chapters using LLM ===
+    // LLM provides better chapter detection than algorithmic approach
+    // as it understands document structure, TOC, and content organization
+    logStep("detecting_chapters_llm", { courseId: course.id });
 
     let chapterStructure: any[];
 
-    if (useRealChapters && documentStructure) {
-      // === Use REAL chapters detected from the document ===
-      logStep("using_real_chapters", { courseId: course.id, count: documentStructure.sections.length });
+    chapterStructure = await generateChapterStructureFromCourseText(
+      cleanText,
+      course.title || course.original_filename || undefined,
+      modelLanguage
+    );
 
-      // Convert detected structure to chapter format
-      const realChapters = structureToChapters(documentStructure, extractedText);
-
-      chapterStructure = realChapters.map(ch => ({
-        index: ch.index,
-        title: ch.title,
-        short_summary: ch.short_summary,
-        difficulty: ch.difficulty,
-        learning_objectives: [], // Will be enriched by LLM later if needed
-        key_concepts: [],
-        // Store real positions for accurate text extraction
-        _startPosition: ch.startPosition,
-        _endPosition: ch.endPosition,
-        _hasFormulas: ch.hasFormulas,
-      }));
-    } else {
-      // === Fallback: LLM generates chapter structure (original behavior) ===
-      logStep("using_llm_chapters", { courseId: course.id });
-
-      chapterStructure = await generateChapterStructureFromCourseText(
-        cleanText,
-        course.title || course.original_filename || undefined,
-        modelLanguage
-      );
-    }
+    logStep("chapters_detected", {
+      courseId: course.id,
+      chaptersFound: chapterStructure?.length || 0,
+    });
 
     const fallbackTitle = course.title || (contentLanguage === "fr" ? "Chapitre 1" : contentLanguage === "de" ? "Kapitel 1" : "Chapter 1");
     const fallbackSummary = contentLanguage === "fr"
@@ -344,9 +309,9 @@ export async function processCourseJob(jobId: string) {
         // Store learning objectives and key concepts for better chunking and question generation
         learning_objectives: ch.learning_objectives || [],
         key_concepts: ch.key_concepts || [],
-        // Store real chapter positions if available (from document structure detection)
-        _startPosition: ch._startPosition,
-        _endPosition: ch._endPosition,
+        // Store real chapter page positions if available (from document structure detection)
+        _startPage: ch._startPage,
+        _endPage: ch._endPage,
         _hasFormulas: ch._hasFormulas,
         concepts: [
           {
@@ -363,30 +328,36 @@ export async function processCourseJob(jobId: string) {
     logStep("llm_structuring_done", {
       courseId: course.id,
       chapters: chapters.length,
-      mode: useRealChapters ? "real_chapters" : "llm_generated",
+      mode: "llm_generated",
     });
 
     // === Chapter text extraction ===
-    // If we have real chapter positions, use them directly
+    // If we have real chapter page positions, use them to extract text from pages
     // Otherwise, fall back to intelligent marker-based extraction
     let chapterBoundaries: ChapterBoundary[] = [];
 
-    const hasRealPositions = chapters.some(ch => ch._startPosition !== undefined);
+    const hasRealPagePositions = chapters.some(ch => ch._startPage !== undefined);
 
-    if (hasRealPositions) {
-      // Use real positions from document structure detection
-      logStep("using_real_chapter_positions", { courseId: course.id });
+    if (hasRealPagePositions && documentPages.length > 0) {
+      // Use real page positions from document structure detection
+      logStep("using_real_chapter_pages", { courseId: course.id });
 
-      chapterBoundaries = chapters.map(ch => ({
-        index: ch.orderIndex + 1,
-        title: ch.title,
-        startPosition: ch._startPosition || 0,
-        endPosition: ch._endPosition || extractedText.length,
-        text: extractedText.substring(
-          ch._startPosition || 0,
-          Math.min(ch._endPosition || extractedText.length, (ch._startPosition || 0) + LLM_CONFIG.truncation.chapterText)
-        ).trim(),
-      }));
+      chapterBoundaries = chapters.map(ch => {
+        // Extract text from the relevant pages (1-indexed to 0-indexed)
+        const startIdx = Math.max(0, (ch._startPage || 1) - 1);
+        const endIdx = Math.min(documentPages.length, ch._endPage || documentPages.length);
+        const chapterPages = documentPages.slice(startIdx, endIdx);
+        const fullChapterText = chapterPages.join('\n\n');
+        const truncatedText = fullChapterText.substring(0, LLM_CONFIG.truncation.chapterText).trim();
+
+        return {
+          index: ch.orderIndex + 1,
+          title: ch.title,
+          startPosition: startIdx,
+          endPosition: endIdx,
+          text: truncatedText,
+        };
+      });
     } else {
       // Fall back to intelligent marker-based extraction
       chapterBoundaries = extractChapterText(
@@ -405,7 +376,7 @@ export async function processCourseJob(jobId: string) {
       courseId: course.id,
       boundariesCount: chapterBoundaries.length,
       avgLength: Math.round(chapterBoundaries.reduce((sum, b) => sum + b.text.length, 0) / Math.max(1, chapterBoundaries.length)),
-      mode: hasRealPositions ? "real_positions" : "marker_based",
+      mode: hasRealPagePositions ? "real_page_positions" : "marker_based",
     });
 
     // Initialize course-level deduplication tracker to prevent cross-chapter duplicates

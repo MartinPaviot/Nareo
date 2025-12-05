@@ -13,7 +13,15 @@ import {
 import { validateExtractedText, truncateTextIntelligently } from "@/lib/openai-fallback";
 import { logEvent } from "./analytics";
 import { detectContentLanguageFromText } from "./language-detection";
-import { extractChapterText, LLM_CONFIG, CourseDeduplicationTracker, type ChapterBoundary } from "@/lib/llm";
+import {
+  extractChapterText,
+  LLM_CONFIG,
+  CourseDeduplicationTracker,
+  detectDocumentStructure,
+  structureToChapters,
+  type ChapterBoundary,
+  type DocumentStructure,
+} from "@/lib/llm";
 
 const RAW_BUCKET = "courses_raw";
 const MAX_PAGES = 100;
@@ -37,6 +45,10 @@ interface ChapterInput {
   // Added for better chunking and question generation
   learning_objectives?: string[];
   key_concepts?: string[];
+  // Real chapter positions (from document structure detection)
+  _startPosition?: number;
+  _endPosition?: number;
+  _hasFormulas?: boolean;
   concepts: Array<{
     id: string;
     title: string;
@@ -247,14 +259,67 @@ export async function processCourseJob(jobId: string) {
     await admin.from("courses").update({
       content_language: contentLanguage,
       language: contentLanguage,
-      source_text: cleanText, // Store source text for quality audit
+      source_text: extractedText, // Store FULL source text (not truncated) for A+ Note generation
     }).eq("id", course.id);
 
-    const chapterStructure = await generateChapterStructureFromCourseText(
-      cleanText,
-      course.title || course.original_filename || undefined,
-      modelLanguage
-    );
+    // === PHASE 1: Detect REAL chapters from the document structure ===
+    logStep("detecting_real_chapters", { courseId: course.id });
+
+    let documentStructure: DocumentStructure | null = null;
+    let useRealChapters = false;
+
+    try {
+      // Detect real document structure (uses LLM for refinement)
+      documentStructure = await detectDocumentStructure(extractedText, modelLanguage, true);
+
+      // Use real chapters if detection has good confidence (>= 0.6) and found at least 2 sections
+      useRealChapters = documentStructure.confidence >= 0.6 && documentStructure.sections.length >= 2;
+
+      logStep("document_structure_detected", {
+        courseId: course.id,
+        confidence: documentStructure.confidence,
+        sectionsFound: documentStructure.sections.length,
+        documentType: documentStructure.documentType,
+        useRealChapters,
+      });
+    } catch (structureError: any) {
+      logStep("document_structure_detection_failed", {
+        courseId: course.id,
+        error: structureError?.message,
+      });
+    }
+
+    let chapterStructure: any[];
+
+    if (useRealChapters && documentStructure) {
+      // === Use REAL chapters detected from the document ===
+      logStep("using_real_chapters", { courseId: course.id, count: documentStructure.sections.length });
+
+      // Convert detected structure to chapter format
+      const realChapters = structureToChapters(documentStructure, extractedText);
+
+      chapterStructure = realChapters.map(ch => ({
+        index: ch.index,
+        title: ch.title,
+        short_summary: ch.short_summary,
+        difficulty: ch.difficulty,
+        learning_objectives: [], // Will be enriched by LLM later if needed
+        key_concepts: [],
+        // Store real positions for accurate text extraction
+        _startPosition: ch.startPosition,
+        _endPosition: ch.endPosition,
+        _hasFormulas: ch.hasFormulas,
+      }));
+    } else {
+      // === Fallback: LLM generates chapter structure (original behavior) ===
+      logStep("using_llm_chapters", { courseId: course.id });
+
+      chapterStructure = await generateChapterStructureFromCourseText(
+        cleanText,
+        course.title || course.original_filename || undefined,
+        modelLanguage
+      );
+    }
 
     const fallbackTitle = course.title || (contentLanguage === "fr" ? "Chapitre 1" : contentLanguage === "de" ? "Kapitel 1" : "Chapter 1");
     const fallbackSummary = contentLanguage === "fr"
@@ -279,6 +344,10 @@ export async function processCourseJob(jobId: string) {
         // Store learning objectives and key concepts for better chunking and question generation
         learning_objectives: ch.learning_objectives || [],
         key_concepts: ch.key_concepts || [],
+        // Store real chapter positions if available (from document structure detection)
+        _startPosition: ch._startPosition,
+        _endPosition: ch._endPosition,
+        _hasFormulas: ch._hasFormulas,
         concepts: [
           {
             id: conceptId,
@@ -291,33 +360,61 @@ export async function processCourseJob(jobId: string) {
       };
     });
 
-    logStep("llm_structuring_done", { courseId: course.id, chapters: chapters.length });
+    logStep("llm_structuring_done", {
+      courseId: course.id,
+      chapters: chapters.length,
+      mode: useRealChapters ? "real_chapters" : "llm_generated",
+    });
 
-    // Intelligent chapter text extraction based on markers, titles, and key concepts
-    const chapterBoundaries = extractChapterText(
-      cleanText,
-      chapters.map(ch => ({
+    // === Chapter text extraction ===
+    // If we have real chapter positions, use them directly
+    // Otherwise, fall back to intelligent marker-based extraction
+    let chapterBoundaries: ChapterBoundary[] = [];
+
+    const hasRealPositions = chapters.some(ch => ch._startPosition !== undefined);
+
+    if (hasRealPositions) {
+      // Use real positions from document structure detection
+      logStep("using_real_chapter_positions", { courseId: course.id });
+
+      chapterBoundaries = chapters.map(ch => ({
         index: ch.orderIndex + 1,
         title: ch.title,
-        short_summary: ch.summary,
-        key_concepts: ch.key_concepts,  // Pass key_concepts for better text matching
-      })),
-      { minChunkSize: 500, maxChunkSize: LLM_CONFIG.truncation.chapterText, useMarkerDetection: true }
-    );
+        startPosition: ch._startPosition || 0,
+        endPosition: ch._endPosition || extractedText.length,
+        text: extractedText.substring(
+          ch._startPosition || 0,
+          Math.min(ch._endPosition || extractedText.length, (ch._startPosition || 0) + LLM_CONFIG.truncation.chapterText)
+        ).trim(),
+      }));
+    } else {
+      // Fall back to intelligent marker-based extraction
+      chapterBoundaries = extractChapterText(
+        cleanText,
+        chapters.map(ch => ({
+          index: ch.orderIndex + 1,
+          title: ch.title,
+          short_summary: ch.summary,
+          key_concepts: ch.key_concepts,  // Pass key_concepts for better text matching
+        })),
+        { minChunkSize: 500, maxChunkSize: LLM_CONFIG.truncation.chapterText, useMarkerDetection: true }
+      );
+    }
 
     logStep("chapter_boundaries_computed", {
       courseId: course.id,
       boundariesCount: chapterBoundaries.length,
       avgLength: Math.round(chapterBoundaries.reduce((sum, b) => sum + b.text.length, 0) / Math.max(1, chapterBoundaries.length)),
+      mode: hasRealPositions ? "real_positions" : "marker_based",
     });
 
     // Initialize course-level deduplication tracker to prevent cross-chapter duplicates
     const deduplicationTracker = new CourseDeduplicationTracker(0.65); // 65% similarity threshold
 
     for (const chapter of chapters) {
-      // Find matching boundary or fall back to equal division
+      // Find matching boundary or fall back to full text
       const boundary = chapterBoundaries.find(b => b.index === chapter.orderIndex + 1);
-      const chapterText = boundary?.text || cleanText.substring(0, LLM_CONFIG.truncation.chapterText);
+      const chapterText = boundary?.text || extractedText.substring(0, LLM_CONFIG.truncation.chapterText);
       const { error: chapterInsertError } = await admin.from("chapters").insert({
         id: chapter.id,
         course_id: course.id,

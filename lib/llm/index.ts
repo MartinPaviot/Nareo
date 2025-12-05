@@ -105,6 +105,15 @@ export {
   type SemanticValidationResult,
 } from './semantic-validator';
 
+// Document structure detection (real chapters)
+export {
+  detectDocumentStructure,
+  detectStructureQuick,
+  structureToChapters,
+  type DetectedSection,
+  type DocumentStructure,
+} from './document-structure-detector';
+
 // Configuration constants
 export const LLM_CONFIG = {
   // Model selections

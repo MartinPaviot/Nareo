@@ -1,5 +1,5 @@
 /**
- * PDF OCR Server - Page-by-page OCR using pdf-to-img + OpenAI Vision
+ * PDF OCR Server - Page-by-page OCR using pdfjs-dist + canvas + OpenAI Vision
  *
  * This module handles PDF files that cannot be parsed with pdf2json
  * by rendering each page as an image and using OCR
@@ -7,16 +7,106 @@
  * Enhanced with specialized math formula extraction
  *
  * NEW: Targeted OCR - Only OCR pages with corrupted formulas
+ *
+ * Uses pdfjs-dist directly with worker disabled for Next.js compatibility
  */
 
-// Dynamic import to avoid build-time evaluation issues with pdf-to-img
-// pdf-to-img uses pdfjs-dist which tries to configure workers at import time
-let pdfModule: typeof import('pdf-to-img') | null = null;
-async function getPdf() {
-  if (!pdfModule) {
-    pdfModule = await import('pdf-to-img');
+// Dynamic imports for server-side only modules
+let pdfjsLib: typeof import('pdfjs-dist/legacy/build/pdf.mjs') | null = null;
+let canvasLib: typeof import('canvas') | null = null;
+
+async function getPdfjs() {
+  if (!pdfjsLib) {
+    // IMPORTANT: Set GlobalWorkerOptions BEFORE any pdfjs operations
+    // This prevents the "No GlobalWorkerOptions.workerSrc specified" error
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+    // Point to the actual worker file from pdfjs-dist
+    // This resolves the "No GlobalWorkerOptions.workerSrc specified" error
+    pdfjs.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+
+    pdfjsLib = pdfjs;
   }
-  return pdfModule.pdf;
+  return pdfjsLib;
+}
+
+async function getCanvas() {
+  if (!canvasLib) {
+    canvasLib = await import('canvas');
+  }
+  return canvasLib;
+}
+
+/**
+ * Create a NodeCanvasFactory for pdfjs-dist
+ * This factory must be passed to BOTH getDocument() AND page.render()
+ * to fix the "Image or Canvas expected" error
+ *
+ * Reference: https://stackoverflow.com/questions/79579312/cant-render-a-pdf-page-on-node-canva-nodejs-pdfjs-dist
+ */
+async function createNodeCanvasFactory() {
+  const canvasModule = await getCanvas();
+
+  return class NodeCanvasFactory {
+    create(width: number, height: number) {
+      const canvas = canvasModule.createCanvas(width, height);
+      const context = canvas.getContext('2d');
+      return { canvas, context };
+    }
+
+    reset(canvasAndContext: any, width: number, height: number) {
+      canvasAndContext.canvas.width = width;
+      canvasAndContext.canvas.height = height;
+    }
+
+    destroy(canvasAndContext: any) {
+      canvasAndContext.canvas.width = 0;
+      canvasAndContext.canvas.height = 0;
+      canvasAndContext.canvas = null;
+      canvasAndContext.context = null;
+    }
+  };
+}
+
+/**
+ * Load a PDF document with canvas factory configured
+ * The CanvasFactory must be passed to getDocument() for render to work
+ */
+async function loadPdfDocument(uint8Array: Uint8Array) {
+  const pdfjs = await getPdfjs();
+  const NodeCanvasFactory = await createNodeCanvasFactory();
+
+  return pdfjs.getDocument({
+    data: uint8Array,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    useSystemFonts: true,
+    // @ts-ignore - CanvasFactory is valid but not in types
+    CanvasFactory: NodeCanvasFactory,
+  }).promise;
+}
+
+/**
+ * Render a PDF page to a PNG buffer using pdfjs-dist + canvas
+ */
+async function renderPageToImage(pdfDoc: any, pageNum: number, scale: number = 2.0): Promise<Buffer> {
+  const page = await pdfDoc.getPage(pageNum);
+  const viewport = page.getViewport({ scale });
+
+  const NodeCanvasFactory = await createNodeCanvasFactory();
+  const canvasFactory = new NodeCanvasFactory();
+  const canvasAndContext = canvasFactory.create(
+    Math.floor(viewport.width),
+    Math.floor(viewport.height)
+  );
+
+  await page.render({
+    canvasContext: canvasAndContext.context,
+    viewport,
+    canvasFactory,
+  }).promise;
+
+  return canvasAndContext.canvas.toBuffer('image/png');
 }
 
 import { openai } from './openai-vision';
@@ -120,26 +210,25 @@ export async function extractTextFromPdfWithOCR(buffer: Buffer): Promise<string>
   console.log('🔬 Starting page-by-page OCR extraction...');
 
   try {
-    // Load PDF document using pdf-to-img
-    // This library properly handles PDF rendering to images
-    const pdf = await getPdf();
-    const document = await pdf(buffer, {
-      scale: 2.0,  // Higher scale = better OCR accuracy
-    });
+    // Convert Buffer to Uint8Array (pdfjs-dist requires Uint8Array, not Buffer)
+    const uint8Array = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
-    // Get total page count
-    const numPages = document.length;
+    // Load PDF document with CanvasFactory configured for OCR rendering
+    const pdfDoc = await loadPdfDocument(uint8Array);
+
+    const numPages = pdfDoc.numPages;
     console.log(`📄 PDF loaded: ${numPages} pages`);
 
     // Extract text from each page
     const pageTexts: string[] = [];
-    let pageNum = 0;
 
-    for await (const imageBuffer of document) {
-      pageNum++;
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
       console.log(`🔍 Processing page ${pageNum}/${numPages}...`);
 
       try {
+        // Render page to image
+        const imageBuffer = await renderPageToImage(pdfDoc, pageNum, 2.0);
+
         // Convert image buffer to base64 data URL
         const base64Image = imageBuffer.toString('base64');
         const imageDataUrl = `data:image/png;base64,${base64Image}`;
@@ -185,7 +274,7 @@ export async function extractTextFromSpecificPages(
   buffer: Buffer,
   corruptedPages: Set<number>
 ): Promise<Map<number, string>> {
-  console.log(`🎯 Starting TARGETED OCR on ${corruptedPages.size} pages: [${[...corruptedPages].join(', ')}]`);
+  console.log(`🎯 Starting TARGETED OCR on ${corruptedPages.size} pages: [${Array.from(corruptedPages).join(', ')}]`);
 
   const results = new Map<number, string>();
 
@@ -194,26 +283,27 @@ export async function extractTextFromSpecificPages(
   }
 
   try {
-    const pdf = await getPdf();
-    const document = await pdf(buffer, {
-      scale: 2.0,
-    });
+    // Convert Buffer to Uint8Array (pdfjs-dist requires Uint8Array, not Buffer)
+    const uint8Array = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
-    const numPages = document.length;
+    // Load PDF document with CanvasFactory configured for OCR rendering
+    const pdfDoc = await loadPdfDocument(uint8Array);
+
+    const numPages = pdfDoc.numPages;
     console.log(`📄 PDF has ${numPages} pages, OCR-ing only ${corruptedPages.size} pages`);
 
-    let pageNum = 0;
-    for await (const imageBuffer of document) {
-      pageNum++;
-
-      // Skip pages that don't have corruption
-      if (!corruptedPages.has(pageNum)) {
+    for (const pageNum of Array.from(corruptedPages)) {
+      if (pageNum < 1 || pageNum > numPages) {
+        console.log(`⚠️ Page ${pageNum} out of range, skipping`);
         continue;
       }
 
       console.log(`🔍 OCR page ${pageNum}...`);
 
       try {
+        // Render page to image
+        const imageBuffer = await renderPageToImage(pdfDoc, pageNum, 2.0);
+
         const base64Image = imageBuffer.toString('base64');
         const imageDataUrl = `data:image/png;base64,${base64Image}`;
 

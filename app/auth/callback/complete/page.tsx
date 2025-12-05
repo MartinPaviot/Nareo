@@ -34,14 +34,19 @@ export default function AuthCallbackCompletePage() {
         await trackVisitor(user.id, user.email || '');
 
         // Create profile if it doesn't exist (upsert to avoid duplicates)
+        // Extract full_name from user_metadata (first_name set during signup)
+        const firstName = user.user_metadata?.first_name || user.user_metadata?.full_name || '';
+
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
             user_id: user.id,
+            email: user.email || '',
+            full_name: firstName,
             subscription_tier: 'free',
           }, {
             onConflict: 'user_id',
-            ignoreDuplicates: true,
+            ignoreDuplicates: false, // Update if exists to fill missing data
           });
 
         if (profileError) {

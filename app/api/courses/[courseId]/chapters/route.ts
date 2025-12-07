@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
+// Admin emails that always have premium access
+const ADMIN_EMAILS = ['contact@usenareo.com'];
+
 export async function GET(
   request: NextRequest,
   context: { params: { courseId: string } } | { params: Promise<{ courseId: string }> }
@@ -50,9 +53,13 @@ export async function GET(
           .single()
       : { data: null };
 
-    // Check if user has active premium subscription
-    const isPremium = profileData?.subscription_tier === 'premium' &&
-      (!profileData?.subscription_expires_at || new Date(profileData.subscription_expires_at) > new Date());
+    // Check if user is admin (always premium)
+    const userEmail = auth?.user?.email || null;
+    const isAdmin = userEmail ? ADMIN_EMAILS.includes(userEmail) : false;
+
+    // Check if user has active premium subscription (or is admin)
+    const isPremium = isAdmin || (profileData?.subscription_tier === 'premium' &&
+      (!profileData?.subscription_expires_at || new Date(profileData.subscription_expires_at) > new Date()));
 
     // Get user's course access (legacy, for backwards compatibility)
     const { data: accessData } = userId

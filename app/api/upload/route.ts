@@ -60,12 +60,13 @@ export async function POST(request: NextRequest) {
         .eq('user_id', userId)
         .single();
 
-      const isPremium = profile?.subscription_tier === 'premium' &&
-        (!profile?.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
-
       // Check if user has unlimited uploads (admin) - use email from auth
       const userEmail = auth?.user.email?.toLowerCase();
       const hasUnlimitedUploads = userEmail && UNLIMITED_UPLOAD_EMAILS.includes(userEmail);
+
+      // Admin users are always considered premium
+      const isPremium = hasUnlimitedUploads || (profile?.subscription_tier === 'premium' &&
+        (!profile?.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date()));
 
       if (hasUnlimitedUploads) {
         // Admin user: unlimited uploads, just track for analytics

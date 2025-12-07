@@ -127,32 +127,26 @@ export default function CourseLearnPage() {
   const isStillProcessing = course?.status === 'pending' || course?.status === 'processing';
 
   const handleChapterClick = (chapter: Chapter, index: number) => {
-    // Chapter 1 is always accessible
+    // Chapter 1 is always accessible (even without account)
     if (index === 0) {
       router.push(`/courses/${courseId}/chapters/${chapter.id}`);
       return;
     }
 
-    // Chapters 2-3 (index 1-2) require login but are free once logged in
-    if (index === 1 || index === 2) {
-      if (!user) {
-        setShowSignupModal(true);
-        return;
-      }
+    // For chapters 2+, user must be logged in
+    if (!user && !isDemoId) {
+      setShowSignupModal(true);
+      return;
+    }
+
+    // If user has full access (premium OR free monthly course), all chapters are accessible
+    if (hasFullAccess) {
       router.push(`/courses/${courseId}/chapters/${chapter.id}`);
       return;
     }
 
-    // Chapters 4+ (index >= 3) require premium access
-    if (index >= 3) {
-      // If user has access (premium), allow navigation
-      if (chapter.has_access) {
-        router.push(`/courses/${courseId}/chapters/${chapter.id}`);
-        return;
-      }
-      // Otherwise show paywall
-      setShowPaywallModal(true);
-    }
+    // Otherwise, show paywall for chapters 2+
+    setShowPaywallModal(true);
   };
 
   /**
@@ -162,27 +156,27 @@ export default function CourseLearnPage() {
    * @returns The translated CTA text
    */
   const getChapterCTA = (chapter: Chapter, index: number): string => {
-    // For chapters 4+ (index >= 3), check if user has access (premium)
-    if (index >= 3 && !chapter.has_access) {
-      return translate('course_detail_cta_paywall');
+    // Chapter 1 is always accessible
+    if (index === 0) {
+      if (chapter.completed) return translate('course_detail_cta_retake_quiz');
+      if (chapter.in_progress) return translate('course_detail_cta_resume_quiz');
+      return translate('course_detail_cta_start_quiz');
     }
 
-    // For chapters 2-3 (index 1-2), if user not logged in, show create account
-    if ((index === 1 || index === 2) && !user && !isDemoId) {
+    // For chapters 2+, if not logged in, show create account
+    if (!user && !isDemoId) {
       return translate('course_detail_cta_create_account');
     }
 
-    // For accessible chapters, determine CTA based on quiz state
-    if (chapter.completed) {
-      // Quiz was completed - offer to retake
-      return translate('course_detail_cta_retake_quiz');
-    } else if (chapter.in_progress) {
-      // Quiz was started but not finished - offer to resume
-      return translate('course_detail_cta_resume_quiz');
-    } else {
-      // Quiz never started - offer to start
+    // If user has full access, show quiz state
+    if (hasFullAccess) {
+      if (chapter.completed) return translate('course_detail_cta_retake_quiz');
+      if (chapter.in_progress) return translate('course_detail_cta_resume_quiz');
       return translate('course_detail_cta_start_quiz');
     }
+
+    // No full access - show paywall CTA
+    return translate('course_detail_cta_paywall');
   };
 
   const bannerCopy = useMemo(() => {
@@ -332,10 +326,8 @@ export default function CourseLearnPage() {
               // Chapters loaded - show list
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
                 {chapters.map((chapter, index) => {
-                  // Chapters 2-3 (index 1-2) require login but are free once logged in
-                  const locked = (index === 1 || index === 2) && !user && !isDemoId;
-                  // Chapters 4+ (index >= 3) require premium
-                  const premiumLock = index >= 3 && !chapter.has_access;
+                  // Chapter is locked if: not chapter 1 AND (not logged in OR no full access)
+                  const isLocked = index > 0 && (!user || !hasFullAccess) && !isDemoId;
                   // Check if chapter is ready (has questions generated)
                   const isChapterReady = chapter.question_count > 0;
                   return (
@@ -352,18 +344,14 @@ export default function CourseLearnPage() {
                           {chapter.title}
                         </h3>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {/* Free/Bonus badges - hidden when user has full access (premium or free monthly course) */}
+                          {/* Free badge for chapter 1 - hidden when user has full access */}
                           {index === 0 && !hasFullAccess && (
                             <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
                               {translate('course_detail_free_badge')}
                             </span>
                           )}
-                          {(index === 1 || index === 2) && user && !hasFullAccess && (
-                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
-                              {translate('course_detail_bonus_badge')}
-                            </span>
-                          )}
-                          {(locked || premiumLock) && (
+                          {/* Lock badge for chapters 2+ when user doesn't have full access */}
+                          {isLocked && (
                             <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
                               <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                               {translate('course_detail_locked_badge')}
@@ -412,7 +400,7 @@ export default function CourseLearnPage() {
                         className={`inline-flex items-center justify-center gap-1 sm:gap-2 w-full sm:w-[180px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
                           !isChapterReady
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : (locked || premiumLock) && !isDemoId
+                            : isLocked
                             ? 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
                             : 'bg-orange-500 text-white hover:bg-orange-600'
                         }`}

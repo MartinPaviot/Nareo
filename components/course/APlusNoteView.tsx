@@ -380,10 +380,29 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
             />
           </div>
         ) : (
-          <div ref={contentRef} className="golden-note-content prose prose-sm sm:prose-base max-w-none">
+          <div ref={contentRef} className="golden-note-content">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
+              components={{
+                h1: ({children}) => <h1 className="text-2xl font-bold text-gray-900 mt-0 mb-6">{children}</h1>,
+                h2: ({children}) => <h2 className="text-xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b-2 border-gray-200">{children}</h2>,
+                h3: ({children}) => <h3 className="text-lg font-semibold text-gray-800 mt-6 mb-3">{children}</h3>,
+                p: ({children}) => <p className="my-3 text-gray-700 leading-relaxed">{children}</p>,
+                ul: ({children}) => <ul className="my-4 space-y-2 list-disc list-inside">{children}</ul>,
+                ol: ({children}) => <ol className="my-4 space-y-2 list-decimal list-inside">{children}</ol>,
+                li: ({children}) => <li className="text-gray-700">{children}</li>,
+                strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                em: ({children}) => <em className="italic text-gray-600">{children}</em>,
+                blockquote: ({children}) => <blockquote className="border-l-4 border-orange-500 bg-orange-50 px-4 py-3 my-4 rounded-r-lg">{children}</blockquote>,
+                code: ({children, className}) => {
+                  const isInline = !className;
+                  return isInline
+                    ? <code className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-sm font-medium">{children}</code>
+                    : <code className={className}>{children}</code>;
+                },
+                pre: ({children}) => <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto my-4">{children}</pre>,
+              }}
             >
               {parsedNote.content}
             </ReactMarkdown>

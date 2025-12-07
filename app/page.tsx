@@ -569,10 +569,7 @@ export default function HomePage() {
 
           {/* How it works */}
           <section id="how-it-works" className="mt-12 space-y-6">
-            <div className="text-center space-y-2">
-              <p className="text-sm font-semibold text-orange-700 uppercase tracking-wide">
-                {translate('home_hiw_label')}
-              </p>
+            <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900">
                 {translate('home_hiw_title')}
               </h2>

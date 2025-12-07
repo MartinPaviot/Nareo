@@ -33,13 +33,13 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', auth.user.id);
 
-    // Check if premium is active
-    const isPremium = profile?.subscription_tier === 'premium' &&
-      (!profile?.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
-
-    // Check if user has unlimited uploads
+    // Check if user has unlimited uploads (admin)
     const userEmail = auth.user.email?.toLowerCase();
     const hasUnlimitedUploads = userEmail && UNLIMITED_UPLOAD_EMAILS.includes(userEmail);
+
+    // Check if premium is active (admins are always premium)
+    const isPremium = hasUnlimitedUploads || (profile?.subscription_tier === 'premium' &&
+      (!profile?.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date()));
 
     return NextResponse.json({
       profile: {

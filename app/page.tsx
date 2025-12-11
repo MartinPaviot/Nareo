@@ -44,14 +44,33 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Cookie utilities for guest session
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function setCookie(name: string, value: string, days: number = 30): void {
+  if (typeof document === 'undefined') return;
+  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function deleteCookie(name: string): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+}
+
 // Generate or retrieve guest session ID for anonymous uploads
+// Uses cookies instead of localStorage so it persists across browser tabs
 function getOrCreateGuestSessionId(): string {
   if (typeof window === 'undefined') return '';
 
-  let guestSessionId = localStorage.getItem('guestSessionId');
+  let guestSessionId = getCookie('guestSessionId');
   if (!guestSessionId) {
     guestSessionId = crypto.randomUUID();
-    localStorage.setItem('guestSessionId', guestSessionId);
+    setCookie('guestSessionId', guestSessionId, 30); // 30 days expiry
   }
   return guestSessionId;
 }

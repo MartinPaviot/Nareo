@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Loader2, Download, Copy, Check, Sparkles, RotateCcw, Pencil, X, Save } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Loader2, Download, Copy, Check, Sparkles, RotateCcw, Pencil, X, Save, UserPlus } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -22,7 +24,9 @@ interface ParsedNote {
 }
 
 export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewProps) {
+  const router = useRouter();
   const { translate } = useLanguage();
+  const { user } = useAuth();
   const [noteContent, setNoteContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -32,6 +36,7 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showSignupModal, setShowSignupModal] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Parse the note content to extract title, topics, and main content
@@ -100,6 +105,12 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
   }, [courseId]);
 
   const handleGenerate = async () => {
+    // Check if user is logged in
+    if (!user) {
+      setShowSignupModal(true);
+      return;
+    }
+
     setGenerating(true);
     setError(null);
     try {
@@ -227,41 +238,74 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
   // No note yet - show generate button
   if (!noteContent || !parsedNote) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
-        <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
-          <Sparkles className="w-8 h-8 text-orange-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          {translate('aplus_note_title')}
-        </h3>
-        <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
-          {translate('aplus_note_description')}
-        </p>
+      <>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="w-8 h-8 text-orange-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            {translate('aplus_note_title')}
+          </h3>
+          <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
+            {translate('aplus_note_description')}
+          </p>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
-            {error}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {translate('aplus_note_generating')}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                {translate('aplus_note_generate')}
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Signup Modal */}
+        {showSignupModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+              <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
+                <UserPlus className="w-7 h-7 text-orange-500" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">
+                {translate('aplus_note_signup_title')}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6 text-center">
+                {translate('aplus_note_signup_description')}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSignupModal(false)}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                >
+                  {translate('cancel')}
+                </button>
+                <button
+                  onClick={() => router.push('/auth/signup')}
+                  className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                >
+                  {translate('auth_signup_button')}
+                </button>
+              </div>
+            </div>
           </div>
         )}
-
-        <button
-          onClick={handleGenerate}
-          disabled={generating}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {generating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              {translate('aplus_note_generating')}
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              {translate('aplus_note_generate')}
-            </>
-          )}
-        </button>
-      </div>
+      </>
     );
   }
 

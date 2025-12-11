@@ -8,6 +8,18 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// Cookie utilities
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function deleteCookie(name: string): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+}
+
 export default function AuthCallbackCompletePage() {
   const router = useRouter();
   const { translate } = useLanguage();
@@ -65,7 +77,9 @@ export default function AuthCallbackCompletePage() {
         }
 
         // Link any guest courses to this user
-        const guestSessionId = localStorage.getItem('guestSessionId');
+        // Use cookie instead of localStorage (cookies persist across browser tabs)
+        const guestSessionId = getCookie('guestSessionId');
+        console.log('🔍 Guest session ID from cookie:', guestSessionId);
         if (guestSessionId) {
           try {
             // Get the session to include auth token in the request
@@ -84,8 +98,8 @@ export default function AuthCallbackCompletePage() {
             } else if (!linkResponse.ok) {
               console.error('Link guest courses failed:', linkResult);
             }
-            // Clear the guest session ID after linking (even if failed to avoid retry loops)
-            localStorage.removeItem('guestSessionId');
+            // Clear the guest session ID cookie after linking (even if failed to avoid retry loops)
+            deleteCookie('guestSessionId');
           } catch (linkError) {
             console.error('Error linking guest courses:', linkError);
             // Non-blocking error - continue with auth flow

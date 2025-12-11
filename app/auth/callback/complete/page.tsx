@@ -33,6 +33,15 @@ export default function AuthCallbackCompletePage() {
         // Track visitor (add to visitors table if not exists)
         await trackVisitor(user.id, user.email || '');
 
+        // Check if this is a new user (profile doesn't exist yet)
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('user_id, subscription_tier')
+          .eq('user_id', user.id)
+          .single();
+
+        const isNewUser = !existingProfile;
+
         // Create profile if it doesn't exist (upsert to avoid duplicates)
         // Extract full_name from user_metadata (first_name set during signup)
         const firstName = user.user_metadata?.first_name || user.user_metadata?.full_name || '';
@@ -92,8 +101,12 @@ export default function AuthCallbackCompletePage() {
         // Small delay to ensure everything is set
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Redirect to dashboard
-        router.push('/dashboard');
+        // Redirect new users to plan selection, existing users to dashboard
+        if (isNewUser) {
+          router.push('/auth/signup?step=plan');
+        } else {
+          router.push('/dashboard');
+        }
         router.refresh();
       } catch (err: any) {
         console.error('❌ Auth callback error:', err);

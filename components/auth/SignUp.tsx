@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { trackVisitor } from '@/lib/visitors';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -8,24 +8,36 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PlanSelector from './PlanSelector';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignUp() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/';
+  const stepParam = searchParams.get('step');
   const { translate } = useLanguage();
+  const { user } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [emailVerificationSent, setEmailVerificationSent] = useState(false);
+  const [showPlanSelector, setShowPlanSelector] = useState(stepParam === 'plan');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedCGU, setAcceptedCGU] = useState(false);
   const [acceptedMarketing, setAcceptedMarketing] = useState(false);
+
+  // If user is logged in and step=plan, show plan selector
+  useEffect(() => {
+    if (user && stepParam === 'plan') {
+      setShowPlanSelector(true);
+    }
+  }, [user, stepParam]);
 
   const validateForm = () => {
     if (!firstName || !email || !password || !confirmPassword) {
@@ -121,6 +133,20 @@ export default function SignUp() {
       setGoogleLoading(false);
     }
   };
+
+  const handleSelectFreePlan = () => {
+    router.push(returnTo);
+  };
+
+  // Show plan selector if user is logged in and on plan step
+  if (showPlanSelector && user) {
+    return (
+      <PlanSelector
+        onSelectFree={handleSelectFreePlan}
+        returnTo={returnTo}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">

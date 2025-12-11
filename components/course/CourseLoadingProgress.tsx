@@ -6,18 +6,18 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 type ProcessingStep = 'uploading' | 'extracting' | 'analyzing' | 'generating' | 'finalizing';
 
-// Messages encourageants affichés pendant le chargement
-const LOADING_MESSAGES = [
-  "Un p'tit café le temps qu'on bosse ?",
-  "Les quiz multiplient par 2 ta mémorisation à long terme. C'est pas nous, c'est Harvard.",
-  "Ton futur toi te dit merci",
-  "Relire c'est bien. Se tester c'est 50% plus efficace.",
-  "Nareo révise pour toi... enfin presque",
-  "Fun fact : ton cerveau retient mieux ce qu'il essaie de retrouver que ce qu'il relit",
-  "On transforme ton cours en machine à neurones",
-  "Spoiler : tu vas cartonner",
-  "Savais-tu ? Se tester régulièrement réduit le stress des examens",
-  "Chaque quiz renforce ta mémoire. Là, tu construis ton 20/20"
+// Keys for loading messages (translations)
+const LOADING_MESSAGE_KEYS = [
+  'course_loading_message_1',
+  'course_loading_message_2',
+  'course_loading_message_3',
+  'course_loading_message_4',
+  'course_loading_message_5',
+  'course_loading_message_6',
+  'course_loading_message_7',
+  'course_loading_message_8',
+  'course_loading_message_9',
+  'course_loading_message_10',
 ];
 
 // Intervalle de rotation des messages (en secondes)
@@ -50,7 +50,7 @@ export default function CourseLoadingProgress({
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [stepProgress, setStepProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [messageIndex, setMessageIndex] = useState(() => Math.floor(Math.random() * LOADING_MESSAGES.length));
+  const [messageIndex, setMessageIndex] = useState(() => Math.floor(Math.random() * LOADING_MESSAGE_KEYS.length));
 
   // Calculate overall progress
   const totalDuration = Object.values(STEP_DURATIONS).reduce((a, b) => a + b, 0);
@@ -110,7 +110,7 @@ export default function CourseLoadingProgress({
     }
 
     const messageTimer = setInterval(() => {
-      setMessageIndex(prev => (prev + 1) % LOADING_MESSAGES.length);
+      setMessageIndex(prev => (prev + 1) % LOADING_MESSAGE_KEYS.length);
     }, MESSAGE_ROTATION_INTERVAL * 1000);
 
     return () => clearInterval(messageTimer);
@@ -155,7 +155,7 @@ export default function CourseLoadingProgress({
 
       {/* Encouraging message */}
       <p className="text-sm text-gray-500 text-center mt-2 mb-6 px-4 italic transition-opacity duration-500">
-        "{LOADING_MESSAGES[messageIndex]}"
+        "{translate(LOADING_MESSAGE_KEYS[messageIndex])}"
       </p>
 
       {/* Title */}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
 import { logEvent } from '@/lib/backend/analytics';
 
 /**
@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'guestSessionId requis' }, { status: 400 });
     }
 
-    const supabase = await createSupabaseServerClient();
+    // Use service client to bypass RLS - we need admin rights to update courses where user_id = null
+    const supabase = getServiceSupabase();
     const userId = auth.user.id;
 
     // Find all courses with this guest session ID
@@ -47,6 +48,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Update all guest courses to belong to the user
+    const courseIds = guestCourses.map(c => c.id);
+
     const { error: updateError } = await supabase
       .from('courses')
       .update({
@@ -61,6 +64,21 @@ export async function POST(request: NextRequest) {
       console.error('Error linking guest courses:', updateError);
       throw updateError;
     }
+
+    // Also update chapters and concepts to belong to the user
+    for (const courseId of courseIds) {
+      await supabase
+        .from('chapters')
+        .update({ user_id: userId })
+        .eq('course_id', courseId);
+
+      await supabase
+        .from('concepts')
+        .update({ user_id: userId })
+        .eq('course_id', courseId);
+    }
+
+    console.log(`✅ Linked ${guestCourses.length} guest course(s) to user ${userId}:`, courseIds);
 
     await logEvent('guest_courses_linked', {
       userId,

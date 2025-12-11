@@ -19,12 +19,16 @@ import {
   CourseDeduplicationTracker,
   type ChapterBoundary,
 } from "@/lib/llm";
+// Note: Flashcards are generated on-demand via /api/courses/[courseId]/flashcards/generate
 
 const RAW_BUCKET = "courses_raw";
 const MAX_PAGES = 100;
 const MAX_IMAGES = 6;
 const MIN_TEXT_LENGTH = 500;
 const DEFAULT_CONTENT_LANGUAGE = "en";
+
+// Parallel processing configuration
+const MAX_CONCURRENT_CHAPTERS = 3; // Process up to 3 chapters in parallel
 
 interface UploadPayload {
   userId: string | null;
@@ -379,236 +383,248 @@ export async function processCourseJob(jobId: string) {
     // Initialize course-level deduplication tracker to prevent cross-chapter duplicates
     const deduplicationTracker = new CourseDeduplicationTracker(0.65); // 65% similarity threshold
 
-    for (const chapter of chapters) {
-      // Find matching boundary or fall back to full text
+    // === PARALLEL CHAPTER PROCESSING ===
+    // Process chapters in batches of MAX_CONCURRENT_CHAPTERS
+    // Mark each chapter as 'ready' immediately when done (progressive availability)
+    // Note: Flashcards and A+ Notes are generated ON-DEMAND by the user (not automatically)
+
+    // Prepare chapter data with boundaries
+    const chaptersWithText = chapters.map(chapter => {
       const boundary = chapterBoundaries.find(b => b.index === chapter.orderIndex + 1);
       const chapterText = boundary?.text || extractedText.substring(0, LLM_CONFIG.truncation.chapterText);
-      const { error: chapterInsertError } = await admin.from("chapters").insert({
-        id: chapter.id,
-        course_id: course.id,
-        user_id: course.user_id,
-        order_index: chapter.orderIndex,
-        difficulty: chapter.difficulty,
-        title: chapter.title,
-        summary: chapter.summary,
-        importance: Math.min(3, Math.max(1, chapter.orderIndex + 1)),
-        source_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
-        extracted_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
+      return { chapter, chapterText };
+    });
+
+    // Process chapters in parallel batches
+    for (let i = 0; i < chaptersWithText.length; i += MAX_CONCURRENT_CHAPTERS) {
+      const batch = chaptersWithText.slice(i, i + MAX_CONCURRENT_CHAPTERS);
+
+      logStep("processing_chapter_batch", {
+        courseId: course.id,
+        batchStart: i,
+        batchSize: batch.length,
+        totalChapters: chapters.length,
       });
-      if (chapterInsertError) {
-        console.error("Chapter insert failed", chapterInsertError);
-        throw chapterInsertError;
-      }
 
-      for (const concept of chapter.concepts) {
-        const { error: conceptInsertError } = await admin.from("concepts").insert({
-          id: concept.id,
-          chapter_id: chapter.id,
-          course_id: course.id,
-          user_id: course.user_id,
-          title: concept.title,
-          description: concept.description,
-          importance: concept.importance ?? 1,
-          source_text: chapterText.substring(0, 2000),
-        });
-        if (conceptInsertError) {
-          console.error("Concept insert failed", conceptInsertError);
-          throw conceptInsertError;
-        }
-      }
+      await admin.from("pipeline_jobs").update({ stage: `chapters_batch_${i}` }).eq("id", jobId);
 
-      const coverageMap = new Map<string, number>();
-      chapter.concepts.forEach(c => coverageMap.set(c.id, 0));
-
-      // Up to two passes to reach 95% coverage and double coverage for importance=3
-      let pass = 0;
-      let finalCoverage = 0;
-      let finalImportantCovered = false;
-      while (pass < 2) {
-        logStep("llm_questions_start", { courseId: course.id, chapterId: chapter.id, pass });
-        await admin.from("pipeline_jobs").update({ stage: `questions_pass_${pass}` }).eq("id", jobId);
-
-        logStep("chapter_text_sample", {
-          courseId: course.id,
-          chapterId: chapter.id,
-          sample: chapterText.substring(0, 300),
-          length: chapterText.length,
-        });
-
-        const generated = await generateConceptChapterQuestions(
-          {
-            index: chapter.orderIndex + 1,
-            title: chapter.title,
-            short_summary: chapter.summary,
-            difficulty: chapter.concepts[0]?.importance || 1,
-            // Pass learning objectives and key concepts for better question generation
-            learning_objectives: chapter.learning_objectives,
-            key_concepts: chapter.key_concepts,
-          },
-          chapterText,
-          modelLanguage,
-          {
-            // Enable semantic validation to reject questions that aren't well-supported by source text
-            enableSemanticValidation: true,
-          }
-        );
-
-        // The helper now always returns an array after validation/deduplication
-        const rawQuestions: any[] = Array.isArray(generated) ? generated : (generated as any).questions || [];
-
-        // Apply cross-chapter deduplication to remove questions similar to previous chapters
-        const dedupeResult = deduplicationTracker.filterQuestions(
-          rawQuestions.map(q => ({ prompt: q.prompt || q.question, ...q })),
-          chapter.orderIndex
-        );
-        const questions: any[] = dedupeResult.filtered as any[]; // Keep as any[] to preserve original properties
-
-        if (dedupeResult.duplicatesRemoved > 0) {
-          logStep("cross_chapter_deduplication", {
-            courseId: course.id,
-            chapterId: chapter.id,
-            chapterIndex: chapter.orderIndex,
-            originalCount: rawQuestions.length,
-            afterDeduplication: questions.length,
-            duplicatesRemoved: dedupeResult.duplicatesRemoved,
-            duplicateDetails: dedupeResult.duplicateDetails.slice(0, 3), // Log first 3 for debugging
-          });
-          console.log(`🔄 Removed ${dedupeResult.duplicatesRemoved} cross-chapter duplicate(s) in chapter ${chapter.orderIndex + 1}`);
-        }
-
-        logStep("questions_parsed", {
-          courseId: course.id,
-          chapterId: chapter.id,
-          pass,
-          count: questions.length,
-          withConceptIds: questions.some((q: any) => Array.isArray((q as any).concept_ids) && (q as any).concept_ids.length > 0),
-        });
-
-        for (let idx = 0; idx < questions.length; idx++) {
-          const q = questions[idx];
-          const questionId = randomUUID();
-
-          // Map concept ids coming from the LLM when present; fallback to a round-robin assignment.
-          const conceptIdsFromLLM: string[] = Array.isArray((q as any).concept_ids) ? (q as any).concept_ids.filter((id: string) => coverageMap.has(id)) : [];
-          const fallbackConceptId = chapter.concepts[(idx + pass) % chapter.concepts.length]?.id;
-          const targetConceptIds: string[] = conceptIdsFromLLM.length > 0
-            ? Array.from(new Set(conceptIdsFromLLM))
-            : fallbackConceptId
-              ? [fallbackConceptId]
-              : [];
-          const primaryConceptId = targetConceptIds.find(id => coverageMap.has(id));
-
-          // Enforce MCQ-only: ensure 4 options and a valid correct option index
-          const rawOptions: string[] = Array.isArray(q.options) ? q.options : [];
-          const fixedOptions: string[] =
-            rawOptions.length === 4
-              ? rawOptions
-              : [...rawOptions, "Option C", "Option D"].slice(0, 4);
-          const textCandidates = [q.expected_answer, q.correctAnswer, q.answer, q.answer_text].filter(Boolean) as string[];
-          const findIndexFromText = () =>
-            fixedOptions.findIndex((opt: string) =>
-              textCandidates.some(txt => txt && opt.toLowerCase() === txt.toLowerCase())
-            );
-          const providedIndex =
-            typeof q.correct_option_index === "number" &&
-            q.correct_option_index >= 0 &&
-            q.correct_option_index < fixedOptions.length
-              ? q.correct_option_index
-              : -1;
-          const derivedIndex = findIndexFromText();
-          const correctIndex = providedIndex >= 0 ? providedIndex : derivedIndex >= 0 ? derivedIndex : 0;
-          const correctOption = fixedOptions[correctIndex];
-
-          const { error: questionInsertError } = await admin.from("questions").insert({
-            id: questionId,
-            chapter_id: chapter.id,
-            concept_id: null, // keep concept mapping in question_concepts; avoid FK failures here
-            question_number: q.questionNumber ?? q.order ?? idx + 1,
-            question_text: q.prompt || q.question,
-            answer_text: q.expected_answer || correctOption || q.correctAnswer || q.answer || null,
-            options: fixedOptions,
-            type: "mcq", // force multiple choice
-            difficulty: q.phase === "mcq" ? 2 : 3,
-            phase: q.phase || "mcq",
-            points: q.points ?? (q.type === "mcq" ? 10 : 35),
-            // store correct option index in options payload for clarity
-            correct_option_index: correctIndex,
-            explanation: q.explanation || null,
-            // Phase 1: Store source_reference and cognitive_level for quality audit
-            source_reference: q.source_reference || null,
-            cognitive_level: q.cognitive_level || null,
-          });
-          if (questionInsertError) {
-            console.error("Question insert failed", questionInsertError);
-            throw questionInsertError;
-          }
-
-          for (const conceptId of targetConceptIds) {
-            const { error: linkError } = await admin.from("question_concepts").insert({
-              question_id: questionId,
-              concept_id: conceptId,
+      await Promise.all(
+        batch.map(async ({ chapter, chapterText }) => {
+          try {
+            // Insert chapter with status 'processing'
+            const { error: chapterInsertError } = await admin.from("chapters").insert({
+              id: chapter.id,
+              course_id: course.id,
+              user_id: course.user_id,
+              order_index: chapter.orderIndex,
+              difficulty: chapter.difficulty,
+              title: chapter.title,
+              summary: chapter.summary,
+              importance: Math.min(3, Math.max(1, chapter.orderIndex + 1)),
+              source_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
+              extracted_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
+              status: 'processing', // Start as processing
             });
-            if (linkError) {
-              console.error("Question-concept link insert failed", linkError);
-              // If the concept row is missing, skip linking to avoid breaking the pipeline
-              continue;
+            if (chapterInsertError) {
+              console.error("Chapter insert failed", chapterInsertError);
+              throw chapterInsertError;
             }
-            coverageMap.set(conceptId, (coverageMap.get(conceptId) ?? 0) + 1);
+
+            // Insert concepts
+            for (const concept of chapter.concepts) {
+              const { error: conceptInsertError } = await admin.from("concepts").insert({
+                id: concept.id,
+                chapter_id: chapter.id,
+                course_id: course.id,
+                user_id: course.user_id,
+                title: concept.title,
+                description: concept.description,
+                importance: concept.importance ?? 1,
+                source_text: chapterText.substring(0, 2000),
+              });
+              if (conceptInsertError) {
+                console.error("Concept insert failed", conceptInsertError);
+                throw conceptInsertError;
+              }
+            }
+
+            const coverageMap = new Map<string, number>();
+            chapter.concepts.forEach(c => coverageMap.set(c.id, 0));
+
+            // Up to two passes to reach 95% coverage
+            let pass = 0;
+            let finalCoverage = 0;
+            let finalImportantCovered = false;
+            while (pass < 2) {
+              logStep("llm_questions_start", { courseId: course.id, chapterId: chapter.id, pass });
+
+              const generated = await generateConceptChapterQuestions(
+                {
+                  index: chapter.orderIndex + 1,
+                  title: chapter.title,
+                  short_summary: chapter.summary,
+                  difficulty: chapter.concepts[0]?.importance || 1,
+                  learning_objectives: chapter.learning_objectives,
+                  key_concepts: chapter.key_concepts,
+                },
+                chapterText,
+                modelLanguage,
+                { enableSemanticValidation: true }
+              );
+
+              const rawQuestions: any[] = Array.isArray(generated) ? generated : (generated as any).questions || [];
+
+              // Apply cross-chapter deduplication
+              const dedupeResult = deduplicationTracker.filterQuestions(
+                rawQuestions.map(q => ({ prompt: q.prompt || q.question, ...q })),
+                chapter.orderIndex
+              );
+              const questions: any[] = dedupeResult.filtered as any[];
+
+              if (dedupeResult.duplicatesRemoved > 0) {
+                logStep("cross_chapter_deduplication", {
+                  courseId: course.id,
+                  chapterId: chapter.id,
+                  originalCount: rawQuestions.length,
+                  afterDeduplication: questions.length,
+                });
+              }
+
+              // Insert questions
+              for (let idx = 0; idx < questions.length; idx++) {
+                const q = questions[idx];
+                const questionId = randomUUID();
+
+                const conceptIdsFromLLM: string[] = Array.isArray((q as any).concept_ids)
+                  ? (q as any).concept_ids.filter((id: string) => coverageMap.has(id))
+                  : [];
+                const fallbackConceptId = chapter.concepts[(idx + pass) % chapter.concepts.length]?.id;
+                const targetConceptIds: string[] = conceptIdsFromLLM.length > 0
+                  ? Array.from(new Set(conceptIdsFromLLM))
+                  : fallbackConceptId ? [fallbackConceptId] : [];
+
+                const rawOptions: string[] = Array.isArray(q.options) ? q.options : [];
+                const fixedOptions: string[] =
+                  rawOptions.length === 4
+                    ? rawOptions
+                    : [...rawOptions, "Option C", "Option D"].slice(0, 4);
+                const textCandidates = [q.expected_answer, q.correctAnswer, q.answer, q.answer_text].filter(Boolean) as string[];
+                const findIndexFromText = () =>
+                  fixedOptions.findIndex((opt: string) =>
+                    textCandidates.some(txt => txt && opt.toLowerCase() === txt.toLowerCase())
+                  );
+                const providedIndex =
+                  typeof q.correct_option_index === "number" &&
+                  q.correct_option_index >= 0 &&
+                  q.correct_option_index < fixedOptions.length
+                    ? q.correct_option_index
+                    : -1;
+                const derivedIndex = findIndexFromText();
+                const correctIndex = providedIndex >= 0 ? providedIndex : derivedIndex >= 0 ? derivedIndex : 0;
+                const correctOption = fixedOptions[correctIndex];
+
+                const { error: questionInsertError } = await admin.from("questions").insert({
+                  id: questionId,
+                  chapter_id: chapter.id,
+                  concept_id: null,
+                  question_number: q.questionNumber ?? q.order ?? idx + 1,
+                  question_text: q.prompt || q.question,
+                  answer_text: q.expected_answer || correctOption || q.correctAnswer || q.answer || null,
+                  options: fixedOptions,
+                  type: "mcq",
+                  difficulty: q.phase === "mcq" ? 2 : 3,
+                  phase: q.phase || "mcq",
+                  points: q.points ?? (q.type === "mcq" ? 10 : 35),
+                  correct_option_index: correctIndex,
+                  explanation: q.explanation || null,
+                  source_reference: q.source_reference || null,
+                  cognitive_level: q.cognitive_level || null,
+                });
+                if (questionInsertError) {
+                  console.error("Question insert failed", questionInsertError);
+                  throw questionInsertError;
+                }
+
+                for (const conceptId of targetConceptIds) {
+                  const { error: linkError } = await admin.from("question_concepts").insert({
+                    question_id: questionId,
+                    concept_id: conceptId,
+                  });
+                  if (!linkError) {
+                    coverageMap.set(conceptId, (coverageMap.get(conceptId) ?? 0) + 1);
+                  }
+                }
+              }
+
+              const covered = Array.from(coverageMap.values()).filter(v => v > 0).length;
+              finalCoverage = chapter.concepts.length > 0 ? covered / chapter.concepts.length : 1;
+              finalImportantCovered = chapter.concepts
+                .filter(c => c.importance >= 3)
+                .every(c => (coverageMap.get(c.id) ?? 0) >= 2);
+
+              await admin
+                .from("chapters")
+                .update({
+                  concept_count: chapter.concepts.length,
+                  covered_concepts: covered,
+                  coverage_ratio: finalCoverage,
+                })
+                .eq("id", chapter.id);
+
+              if (finalCoverage >= 0.95 && finalImportantCovered) {
+                break;
+              }
+              pass += 1;
+            }
+
+            // === CHAPTER IS NOW READY ===
+            // Mark chapter as ready IMMEDIATELY (progressive availability)
+            await admin
+              .from("chapters")
+              .update({ status: 'ready' })
+              .eq("id", chapter.id);
+
+            logStep("chapter_ready", {
+              courseId: course.id,
+              chapterId: chapter.id,
+              chapterIndex: chapter.orderIndex,
+              coverage: finalCoverage,
+            });
+
+            // Fire chapter notification (Supabase Realtime will pick this up)
+            console.log(`✅ Chapter ${chapter.orderIndex + 1} (${chapter.title}) is now READY`);
+
+          } catch (chapterError: any) {
+            // Mark chapter as failed but continue with other chapters
+            console.error(`Chapter ${chapter.id} failed:`, chapterError);
+            await admin
+              .from("chapters")
+              .update({ status: 'failed' })
+              .eq("id", chapter.id);
           }
-        }
-
-        const covered = Array.from(coverageMap.values()).filter(v => v > 0).length;
-        finalCoverage = chapter.concepts.length > 0 ? covered / chapter.concepts.length : 1;
-        finalImportantCovered = chapter.concepts
-          .filter(c => c.importance >= 3)
-          .every(c => (coverageMap.get(c.id) ?? 0) >= 2);
-
-        logStep("coverage_check", {
-          courseId: course.id,
-          chapterId: chapter.id,
-          pass,
-          coverageRatio: finalCoverage,
-          covered,
-          total: chapter.concepts.length,
-          importantCovered: finalImportantCovered,
-        });
-
-        await admin
-          .from("chapters")
-          .update({
-            concept_count: chapter.concepts.length,
-            covered_concepts: covered,
-          coverage_ratio: finalCoverage,
         })
-        .eq("id", chapter.id);
-
-        if (finalCoverage >= 0.95 && finalImportantCovered) {
-          break;
-        }
-        pass += 1;
-      }
-
-      // If coverage is still low, keep the generated questions but warn instead of failing the whole course.
-      if (finalCoverage < 0.95 || !finalImportantCovered) {
-        logStep("coverage_warning", {
-          courseId: course.id,
-          chapterId: chapter.id,
-          coverage: finalCoverage,
-          importantCovered: finalImportantCovered,
-          message: "Coverage below target after two passes; keeping questions and continuing.",
-        });
-      }
+      );
     }
+
+    // Count ready chapters
+    const { data: readyChapters } = await admin
+      .from("chapters")
+      .select("id")
+      .eq("course_id", course.id)
+      .eq("status", "ready");
+
+    const allChaptersReady = readyChapters?.length === chapters.length;
 
     // No global LLM metadata here; keep existing course title/language
     const makePublic = !course.user_id; // guest uploads should be publicly readable
     await admin.from("courses").update({
-      status: "ready",
+      status: allChaptersReady ? "ready" : "processing", // Stay processing if some chapters failed
       title: course.title,
       language: contentLanguage,
       content_language: contentLanguage,
       is_public: makePublic ? true : course.is_public,
       error_message: null,
+      chapter_count: readyChapters?.length || 0,
     }).eq("id", course.id);
 
     await admin

@@ -11,9 +11,10 @@ interface Flashcard {
   type: string;
   front: string;
   back: string;
-  mastery: 'new' | 'learning' | 'mastered';
+  mastery: 'new' | 'learning' | 'reviewing' | 'mastered';
   correctCount: number;
   incorrectCount: number;
+  chapterId?: string | null;
 }
 
 interface FlashcardsViewProps {
@@ -26,7 +27,7 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
   const { translate } = useLanguage();
   const { user } = useAuth();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -54,6 +55,7 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
               mastery: fc.mastery || 'new',
               correctCount: fc.correctCount || 0,
               incorrectCount: fc.incorrectCount || 0,
+              chapterId: fc.chapterId,
             }));
             setFlashcards(normalizedFlashcards);
           }

@@ -27,6 +27,7 @@ interface Chapter {
   completed: boolean;
   in_progress: boolean;
   score: number | null;
+  status: 'pending' | 'processing' | 'ready' | 'failed';
 }
 
 interface CourseData {
@@ -93,6 +94,7 @@ export default function CourseLearnPage() {
           completed: false,
           in_progress: false,
           score: null,
+          status: 'ready' as const,
         }))
       );
     } else {
@@ -122,8 +124,8 @@ export default function CourseLearnPage() {
   // In this case, we don't need to show "Free" or "Bonus" badges
   const hasFullAccess = isPremium || isFreeMonthlyCourse;
 
-  // Check if at least one chapter is ready (has questions)
-  const hasReadyChapter = chapters.some(ch => ch.question_count > 0);
+  // Check if at least one chapter is ready (has status 'ready' OR has questions for backwards compatibility)
+  const hasReadyChapter = chapters.some(ch => ch.status === 'ready' || ch.question_count > 0);
   const isStillProcessing = course?.status === 'pending' || course?.status === 'processing';
 
   const handleChapterClick = (chapter: Chapter, index: number) => {
@@ -328,8 +330,10 @@ export default function CourseLearnPage() {
                 {chapters.map((chapter, index) => {
                   // Chapter is locked if: not chapter 1 AND (not logged in OR no full access)
                   const isLocked = index > 0 && (!user || !hasFullAccess) && !isDemoId;
-                  // Check if chapter is ready (has questions generated)
-                  const isChapterReady = chapter.question_count > 0;
+                  // Check if chapter is ready (status is 'ready' OR has questions for backwards compatibility)
+                  const isChapterReady = chapter.status === 'ready' || chapter.question_count > 0;
+                  // Check if chapter is currently being processed
+                  const isChapterProcessing = chapter.status === 'processing' || chapter.status === 'pending';
                   return (
                     <div
                       key={chapter.id}
@@ -357,10 +361,16 @@ export default function CourseLearnPage() {
                               {translate('course_detail_locked_badge')}
                             </span>
                           )}
-                          {!isChapterReady && (
+                          {isChapterProcessing && (
                             <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-orange-100 text-orange-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
                               <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
                               {translate('chapter_preparing')}
+                            </span>
+                          )}
+                          {chapter.status === 'failed' && (
+                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-red-100 text-red-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                              <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                              {translate('chapter_failed') || 'Erreur'}
                             </span>
                           )}
                         </div>

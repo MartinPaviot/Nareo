@@ -129,33 +129,71 @@ ${course.source_text.substring(0, 12000)}`,
       const parsed = JSON.parse(content || '{}');
       const rawFlashcards = Array.isArray(parsed) ? parsed : parsed.flashcards || [];
 
-      // Add IDs and tracking fields to flashcards
-      flashcards = rawFlashcards.map((fc: { type?: string; front?: string; back?: string; concept?: string; definition?: string }, idx: number) => ({
-        id: `fc-${courseId}-${idx}-${Date.now()}`,
-        type: fc.type || 'definition',
-        front: fc.front || fc.concept || '',
-        back: fc.back || fc.definition || '',
-        mastery: 'new',
-        correctCount: 0,
-        incorrectCount: 0,
-      }));
+      // Validate and filter flashcards
+      flashcards = rawFlashcards
+        .map((fc: { type?: string; front?: string; back?: string; concept?: string; definition?: string }) => ({
+          type: fc.type || 'definition',
+          front: fc.front || fc.concept || '',
+          back: fc.back || fc.definition || '',
+          mastery: 'new',
+          correctCount: 0,
+          incorrectCount: 0,
+        }))
+        .filter((fc: { front: string; back: string }) => fc.front && fc.back);
     } catch (parseError) {
       console.error('Error parsing flashcards:', parseError);
       return NextResponse.json({ error: 'Failed to parse generated flashcards' }, { status: 500 });
     }
 
-    // Save flashcards to course
-    const { error: updateError } = await supabase
-      .from('courses')
-      .update({ flashcards })
-      .eq('id', courseId);
+    if (flashcards.length === 0) {
+      return NextResponse.json({ error: 'No valid flashcards generated' }, { status: 500 });
+    }
 
-    if (updateError) {
-      console.error('Error saving flashcards:', updateError);
+    // Delete existing flashcards for this course (regeneration)
+    await supabase
+      .from('flashcards')
+      .delete()
+      .eq('course_id', courseId);
+
+    // Insert flashcards into dedicated table
+    const flashcardRows = flashcards.map((fc: { type: string; front: string; back: string }) => ({
+      course_id: courseId,
+      chapter_id: null, // Course-level flashcards
+      type: ['definition', 'formula', 'condition', 'intuition', 'link'].includes(fc.type)
+        ? fc.type
+        : 'definition',
+      front: fc.front,
+      back: fc.back,
+    }));
+
+    const { data: insertedFlashcards, error: insertError } = await supabase
+      .from('flashcards')
+      .insert(flashcardRows)
+      .select('id, type, front, back');
+
+    if (insertError) {
+      console.error('Error saving flashcards:', insertError);
       return NextResponse.json({ error: 'Failed to save flashcards' }, { status: 500 });
     }
 
-    return NextResponse.json({ flashcards });
+    // Update course flashcards_status
+    await supabase
+      .from('courses')
+      .update({ flashcards_status: 'ready' })
+      .eq('id', courseId);
+
+    // Return flashcards with IDs and default progress
+    const flashcardsWithProgress = (insertedFlashcards || []).map(fc => ({
+      id: fc.id,
+      type: fc.type,
+      front: fc.front,
+      back: fc.back,
+      mastery: 'new',
+      correctCount: 0,
+      incorrectCount: 0,
+    }));
+
+    return NextResponse.json({ flashcards: flashcardsWithProgress });
   } catch (error) {
     console.error('Error generating flashcards:', error);
     return NextResponse.json(

@@ -237,18 +237,6 @@ export default function HomePage() {
       totalSize: allFiles.reduce((sum, f) => sum + f.size, 0),
     });
 
-    const imageCount = selected.filter((f) => f.type.startsWith('image/')).length;
-    if (imageCount > MAX_IMAGES) {
-      trackEvent('home_file_error', {
-        userId: user?.id,
-        errorType: 'too_many_images',
-        imageCount,
-        maxAllowed: MAX_IMAGES,
-      });
-      setError(translate('upload_limit_images'));
-      return;
-    }
-
     if (selected.length === 0) {
       trackEvent('home_file_error', {
         userId: user?.id,
@@ -259,7 +247,86 @@ export default function HomePage() {
       return;
     }
 
-    setFiles(selected.slice(0, MAX_IMAGES));
+    // Separate images and documents from incoming files
+    const incomingImages = selected.filter((f) => f.type.startsWith('image/'));
+    const incomingDocuments = selected.filter((f) => !f.type.startsWith('image/'));
+
+    // Check existing files
+    const existingImages = files.filter((f) => f.type.startsWith('image/'));
+    const existingDocuments = files.filter((f) => !f.type.startsWith('image/'));
+
+    // Rule: Only 1 document allowed (PDF, DOCX) OR multiple images (max 6)
+    // Cannot mix documents and images
+
+    // If user already has a document and tries to add more files
+    if (existingDocuments.length > 0) {
+      if (incomingDocuments.length > 0 || incomingImages.length > 0) {
+        trackEvent('home_file_error', {
+          userId: user?.id,
+          errorType: 'document_already_selected',
+          existingDocument: existingDocuments[0].name,
+        });
+        setError(translate('upload_error_document_exists') || 'Vous avez déjà sélectionné un document. Supprimez-le pour en choisir un autre.');
+        return;
+      }
+    }
+
+    // If user already has images and tries to add a document
+    if (existingImages.length > 0 && incomingDocuments.length > 0) {
+      trackEvent('home_file_error', {
+        userId: user?.id,
+        errorType: 'mixed_file_types',
+        existingImages: existingImages.length,
+        incomingDocuments: incomingDocuments.length,
+      });
+      setError(translate('upload_error_mixed_types') || 'Vous avez déjà des images sélectionnées. Supprimez-les pour ajouter un document.');
+      return;
+    }
+
+    // Cannot mix documents and images in the same selection
+    if (incomingDocuments.length > 0 && incomingImages.length > 0) {
+      trackEvent('home_file_error', {
+        userId: user?.id,
+        errorType: 'mixed_file_types',
+        documentCount: incomingDocuments.length,
+        imageCount: incomingImages.length,
+      });
+      setError(translate('upload_error_mixed_types') || 'Veuillez sélectionner soit un document, soit des images, mais pas les deux.');
+      return;
+    }
+
+    // Only 1 document allowed
+    if (incomingDocuments.length > 1) {
+      trackEvent('home_file_error', {
+        userId: user?.id,
+        errorType: 'too_many_documents',
+        documentCount: incomingDocuments.length,
+      });
+      setError(translate('upload_error_one_document') || 'Vous ne pouvez sélectionner qu\'un seul document (PDF ou DOCX) à la fois.');
+      return;
+    }
+
+    // Calculate total images (existing + incoming)
+    const totalImages = existingImages.length + incomingImages.length;
+    if (totalImages > MAX_IMAGES) {
+      trackEvent('home_file_error', {
+        userId: user?.id,
+        errorType: 'too_many_images',
+        imageCount: totalImages,
+        maxAllowed: MAX_IMAGES,
+      });
+      setError(translate('upload_limit_images') || `Vous ne pouvez pas ajouter plus de ${MAX_IMAGES} images.`);
+      return;
+    }
+
+    // Set files: either 1 document or up to 6 images
+    if (incomingDocuments.length === 1) {
+      setFiles([incomingDocuments[0]]);
+    } else if (incomingImages.length > 0) {
+      // Add incoming images to existing images
+      const newImages = [...existingImages, ...incomingImages].slice(0, MAX_IMAGES);
+      setFiles(newImages);
+    }
     setError(null);
   };
 

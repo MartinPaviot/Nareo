@@ -153,18 +153,19 @@ export default function SignUp() {
     setResendSuccess(false);
 
     try {
-      const { error: resendErr } = await supabase.auth.resend({
-        type: 'signup',
+      // Use signInWithOtp to send a magic link (works for both verified and unverified users)
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
         email: resendEmail,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
-      if (resendErr) throw resendErr;
+      if (otpErr) throw otpErr;
 
       setResendSuccess(true);
     } catch (err: any) {
+      console.error('Resend error:', err);
       setResendError(err.message || translate('auth_error_resend_failed'));
     } finally {
       setResending(false);

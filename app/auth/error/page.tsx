@@ -20,12 +20,23 @@ export default function AuthErrorPage() {
   const [errorDescription, setErrorDescription] = useState<string | null>(null);
 
   useEffect(() => {
-    // Parse hash parameters (Supabase sends errors in hash)
+    // Parse error from URL - can be in query params OR hash depending on Supabase config
     if (typeof window !== 'undefined') {
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      setErrorCode(params.get('error_code'));
-      setErrorDescription(params.get('error_description')?.replace(/\+/g, ' ') || null);
+      // First try query parameters (most common for redirects)
+      const urlParams = new URLSearchParams(window.location.search);
+      let code = urlParams.get('error_code');
+      let description = urlParams.get('error_description')?.replace(/\+/g, ' ') || null;
+
+      // If not in query params, try hash (some Supabase flows use hash)
+      if (!code) {
+        const hash = window.location.hash.substring(1);
+        const hashParams = new URLSearchParams(hash);
+        code = hashParams.get('error_code');
+        description = hashParams.get('error_description')?.replace(/\+/g, ' ') || null;
+      }
+
+      setErrorCode(code);
+      setErrorDescription(description);
     }
   }, []);
 
@@ -41,18 +52,19 @@ export default function AuthErrorPage() {
     setError('');
 
     try {
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
+      // Use signInWithOtp to send a magic link (works for all users)
+      const { error: otpError } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
-      if (resendError) throw resendError;
+      if (otpError) throw otpError;
 
       setSent(true);
     } catch (err: any) {
+      console.error('Resend error:', err);
       setError(err.message || translate('auth_error_resend_failed'));
     } finally {
       setSending(false);

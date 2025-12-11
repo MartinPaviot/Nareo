@@ -19,7 +19,9 @@ export type AnalyticsEventName =
   | 'payment_failed'
   | 'content_language_detected'
   | 'guest_courses_linked'
-  | 'guest_courses_link_failed';
+  | 'guest_courses_link_failed'
+  | 'flashcards_generated'
+  | 'flashcards_generation_failed';
 
 interface LogPayload {
   userId?: string;

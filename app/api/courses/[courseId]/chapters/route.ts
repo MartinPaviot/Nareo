@@ -143,6 +143,7 @@ export async function GET(
           in_progress: !!attempt && !attempt.completed_at,
           score: attempt?.score ?? null,
           content_language: course.content_language || course.language || 'en',
+          status: chapter.status || 'ready', // Chapter processing status (default to 'ready' for backwards compatibility)
         };
       })
     );

@@ -13,6 +13,7 @@ interface Chapter {
   completed: boolean;
   in_progress: boolean;
   score: number | null;
+  status: 'pending' | 'processing' | 'ready' | 'failed'; // Chapter processing status
 }
 
 interface CourseData {

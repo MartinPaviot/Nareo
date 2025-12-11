@@ -6,7 +6,7 @@ import { trackVisitor } from '@/lib/visitors';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Loader2, RefreshCw, Mail } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import PlanSelector from './PlanSelector';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +31,10 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedCGU, setAcceptedCGU] = useState(false);
   const [acceptedMarketing, setAcceptedMarketing] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendError, setResendError] = useState('');
 
   // If user is logged in and step=plan, show plan selector
   useEffect(() => {
@@ -138,6 +142,35 @@ export default function SignUp() {
     router.push(returnTo);
   };
 
+  const handleResendEmail = async () => {
+    if (!resendEmail) {
+      setResendError(translate('auth_error_enter_email'));
+      return;
+    }
+
+    setResending(true);
+    setResendError('');
+    setResendSuccess(false);
+
+    try {
+      const { error: resendErr } = await supabase.auth.resend({
+        type: 'signup',
+        email: resendEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (resendErr) throw resendErr;
+
+      setResendSuccess(true);
+    } catch (err: any) {
+      setResendError(err.message || translate('auth_error_resend_failed'));
+    } finally {
+      setResending(false);
+    }
+  };
+
   // Show plan selector if user is logged in and on plan step
   if (showPlanSelector && user) {
     return (
@@ -197,6 +230,56 @@ export default function SignUp() {
                   {translate('auth_signup_verification_info')}
                 </p>
               </div>
+
+              {/* Resend email section */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <p className="text-sm text-gray-500 mb-3 text-center">
+                  {translate('auth_error_resend_prompt')}
+                </p>
+
+                {resendSuccess ? (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+                    <div className="flex items-center justify-center gap-2 text-green-700">
+                      <Mail className="w-5 h-5" />
+                      <p className="font-medium">{translate('auth_error_email_sent')}</p>
+                    </div>
+                    <p className="text-sm text-green-600 mt-2 text-center">
+                      {translate('auth_error_check_inbox')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <input
+                      type="email"
+                      value={resendEmail}
+                      onChange={(e) => setResendEmail(e.target.value)}
+                      placeholder={translate('auth_email_placeholder')}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    {resendError && (
+                      <p className="text-sm text-red-600">{resendError}</p>
+                    )}
+                    <button
+                      onClick={handleResendEmail}
+                      disabled={resending}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition disabled:opacity-50"
+                    >
+                      {resending ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {translate('sending')}
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-5 h-5" />
+                          {translate('auth_error_resend_button')}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="text-center">
                 <Link
                   href="/auth/signin"

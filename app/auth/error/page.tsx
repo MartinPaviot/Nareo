@@ -1,10 +1,63 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Loader2, Mail, RefreshCw } from 'lucide-react';
 
 export default function AuthErrorPage() {
   const { translate } = useLanguage();
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  // Parse error from URL hash
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [errorDescription, setErrorDescription] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Parse hash parameters (Supabase sends errors in hash)
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      setErrorCode(params.get('error_code'));
+      setErrorDescription(params.get('error_description')?.replace(/\+/g, ' ') || null);
+    }
+  }, []);
+
+  const isExpiredLink = errorCode === 'otp_expired';
+
+  const handleResendEmail = async () => {
+    if (!email) {
+      setError(translate('auth_error_enter_email'));
+      return;
+    }
+
+    setSending(true);
+    setError('');
+
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (resendError) throw resendError;
+
+      setSent(true);
+    } catch (err: any) {
+      setError(err.message || translate('auth_error_resend_failed'));
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
@@ -19,11 +72,64 @@ export default function AuthErrorPage() {
             {translate('auth_callback_error')}
           </h2>
           <p className="text-gray-600 mb-6">
-            {translate('auth_error_description') || 'Une erreur est survenue lors de l\'authentification. Veuillez réessayer.'}
+            {isExpiredLink
+              ? translate('auth_error_link_expired')
+              : translate('auth_error_description')
+            }
           </p>
+
+          {/* Show resend form for expired links */}
+          {isExpiredLink && !sent && (
+            <div className="mb-6 space-y-4">
+              <p className="text-sm text-gray-500">
+                {translate('auth_error_resend_prompt')}
+              </p>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={translate('auth_email_placeholder')}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+              {error && (
+                <p className="text-sm text-red-600">{error}</p>
+              )}
+              <button
+                onClick={handleResendEmail}
+                disabled={sending}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition disabled:opacity-50"
+              >
+                {sending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {translate('sending')}
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-5 h-5" />
+                    {translate('auth_error_resend_button')}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Success message after resend */}
+          {sent && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <div className="flex items-center justify-center gap-2 text-green-700">
+                <Mail className="w-5 h-5" />
+                <p className="font-medium">{translate('auth_error_email_sent')}</p>
+              </div>
+              <p className="text-sm text-green-600 mt-2">
+                {translate('auth_error_check_inbox')}
+              </p>
+            </div>
+          )}
+
           <Link
             href="/auth/signin"
-            className="inline-block px-6 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition"
+            className="inline-block px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition"
           >
             {translate('auth_callback_back_to_signin')}
           </Link>

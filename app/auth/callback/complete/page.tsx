@@ -20,6 +20,19 @@ function deleteCookie(name: string): void {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
 }
 
+// Get guest session ID from cookie OR localStorage (localStorage survives email verification redirect)
+function getGuestSessionId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return getCookie('guestSessionId') || localStorage.getItem('guestSessionId');
+}
+
+// Clear guest session ID from both cookie and localStorage
+function clearGuestSessionId(): void {
+  if (typeof window === 'undefined') return;
+  deleteCookie('guestSessionId');
+  localStorage.removeItem('guestSessionId');
+}
+
 export default function AuthCallbackCompletePage() {
   const router = useRouter();
   const { translate } = useLanguage();
@@ -77,9 +90,9 @@ export default function AuthCallbackCompletePage() {
         }
 
         // Link any guest courses to this user
-        // Use cookie instead of localStorage (cookies persist across browser tabs)
-        const guestSessionId = getCookie('guestSessionId');
-        console.log('🔍 Guest session ID from cookie:', guestSessionId);
+        // Check both cookie AND localStorage (localStorage survives email verification redirect)
+        const guestSessionId = getGuestSessionId();
+        console.log('🔍 Guest session ID (cookie or localStorage):', guestSessionId);
         if (guestSessionId) {
           try {
             // Get the session to include auth token in the request
@@ -98,8 +111,8 @@ export default function AuthCallbackCompletePage() {
             } else if (!linkResponse.ok) {
               console.error('Link guest courses failed:', linkResult);
             }
-            // Clear the guest session ID cookie after linking (even if failed to avoid retry loops)
-            deleteCookie('guestSessionId');
+            // Clear the guest session ID from both cookie and localStorage after linking
+            clearGuestSessionId();
           } catch (linkError) {
             console.error('Error linking guest courses:', linkError);
             // Non-blocking error - continue with auth flow

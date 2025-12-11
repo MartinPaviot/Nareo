@@ -63,15 +63,23 @@ function deleteCookie(name: string): void {
 }
 
 // Generate or retrieve guest session ID for anonymous uploads
-// Uses cookies instead of localStorage so it persists across browser tabs
+// Uses BOTH cookies AND localStorage for maximum persistence:
+// - Cookie: works across tabs in same session
+// - localStorage: survives email verification redirect (SameSite=Lax blocks cookies from email links)
 function getOrCreateGuestSessionId(): string {
   if (typeof window === 'undefined') return '';
 
-  let guestSessionId = getCookie('guestSessionId');
+  // Try cookie first, then localStorage
+  let guestSessionId = getCookie('guestSessionId') || localStorage.getItem('guestSessionId');
+
   if (!guestSessionId) {
     guestSessionId = crypto.randomUUID();
-    setCookie('guestSessionId', guestSessionId, 30); // 30 days expiry
   }
+
+  // Always store in both places for redundancy
+  setCookie('guestSessionId', guestSessionId, 30); // 30 days expiry
+  localStorage.setItem('guestSessionId', guestSessionId);
+
   return guestSessionId;
 }
 

@@ -68,16 +68,23 @@ export default function AuthCallbackCompletePage() {
         const guestSessionId = localStorage.getItem('guestSessionId');
         if (guestSessionId) {
           try {
+            // Get the session to include auth token in the request
+            const { data: { session } } = await supabase.auth.getSession();
             const linkResponse = await fetch('/api/courses/link-guest', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
+              },
               body: JSON.stringify({ guestSessionId }),
             });
             const linkResult = await linkResponse.json();
-            if (linkResult.linked > 0) {
+            if (linkResponse.ok && linkResult.linked > 0) {
               console.log(`✅ Linked ${linkResult.linked} guest course(s) to account`);
+            } else if (!linkResponse.ok) {
+              console.error('Link guest courses failed:', linkResult);
             }
-            // Clear the guest session ID after linking
+            // Clear the guest session ID after linking (even if failed to avoid retry loops)
             localStorage.removeItem('guestSessionId');
           } catch (linkError) {
             console.error('Error linking guest courses:', linkError);

@@ -164,11 +164,8 @@ export async function queueCourseProcessing({ userId, file, isPublic = false, gu
   await logEvent("upload_started", { userId: userId ?? undefined, courseId });
   logStep("queued", { courseId, jobId: job?.id, ext, pagesCount });
 
-  setImmediate(() => {
-    processCourseJob(job?.id ?? "").catch(err => {
-      console.error("Background course processing failed", err);
-    });
-  });
+  // Note: Background processing is now handled by Next.js after() in the upload route
+  // setImmediate doesn't work properly in serverless environments like Vercel
 
   return { courseId, jobId: job?.id };
 }

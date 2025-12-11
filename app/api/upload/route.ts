@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
-import { queueCourseProcessing } from '@/lib/backend/course-pipeline';
+import { queueCourseProcessing, processCourseJob } from '@/lib/backend/course-pipeline';
 import { logEvent } from '@/lib/backend/analytics';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
@@ -138,6 +139,20 @@ export async function POST(request: NextRequest) {
       guestSessionId: !userId ? guestSessionId : null,
     });
     await logEvent('upload_success', { userId: userId ?? undefined, courseId, payload: { jobId, guestSessionId: !userId ? guestSessionId : undefined } });
+
+    // Use Next.js after() to process the course in the background
+    // This keeps the serverless function alive after responding
+    if (jobId) {
+      after(async () => {
+        try {
+          console.log(`[after] Starting background processing for job ${jobId}`);
+          await processCourseJob(jobId);
+          console.log(`[after] Background processing completed for job ${jobId}`);
+        } catch (err) {
+          console.error(`[after] Background processing failed for job ${jobId}:`, err);
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,

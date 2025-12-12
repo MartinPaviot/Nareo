@@ -78,6 +78,26 @@ export async function POST(request: NextRequest) {
         .eq('course_id', courseId);
     }
 
+    // Update monthly_upload_count for the user (count linked courses as uploads)
+    const now = new Date();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('monthly_upload_count, monthly_upload_reset_at')
+      .eq('user_id', userId)
+      .single();
+
+    const resetAt = profile?.monthly_upload_reset_at ? new Date(profile.monthly_upload_reset_at) : null;
+    const needsReset = !resetAt || resetAt < new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentCount = needsReset ? 0 : (profile?.monthly_upload_count || 0);
+
+    await supabase
+      .from('profiles')
+      .update({
+        monthly_upload_count: currentCount + guestCourses.length,
+        monthly_upload_reset_at: needsReset ? now.toISOString() : profile?.monthly_upload_reset_at,
+      })
+      .eq('user_id', userId);
+
     console.log(`✅ Linked ${guestCourses.length} guest course(s) to user ${userId}:`, courseIds);
 
     await logEvent('guest_courses_linked', {

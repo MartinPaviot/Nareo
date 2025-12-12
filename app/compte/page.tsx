@@ -393,7 +393,7 @@ export default function ComptePage() {
                   <span className="font-medium text-gray-900">
                     {profile?.hasUnlimitedUploads
                       ? `${profile?.monthly_upload_count || 0} / ∞`
-                      : `${profile?.monthly_upload_count || 0} / ${profile?.isPremium ? 12 : 3}`
+                      : `${profile?.monthly_upload_count || 0} / ${profile?.isPremium ? '∞' : 1}`
                     }
                   </span>
                 </div>

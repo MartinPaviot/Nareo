@@ -151,28 +151,13 @@ export default function AuthCallbackCompletePage() {
           console.log('BroadcastChannel not supported:', e);
         }
 
-        // Show "you can close this tab" message if broadcast succeeded
-        if (broadcastSucceeded) {
-          setCanCloseTab(true);
-          setVerifying(false);
+        // Show "you can close this tab" message
+        setCanCloseTab(true);
+        setVerifying(false);
 
-          // Also redirect this tab after a short delay as fallback
-          setTimeout(() => {
-            if (isNewUser) {
-              router.push('/auth/signup?step=plan');
-            } else {
-              router.push('/dashboard');
-            }
-            router.refresh();
-          }, 3000);
-        } else {
-          // BroadcastChannel not supported, redirect normally
-          if (isNewUser) {
-            router.push('/auth/signup?step=plan');
-          } else {
-            router.push('/dashboard');
-          }
-          router.refresh();
+        // Store isNewUser for the "Continue" button
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('isNewUser', isNewUser ? 'true' : 'false');
         }
       } catch (err: any) {
         console.error('❌ Auth callback error:', err);
@@ -236,9 +221,33 @@ export default function AuthCallbackCompletePage() {
               <p className="text-gray-600 mb-4">
                 {translate('auth_callback_close_tab')}
               </p>
-              <p className="text-sm text-gray-500">
-                {translate('auth_callback_redirect_fallback')}
+
+              {/* Separator */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white text-gray-400">{translate('or')}</span>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-500 mb-4">
+                {translate('auth_callback_original_closed')}
               </p>
+              <button
+                onClick={() => {
+                  const isNewUser = sessionStorage.getItem('isNewUser') === 'true';
+                  if (isNewUser) {
+                    router.push('/auth/signup?step=plan');
+                  } else {
+                    router.push('/dashboard');
+                  }
+                }}
+                className="w-full px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition"
+              >
+                {translate('auth_callback_continue_nareo')}
+              </button>
             </>
           ) : (
             <>

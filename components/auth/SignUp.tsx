@@ -49,10 +49,19 @@ export default function SignUp() {
 
     const channel = new BroadcastChannel('email-verification');
 
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'EMAIL_VERIFIED') {
-        // Redirect to dashboard when email is verified in another tab
-        router.push('/dashboard');
+        // Refresh the session to get the user
+        await supabase.auth.refreshSession();
+
+        // Show plan selector for new users before redirecting
+        if (event.data?.isNewUser) {
+          setShowPlanSelector(true);
+          setEmailVerificationSent(false);
+        } else {
+          // Existing user - redirect to returnTo or dashboard
+          router.push(returnTo || '/dashboard');
+        }
       }
     };
 
@@ -62,7 +71,7 @@ export default function SignUp() {
       channel.removeEventListener('message', handleMessage);
       channel.close();
     };
-  }, [emailVerificationSent, router]);
+  }, [emailVerificationSent, router, returnTo]);
 
   const validateForm = () => {
     if (!firstName || !email || !password || !confirmPassword) {
@@ -200,6 +209,18 @@ export default function SignUp() {
         onSelectFree={handleSelectFreePlan}
         returnTo={returnTo}
       />
+    );
+  }
+
+  // Show loading while waiting for user to load after email verification
+  if (showPlanSelector && !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-4" />
+          <p className="text-gray-600">{translate('loading')}</p>
+        </div>
+      </div>
     );
   }
 

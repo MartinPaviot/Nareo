@@ -55,11 +55,33 @@ export async function POST(request: NextRequest) {
     // Check upload limits for authenticated users
     if (userId) {
       // Get user profile and subscription info
-      const { data: profile } = await supabase
+      let { data: profile } = await supabase
         .from('profiles')
         .select('subscription_tier, subscription_expires_at, monthly_upload_count, monthly_upload_reset_at')
         .eq('user_id', userId)
         .single();
+
+      // If no profile exists, create one and re-fetch
+      if (!profile) {
+        console.log(`[upload] No profile found for user ${userId}, creating one...`);
+        const now = new Date();
+        await supabase
+          .from('profiles')
+          .upsert({
+            user_id: userId,
+            subscription_tier: 'free',
+            monthly_upload_count: 0,
+            monthly_upload_reset_at: now.toISOString(),
+          }, { onConflict: 'user_id' });
+
+        // Re-fetch the profile after creation
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .select('subscription_tier, subscription_expires_at, monthly_upload_count, monthly_upload_reset_at')
+          .eq('user_id', userId)
+          .single();
+        profile = newProfile;
+      }
 
       // Check if user has unlimited uploads (admin) - use email from auth
       const userEmail = auth?.user.email?.toLowerCase();
@@ -69,66 +91,38 @@ export async function POST(request: NextRequest) {
       const isPremium = hasUnlimitedUploads || (profile?.subscription_tier === 'premium' &&
         (!profile?.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date()));
 
-      if (hasUnlimitedUploads) {
-        // Admin user: unlimited uploads, just track for analytics
-        const now = new Date();
-        const resetAt = profile?.monthly_upload_reset_at ? new Date(profile.monthly_upload_reset_at) : null;
-        const needsReset = !resetAt || resetAt < new Date(now.getFullYear(), now.getMonth(), 1);
-        let currentCount = needsReset ? 0 : (profile?.monthly_upload_count || 0);
+      // Calculate current month's upload count
+      const now = new Date();
+      const resetAt = profile?.monthly_upload_reset_at ? new Date(profile.monthly_upload_reset_at) : null;
+      const needsReset = !resetAt || resetAt < new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentCount = needsReset ? 0 : (profile?.monthly_upload_count || 0);
 
-        await supabase
-          .from('profiles')
-          .update({
-            monthly_upload_count: currentCount + 1,
-            monthly_upload_reset_at: needsReset ? now.toISOString() : profile?.monthly_upload_reset_at,
-          })
-          .eq('user_id', userId);
-      } else if (isPremium) {
-        // Premium user: check monthly limit
-        const now = new Date();
-        const resetAt = profile?.monthly_upload_reset_at ? new Date(profile.monthly_upload_reset_at) : null;
-        const needsReset = !resetAt || resetAt < new Date(now.getFullYear(), now.getMonth(), 1);
+      // Determine the limit based on user type
+      const uploadLimit = hasUnlimitedUploads ? Infinity : (isPremium ? PREMIUM_MONTHLY_LIMIT : FREE_MONTHLY_LIMIT);
 
-        let currentCount = needsReset ? 0 : (profile?.monthly_upload_count || 0);
+      // Check if limit is reached (skip for admins with unlimited)
+      if (!hasUnlimitedUploads && currentCount >= uploadLimit) {
+        const errorCode = isPremium ? 'PREMIUM_LIMIT_REACHED' : 'UPLOAD_LIMIT_REACHED';
+        const errorMessage = isPremium
+          ? `Limite mensuelle atteinte (${PREMIUM_MONTHLY_LIMIT} cours/mois). Réessaie le mois prochain.`
+          : 'UPLOAD_LIMIT_REACHED';
+        return NextResponse.json(
+          { error: errorMessage, code: errorCode },
+          { status: 429 }
+        );
+      }
 
-        if (currentCount >= PREMIUM_MONTHLY_LIMIT) {
-          return NextResponse.json(
-            { error: `Limite mensuelle atteinte (${PREMIUM_MONTHLY_LIMIT} cours/mois). Réessaie le mois prochain.` },
-            { status: 429 }
-          );
-        }
+      // Update monthly count
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          monthly_upload_count: currentCount + 1,
+          monthly_upload_reset_at: needsReset ? now.toISOString() : profile?.monthly_upload_reset_at,
+        })
+        .eq('user_id', userId);
 
-        // Update monthly count
-        await supabase
-          .from('profiles')
-          .update({
-            monthly_upload_count: currentCount + 1,
-            monthly_upload_reset_at: needsReset ? now.toISOString() : profile?.monthly_upload_reset_at,
-          })
-          .eq('user_id', userId);
-      } else {
-        // Free user: check monthly limit
-        const now = new Date();
-        const resetAt = profile?.monthly_upload_reset_at ? new Date(profile.monthly_upload_reset_at) : null;
-        const needsReset = !resetAt || resetAt < new Date(now.getFullYear(), now.getMonth(), 1);
-
-        let currentCount = needsReset ? 0 : (profile?.monthly_upload_count || 0);
-
-        if (currentCount >= FREE_MONTHLY_LIMIT) {
-          return NextResponse.json(
-            { error: 'UPLOAD_LIMIT_REACHED', code: 'UPLOAD_LIMIT_REACHED' },
-            { status: 429 }
-          );
-        }
-
-        // Update monthly count
-        await supabase
-          .from('profiles')
-          .update({
-            monthly_upload_count: currentCount + 1,
-            monthly_upload_reset_at: needsReset ? now.toISOString() : profile?.monthly_upload_reset_at,
-          })
-          .eq('user_id', userId);
+      if (updateError) {
+        console.error(`[upload] Failed to update monthly count for user ${userId}:`, updateError);
       }
     }
 

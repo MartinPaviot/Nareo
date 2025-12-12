@@ -38,6 +38,7 @@ export default function AuthCallbackCompletePage() {
   const { translate } = useLanguage();
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(true);
+  const [canCloseTab, setCanCloseTab] = useState(false);
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -135,13 +136,44 @@ export default function AuthCallbackCompletePage() {
         // Small delay to ensure everything is set
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Redirect new users to plan selection, existing users to dashboard
-        if (isNewUser) {
-          router.push('/auth/signup?step=plan');
-        } else {
-          router.push('/dashboard');
+        // Notify original tab via BroadcastChannel that email is verified
+        let broadcastSucceeded = false;
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const channel = new BroadcastChannel('email-verification');
+            channel.postMessage({ type: 'EMAIL_VERIFIED', isNewUser });
+            broadcastSucceeded = true;
+
+            // Keep channel open briefly to ensure message is delivered
+            setTimeout(() => channel.close(), 1000);
+          }
+        } catch (e) {
+          console.log('BroadcastChannel not supported:', e);
         }
-        router.refresh();
+
+        // Show "you can close this tab" message if broadcast succeeded
+        if (broadcastSucceeded) {
+          setCanCloseTab(true);
+          setVerifying(false);
+
+          // Also redirect this tab after a short delay as fallback
+          setTimeout(() => {
+            if (isNewUser) {
+              router.push('/auth/signup?step=plan');
+            } else {
+              router.push('/dashboard');
+            }
+            router.refresh();
+          }, 3000);
+        } else {
+          // BroadcastChannel not supported, redirect normally
+          if (isNewUser) {
+            router.push('/auth/signup?step=plan');
+          } else {
+            router.push('/dashboard');
+          }
+          router.refresh();
+        }
       } catch (err: any) {
         console.error('❌ Auth callback error:', err);
         setError(err.message || translate('auth_callback_error'));
@@ -189,15 +221,36 @@ export default function AuthCallbackCompletePage() {
             alt="Nareo"
             width={400}
             height={400}
-            className="mx-auto mb-4 animate-bounce"
+            className={`mx-auto mb-4 ${verifying ? 'animate-bounce' : ''}`}
           />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {verifying ? translate('auth_callback_verifying') : translate('auth_callback_success')}
-          </h2>
-          {verifying && (
-            <p className="text-gray-600">
-              {translate('loading')}
-            </p>
+          {canCloseTab ? (
+            <>
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                {translate('auth_callback_success')}
+              </h2>
+              <p className="text-gray-600 mb-4">
+                {translate('auth_callback_close_tab')}
+              </p>
+              <p className="text-sm text-gray-500">
+                {translate('auth_callback_redirect_fallback')}
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                {verifying ? translate('auth_callback_verifying') : translate('auth_callback_success')}
+              </h2>
+              {verifying && (
+                <p className="text-gray-600">
+                  {translate('loading')}
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>

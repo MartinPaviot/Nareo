@@ -43,6 +43,27 @@ export default function SignUp() {
     }
   }, [user, stepParam]);
 
+  // Listen for email verification from another tab via BroadcastChannel
+  useEffect(() => {
+    if (!emailVerificationSent) return;
+
+    const channel = new BroadcastChannel('email-verification');
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'EMAIL_VERIFIED') {
+        // Redirect to dashboard when email is verified in another tab
+        router.push('/dashboard');
+      }
+    };
+
+    channel.addEventListener('message', handleMessage);
+
+    return () => {
+      channel.removeEventListener('message', handleMessage);
+      channel.close();
+    };
+  }, [emailVerificationSent, router]);
+
   const validateForm = () => {
     if (!firstName || !email || !password || !confirmPassword) {
       setError(translate('auth_signup_error_empty'));
@@ -416,41 +437,48 @@ export default function SignUp() {
               </div>
             </div>
 
-            {/* CGU Checkbox - Required */}
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="acceptCGU"
-                checked={acceptedCGU}
-                onChange={(e) => setAcceptedCGU(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                disabled={loading}
-              />
-              <label htmlFor="acceptCGU" className="text-sm text-gray-600">
-                {translate('auth_signup_cgu_label')}{' '}
-                <Link href="/cgu" className="text-orange-500 hover:text-orange-600 underline" target="_blank">
-                  {translate('auth_signup_cgu_link')}
-                </Link>{' '}
-                {translate('auth_signup_cgu_and')}{' '}
-                <Link href="/confidentialite" className="text-orange-500 hover:text-orange-600 underline" target="_blank">
-                  {translate('auth_signup_privacy_link')}
-                </Link>
-                <span className="text-red-500">*</span>
+            {/* Checkboxes Container */}
+            <div className="space-y-4">
+              {/* CGU Checkbox - Required */}
+              <label htmlFor="acceptCGU" className="flex items-start gap-3 cursor-pointer">
+                <div className="flex items-center justify-center w-5 h-5 mt-0.5 shrink-0">
+                  <input
+                    type="checkbox"
+                    id="acceptCGU"
+                    checked={acceptedCGU}
+                    onChange={(e) => setAcceptedCGU(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                    disabled={loading}
+                  />
+                </div>
+                <span className="text-sm text-gray-600">
+                  {translate('auth_signup_cgu_label')}{' '}
+                  <Link href="/cgu" className="text-orange-500 hover:text-orange-600 underline" target="_blank" onClick={(e) => e.stopPropagation()}>
+                    {translate('auth_signup_cgu_link')}
+                  </Link>{' '}
+                  {translate('auth_signup_cgu_and')}{' '}
+                  <Link href="/confidentialite" className="text-orange-500 hover:text-orange-600 underline" target="_blank" onClick={(e) => e.stopPropagation()}>
+                    {translate('auth_signup_privacy_link')}
+                  </Link>
+                  <span className="text-red-500">*</span>
+                </span>
               </label>
-            </div>
 
-            {/* Marketing Checkbox - Optional */}
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="acceptMarketing"
-                checked={acceptedMarketing}
-                onChange={(e) => setAcceptedMarketing(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                disabled={loading}
-              />
-              <label htmlFor="acceptMarketing" className="text-sm text-gray-600">
-                {translate('auth_signup_marketing_label')}
+              {/* Marketing Checkbox - Optional */}
+              <label htmlFor="acceptMarketing" className="flex items-start gap-3 cursor-pointer">
+                <div className="flex items-center justify-center w-5 h-5 mt-0.5 shrink-0">
+                  <input
+                    type="checkbox"
+                    id="acceptMarketing"
+                    checked={acceptedMarketing}
+                    onChange={(e) => setAcceptedMarketing(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                    disabled={loading}
+                  />
+                </div>
+                <span className="text-sm text-gray-600">
+                  {translate('auth_signup_marketing_label')}
+                </span>
               </label>
             </div>
 

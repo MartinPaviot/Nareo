@@ -101,16 +101,18 @@ export async function GET(
       (chapters || []).map(async (chapter, index) => {
         // Access logic:
         // Chapter 1 (index 0): always accessible (even for guests)
-        // Chapter 2-3 (index 1-2): requires auth (signup) or access tier free/paid
-        // Chapter 4+ (index 3+): requires paid/premium
+        // All chapters: accessible if user has full access (premium OR free monthly course)
+        // Otherwise: only chapter 1 is accessible
         let hasAccess = false;
         if (index === 0) {
+          // Chapter 1 is always accessible
           hasAccess = true;
-        } else if (index === 1 || index === 2) {
-          // Chapters 2 and 3 are free for logged-in users
-          hasAccess = !!userId || accessTier === 'paid' || accessTier === 'free';
-        } else {
-          hasAccess = accessTier === 'paid';
+        } else if (isPremium || isFreeMonthlyCourse) {
+          // Premium users and free monthly course owners have full access
+          hasAccess = true;
+        } else if (accessTier === 'paid') {
+          // Users who paid for this specific course have full access
+          hasAccess = true;
         }
 
         // Get quiz attempts for this chapter

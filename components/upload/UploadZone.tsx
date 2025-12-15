@@ -15,6 +15,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackEvent } from '@/lib/posthog';
 import UploadLimitModal from './UploadLimitModal';
+import DuplicateCourseModal from './DuplicateCourseModal';
 
 const ACCEPTED_TYPES = [
   'image/jpeg',
@@ -43,6 +44,12 @@ export default function UploadZone() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUploadLimitModal, setShowUploadLimitModal] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    filename: string;
+    existingCourseTitle: string;
+    existingCourseDate: string;
+  } | null>(null);
+  const [skipDuplicateCheck, setSkipDuplicateCheck] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -128,6 +135,41 @@ export default function UploadZone() {
     setError(null);
 
     try {
+      // Check for duplicate course (only for authenticated users and if not already confirmed)
+      if (user && !skipDuplicateCheck) {
+        const checkResponse = await fetch('/api/courses/check-duplicate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: files[0].name }),
+          credentials: 'include',
+        });
+        const checkData = await checkResponse.json();
+
+        if (checkData.isDuplicate && checkData.existingCourse) {
+          setDuplicateInfo({
+            filename: files[0].name,
+            existingCourseTitle: checkData.existingCourse.title,
+            existingCourseDate: checkData.existingCourse.createdAt,
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      await performUpload();
+    } catch (uploadError) {
+      console.error('Upload error', uploadError);
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : translate('upload_error_state')
+      );
+      setIsProcessing(false);
+    }
+  };
+
+  const performUpload = async () => {
+    try {
       const formData = new FormData();
       formData.append('file', files[0]);
 
@@ -159,7 +201,20 @@ export default function UploadZone() {
       );
     } finally {
       setIsProcessing(false);
+      setSkipDuplicateCheck(false);
     }
+  };
+
+  const handleDuplicateConfirm = async () => {
+    setDuplicateInfo(null);
+    setSkipDuplicateCheck(true);
+    setIsProcessing(true);
+    await performUpload();
+  };
+
+  const handleDuplicateCancel = () => {
+    setDuplicateInfo(null);
+    setSkipDuplicateCheck(false);
   };
 
   const handleRemove = (name: string) => {
@@ -364,6 +419,16 @@ export default function UploadZone() {
 
       {showUploadLimitModal && (
         <UploadLimitModal onClose={() => setShowUploadLimitModal(false)} />
+      )}
+
+      {duplicateInfo && (
+        <DuplicateCourseModal
+          filename={duplicateInfo.filename}
+          existingCourseTitle={duplicateInfo.existingCourseTitle}
+          existingCourseDate={duplicateInfo.existingCourseDate}
+          onConfirm={handleDuplicateConfirm}
+          onCancel={handleDuplicateCancel}
+        />
       )}
     </div>
   );

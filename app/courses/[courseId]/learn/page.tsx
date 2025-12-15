@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Loader2, Lock, Play, RotateCcw, BookOpen, Layers, FileText } from 'lucide-react';
 import Image from 'next/image';
 import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
@@ -39,6 +39,7 @@ interface CourseData {
 export default function CourseLearnPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { translate } = useLanguage();
   const courseId = params?.courseId as string;
@@ -46,7 +47,20 @@ export default function CourseLearnPage() {
 
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'quiz' | 'flashcards' | 'note'>('quiz');
+
+  // Get initial tab from URL or default to 'note' (Study Sheet first in learning flow)
+  const tabParam = searchParams.get('tab');
+  const initialTab = (tabParam === 'quiz' || tabParam === 'flashcards') ? tabParam : 'note';
+  const [activeTab, setActiveTab] = useState<'quiz' | 'flashcards' | 'note'>(initialTab);
+
+  // Update URL when tab changes (without full navigation)
+  const handleTabChange = useCallback((tab: 'quiz' | 'flashcards' | 'note') => {
+    setActiveTab(tab);
+    const newUrl = tab === 'note'
+      ? `/courses/${courseId}/learn`
+      : `/courses/${courseId}/learn?tab=${tab}`;
+    window.history.replaceState(null, '', newUrl);
+  }, [courseId]);
 
   // Demo course state (separate from API-based courses)
   const [demoLoading, setDemoLoading] = useState(isDemoId);
@@ -228,10 +242,21 @@ export default function CourseLearnPage() {
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
-        {/* Tabs - Quiz / Flashcards / A+ Note */}
+        {/* Tabs - Study Sheet / Quiz / Flashcards (logical learning order) */}
         <div className="flex gap-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-2">
           <button
-            onClick={() => setActiveTab('quiz')}
+            onClick={() => handleTabChange('note')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === 'note'
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span className="hidden sm:inline">{translate('aplus_note_title')}</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('quiz')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === 'quiz'
                 ? 'bg-orange-500 text-white'
@@ -242,7 +267,7 @@ export default function CourseLearnPage() {
             <span className="hidden sm:inline">Quiz</span>
           </button>
           <button
-            onClick={() => setActiveTab('flashcards')}
+            onClick={() => handleTabChange('flashcards')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === 'flashcards'
                 ? 'bg-orange-500 text-white'
@@ -251,17 +276,6 @@ export default function CourseLearnPage() {
           >
             <Layers className="w-4 h-4" />
             <span className="hidden sm:inline">Flashcards</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('note')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
-              activeTab === 'note'
-                ? 'bg-orange-500 text-white'
-                : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">A+ Note</span>
           </button>
         </div>
 

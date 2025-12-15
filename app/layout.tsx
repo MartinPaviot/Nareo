@@ -5,7 +5,6 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { PosthogProvider } from '@/contexts/PosthogProvider';
-import FeedbackWidget from '@/components/layout/FeedbackWidget';
 import Footer from '@/components/layout/Footer';
 import CookieBannerWrapper from '@/components/layout/CookieBannerWrapper';
 import ConditionalGTM from '@/components/analytics/ConditionalGTM';
@@ -46,7 +45,6 @@ export default function RootLayout({
                   <main className="flex-1">{children}</main>
                   <Footer />
                 </div>
-                <FeedbackWidget />
                 {/* Cookie consent banner */}
                 <CookieBannerWrapper />
               </LanguageProvider>

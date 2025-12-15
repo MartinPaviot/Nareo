@@ -30,6 +30,8 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
   const [noteContent, setNoteContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationMessage, setGenerationMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -112,7 +114,10 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
     }
 
     setGenerating(true);
+    setGenerationProgress(0);
+    setGenerationMessage('Starting...');
     setError(null);
+
     try {
       const response = await fetch(`/api/courses/${courseId}/note/generate`, {
         method: 'POST',
@@ -123,12 +128,55 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
         throw new Error(errorData.error || 'Failed to generate note');
       }
 
-      const data = await response.json();
-      setNoteContent(data.content);
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response stream');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE messages
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || ''; // Keep incomplete message in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'progress') {
+                setGenerationProgress(data.progress || 0);
+                setGenerationMessage(data.message || '');
+              } else if (data.type === 'complete') {
+                setNoteContent(data.content);
+                setGenerationProgress(100);
+                setGenerationMessage('');
+              } else if (data.type === 'error') {
+                throw new Error(data.message || 'Generation failed');
+              }
+            } catch (parseError) {
+              // Ignore parse errors for incomplete messages
+              if (parseError instanceof SyntaxError) continue;
+              throw parseError;
+            }
+          }
+        }
+      }
     } catch (err) {
+      console.error('Generation error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setGenerating(false);
+      setGenerationProgress(0);
+      setGenerationMessage('');
     }
   };
 
@@ -185,16 +233,17 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
     if (!contentRef.current || !parsedNote) return;
 
     setDownloading(true);
+
     try {
-      // Dynamically import html2pdf to avoid SSR issues
+      // html2pdf.js now uses html2canvas-pro (via webpack alias) which supports lab() colors
       const html2pdf = (await import('html2pdf.js')).default;
 
-      // Create a clone of the content for PDF generation
+      // Clone the content for PDF generation
       const element = contentRef.current.cloneNode(true) as HTMLElement;
 
       // Add title to the PDF content
       const titleElement = document.createElement('h1');
-      titleElement.textContent = `✦ A+ Note ${translate('aplus_note_for')} ${parsedNote.title}`;
+      titleElement.textContent = `✦ ${translate('aplus_note_title')} ${translate('aplus_note_for')} ${parsedNote.title}`;
       titleElement.style.fontSize = '24px';
       titleElement.style.fontWeight = 'bold';
       titleElement.style.marginBottom = '16px';
@@ -203,7 +252,7 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
 
       const opt = {
         margin: [15, 15, 15, 15] as [number, number, number, number],
-        filename: `${courseTitle.replace(/[^a-z0-9]/gi, '_')}_A+_Note.pdf`,
+        filename: `${courseTitle.replace(/[^a-z0-9]/gi, '_')}_Study_Sheet.pdf`,
         image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: {
           scale: 2,
@@ -223,6 +272,13 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
       console.error('Error generating PDF:', err);
     } finally {
       setDownloading(false);
+
+      // Cleanup any leftover html2pdf elements that might block interactions
+      setTimeout(() => {
+        document.querySelectorAll('.html2pdf__overlay, .html2pdf__container').forEach(el => el.remove());
+        document.body.style.overflow = '';
+        document.body.style.pointerEvents = '';
+      }, 200);
     }
   };
 
@@ -251,28 +307,49 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
           </p>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
-              {error}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700 flex items-center justify-between">
+              <span>{error}</span>
+              <button
+                onClick={handleGenerate}
+                className="ml-3 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-semibold transition-colors"
+              >
+                {translate('retry') || 'Retry'}
+              </button>
             </div>
           )}
 
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {generating ? (
-              <>
+          {generating ? (
+            <div className="w-full max-w-md mx-auto">
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <span>{generationMessage || translate('aplus_note_generating')}</span>
+                  <span>{generationProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-orange-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${generationProgress}%` }}
+                  />
+                </div>
+              </div>
+              {/* Animated loader */}
+              <div className="flex items-center justify-center gap-2 text-orange-600">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                {translate('aplus_note_generating')}
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5" />
-                {translate('aplus_note_generate')}
-              </>
-            )}
-          </button>
+                <span className="text-sm font-medium">
+                  {translate('aplus_note_please_wait') || 'This may take 1-2 minutes...'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+            >
+              <Sparkles className="w-5 h-5" />
+              {translate('aplus_note_generate')}
+            </button>
+          )}
         </div>
 
         {/* Signup Modal */}
@@ -311,19 +388,50 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
 
   // Show the note with structured header
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <>
+      {/* Floating toast notification for regeneration progress */}
+      {generating && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 w-72">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <Loader2 className="w-5 h-5 text-orange-500 animate-spin" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 mb-1">
+                  {translate('aplus_note_regenerating')}
+                </p>
+                <p className="text-xs text-gray-500 truncate mb-2">
+                  {generationMessage || 'Please wait...'}
+                </p>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-orange-500 h-1.5 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${generationProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1 text-right">{generationProgress}%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+
       {/* Header */}
       <div className="border-b border-gray-100 p-4 sm:p-6">
         {/* Title */}
         <h1 className="text-lg sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-          ✦ A+ Note {translate('aplus_note_for')} {parsedNote.title}
+          ✦ {translate('aplus_note_title')} {translate('aplus_note_for')} {parsedNote.title}
         </h1>
 
         {/* Action buttons - wrap on mobile */}
         <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           <button
             onClick={handleCopy}
-            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={generating}
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
             {copied ? (
               <Check className="w-4 h-4 text-green-500" />
@@ -334,7 +442,7 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
           </button>
           <button
             onClick={handleDownload}
-            disabled={downloading}
+            disabled={downloading || generating}
             className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
             {downloading ? (
@@ -346,7 +454,7 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
           </button>
           <button
             onClick={handleEdit}
-            disabled={isEditing}
+            disabled={isEditing || generating}
             className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
             <Pencil className="w-4 h-4" />
@@ -454,5 +562,6 @@ export default function APlusNoteView({ courseId, courseTitle }: APlusNoteViewPr
         )}
       </div>
     </div>
+    </>
   );
 }

@@ -204,6 +204,7 @@ alter table public.questions add column if not exists phase text;
 alter table public.questions add column if not exists points int;
 alter table public.questions add column if not exists explanation text;
 alter table public.questions add column if not exists correct_option_index int;
+alter table public.questions add column if not exists source_excerpt text;
 alter table public.log_events add column if not exists user_id uuid references auth.users (id);
 alter table public.pipeline_jobs add column if not exists user_id uuid references auth.users (id);
 alter table public.pipeline_jobs add column if not exists course_id uuid references public.courses (id) on delete cascade;

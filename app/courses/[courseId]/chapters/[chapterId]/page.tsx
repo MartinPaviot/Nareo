@@ -1,14 +1,157 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowRight, CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, HelpCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackEvent } from '@/lib/posthog';
 import { loadDemoCourse } from '@/lib/demoCourse';
 import { getLocalizedChapterTitleAsync } from '@/lib/content-translator';
+
+// Types for quiz answers storage
+interface QuizAnswers {
+  [questionId: string]: {
+    selectedAnswer: string;
+    isCorrect?: boolean;
+    feedback?: { isCorrect: boolean; message: string; points: number; explanation?: string; sourceExcerpt?: string };
+    correctOptionId?: string;
+  };
+}
+
+// Progress dots component
+interface QuizProgressDotsProps {
+  total: number;
+  current: number;
+  answers: QuizAnswers;
+  questionIds: string[];
+  onNavigate: (index: number) => void;
+}
+
+function QuizProgressDots({ total, current, answers, questionIds, onNavigate }: QuizProgressDotsProps) {
+  const dotsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Show compact text for >15 questions
+  if (total > 15) {
+    const answeredCount = questionIds.filter(id => answers[id]?.selectedAnswer).length;
+    return (
+      <div className="flex items-center justify-center gap-2 py-2">
+        <span className="text-sm text-gray-600">{current + 1}/{total}</span>
+        <span className="text-xs text-gray-400">({answeredCount} répondues)</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={dotsContainerRef}
+      className="flex items-center justify-center gap-1 py-3 overflow-x-auto"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+    >
+      {Array.from({ length: total }).map((_, idx) => {
+        const questionId = questionIds[idx];
+        const hasAnswer = questionId && answers[questionId]?.selectedAnswer;
+        const isCurrent = idx === current;
+
+        return (
+          <button
+            key={idx}
+            onClick={() => onNavigate(idx)}
+            className="p-2 -m-1 focus:outline-none group"
+            aria-label={`Question ${idx + 1}${hasAnswer ? ' (répondue)' : ''}`}
+          >
+            <span
+              className={`
+                block w-3 h-3 rounded-full transition-all duration-150
+                ${hasAnswer ? 'bg-gray-700' : 'border-2 border-gray-300 bg-transparent'}
+                ${isCurrent ? 'ring-2 ring-orange-500 ring-offset-2' : ''}
+                group-hover:scale-125
+              `}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Keyboard shortcuts tooltip
+function KeyboardHelpTooltip() {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        onFocus={() => setIsVisible(true)}
+        onBlur={() => setIsVisible(false)}
+        onClick={() => setIsVisible(!isVisible)}
+        className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+        aria-label="Raccourcis clavier"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {isVisible && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg min-w-[180px]">
+          <div className="space-y-1.5">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-400">← →</span>
+              <span>Questions</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-400">↑ ↓</span>
+              <span>Options</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-400">A B C D</span>
+              <span>Sélectionner</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-400">Entrée / Espace</span>
+              <span>Valider</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Exit confirmation modal
+interface ExitModalProps {
+  remainingCount: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ExitConfirmModal({ remainingCount, onConfirm, onCancel }: ExitModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Quitter le quiz ?</h3>
+        <p className="text-gray-600 mb-4">
+          Tu as {remainingCount} question{remainingCount > 1 ? 's' : ''} non répondue{remainingCount > 1 ? 's' : ''}.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50"
+          >
+            Continuer
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 rounded-xl bg-gray-900 text-white font-medium hover:bg-black"
+          >
+            Quitter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type QuestionType = 'mcq' | 'open' | 'short';
 
@@ -36,6 +179,110 @@ interface ReviewItem {
   page_source?: string | null;
 }
 
+interface ExplanationCardProps {
+  isCorrect: boolean;
+  correctAnswer?: string;
+  explanation?: string;
+  sourceExcerpt?: string;
+  points: number;
+  translate: (key: string) => string;
+  // Mapping from original index (0,1,2,3) to new shuffled label (A,B,C,D)
+  letterMapping?: Record<number, string>;
+}
+
+function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt, points, translate, letterMapping }: ExplanationCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Remap letter references in explanation to match shuffled order
+  const remapExplanation = (text: string): string => {
+    if (!letterMapping) return text;
+
+    const originalLetters = ['A', 'B', 'C', 'D'];
+    // Create mapping: original letter -> new letter
+    const letterToLetter: Record<string, string> = {};
+    originalLetters.forEach((letter, idx) => {
+      if (letterMapping[idx]) {
+        letterToLetter[letter] = letterMapping[idx];
+      }
+    });
+
+    // Replace letter references with placeholders first to avoid double replacement
+    let result = text;
+    const placeholders: Record<string, string> = {};
+    originalLetters.forEach((letter, idx) => {
+      const placeholder = `__LETTER_${idx}__`;
+      placeholders[placeholder] = letterToLetter[letter] || letter;
+      // Match patterns like "option A", "l'option A", "Option A", "A)", "(A)"
+      result = result.replace(new RegExp(`([Oo]ption |[Ll]'option |\\()?${letter}(\\)|,|\\s|\\.|$)`, 'g'), `$1${placeholder}$2`);
+    });
+
+    // Replace placeholders with actual new letters
+    Object.entries(placeholders).forEach(([placeholder, newLetter]) => {
+      result = result.replace(new RegExp(placeholder, 'g'), newLetter);
+    });
+
+    return result;
+  };
+
+  const remappedExplanation = explanation ? remapExplanation(explanation) : undefined;
+  const shouldTruncate = remappedExplanation && remappedExplanation.length > 150;
+
+  return (
+    <div className={`rounded-xl border-2 p-4 ${
+      isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+    }`}>
+      {/* Badge result */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          {isCorrect ? (
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+          ) : (
+            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          )}
+          <span className={`font-semibold text-sm ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+            {isCorrect ? translate('quiz_feedback_correct') : 'Incorrect'}
+          </span>
+        </div>
+        {points > 0 && (
+          <span className="text-xs text-green-700 font-medium">+{points} {translate('learn_pts')}</span>
+        )}
+      </div>
+
+      {/* Correct answer if incorrect */}
+      {!isCorrect && correctAnswer && (
+        <p className="text-sm font-semibold text-gray-900 mb-2">
+          La bonne réponse était : {correctAnswer}
+        </p>
+      )}
+
+      {/* Explanation */}
+      {remappedExplanation && (
+        <div className="text-sm text-gray-700 leading-relaxed">
+          <p className={shouldTruncate && !expanded ? 'line-clamp-3' : ''}>
+            {remappedExplanation}
+          </p>
+          {shouldTruncate && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-orange-600 font-medium mt-1 text-xs hover:underline"
+            >
+              {expanded ? 'Voir moins' : 'Voir plus'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Source excerpt */}
+      {sourceExcerpt && (
+        <div className="mt-3 p-3 bg-gray-100 rounded-lg border-l-4 border-gray-300">
+          <p className="text-xs text-gray-500 mb-1 font-medium">Extrait du cours :</p>
+          <p className="text-sm text-gray-600 italic leading-relaxed">&ldquo;{sourceExcerpt}&rdquo;</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChapterQuizPage() {
   const router = useRouter();
   const params = useParams();
@@ -50,7 +297,7 @@ export default function ChapterQuizPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answer, setAnswer] = useState('');
-  const [feedback, setFeedback] = useState<{ isCorrect: boolean; message: string; points: number; explanation?: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ isCorrect: boolean; message: string; points: number; explanation?: string; sourceExcerpt?: string } | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [chapterTitle, setChapterTitle] = useState('');
@@ -63,7 +310,25 @@ export default function ChapterQuizPage() {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
 
+  // New state for free navigation
+  const [quizAnswers, setQuizAnswers] = useState<QuizAnswers>({});
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+
+  // Touch handling for swipe
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const currentQuestion = questions[currentIndex];
+  const questionIds = useMemo(() => questions.map(q => q.id), [questions]);
+
+  // Calculate answered and remaining counts
+  const answeredCount = useMemo(() => {
+    return questionIds.filter(id => quizAnswers[id]?.selectedAnswer).length;
+  }, [questionIds, quizAnswers]);
+  const remainingCount = questions.length - answeredCount;
+  const allAnswered = remainingCount === 0;
 
   // Progress label
   const progressLabel = translate('quiz_progress')
@@ -80,6 +345,62 @@ export default function ChapterQuizPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, user]);
 
+  // Load saved answers from localStorage
+  useEffect(() => {
+    if (chapterId) {
+      try {
+        const saved = localStorage.getItem(`quiz_answers_${chapterId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved) as QuizAnswers;
+          setQuizAnswers(parsed);
+          // Restore score and correctCount from saved answers
+          let restoredScore = 0;
+          let restoredCorrectCount = 0;
+          Object.values(parsed).forEach(ans => {
+            if (ans.feedback) {
+              restoredScore += ans.feedback.points || 0;
+              if (ans.feedback.isCorrect) restoredCorrectCount++;
+            }
+          });
+          setScore(restoredScore);
+          setCorrectCount(restoredCorrectCount);
+        }
+      } catch (e) {
+        console.error('Failed to load saved answers:', e);
+      }
+    }
+  }, [chapterId]);
+
+  // Save answers to localStorage whenever they change
+  useEffect(() => {
+    if (chapterId && Object.keys(quizAnswers).length > 0) {
+      try {
+        localStorage.setItem(`quiz_answers_${chapterId}`, JSON.stringify(quizAnswers));
+      } catch (e) {
+        console.error('Failed to save answers:', e);
+      }
+    }
+  }, [chapterId, quizAnswers]);
+
+  // Restore state when navigating to a question with saved answer
+  useEffect(() => {
+    if (currentQuestion && quizAnswers[currentQuestion.id]) {
+      const savedAnswer = quizAnswers[currentQuestion.id];
+      setAnswer(savedAnswer.selectedAnswer);
+      setSelectedOptionId(savedAnswer.selectedAnswer);
+      setCorrectOptionId(savedAnswer.correctOptionId || null);
+      setFeedback(savedAnswer.feedback || null);
+      setHasAnswered(!!savedAnswer.feedback);
+    } else {
+      // Reset state for unanswered question
+      setAnswer('');
+      setSelectedOptionId(null);
+      setCorrectOptionId(null);
+      setFeedback(null);
+      setHasAnswered(false);
+    }
+  }, [currentIndex, currentQuestion, quizAnswers]);
+
   // Translate chapter title when language changes
   useEffect(() => {
     const translateChapterTitle = async () => {
@@ -94,6 +415,133 @@ export default function ChapterQuizPage() {
 
     translateChapterTitle();
   }, [originalChapterTitle, currentLanguage]);
+
+  // Navigation functions
+  const navigateToQuestion = useCallback((index: number) => {
+    if (index >= 0 && index < questions.length && index !== currentIndex) {
+      setCurrentIndex(index);
+    }
+  }, [questions.length, currentIndex]);
+
+  const goToPrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      navigateToQuestion(currentIndex - 1);
+    }
+  }, [currentIndex, navigateToQuestion]);
+
+  const goToNext = useCallback(() => {
+    if (currentIndex < questions.length - 1) {
+      navigateToQuestion(currentIndex + 1);
+    }
+  }, [currentIndex, questions.length, navigateToQuestion]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if user is typing in textarea
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          goToPrevious();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          goToNext();
+          break;
+        case 'ArrowUp':
+          if (currentQuestion?.type === 'mcq' && currentQuestion.optionsList && !hasAnswered) {
+            e.preventDefault();
+            const options = currentQuestion.optionsList;
+            if (!answer) {
+              // Si rien sélectionné, sélectionner la dernière option
+              setAnswer(options[options.length - 1].label);
+            } else {
+              const currentIdx = options.findIndex(o => o.label === answer);
+              if (currentIdx > 0) {
+                setAnswer(options[currentIdx - 1].label);
+              }
+            }
+          }
+          break;
+        case 'ArrowDown':
+          if (currentQuestion?.type === 'mcq' && currentQuestion.optionsList && !hasAnswered) {
+            e.preventDefault();
+            const options = currentQuestion.optionsList;
+            if (!answer) {
+              // Si rien sélectionné, sélectionner la première option
+              setAnswer(options[0].label);
+            } else {
+              const currentIdx = options.findIndex(o => o.label === answer);
+              if (currentIdx < options.length - 1) {
+                setAnswer(options[currentIdx + 1].label);
+              }
+            }
+          }
+          break;
+        case 'a':
+        case 'A':
+        case 'b':
+        case 'B':
+        case 'c':
+        case 'C':
+        case 'd':
+        case 'D':
+          if (currentQuestion?.type === 'mcq' && currentQuestion.optionsList && !hasAnswered) {
+            const label = e.key.toUpperCase();
+            const opt = currentQuestion.optionsList.find(o => o.label === label);
+            if (opt) {
+              setAnswer(opt.label);
+            }
+          }
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          if (answer && !hasAnswered) {
+            handleValidate(answer);
+          } else if (hasAnswered) {
+            goToNext();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, currentQuestion, hasAnswered, answer, goToPrevious, goToNext]);
+
+  // Touch swipe handling
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+
+    const diff = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+
+    if (Math.abs(diff) > minSwipeDistance) {
+      if (diff > 0) {
+        // Swipe left -> next question
+        goToNext();
+      } else {
+        // Swipe right -> previous question
+        goToPrevious();
+      }
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  }, [goToNext, goToPrevious]);
 
   // Fisher-Yates shuffle algorithm
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -251,20 +699,42 @@ export default function ChapterQuizPage() {
 
         const result = evaluateDemoAnswer(currentQuestion, answerToValidate);
         setFeedback(result);
-        setScore((prev) => prev + (result.points || 0));
-        setCorrectCount((prev) => prev + (result.isCorrect ? 1 : 0));
-        setReviewItems((prev) => [
+
+        // Save to quizAnswers for navigation persistence
+        const correctOpt = currentQuestion.optionsList?.find(
+          (opt) => opt.index === (currentQuestion.correct_option_index ?? 0)
+        );
+        setQuizAnswers(prev => ({
           ...prev,
-          {
-            index: currentIndex + 1,
-            question: currentQuestion.question_text,
-            student_answer: answerToValidate,
-            is_correct: result.isCorrect,
-            correct_answer: currentQuestion.answer_text || '',
-            explanation: currentQuestion.explanation || result.message,
-            page_source: currentQuestion.page_source || null,
-          },
-        ]);
+          [currentQuestion.id]: {
+            selectedAnswer: answerToValidate,
+            isCorrect: result.isCorrect,
+            feedback: result,
+            correctOptionId: correctOpt?.label
+          }
+        }));
+
+        // Only update score if this question wasn't already answered
+        if (!quizAnswers[currentQuestion.id]?.feedback) {
+          setScore((prev) => prev + (result.points || 0));
+          setCorrectCount((prev) => prev + (result.isCorrect ? 1 : 0));
+        }
+        setReviewItems((prev) => {
+          // Avoid duplicates when re-answering
+          const filtered = prev.filter(r => r.index !== currentIndex + 1);
+          return [
+            ...filtered,
+            {
+              index: currentIndex + 1,
+              question: currentQuestion.question_text,
+              student_answer: answerToValidate,
+              is_correct: result.isCorrect,
+              correct_answer: currentQuestion.answer_text || '',
+              explanation: currentQuestion.explanation || result.message,
+              page_source: currentQuestion.page_source || null,
+            },
+          ];
+        });
         return;
       }
 
@@ -300,33 +770,59 @@ export default function ChapterQuizPage() {
       // Mark as answered AFTER setting correctOptionId
       setHasAnswered(true);
 
-      setFeedback({
+      const feedbackData = {
         isCorrect: data.isCorrect,
         message: data.feedback,
         points: data.pointsEarned || 0,
         explanation: data.explanation,
-      });
-      setScore((prev) => prev + (data.pointsEarned || 0));
-      setCorrectCount((prev) => prev + (data.isCorrect ? 1 : 0));
-      setReviewItems((prev) => [
+        sourceExcerpt: data.sourceExcerpt,
+      };
+      setFeedback(feedbackData);
+
+      // Save to quizAnswers for navigation persistence
+      const correctOriginalIndex = data.correctOptionIndex;
+      const correctLabel = correctOriginalIndex !== undefined
+        ? currentQuestion.optionsList?.find((o) => o.originalIndex === correctOriginalIndex)?.label
+        : currentQuestion.optionsList?.find((o) => o.index === currentQuestion.correct_option_index)?.label;
+
+      setQuizAnswers(prev => ({
         ...prev,
-        {
-          index: currentIndex + 1,
-          question: currentQuestion.question_text,
-          student_answer:
-            currentQuestion.type === 'mcq'
-              ? `${answerToValidate} — ${currentQuestion.optionsList?.find((o) => o.label === answerToValidate)?.value ?? ''}`
-              : answerToValidate,
-          is_correct: data.isCorrect,
-          correct_answer:
-            data.correctAnswer ||
-            currentQuestion.answer_text ||
-            currentQuestion.optionsList?.find((o) => o.originalIndex === data.correctOptionIndex)?.value ||
-            '',
-          explanation: data.explanation || data.feedback,
-          page_source: currentQuestion.page_source || null,
-        },
-      ]);
+        [currentQuestion.id]: {
+          selectedAnswer: answerToValidate,
+          isCorrect: data.isCorrect,
+          feedback: feedbackData,
+          correctOptionId: correctLabel
+        }
+      }));
+
+      // Only update score if this question wasn't already answered
+      if (!quizAnswers[currentQuestion.id]?.feedback) {
+        setScore((prev) => prev + (data.pointsEarned || 0));
+        setCorrectCount((prev) => prev + (data.isCorrect ? 1 : 0));
+      }
+      setReviewItems((prev) => {
+        // Avoid duplicates when re-answering
+        const filtered = prev.filter(r => r.index !== currentIndex + 1);
+        return [
+          ...filtered,
+          {
+            index: currentIndex + 1,
+            question: currentQuestion.question_text,
+            student_answer:
+              currentQuestion.type === 'mcq'
+                ? `${answerToValidate} — ${currentQuestion.optionsList?.find((o) => o.label === answerToValidate)?.value ?? ''}`
+                : answerToValidate,
+            is_correct: data.isCorrect,
+            correct_answer:
+              data.correctAnswer ||
+              currentQuestion.answer_text ||
+              currentQuestion.optionsList?.find((o) => o.originalIndex === data.correctOptionIndex)?.value ||
+              '',
+            explanation: data.explanation || data.feedback,
+            page_source: currentQuestion.page_source || null,
+          },
+        ];
+      });
     } catch (error) {
       console.error('Error validating answer:', error);
       setFeedback({
@@ -339,25 +835,43 @@ export default function ChapterQuizPage() {
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      setAnswer('');
-      setFeedback(null);
-      setSelectedOptionId(null);
-      setCorrectOptionId(null);
-      setHasAnswered(false);
-    } else {
-      // Quiz completed - store review items for results page and redirect
-      try {
-        sessionStorage.setItem(
-          `quiz_review_${chapterId}`,
-          JSON.stringify(reviewItems)
-        );
-      } catch (e) {
-        console.error('Failed to store review items:', e);
-      }
-      router.push(`/courses/${courseId}/chapters/${chapterId}/results?score=${score}&total=${totalPossiblePoints}&correct=${correctCount}&totalQuestions=${questions.length}`);
-      trackEvent('quiz_completed', { userId: user?.id, chapterId, score, totalPossiblePoints });
+      goToNext();
+    } else if (allAnswered) {
+      finishQuiz();
     }
+  };
+
+  const finishQuiz = useCallback(() => {
+    // Store review items for results page
+    try {
+      sessionStorage.setItem(
+        `quiz_review_${chapterId}`,
+        JSON.stringify(reviewItems)
+      );
+      // Clear saved answers from localStorage
+      localStorage.removeItem(`quiz_answers_${chapterId}`);
+    } catch (e) {
+      console.error('Failed to store review items:', e);
+    }
+    router.push(`/courses/${courseId}/chapters/${chapterId}/results?score=${score}&total=${totalPossiblePoints}&correct=${correctCount}&totalQuestions=${questions.length}`);
+    trackEvent('quiz_completed', { userId: user?.id, chapterId, score, totalPossiblePoints });
+  }, [chapterId, reviewItems, router, courseId, score, totalPossiblePoints, correctCount, questions.length, user?.id]);
+
+  const handleFinishClick = () => {
+    if (allAnswered) {
+      finishQuiz();
+    } else {
+      setShowExitModal(true);
+    }
+  };
+
+  const handleExitConfirm = () => {
+    setShowExitModal(false);
+    finishQuiz();
+  };
+
+  const handleExitCancel = () => {
+    setShowExitModal(false);
   };
 
   if (loading) {
@@ -387,6 +901,13 @@ export default function ChapterQuizPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 p-3 sm:p-6">
+      {showExitModal && (
+        <ExitConfirmModal
+          remainingCount={remainingCount}
+          onConfirm={handleExitConfirm}
+          onCancel={handleExitCancel}
+        />
+      )}
       <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
         <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
@@ -401,22 +922,25 @@ export default function ChapterQuizPage() {
               <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">{courseTitle}</p>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{chapterTitle}</h1>
             </div>
+            <KeyboardHelpTooltip />
           </div>
           <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
-            <span>{progressLabel}</span>
+            <span className="text-gray-500">
+              Question {currentIndex + 1} sur {questions.length}
+            </span>
             <span className="font-semibold text-orange-600">
               {score} / {totalPossiblePoints} {translate('learn_pts')}
             </span>
           </div>
-          <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-orange-500 transition-all duration-300"
-              style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-            />
-          </div>
         </div>
 
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-5 shadow-lg space-y-3 sm:space-y-4">
+        <div
+          ref={containerRef}
+          className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-5 shadow-lg space-y-3 sm:space-y-4"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <p className="text-sm sm:text-lg font-semibold text-gray-900">{currentQuestion?.question_text}</p>
           {currentQuestion?.type === 'mcq' && currentQuestion.optionsList ? (
             <div className="space-y-2">
@@ -488,49 +1012,20 @@ export default function ChapterQuizPage() {
           )}
 
           {feedback && (
-            <div
-              className={`rounded-xl border-2 p-3 sm:p-4 ${
-                feedback.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-              }`}
-            >
-              {feedback.isCorrect ? (
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-semibold text-green-800 text-sm">
-                      {translate('quiz_feedback_correct')}
-                    </p>
-                    {feedback.points > 0 && (
-                      <p className="text-xs text-green-700 mt-1">+{feedback.points} {translate('learn_pts')}</p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-2.5">
-                  <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-semibold text-red-800 text-sm mb-1">
-                      Mauvaise réponse
-                    </p>
-                    <p className="text-sm text-gray-800 leading-relaxed">
-                      <span className="font-semibold text-gray-900">
-                        La bonne réponse était {correctOptionId}
-                        {currentQuestion?.type === 'mcq' && currentQuestion.optionsList && correctOptionId && (
-                          <>
-                            {' : '}
-                            {currentQuestion.optionsList.find((o) => o.label === correctOptionId)?.value}
-                          </>
-                        )}
-                        .{' '}
-                      </span>
-                      {feedback.explanation && (
-                        <span>{feedback.explanation}</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ExplanationCard
+              isCorrect={feedback.isCorrect}
+              correctAnswer={!feedback.isCorrect && currentQuestion?.type === 'mcq' && correctOptionId
+                ? `${correctOptionId}: ${currentQuestion.optionsList?.find(o => o.label === correctOptionId)?.value || ''}`
+                : undefined}
+              explanation={feedback.explanation}
+              sourceExcerpt={feedback.sourceExcerpt}
+              points={feedback.points}
+              translate={translate}
+              letterMapping={currentQuestion?.optionsList?.reduce((acc, opt) => {
+                acc[opt.originalIndex] = opt.label;
+                return acc;
+              }, {} as Record<number, string>)}
+            />
           )}
 
           {!feedback && currentQuestion?.type !== 'mcq' && (
@@ -543,15 +1038,64 @@ export default function ChapterQuizPage() {
             </button>
           )}
 
-          {feedback && (
+          {/* Navigation and finish buttons */}
+          <div className="flex items-center gap-2">
+            {/* Previous button */}
             <button
-              onClick={handleNext}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gray-900 text-white text-sm sm:text-base font-semibold hover:bg-black"
+              onClick={goToPrevious}
+              disabled={currentIndex === 0}
+              className="px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Question précédente"
             >
-              {currentIndex < questions.length - 1 ? translate('quiz_next_question') : translate('quiz_end_continue')}
-              <ArrowRight className="w-4 h-4" />
+              ←
             </button>
-          )}
+
+            {/* Next/Finish button */}
+            {feedback && currentIndex < questions.length - 1 && (
+              <button
+                onClick={goToNext}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gray-900 text-white text-sm sm:text-base font-semibold hover:bg-black"
+              >
+                {translate('quiz_next_question')}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Finish button or remaining count - only show when not on last question or when on last */}
+            {(currentIndex === questions.length - 1 || !feedback) && (
+              allAnswered ? (
+                <button
+                  onClick={handleFinishClick}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white text-sm sm:text-base font-semibold hover:bg-orange-600"
+                >
+                  Terminer le quiz
+                </button>
+              ) : (
+                <span className="flex-1 text-center text-sm text-gray-500">
+                  {remainingCount} question{remainingCount > 1 ? 's' : ''} restante{remainingCount > 1 ? 's' : ''}
+                </span>
+              )
+            )}
+
+            {/* Next button */}
+            <button
+              onClick={goToNext}
+              disabled={currentIndex === questions.length - 1}
+              className="px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Question suivante"
+            >
+              →
+            </button>
+          </div>
+
+          {/* Progress dots */}
+          <QuizProgressDots
+            total={questions.length}
+            current={currentIndex}
+            answers={quizAnswers}
+            questionIds={questionIds}
+            onNavigate={navigateToQuestion}
+          />
         </div>
       </div>
     </div>

@@ -17,11 +17,19 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  // Turbopack alias to replace html2canvas with html2canvas-pro (supports lab/oklch colors)
+  // Alias to replace html2canvas with html2canvas-pro (supports lab/oklch colors)
+  // Works for both Turbopack (dev) and Webpack (production build)
   turbopack: {
     resolveAlias: {
       'html2canvas': 'html2canvas-pro',
     },
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'html2canvas': 'html2canvas-pro',
+    };
+    return config;
   },
   async redirects() {
     return [

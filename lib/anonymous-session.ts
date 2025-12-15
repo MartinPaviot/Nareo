@@ -16,7 +16,8 @@ function setCookie(name: string, value: string, days: number): void {
   if (typeof document === 'undefined') return;
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+  const isSecure = window.location.protocol === 'https:';
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? '; Secure' : ''}`;
 }
 
 function getCookie(name: string): string | null {

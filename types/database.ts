@@ -66,6 +66,9 @@ export interface Question {
   difficulty: number | null;
   phase: string | null;
   points: number | null;
+  explanation: string | null;
+  source_excerpt: string | null;
+  correct_option_index: number | null;
   created_at: string;
 }
 

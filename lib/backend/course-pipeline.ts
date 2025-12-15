@@ -537,7 +537,7 @@ export async function processCourseJob(jobId: string) {
                   points: q.points ?? (q.type === "mcq" ? 10 : 35),
                   correct_option_index: correctIndex,
                   explanation: q.explanation || null,
-                  source_reference: q.source_reference || null,
+                  source_excerpt: q.source_reference || null,
                   cognitive_level: q.cognitive_level || null,
                 });
                 if (questionInsertError) {

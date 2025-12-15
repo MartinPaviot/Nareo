@@ -144,7 +144,6 @@ export async function POST(
     // Calculate points - fixed at 10 points per question
     const pointsEarned = isCorrect ? 10 : 0;
 
-    // Never include explanations - they add no value and can be misleading
     return NextResponse.json({
       success: true,
       isCorrect,
@@ -152,7 +151,8 @@ export async function POST(
       pointsEarned,
       correctAnswer: question.answer_text,
       correctOptionIndex: question.type === 'mcq' ? (question.correct_option_index ?? 0) : undefined,
-      explanation: null,
+      explanation: question.explanation || null,
+      sourceExcerpt: question.source_excerpt || null,
     });
   } catch (error) {
     console.error('Error checking answer:', error);

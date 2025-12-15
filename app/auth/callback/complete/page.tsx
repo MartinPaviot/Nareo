@@ -7,6 +7,7 @@ import { trackVisitor } from '@/lib/visitors';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getAnonymousContext, clearAnonymousContext } from '@/lib/anonymous-session';
 
 // Cookie utilities
 function getCookie(name: string): string | null {
@@ -238,8 +239,16 @@ export default function AuthCallbackCompletePage() {
               <button
                 onClick={() => {
                   const isNewUser = sessionStorage.getItem('isNewUser') === 'true';
+                  // Check for anonymous context (user was in the middle of something)
+                  const anonymousContext = getAnonymousContext();
+
                   if (isNewUser) {
+                    // New users go to plan selector, then will be redirected to their context
                     router.push('/auth/signup?step=plan');
+                  } else if (anonymousContext?.returnPath) {
+                    // Existing user with saved context - redirect to where they were
+                    clearAnonymousContext();
+                    router.push(anonymousContext.returnPath);
                   } else {
                     router.push('/dashboard');
                   }

@@ -10,6 +10,7 @@ import { Eye, EyeOff, ArrowLeft, Loader2, RefreshCw, Mail } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import PlanSelector from './PlanSelector';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAnonymousContext, clearAnonymousContext } from '@/lib/anonymous-session';
 
 export default function SignUp() {
   const router = useRouter();
@@ -169,7 +170,15 @@ export default function SignUp() {
   };
 
   const handleSelectFreePlan = () => {
-    router.push(returnTo);
+    // Check if there's a saved anonymous context (e.g., from quiz results)
+    const anonymousContext = getAnonymousContext();
+    if (anonymousContext?.returnPath) {
+      // Clear the context and redirect to where they were
+      clearAnonymousContext();
+      router.push(anonymousContext.returnPath);
+    } else {
+      router.push(returnTo);
+    }
   };
 
   const handleResendEmail = async () => {

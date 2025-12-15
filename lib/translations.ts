@@ -368,19 +368,20 @@ export const translations: Record<Language, Translations> = {
     flashcards_signup_title: 'Create an account to generate flashcards',
     flashcards_signup_description: 'Sign up for free to generate AI-powered flashcards and boost your revision sessions.',
 
-    // A+ Note
-    aplus_note_title: 'A+ Note',
-    aplus_note_description: 'Generate a comprehensive study note with all key concepts, formulas, and definitions from your course.',
-    aplus_note_generate: 'Generate A+ Note',
+    // Study Sheet (formerly A+ Note)
+    aplus_note_title: 'Study Sheet',
+    aplus_note_description: 'Generate a comprehensive study sheet with all key concepts, formulas, and definitions from your course.',
+    aplus_note_generate: 'Generate Study Sheet',
     aplus_note_generating: 'Generating...',
-    golden_note_help: 'What is an A+ Note?',
-    golden_note_help_title: 'What is an A+ Note?',
-    golden_note_help_description: 'An A+ Note is an AI-generated comprehensive study summary that extracts and organizes all key concepts, definitions, formulas, and methodologies from your course material into a structured, easy-to-review format.',
+    aplus_note_regenerating: 'Regenerating Study Sheet',
+    golden_note_help: 'What is a Study Sheet?',
+    golden_note_help_title: 'What is a Study Sheet?',
+    golden_note_help_description: 'A Study Sheet is an AI-generated comprehensive study summary that extracts and organizes all key concepts, definitions, formulas, and methodologies from your course material into a structured, easy-to-review format.',
 
     aplus_note_edit_hint: 'Edit the Markdown content below. LaTeX formulas use $...$ for inline and $$...$$ for blocks.',
     aplus_note_for: 'for',
-    aplus_note_signup_title: 'Create an account to generate your A+ Note',
-    aplus_note_signup_description: 'Sign up for free to generate AI-powered study notes and ace your exams.',
+    aplus_note_signup_title: 'Create an account to generate your Study Sheet',
+    aplus_note_signup_description: 'Sign up for free to generate AI-powered study sheets and ace your exams.',
 
     // Common
     copy: 'Copy',
@@ -669,7 +670,7 @@ export const translations: Record<Language, Translations> = {
     paywall_access_2: 'AI-generated quizzes tailored to your content',
     paywall_access_3: 'Unlimited attempts on every chapter',
     paywall_access_4: 'Automatic progress saving',
-    paywall_access_5: 'Import up to 12 courses per month (approx. 1000 MCQs)',
+    paywall_access_5: 'Unlimited course imports',
     paywall_access_6: 'Structured, efficient and faster revision',
     paywall_section_benefits: 'How Nareo truly helps you',
     paywall_benefit_1: 'Identify your weak spots in real time',
@@ -717,7 +718,7 @@ export const translations: Record<Language, Translations> = {
     signup_plan_premium_title: 'Premium',
     signup_plan_premium_desc: 'Unlock your full potential',
     signup_plan_premium_badge: 'Recommended',
-    signup_plan_premium_feature_1: 'Upload up to 12 courses per month',
+    signup_plan_premium_feature_1: 'Unlimited course uploads',
     signup_plan_premium_feature_2: 'Unlimited access to all chapters',
     signup_plan_premium_feature_3: 'AI-generated quizzes tailored to you',
     signup_plan_premium_feature_4: 'Progress tracking & automatic saving',
@@ -726,8 +727,19 @@ export const translations: Record<Language, Translations> = {
     // Upload Limit Paywall
     upload_limit_title: 'Monthly limit reached',
     upload_limit_subtitle: 'You have uploaded 3 courses this month',
-    upload_limit_description: 'Upgrade to Premium to upload up to 12 courses per month and unlock all features.',
+    upload_limit_description: 'Upgrade to Premium for unlimited course uploads and unlock all features.',
     upload_limit_cta: 'Upgrade to Premium',
+    upload_limit_renewal: 'Your free uploads will renew on {date}',
+    upload_limit_or_wait: 'Or wait for your monthly renewal',
+
+    // Duplicate Course Warning
+    duplicate_course_title: 'Duplicate course?',
+    duplicate_course_subtitle: 'This file seems familiar',
+    duplicate_course_message: 'You have already uploaded a course with the name "{filename}".',
+    duplicate_course_existing: 'Existing course:',
+    duplicate_course_uploaded_on: 'Uploaded on',
+    duplicate_course_question: 'Are you sure you want to upload it again?',
+    duplicate_course_confirm: 'Yes, upload again',
 
     // Contact Page
     contact_back_home: 'Back to home',
@@ -966,7 +978,7 @@ export const translations: Record<Language, Translations> = {
     cgu_article3_2_free_4: 'A+ Note included',
     cgu_article3_2_free_5: 'Unlimited quiz attempts',
     cgu_article3_2_premium_title: 'Premium Plan (Paid subscription):',
-    cgu_article3_2_premium_1: '12 courses per month',
+    cgu_article3_2_premium_1: 'Unlimited courses',
     cgu_article3_2_premium_2: 'Quota reset every 4 weeks from subscription date',
     cgu_article3_2_premium_3: 'Unlimited chapters per course',
     cgu_article3_2_premium_4: 'Unlimited quiz attempts',
@@ -1380,17 +1392,18 @@ export const translations: Record<Language, Translations> = {
     flashcards_signup_title: 'Crée un compte pour générer des flashcards',
     flashcards_signup_description: 'Inscris-toi gratuitement pour générer des flashcards par IA et booster tes révisions.',
 
-    // A+ Note
-    aplus_note_title: 'A+ Note',
+    // Study Sheet (formerly A+ Note)
+    aplus_note_title: 'Fiche de révision',
     aplus_note_description: 'Génère une fiche de révision complète avec tous les concepts clés, formules et définitions de ton cours.',
-    aplus_note_generate: 'Générer la A+ Note',
+    aplus_note_generate: 'Générer la fiche',
     aplus_note_generating: 'Génération...',
-    golden_note_help: "Qu'est-ce qu'une A+ Note ?",
-    golden_note_help_title: "Qu'est-ce qu'une A+ Note ?",
-    golden_note_help_description: "Une A+ Note est un résumé d'étude complet généré par IA qui extrait et organise tous les concepts clés, définitions, formules et méthodologies de ton cours dans un format structuré et facile à réviser.",
+    aplus_note_regenerating: 'Régénération de la fiche',
+    golden_note_help: "Qu'est-ce qu'une fiche de révision ?",
+    golden_note_help_title: "Qu'est-ce qu'une fiche de révision ?",
+    golden_note_help_description: "Une fiche de révision est un résumé d'étude complet généré par IA qui extrait et organise tous les concepts clés, définitions, formules et méthodologies de ton cours dans un format structuré et facile à réviser.",
     aplus_note_edit_hint: 'Modifie le contenu Markdown ci-dessous. Les formules LaTeX utilisent $...$ pour inline et $$...$$ pour les blocs.',
     aplus_note_for: 'pour',
-    aplus_note_signup_title: 'Crée un compte pour générer ta A+ Note',
+    aplus_note_signup_title: 'Crée un compte pour générer ta fiche de révision',
     aplus_note_signup_description: 'Inscris-toi gratuitement pour générer des fiches de révision par IA et réussir tes examens.',
 
     // Common
@@ -1680,7 +1693,7 @@ export const translations: Record<Language, Translations> = {
     paywall_access_2: 'Quiz générés par IA adaptés à ton contenu',
     paywall_access_3: 'Tentatives illimitées sur chaque chapitre',
     paywall_access_4: 'Sauvegarde automatique de ta progression',
-    paywall_access_5: 'Importe jusqu\'à 12 cours par mois (env. 1000 QCM)',
+    paywall_access_5: 'Import de cours illimité',
     paywall_access_6: 'Révision structurée, efficace et rapide',
     paywall_section_benefits: 'Comment Nareo t\'aide vraiment',
     paywall_benefit_1: 'Identifie tes points faibles en temps réel',
@@ -1728,7 +1741,7 @@ export const translations: Record<Language, Translations> = {
     signup_plan_premium_title: 'Premium',
     signup_plan_premium_desc: 'Libère tout ton potentiel',
     signup_plan_premium_badge: 'Recommandé',
-    signup_plan_premium_feature_1: 'Importe jusqu\'à 12 cours par mois',
+    signup_plan_premium_feature_1: 'Import de cours illimité',
     signup_plan_premium_feature_2: 'Accès illimité à tous les chapitres',
     signup_plan_premium_feature_3: 'Quiz générés par IA adaptés à ton contenu',
     signup_plan_premium_feature_4: 'Suivi de progression & sauvegarde automatique',
@@ -1737,8 +1750,19 @@ export const translations: Record<Language, Translations> = {
     // Upload Limit Paywall
     upload_limit_title: 'Limite mensuelle atteinte',
     upload_limit_subtitle: 'Tu as uploadé 3 cours ce mois-ci',
-    upload_limit_description: 'Passe à Premium pour uploader jusqu\'à 12 cours par mois et débloquer toutes les fonctionnalités.',
+    upload_limit_description: 'Passe à Premium pour un nombre illimité de cours et débloquer toutes les fonctionnalités.',
     upload_limit_cta: 'Passer à Premium',
+    upload_limit_renewal: 'Tes imports gratuits se renouvellent le {date}',
+    upload_limit_or_wait: 'Ou patiente jusqu\'au renouvellement mensuel',
+
+    // Duplicate Course Warning
+    duplicate_course_title: 'Cours en double ?',
+    duplicate_course_subtitle: 'Ce fichier semble familier',
+    duplicate_course_message: 'Tu as déjà uploadé un cours avec le nom "{filename}".',
+    duplicate_course_existing: 'Cours existant :',
+    duplicate_course_uploaded_on: 'Uploadé le',
+    duplicate_course_question: 'Es-tu sûr de vouloir l\'uploader à nouveau ?',
+    duplicate_course_confirm: 'Oui, uploader quand même',
 
     // Contact Page
     contact_back_home: 'Retour à l\'accueil',
@@ -1977,7 +2001,7 @@ export const translations: Record<Language, Translations> = {
     cgu_article3_2_free_4: 'A+ Note incluse',
     cgu_article3_2_free_5: 'Tentatives illimitées sur les quiz',
     cgu_article3_2_premium_title: 'Formule Premium (Abonnement payant) :',
-    cgu_article3_2_premium_1: '12 cours par mois',
+    cgu_article3_2_premium_1: 'Cours illimités',
     cgu_article3_2_premium_2: 'Réinitialisation du quota toutes les 4 semaines à partir de la date de souscription de la formule',
     cgu_article3_2_premium_3: 'Chapitres illimités par cours',
     cgu_article3_2_premium_4: 'Tentatives illimitées sur les quiz',
@@ -2391,18 +2415,19 @@ export const translations: Record<Language, Translations> = {
     flashcards_signup_title: 'Erstelle ein Konto, um Karteikarten zu generieren',
     flashcards_signup_description: 'Melde dich kostenlos an, um KI-gestützte Karteikarten zu erstellen und deine Lerneinheiten zu verbessern.',
 
-    // A+ Note
-    aplus_note_title: 'A+ Note',
-    aplus_note_description: 'Erstelle eine umfassende Lernnotiz mit allen Schlüsselkonzepten, Formeln und Definitionen aus deinem Kurs.',
-    aplus_note_generate: 'A+ Note erstellen',
+    // Study Sheet (formerly A+ Note)
+    aplus_note_title: 'Lernblatt',
+    aplus_note_description: 'Erstelle ein umfassendes Lernblatt mit allen Schlüsselkonzepten, Formeln und Definitionen aus deinem Kurs.',
+    aplus_note_generate: 'Lernblatt erstellen',
     aplus_note_generating: 'Wird erstellt...',
-    golden_note_help: 'Was ist eine A+ Note?',
-    golden_note_help_title: 'Was ist eine A+ Note?',
-    golden_note_help_description: 'Eine A+ Note ist eine KI-generierte umfassende Lernzusammenfassung, die alle Schlüsselkonzepte, Definitionen, Formeln und Methoden aus deinem Kursmaterial in ein strukturiertes, leicht zu überprüfendes Format extrahiert und organisiert.',
+    aplus_note_regenerating: 'Lernblatt wird neu erstellt',
+    golden_note_help: 'Was ist ein Lernblatt?',
+    golden_note_help_title: 'Was ist ein Lernblatt?',
+    golden_note_help_description: 'Ein Lernblatt ist eine KI-generierte umfassende Lernzusammenfassung, die alle Schlüsselkonzepte, Definitionen, Formeln und Methoden aus deinem Kursmaterial in ein strukturiertes, leicht zu überprüfendes Format extrahiert und organisiert.',
     aplus_note_edit_hint: 'Bearbeite den Markdown-Inhalt unten. LaTeX-Formeln verwenden $...$ für Inline und $$...$$ für Blöcke.',
     aplus_note_for: 'für',
-    aplus_note_signup_title: 'Erstelle ein Konto, um deine A+ Note zu generieren',
-    aplus_note_signup_description: 'Melde dich kostenlos an, um KI-gestützte Lernnotizen zu erstellen und deine Prüfungen zu bestehen.',
+    aplus_note_signup_title: 'Erstelle ein Konto, um dein Lernblatt zu generieren',
+    aplus_note_signup_description: 'Melde dich kostenlos an, um KI-gestützte Lernblätter zu erstellen und deine Prüfungen zu bestehen.',
 
     // Common
     copy: 'Kopieren',
@@ -2677,7 +2702,7 @@ export const translations: Record<Language, Translations> = {
     paywall_access_2: 'KI-generierte Quiz aus deinem Inhalt',
     paywall_access_3: 'Unbegrenzte Versuche pro Kapitel',
     paywall_access_4: 'Automatische Fortschrittsspeicherung',
-    paywall_access_5: 'Importiere bis zu 12 Kurse pro Monat (ca. 1000 MCQs)',
+    paywall_access_5: 'Unbegrenzte Kurs-Uploads',
     paywall_access_6: 'Strukturierte, effiziente und schnelle Revision',
     paywall_section_benefits: 'Wie Nareo dir wirklich hilft',
     paywall_benefit_1: 'Erkenne deine Schwächen in Echtzeit',
@@ -2725,7 +2750,7 @@ export const translations: Record<Language, Translations> = {
     signup_plan_premium_title: 'Premium',
     signup_plan_premium_desc: 'Entfalte dein volles Potenzial',
     signup_plan_premium_badge: 'Empfohlen',
-    signup_plan_premium_feature_1: 'Lade bis zu 12 Kurse pro Monat hoch',
+    signup_plan_premium_feature_1: 'Unbegrenzte Kurs-Uploads',
     signup_plan_premium_feature_2: 'Unbegrenzter Zugang zu allen Kapiteln',
     signup_plan_premium_feature_3: 'KI-generierte Quizze, angepasst an deinen Inhalt',
     signup_plan_premium_feature_4: 'Fortschrittsverfolgung & automatische Speicherung',
@@ -2734,8 +2759,19 @@ export const translations: Record<Language, Translations> = {
     // Upload Limit Paywall
     upload_limit_title: 'Monatslimit erreicht',
     upload_limit_subtitle: 'Du hast diesen Monat 3 Kurse hochgeladen',
-    upload_limit_description: 'Upgrade auf Premium, um bis zu 12 Kurse pro Monat hochzuladen und alle Funktionen freizuschalten.',
+    upload_limit_description: 'Upgrade auf Premium für unbegrenzte Kurs-Uploads und alle Funktionen.',
     upload_limit_cta: 'Auf Premium upgraden',
+    upload_limit_renewal: 'Deine kostenlosen Uploads werden am {date} erneuert',
+    upload_limit_or_wait: 'Oder warte auf deine monatliche Erneuerung',
+
+    // Duplicate Course Warning
+    duplicate_course_title: 'Doppelter Kurs?',
+    duplicate_course_subtitle: 'Diese Datei kommt mir bekannt vor',
+    duplicate_course_message: 'Du hast bereits einen Kurs mit dem Namen "{filename}" hochgeladen.',
+    duplicate_course_existing: 'Vorhandener Kurs:',
+    duplicate_course_uploaded_on: 'Hochgeladen am',
+    duplicate_course_question: 'Bist du sicher, dass du ihn erneut hochladen möchtest?',
+    duplicate_course_confirm: 'Ja, trotzdem hochladen',
 
     // Contact Page
     contact_back_home: 'Zurück zur Startseite',
@@ -2974,7 +3010,7 @@ export const translations: Record<Language, Translations> = {
     cgu_article3_2_free_4: 'A+ Note inklusive',
     cgu_article3_2_free_5: 'Unbegrenzte Quiz-Versuche',
     cgu_article3_2_premium_title: 'Premium-Tarif (Bezahltes Abonnement):',
-    cgu_article3_2_premium_1: '12 Kurse pro Monat',
+    cgu_article3_2_premium_1: 'Unbegrenzte Kurse',
     cgu_article3_2_premium_2: 'Kontingent-Reset alle 4 Wochen ab Abonnementdatum',
     cgu_article3_2_premium_3: 'Unbegrenzte Kapitel pro Kurs',
     cgu_article3_2_premium_4: 'Unbegrenzte Quiz-Versuche',

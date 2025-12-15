@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { authenticateRequest } from '@/lib/api-auth';
 import OpenAI from 'openai';
@@ -10,6 +10,32 @@ const openai = new OpenAI({
 // Configuration
 const CHUNK_SIZE = 12000; // Characters per chunk for detailed transcription
 const MAX_CONCURRENT_CHUNKS = 3; // Parallel API calls
+
+// Helper to create a streaming response with progress updates
+function createProgressStream() {
+  const encoder = new TextEncoder();
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+    },
+  });
+
+  const sendProgress = (data: { type: string; message?: string; progress?: number; content?: string }) => {
+    if (controller) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+    }
+  };
+
+  const close = () => {
+    if (controller) {
+      controller.close();
+    }
+  };
+
+  return { stream, sendProgress, close };
+}
 
 // Pass 1: Extract structure from the document
 const STRUCTURE_EXTRACTION_PROMPT = `Tu es un expert en analyse de documents. Analyse ce cours et identifie sa structure.
@@ -368,100 +394,156 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ courseId: string }> }
 ) {
-  try {
-    const { courseId } = await params;
+  const { courseId } = await params;
 
-    // Authenticate user
-    const auth = await authenticateRequest(request);
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabase = await createSupabaseServerClient();
-
-    // Get course with source text
-    const { data: course, error } = await supabase
-      .from('courses')
-      .select('id, title, source_text, content_language')
-      .eq('id', courseId)
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching course:', error);
-      return NextResponse.json({ error: 'Failed to fetch course' }, { status: 500 });
-    }
-
-    if (!course) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
-    }
-
-    if (!course.source_text) {
-      return NextResponse.json({ error: 'Course has no source text' }, { status: 400 });
-    }
-
-    const language = course.content_language?.toUpperCase() || 'EN';
-    const sourceText = course.source_text;
-
-    console.log(`[A+ Note] Starting generation for course ${courseId}`);
-    console.log(`[A+ Note] Source text length: ${sourceText.length} characters`);
-
-    let noteContent: string;
-
-    // Decision: Use multi-pass for documents > 15k chars
-    if (sourceText.length > 15000) {
-      console.log('[A+ Note] Using MULTI-PASS generation (document > 15k chars)');
-
-      // Pass 1: Extract structure
-      console.log('[A+ Note] Pass 1: Extracting document structure...');
-      const structure = await extractStructure(sourceText, language);
-      console.log(`[A+ Note] Found ${structure.sections.length} sections`);
-
-      // Pass 2: Transcribe each section
-      console.log('[A+ Note] Pass 2: Transcribing sections...');
-      const transcribedSections = await processSectionsWithConcurrency(
-        structure.sections,
-        sourceText,
-        language
-      );
-
-      // Assemble content
-      const mainContent = `# ${structure.title || course.title}\n\n${transcribedSections.join('\n\n---\n\n')}`;
-
-      // Pass 3: Generate glossary
-      console.log('[A+ Note] Pass 3: Generating glossary...');
-      const glossary = await generateGlossary(mainContent, language);
-
-      noteContent = `${mainContent}\n\n---\n\n${glossary}`;
-
-    } else {
-      console.log('[A+ Note] Using SINGLE-PASS generation (document <= 15k chars)');
-      noteContent = await singlePassGeneration(sourceText, language);
-    }
-
-    if (!noteContent) {
-      return NextResponse.json({ error: 'Failed to generate note content' }, { status: 500 });
-    }
-
-    console.log(`[A+ Note] Generation complete. Note length: ${noteContent.length} characters`);
-
-    // Save note to course
-    const { error: updateError } = await supabase
-      .from('courses')
-      .update({ aplus_note: noteContent })
-      .eq('id', courseId);
-
-    if (updateError) {
-      console.error('Error saving note:', updateError);
-      return NextResponse.json({ error: 'Failed to save note' }, { status: 500 });
-    }
-
-    return NextResponse.json({ content: noteContent });
-  } catch (error) {
-    console.error('Error generating note:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate note' },
-      { status: 500 }
-    );
+  // Authenticate user
+  const auth = await authenticateRequest(request);
+  if (!auth) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
+
+  const supabase = await createSupabaseServerClient();
+
+  // Get course with source text
+  const { data: course, error } = await supabase
+    .from('courses')
+    .select('id, title, source_text, content_language')
+    .eq('id', courseId)
+    .eq('user_id', auth.user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching course:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch course' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!course) {
+    return new Response(JSON.stringify({ error: 'Course not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!course.source_text) {
+    return new Response(JSON.stringify({ error: 'Course has no source text' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const language = course.content_language?.toUpperCase() || 'EN';
+  const sourceText = course.source_text;
+
+  // Create streaming response for progress updates
+  const { stream, sendProgress, close } = createProgressStream();
+
+  // Start async generation process
+  (async () => {
+    try {
+      console.log(`[A+ Note] Starting generation for course ${courseId}`);
+      console.log(`[A+ Note] Source text length: ${sourceText.length} characters`);
+
+      let noteContent: string;
+
+      // Decision: Use multi-pass for documents > 15k chars
+      if (sourceText.length > 15000) {
+        const totalSteps = 3; // structure + sections + glossary
+        console.log('[A+ Note] Using MULTI-PASS generation (document > 15k chars)');
+
+        // Pass 1: Extract structure
+        sendProgress({ type: 'progress', message: 'Analyzing document structure...', progress: 10 });
+        console.log('[A+ Note] Pass 1: Extracting document structure...');
+        const structure = await extractStructure(sourceText, language);
+        console.log(`[A+ Note] Found ${structure.sections.length} sections`);
+
+        // Pass 2: Transcribe each section
+        const sectionCount = structure.sections.length;
+        sendProgress({ type: 'progress', message: `Transcribing ${sectionCount} sections...`, progress: 20 });
+
+        const transcribedSections: string[] = [];
+        for (let i = 0; i < structure.sections.length; i += MAX_CONCURRENT_CHUNKS) {
+          const batch = structure.sections.slice(i, i + MAX_CONCURRENT_CHUNKS);
+          const progressPercent = 20 + Math.floor((i / structure.sections.length) * 60);
+          sendProgress({
+            type: 'progress',
+            message: `Transcribing section ${Math.min(i + MAX_CONCURRENT_CHUNKS, sectionCount)}/${sectionCount}...`,
+            progress: progressPercent,
+          });
+
+          const batchPromises = batch.map(async (section, batchIndex) => {
+            const globalIndex = i + batchIndex;
+            const sectionText = findSectionText(sourceText, section, structure.sections, globalIndex);
+            console.log(`[A+ Note] Transcribing section ${globalIndex + 1}/${sectionCount}: ${section.title}`);
+            return transcribeSection(sectionText, section.title, language, section.hasFormulas);
+          });
+
+          const batchResults = await Promise.all(batchPromises);
+          transcribedSections.push(...batchResults);
+        }
+
+        // Assemble content
+        const mainContent = `# ${structure.title || course.title}\n\n${transcribedSections.join('\n\n---\n\n')}`;
+
+        // Pass 3: Generate glossary
+        sendProgress({ type: 'progress', message: 'Generating glossary...', progress: 85 });
+        console.log('[A+ Note] Pass 3: Generating glossary...');
+        const glossary = await generateGlossary(mainContent, language);
+
+        noteContent = `${mainContent}\n\n---\n\n${glossary}`;
+
+      } else {
+        console.log('[A+ Note] Using SINGLE-PASS generation (document <= 15k chars)');
+        sendProgress({ type: 'progress', message: 'Generating note...', progress: 30 });
+        noteContent = await singlePassGeneration(sourceText, language);
+      }
+
+      if (!noteContent) {
+        sendProgress({ type: 'error', message: 'Failed to generate note content' });
+        close();
+        return;
+      }
+
+      console.log(`[A+ Note] Generation complete. Note length: ${noteContent.length} characters`);
+      sendProgress({ type: 'progress', message: 'Saving note...', progress: 95 });
+
+      // Save note to course
+      const { error: updateError } = await supabase
+        .from('courses')
+        .update({ aplus_note: noteContent })
+        .eq('id', courseId);
+
+      if (updateError) {
+        console.error('Error saving note:', updateError);
+        sendProgress({ type: 'error', message: 'Failed to save note' });
+        close();
+        return;
+      }
+
+      // Send final success with content
+      sendProgress({ type: 'complete', content: noteContent, progress: 100 });
+      close();
+    } catch (error) {
+      console.error('Error generating note:', error);
+      sendProgress({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to generate note',
+      });
+      close();
+    }
+  })();
+
+  // Return streaming response immediately
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }

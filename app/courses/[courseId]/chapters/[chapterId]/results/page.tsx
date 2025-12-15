@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGamification } from '@/hooks/useGamification';
 import { trackEvent } from '@/lib/posthog';
+import { saveAnonymousContext } from '@/lib/anonymous-session';
 
 interface ConceptFeedback {
   concept: string;
@@ -117,15 +118,30 @@ export default function QuizResultsPage() {
   }, [user?.id, courseId, chapterId, score, total, percentage, correct, totalQuestions, recordActivity, user]);
 
   // Show signup modal for non-authenticated users after quiz completion
+  // Also save context so they can resume after signup
   useEffect(() => {
     if (!user) {
+      // Save the current context so user can resume after signup
+      saveAnonymousContext({
+        returnPath: `/courses/${courseId}/chapters/${chapterId}/results?score=${score}&total=${total}&correct=${correct}&totalQuestions=${totalQuestions}`,
+        courseId,
+        chapterId,
+        quizResults: {
+          score,
+          total,
+          correct,
+          totalQuestions,
+          percentage,
+        },
+      });
+
       // Small delay to let the results render first
       const timer = setTimeout(() => {
         setShowSignupModal(true);
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [user]);
+  }, [user, courseId, chapterId, score, total, correct, totalQuestions, percentage]);
 
   // Load review items from sessionStorage and fetch AI feedback
   useEffect(() => {
@@ -136,8 +152,10 @@ export default function QuizResultsPage() {
       if (stored) {
         items = JSON.parse(stored) as ReviewItem[];
         setReviewItems(items);
-        // Clear after loading
-        sessionStorage.removeItem(`quiz_review_${chapterId}`);
+        // Only clear for logged-in users - anonymous users need it preserved for post-signup
+        if (user) {
+          sessionStorage.removeItem(`quiz_review_${chapterId}`);
+        }
       }
     } catch (e) {
       console.error('Failed to load review items:', e);
@@ -184,7 +202,7 @@ export default function QuizResultsPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [chapterId, user?.id, courseId, percentage, currentLanguage]);
+  }, [chapterId, user, courseId, percentage, currentLanguage]);
 
   const getBadgeName = (badge: BadgeEarned['badge']) => {
     if (currentLanguage === 'fr') return badge.name_fr;

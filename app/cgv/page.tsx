@@ -71,7 +71,7 @@ export default function CGVPage() {
           <h3 className="text-lg font-medium text-gray-900 mt-6 mb-3">2.2 Formule Premium</h3>
           <p className="text-gray-700 mb-2">La formule Premium donne accès à l&apos;ensemble des fonctionnalités du Service :</p>
           <ul className="list-disc pl-6 text-gray-700 mb-4 space-y-1">
-            <li>12 cours par mois</li>
+            <li>Cours illimités</li>
             <li>Réinitialisation automatique du quota au 1er de chaque mois calendaire</li>
             <li>Chapitres illimités par cours</li>
             <li>Tentatives illimitées sur les quiz</li>

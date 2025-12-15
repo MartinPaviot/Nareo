@@ -6,8 +6,8 @@ import { logEvent } from '@/lib/backend/analytics';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 // Upload limits
-const FREE_MONTHLY_LIMIT = 1; // Free users can upload 1 course per month (with full access)
-const PREMIUM_MONTHLY_LIMIT = 12; // Premium users can upload 12 courses per month
+const FREE_MONTHLY_LIMIT = 3; // Free users can upload 3 courses per month (with full access)
+// Premium users have unlimited uploads
 
 // Admin emails with unlimited uploads
 const UNLIMITED_UPLOAD_EMAILS = [
@@ -97,17 +97,10 @@ export async function POST(request: NextRequest) {
       const needsReset = !resetAt || resetAt < new Date(now.getFullYear(), now.getMonth(), 1);
       const currentCount = needsReset ? 0 : (profile?.monthly_upload_count || 0);
 
-      // Determine the limit based on user type
-      const uploadLimit = hasUnlimitedUploads ? Infinity : (isPremium ? PREMIUM_MONTHLY_LIMIT : FREE_MONTHLY_LIMIT);
-
-      // Check if limit is reached (skip for admins with unlimited)
-      if (!hasUnlimitedUploads && currentCount >= uploadLimit) {
-        const errorCode = isPremium ? 'PREMIUM_LIMIT_REACHED' : 'UPLOAD_LIMIT_REACHED';
-        const errorMessage = isPremium
-          ? `Limite mensuelle atteinte (${PREMIUM_MONTHLY_LIMIT} cours/mois). Réessaie le mois prochain.`
-          : 'UPLOAD_LIMIT_REACHED';
+      // Check if limit is reached (premium and admin users have unlimited uploads)
+      if (!isPremium && currentCount >= FREE_MONTHLY_LIMIT) {
         return NextResponse.json(
-          { error: errorMessage, code: errorCode },
+          { error: 'UPLOAD_LIMIT_REACHED', code: 'UPLOAD_LIMIT_REACHED' },
           { status: 429 }
         );
       }

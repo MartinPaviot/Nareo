@@ -3,10 +3,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle2, Loader2, Lock, ShieldCheck, Sparkles, TrendingUp, X, Zap } from 'lucide-react';
+import { Calendar, CheckCircle2, Loader2, Lock, ShieldCheck, Sparkles, TrendingUp, X, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackEvent } from '@/lib/posthog';
+
+// Calculate the first day of next month (when free uploads renew)
+function getNextRenewalDate(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+}
 
 interface UploadLimitModalProps {
   onClose: () => void;
@@ -51,6 +57,13 @@ export default function UploadLimitModal({ onClose }: UploadLimitModalProps) {
   };
 
   const savingsPercent = '30%';
+
+  // Format renewal date
+  const renewalDate = getNextRenewalDate();
+  const formattedRenewalDate = renewalDate.toLocaleDateString(
+    currentLanguage === 'fr' ? 'fr-FR' : currentLanguage === 'de' ? 'de-DE' : 'en-US',
+    { day: 'numeric', month: 'long' }
+  );
 
   const handleCheckout = async () => {
     if (!user) {
@@ -129,6 +142,23 @@ export default function UploadLimitModal({ onClose }: UploadLimitModalProps) {
             <p className="text-gray-700">
               {translate('upload_limit_description')}
             </p>
+          </div>
+
+          {/* Date de renouvellement */}
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  {translate('upload_limit_or_wait')}
+                </p>
+                <p className="text-blue-700 font-semibold">
+                  {translate('upload_limit_renewal').replace('{date}', formattedRenewalDate)}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Grille: Blocs 1 et 2 côte à côte */}

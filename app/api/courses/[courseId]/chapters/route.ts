@@ -71,7 +71,9 @@ export async function GET(
           .single()
       : { data: null };
 
-    // Check if this is the user's free monthly course (owner + first course created this month)
+    // Check if this is one of the user's free monthly courses (owner + within monthly limit)
+    // Free users get 3 courses per month with full access
+    const FREE_MONTHLY_LIMIT = 3;
     let isFreeMonthlyCourse = false;
     if (userId && course.user_id === userId && !isPremium) {
       const courseCreatedAt = new Date(course.created_at);
@@ -88,8 +90,8 @@ export async function GET(
           .gte('created_at', firstDayOfMonth.toISOString())
           .lt('created_at', course.created_at);
 
-        // First course of the month gets full access (0 courses before this one)
-        isFreeMonthlyCourse = (coursesBeforeThis || 0) === 0;
+        // Courses within the free monthly limit get full access
+        isFreeMonthlyCourse = (coursesBeforeThis || 0) < FREE_MONTHLY_LIMIT;
       }
     }
 

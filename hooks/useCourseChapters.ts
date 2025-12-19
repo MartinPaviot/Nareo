@@ -20,6 +20,7 @@ interface CourseData {
   id: string;
   title: string;
   status: string; // 'pending' | 'processing' | 'ready' | 'failed'
+  quiz_status?: 'pending' | 'generating' | 'ready' | 'partial' | 'failed'; // Quiz generation status
 }
 
 interface CourseChaptersResponse {

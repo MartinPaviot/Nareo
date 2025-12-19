@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -10,22 +9,37 @@ import {
   Crown,
   Loader2,
   Mail,
-  Save,
-  Settings,
   Trash2,
   Upload,
   User,
   Calendar,
   RefreshCw,
+  Globe,
+  Shield,
+  Sparkles,
+  BookOpen,
+  Zap,
+  Camera,
+  X,
+  ChevronDown,
 } from 'lucide-react';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
+
+// Dynamic import for crop modal to avoid SSR issues
+const AvatarCropModal = dynamic(() => import('@/components/account/AvatarCropModal'), {
+  ssr: false,
+});
 
 interface Profile {
   user_id: string;
   email: string;
   full_name: string | null;
   locale: string;
+  avatar_url: string | null;
   subscription_tier: 'free' | 'premium';
   subscription_started_at: string | null;
   subscription_expires_at: string | null;
@@ -37,10 +51,26 @@ interface Profile {
   courseCount: number;
 }
 
+// Get user initials from name or email
+function getUserInitials(fullName: string | null, email: string | null): string {
+  if (fullName) {
+    const parts = fullName.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return fullName.substring(0, 2).toUpperCase();
+  }
+  if (email) {
+    return email.substring(0, 2).toUpperCase();
+  }
+  return '?';
+}
+
 export default function ComptePage() {
   const router = useRouter();
   const { user, loading: authLoading, signOut } = useAuth();
   const { translate, currentLanguage, setLanguage } = useLanguage();
+  const { isDark } = useTheme();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,9 +91,13 @@ export default function ComptePage() {
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [changingPlan, setChangingPlan] = useState(false);
 
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   useEffect(() => {
     if (!authLoading && !user) {
-      // Pass the current referrer as returnTo so user can go back to where they came from
       const returnTo = typeof window !== 'undefined' ? document.referrer : '';
       const returnPath = returnTo && new URL(returnTo).origin === window.location.origin
         ? new URL(returnTo).pathname
@@ -132,9 +166,7 @@ export default function ComptePage() {
         throw new Error('Failed to save');
       }
 
-      // Update language context
       setLanguage(selectedLocale as 'en' | 'fr' | 'de');
-
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -180,7 +212,6 @@ export default function ComptePage() {
         throw new Error(data.error || 'Failed to cancel');
       }
 
-      // Refresh profile to show updated status
       await fetchProfile();
       setShowCancelConfirm(false);
       setSaved(true);
@@ -210,7 +241,6 @@ export default function ComptePage() {
         throw new Error(data.error || 'Failed to change plan');
       }
 
-      // Redirect to Stripe checkout for the new plan
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       }
@@ -230,9 +260,114 @@ export default function ComptePage() {
     });
   };
 
+  // Open crop modal when file is selected
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setAvatarError('Type de fichier non supporté. Utilisez JPG, PNG, WebP ou GIF.');
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Le fichier est trop volumineux. Taille maximum: 5MB.');
+      e.target.value = '';
+      return;
+    }
+
+    setAvatarError(null);
+    setSelectedFile(file);
+
+    // Create URL for preview
+    const imageUrl = URL.createObjectURL(file);
+    setCropImageUrl(imageUrl);
+
+    // Reset input
+    e.target.value = '';
+  };
+
+  // Upload cropped image
+  const handleCroppedAvatarUpload = async (croppedBlob: Blob) => {
+    setUploadingAvatar(true);
+    setAvatarError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('avatar', croppedBlob, 'avatar.jpg');
+
+      const response = await fetch('/api/profile/avatar', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'upload');
+      }
+
+      setProfile(prev => prev ? { ...prev, avatar_url: data.avatar_url } : null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+
+      // Close modal
+      closeCropModal();
+    } catch (err: any) {
+      console.error('Error uploading avatar:', err);
+      setAvatarError(err.message || translate('account_error_saving'));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  // Close crop modal and cleanup
+  const closeCropModal = () => {
+    if (cropImageUrl) {
+      URL.revokeObjectURL(cropImageUrl);
+    }
+    setCropImageUrl(null);
+    setSelectedFile(null);
+  };
+
+  const handleAvatarDelete = async () => {
+    setUploadingAvatar(true);
+    setAvatarError(null);
+
+    try {
+      const response = await fetch('/api/profile/avatar', {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
+
+      setProfile(prev => prev ? { ...prev, avatar_url: null } : null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      console.error('Error deleting avatar:', err);
+      setAvatarError(err.message || translate('account_error_saving'));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const userInitials = getUserInitials(profile?.full_name || null, profile?.email || user?.email || null);
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors ${
+        isDark ? 'bg-neutral-950' : 'bg-gray-50'
+      }`}>
         <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
       </div>
     );
@@ -243,333 +378,548 @@ export default function ComptePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
-      {/* Header */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-orange-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm font-medium">{translate('account_back')}</span>
-        </button>
+    <div className={`min-h-screen transition-colors ${
+      isDark ? 'bg-neutral-950' : 'bg-gray-50'
+    }`}>
+      {/* Top Bar */}
+      <div className={`border-b sticky top-0 z-10 backdrop-blur-xl ${
+        isDark ? 'bg-neutral-950/80 border-neutral-800' : 'bg-white/80 border-gray-200'
+      }`}>
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${
+              isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {translate('account_back')}
+          </button>
+          <Link
+            href="/dashboard"
+            className={`text-sm font-medium transition-colors ${
+              isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {translate('my_courses_button')}
+          </Link>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 pb-16">
-        <div className="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 sm:px-8 py-6 flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
-              <Settings className="w-8 h-8 text-white" />
-            </div>
-            <div className="text-white">
-              <h1 className="text-xl sm:text-2xl font-bold">
-                {translate('account_title')}
-              </h1>
-              <p className="text-orange-100 text-sm mt-1">
-                {translate('account_subtitle')}
-              </p>
-            </div>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* Alerts */}
+        {(error || avatarError) && (
+          <div className={`rounded-xl p-4 text-sm flex items-center gap-3 ${
+            isDark ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
+          }`}>
+            <Shield className="w-5 h-5 flex-shrink-0" />
+            {error || avatarError}
           </div>
+        )}
 
-          <div className="p-6 sm:p-8 space-y-8">
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
-                {error}
-              </div>
-            )}
+        {saved && (
+          <div className={`rounded-xl p-4 text-sm flex items-center gap-3 ${
+            isDark ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-green-50 border border-green-200 text-green-700'
+          }`}>
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            {translate('account_saved')}
+          </div>
+        )}
 
-            {saved && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-green-700 text-sm flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5" />
-                {translate('account_saved')}
-              </div>
-            )}
-
-            {/* Subscription Status */}
-            <div className="bg-gray-50 rounded-2xl p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Crown className="w-5 h-5 text-orange-500" />
-                {translate('account_subscription')}
-              </h2>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">{translate('account_plan')}</span>
-                  <span className={`font-semibold ${profile?.isPremium ? 'text-orange-600' : 'text-gray-900'}`}>
-                    {profile?.isPremium
-                      ? `Premium ${currentPlan === 'annual' ? translate('account_plan_annual') : translate('account_plan_monthly')}`
-                      : translate('account_plan_free')
-                    }
-                  </span>
+        {/* Profile Section */}
+        <section className={`rounded-2xl border overflow-hidden ${
+          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+        }`}>
+          {/* Profile Header with Avatar */}
+          <div className={`p-6 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
+            <div className="flex items-center gap-4">
+              {/* Avatar with edit button overlay */}
+              <div className="relative group flex-shrink-0">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg overflow-hidden relative">
+                  {profile?.avatar_url ? (
+                    <Image
+                      src={profile.avatar_url}
+                      alt="Avatar"
+                      fill
+                      className="object-cover rounded-full"
+                      unoptimized
+                    />
+                  ) : (
+                    <span className="text-xl font-bold text-white">{userInitials}</span>
+                  )}
                 </div>
-
-                {profile?.isPremium && profile?.subscription_expires_at && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600 flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      {translate('account_expires')}
-                    </span>
-                    <span className="font-medium text-gray-900">
-                      {formatDate(profile.subscription_expires_at)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Change plan button - only for premium users without pending cancellation */}
-                {profile?.isPremium && !profile?.subscription_cancel_at_period_end && (
-                  <div className="pt-2">
-                    {!showChangePlan ? (
-                      <button
-                        onClick={() => setShowChangePlan(true)}
-                        className="inline-flex items-center gap-2 text-sm text-orange-600 hover:text-orange-700 transition-colors"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                        {translate('account_change_plan')}
-                      </button>
-                    ) : (
-                      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
-                        <p className="text-sm font-medium text-gray-900">
-                          {translate('account_change_plan_title')}
-                        </p>
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            onClick={() => handleChangePlan('monthly')}
-                            disabled={changingPlan || currentPlan === 'monthly'}
-                            className={`px-4 py-3 rounded-xl border-2 text-center transition-all ${
-                              currentPlan === 'monthly'
-                                ? 'border-orange-500 bg-orange-50 text-orange-700'
-                                : 'border-gray-200 hover:border-orange-300 text-gray-700'
-                            } disabled:opacity-60`}
-                          >
-                            <div className="font-semibold">{translate('account_plan_monthly')}</div>
-                            <div className="text-xs text-gray-500 mt-1">9,99€/{translate('account_per_month')}</div>
-                            {currentPlan === 'monthly' && (
-                              <div className="text-xs text-orange-600 mt-1">{translate('account_current_plan')}</div>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleChangePlan('annual')}
-                            disabled={changingPlan || currentPlan === 'annual'}
-                            className={`px-4 py-3 rounded-xl border-2 text-center transition-all ${
-                              currentPlan === 'annual'
-                                ? 'border-orange-500 bg-orange-50 text-orange-700'
-                                : 'border-gray-200 hover:border-orange-300 text-gray-700'
-                            } disabled:opacity-60`}
-                          >
-                            <div className="font-semibold">{translate('account_plan_annual')}</div>
-                            <div className="text-xs text-gray-500 mt-1">59,99€/{translate('account_per_year')}</div>
-                            {currentPlan === 'annual' && (
-                              <div className="text-xs text-orange-600 mt-1">{translate('account_current_plan')}</div>
-                            )}
-                          </button>
-                        </div>
-                        {changingPlan && (
-                          <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            {translate('account_changing_plan')}
-                          </div>
-                        )}
-                        <p className="text-xs text-gray-500">
-                          {translate('account_change_plan_info')}
-                        </p>
-                        <button
-                          onClick={() => setShowChangePlan(false)}
-                          className="text-sm text-gray-500 hover:text-gray-700"
-                        >
-                          {translate('account_delete_cancel')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 flex items-center gap-2">
-                    <Upload className="w-4 h-4" />
-                    {translate('account_uploads_this_month')}
-                  </span>
-                  <span className="font-medium text-gray-900">
-                    {profile?.hasUnlimitedUploads
-                      ? `${profile?.monthly_upload_count || 0} / ∞`
-                      : `${profile?.monthly_upload_count || 0} / ${profile?.isPremium ? '∞' : 1}`
-                    }
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">{translate('account_total_courses')}</span>
-                  <span className="font-medium text-gray-900">{profile?.courseCount || 0}</span>
-                </div>
-
-                {!profile?.isPremium && (
-                  <Link
-                    href="/paywall"
-                    className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all"
-                  >
-                    <Crown className="w-5 h-5" />
-                    {translate('account_upgrade')}
-                  </Link>
-                )}
-
-                {/* Cancel subscription */}
-                {profile?.isPremium && !profile?.subscription_cancel_at_period_end && (
-                  <div className="pt-4 border-t border-gray-200">
-                    {!showCancelConfirm ? (
-                      <button
-                        onClick={() => setShowCancelConfirm(true)}
-                        className="text-sm text-gray-500 hover:text-red-600 transition-colors"
-                      >
-                        {translate('account_cancel_subscription')}
-                      </button>
-                    ) : (
-                      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
-                        <p className="text-sm text-gray-700">
-                          {translate('account_cancel_confirm')}
-                        </p>
-                        <div className="flex gap-3">
-                          <button
-                            onClick={handleCancelSubscription}
-                            disabled={canceling}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60 transition-all"
-                          >
-                            {canceling && <Loader2 className="w-4 h-4 animate-spin" />}
-                            {translate('account_cancel_yes')}
-                          </button>
-                          <button
-                            onClick={() => setShowCancelConfirm(false)}
-                            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-all"
-                          >
-                            {translate('account_cancel_no')}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Subscription already canceled */}
-                {profile?.isPremium && profile?.subscription_cancel_at_period_end && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                      <p className="text-sm text-orange-700">
-                        {translate('account_subscription_canceled')}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Profile Info */}
-            <div className="space-y-6">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <User className="w-5 h-5 text-orange-500" />
-                {translate('account_profile')}
-              </h2>
-
-              {/* Email (read-only) */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  {translate('account_email')}
+                {/* Edit button - positioned at bottom right of avatar (for new upload) */}
+                <label className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-all shadow-md border-2 ${
+                  isDark
+                    ? 'bg-neutral-800 border-neutral-900 hover:bg-neutral-700'
+                    : 'bg-white border-white hover:bg-gray-50'
+                } ${uploadingAvatar ? 'pointer-events-none' : ''}`}>
+                  {uploadingAvatar ? (
+                    <Loader2 className="w-3.5 h-3.5 text-orange-500 animate-spin" />
+                  ) : (
+                    <Camera className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-300' : 'text-gray-600'}`} />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleAvatarSelect}
+                    disabled={uploadingAvatar}
+                    className="sr-only"
+                  />
                 </label>
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600">
-                  <Mail className="w-5 h-5" />
-                  {profile?.email || user.email}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {translate('account_email_readonly')}
+                {/* Delete button - shows on hover if avatar exists */}
+                {profile?.avatar_url && !uploadingAvatar && (
+                  <button
+                    onClick={handleAvatarDelete}
+                    className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md ${
+                      isDark ? 'bg-red-500 hover:bg-red-600' : 'bg-red-500 hover:bg-red-600'
+                    }`}
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                )}
+              </div>
+
+              {/* User Info */}
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {profile?.full_name || profile?.email || user.email}
                 </p>
               </div>
 
-              {/* Full Name */}
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-semibold text-gray-900 mb-2">
-                  {translate('account_name')}
-                </label>
-                <input
-                  type="text"
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={translate('account_name_placeholder')}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-gray-900 placeholder-gray-400"
-                />
-              </div>
-
-              {/* Language */}
-              <div>
-                <label htmlFor="locale" className="block text-sm font-semibold text-gray-900 mb-2">
-                  {translate('account_language')}
-                </label>
-                <select
-                  id="locale"
-                  value={selectedLocale}
-                  onChange={(e) => setSelectedLocale(e.target.value as 'en' | 'de' | 'fr')}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all text-gray-900 bg-white"
-                >
-                  <option value="fr">Français</option>
-                  <option value="en">English</option>
-                  <option value="de">Deutsch</option>
-                </select>
-              </div>
-
-              {/* Save Button */}
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-              >
-                {saving ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+              {/* Plan Badge */}
+              <span className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                profile?.isPremium
+                  ? 'bg-gradient-to-r from-orange-500/20 to-yellow-500/20 text-orange-500 border border-orange-500/20'
+                  : isDark
+                    ? 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+              }`}>
+                {profile?.isPremium ? (
+                  <>
+                    <Crown className="w-3.5 h-3.5" />
+                    Premium
+                  </>
                 ) : (
-                  <Save className="w-5 h-5" />
+                  <>
+                    <Zap className="w-3.5 h-3.5" />
+                    Free
+                  </>
                 )}
-                {translate('account_save')}
-              </button>
+              </span>
+            </div>
+          </div>
+
+          {/* Profile Form */}
+          <div className="p-6 space-y-5">
+            {/* Email (read-only) */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                isDark ? 'text-neutral-300' : 'text-gray-700'
+              }`}>
+                {translate('account_email')}
+              </label>
+              <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${
+                isDark
+                  ? 'bg-neutral-800/50 border-neutral-700 text-neutral-400'
+                  : 'bg-gray-50 border-gray-200 text-gray-500'
+              }`}>
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                <span className="text-sm truncate">{profile?.email || user.email}</span>
+              </div>
             </div>
 
-            {/* Delete Account */}
-            <div className="border-t border-gray-200 pt-8">
-              {!showDeleteConfirm ? (
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="text-gray-500 hover:text-red-600 transition-colors"
-                >
-                  {translate('account_delete')}
-                </button>
+            {/* Full Name */}
+            <div>
+              <label htmlFor="fullName" className={`block text-sm font-medium mb-2 ${
+                isDark ? 'text-neutral-300' : 'text-gray-700'
+              }`}>
+                {translate('account_name')}
+              </label>
+              <input
+                type="text"
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder={translate('account_name_placeholder')}
+                className={`w-full px-4 py-2.5 rounded-lg border text-sm transition-all outline-none ${
+                  isDark
+                    ? 'bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500'
+                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500'
+                }`}
+              />
+            </div>
+
+            {/* Language */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                isDark ? 'text-neutral-300' : 'text-gray-700'
+              }`}>
+                <Globe className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                {translate('account_language')}
+              </label>
+              <div className="flex gap-2">
+                {[
+                  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+                  { code: 'en', label: 'English', flag: '🇬🇧' },
+                  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+                ].map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => setSelectedLocale(lang.code as 'fr' | 'en' | 'de')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
+                      selectedLocale === lang.code
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : isDark
+                          ? 'bg-neutral-800 text-neutral-300 border-neutral-700 hover:border-neutral-600'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span>{lang.flag}</span>
+                    <span className="hidden sm:inline">{lang.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-4">
-                  <p className="text-red-700 text-sm">
-                    {translate('account_delete_confirm')}
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              {translate('account_save')}
+            </button>
+          </div>
+        </section>
+
+        {/* Subscription Section */}
+        <section className={`rounded-2xl border overflow-hidden ${
+          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+        }`}>
+          <div className={`px-6 py-4 border-b flex items-center justify-between ${
+            isDark ? 'border-neutral-800' : 'border-gray-100'
+          }`}>
+            <h2 className={`font-semibold flex items-center gap-2 ${
+              isDark ? 'text-white' : 'text-gray-900'
+            }`}>
+              <Sparkles className="w-4 h-4 text-orange-500" />
+              {translate('account_subscription')}
+            </h2>
+            {!profile?.isPremium && (
+              <Link
+                href="/paywall"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-all"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                {translate('account_upgrade')}
+              </Link>
+            )}
+          </div>
+
+          <div className="p-6">
+            {/* Plan Info */}
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                  {translate('account_plan')}
+                </p>
+                <p className={`font-semibold ${
+                  profile?.isPremium ? 'text-orange-500' : isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {profile?.isPremium
+                    ? `Premium ${currentPlan === 'annual' ? translate('account_plan_annual') : translate('account_plan_monthly')}`
+                    : translate('account_plan_free')
+                  }
+                </p>
+              </div>
+              {profile?.isPremium && profile?.subscription_expires_at && (
+                <div className="text-right">
+                  <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                    {translate('account_expires')}
                   </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleDeleteAccount}
-                      disabled={deleting}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-60 transition-all"
-                    >
-                      {deleting ? (
+                  <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {formatDate(profile.subscription_expires_at)}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className={`grid grid-cols-2 gap-3 p-4 rounded-xl mb-5 ${
+              isDark ? 'bg-neutral-800/50' : 'bg-gray-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                  isDark ? 'bg-neutral-700' : 'bg-white'
+                }`}>
+                  <Upload className="w-4 h-4 text-orange-500" />
+                </div>
+                <div>
+                  <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {profile?.hasUnlimitedUploads ? '∞' : `${profile?.monthly_upload_count || 0}`}
+                  </p>
+                  <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                    Uploads
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                  isDark ? 'bg-neutral-700' : 'bg-white'
+                }`}>
+                  <BookOpen className="w-4 h-4 text-orange-500" />
+                </div>
+                <div>
+                  <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {profile?.courseCount || 0}
+                  </p>
+                  <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                    {translate('account_total_courses')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Change Plan - Premium Users Only */}
+            {profile?.isPremium && !profile?.subscription_cancel_at_period_end && (
+              <>
+                {!showChangePlan ? (
+                  <button
+                    onClick={() => setShowChangePlan(true)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+                      isDark
+                        ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <RefreshCw className="w-4 h-4" />
+                      {translate('account_change_plan')}
+                    </span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <div className={`p-4 rounded-lg space-y-4 ${
+                    isDark ? 'bg-neutral-800' : 'bg-gray-50'
+                  }`}>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => handleChangePlan('monthly')}
+                        disabled={changingPlan || currentPlan === 'monthly'}
+                        className={`p-3 rounded-lg border-2 text-center transition-all ${
+                          currentPlan === 'monthly'
+                            ? 'border-orange-500 bg-orange-500/10'
+                            : isDark
+                              ? 'border-neutral-700 hover:border-neutral-600'
+                              : 'border-gray-200 hover:border-gray-300'
+                        } disabled:opacity-60`}
+                      >
+                        <div className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {translate('account_plan_monthly')}
+                        </div>
+                        <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                          9,99€/{translate('account_per_month')}
+                        </div>
+                        {currentPlan === 'monthly' && (
+                          <div className="text-xs text-orange-500 mt-1 font-medium">
+                            {translate('account_current_plan')}
+                          </div>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleChangePlan('annual')}
+                        disabled={changingPlan || currentPlan === 'annual'}
+                        className={`p-3 rounded-lg border-2 text-center transition-all ${
+                          currentPlan === 'annual'
+                            ? 'border-orange-500 bg-orange-500/10'
+                            : isDark
+                              ? 'border-neutral-700 hover:border-neutral-600'
+                              : 'border-gray-200 hover:border-gray-300'
+                        } disabled:opacity-60`}
+                      >
+                        <div className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {translate('account_plan_annual')}
+                        </div>
+                        <div className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                          59,99€/{translate('account_per_year')}
+                        </div>
+                        {currentPlan === 'annual' && (
+                          <div className="text-xs text-orange-500 mt-1 font-medium">
+                            {translate('account_current_plan')}
+                          </div>
+                        )}
+                      </button>
+                    </div>
+                    {changingPlan && (
+                      <div className={`flex items-center justify-center gap-2 text-sm ${
+                        isDark ? 'text-neutral-400' : 'text-gray-500'
+                      }`}>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                      {translate('account_delete_yes')}
-                    </button>
+                        {translate('account_changing_plan')}
+                      </div>
+                    )}
                     <button
-                      onClick={() => setShowDeleteConfirm(false)}
-                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all"
+                      onClick={() => setShowChangePlan(false)}
+                      className={`text-sm ${isDark ? 'text-neutral-500 hover:text-neutral-400' : 'text-gray-500 hover:text-gray-600'}`}
                     >
                       {translate('account_delete_cancel')}
                     </button>
                   </div>
+                )}
+
+                {/* Cancel Subscription */}
+                <div className={`mt-4 pt-4 border-t ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
+                  {!showCancelConfirm ? (
+                    <button
+                      onClick={() => setShowCancelConfirm(true)}
+                      className={`text-sm ${isDark ? 'text-neutral-500 hover:text-red-400' : 'text-gray-500 hover:text-red-600'} transition-colors`}
+                    >
+                      {translate('account_cancel_subscription')}
+                    </button>
+                  ) : (
+                    <div className={`rounded-lg p-4 space-y-3 ${
+                      isDark ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-100'
+                    }`}>
+                      <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                        {translate('account_cancel_confirm')}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCancelSubscription}
+                          disabled={canceling}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition-all"
+                        >
+                          {canceling && <Loader2 className="w-3 h-3 animate-spin" />}
+                          {translate('account_cancel_yes')}
+                        </button>
+                        <button
+                          onClick={() => setShowCancelConfirm(false)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                            isDark
+                              ? 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {translate('account_cancel_no')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              </>
+            )}
+
+            {/* Subscription Already Canceled */}
+            {profile?.isPremium && profile?.subscription_cancel_at_period_end && (
+              <div className={`rounded-lg p-4 ${
+                isDark ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-orange-50 border border-orange-100'
+              }`}>
+                <p className={`text-sm ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
+                  {translate('account_subscription_canceled')}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Danger Zone Section */}
+        <section className={`rounded-2xl border overflow-hidden ${
+          isDark ? 'bg-neutral-900 border-red-500/20' : 'bg-white border-red-100'
+        }`}>
+          <div className={`px-6 py-4 border-b ${
+            isDark ? 'border-red-500/20' : 'border-red-100'
+          }`}>
+            <h2 className={`font-semibold flex items-center gap-2 ${
+              isDark ? 'text-red-400' : 'text-red-700'
+            }`}>
+              <Shield className="w-4 h-4" />
+              {translate('account_danger_zone')}
+            </h2>
+          </div>
+
+          <div className="p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className={`font-medium text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {translate('account_delete')}
+                </h3>
+                <p className={`text-sm mt-0.5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                  {translate('account_delete_description')}
+                </p>
+              </div>
+              {!showDeleteConfirm && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    isDark
+                      ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                      : 'bg-red-50 text-red-600 hover:bg-red-100'
+                  }`}
+                >
+                  {translate('account_delete')}
+                </button>
               )}
             </div>
+
+            {showDeleteConfirm && (
+              <div className={`mt-4 pt-4 border-t space-y-3 ${
+                isDark ? 'border-neutral-800' : 'border-gray-100'
+              }`}>
+                <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                  {translate('account_delete_confirm')}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleting}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition-all"
+                  >
+                    {deleting ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3 h-3" />
+                    )}
+                    {translate('account_delete_yes')}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      isDark
+                        ? 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {translate('account_delete_cancel')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </section>
       </div>
+
+      {/* Avatar Crop Modal */}
+      {cropImageUrl && (
+        <AvatarCropModal
+          imageUrl={cropImageUrl}
+          onClose={closeCropModal}
+          onSave={handleCroppedAvatarUpload}
+          isDark={isDark}
+          translations={{
+            title: translate('account_crop_title'),
+            cancel: translate('cancel'),
+            save: translate('save'),
+            zoom: translate('account_crop_zoom'),
+            reset: translate('account_crop_reset'),
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { trackEvent } from '@/lib/posthog';
 import UploadLimitModal from './UploadLimitModal';
 import DuplicateCourseModal from './DuplicateCourseModal';
@@ -39,6 +40,7 @@ export default function UploadZone() {
   const router = useRouter();
   const { translate } = useLanguage();
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -224,7 +226,11 @@ export default function UploadZone() {
   const renderStateBadge = () => {
     if (isProcessing) {
       return (
-        <div className="flex items-center gap-2 text-orange-700 bg-orange-50 border border-orange-100 px-3 py-2 rounded-full text-xs font-semibold">
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold ${
+          isDark
+            ? 'text-orange-400 bg-orange-950/50 border border-orange-800/50'
+            : 'text-orange-700 bg-orange-50 border border-orange-100'
+        }`}>
           <Loader2 className="w-4 h-4 animate-spin" />
           {translate('upload_processing_title')}
         </div>
@@ -232,7 +238,11 @@ export default function UploadZone() {
     }
     if (files.length) {
       return (
-        <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-100 px-3 py-2 rounded-full text-xs font-semibold">
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold ${
+          isDark
+            ? 'text-green-400 bg-green-950/50 border border-green-800/50'
+            : 'text-green-700 bg-green-50 border border-green-100'
+        }`}>
           <CheckCircle2 className="w-4 h-4" />
           {translate('upload_after_state_title')}
         </div>
@@ -242,14 +252,18 @@ export default function UploadZone() {
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-orange-100 shadow-lg p-4 sm:p-6">
+    <div className={`rounded-3xl shadow-lg p-4 sm:p-6 ${
+      isDark
+        ? 'bg-neutral-900 border border-neutral-800'
+        : 'bg-white border border-orange-100'
+    }`}>
       {/* Header - Title and subtitle with formats */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-bold text-gray-900">{translate('home_upload_title')}</h2>
+          <h2 className={`text-lg font-bold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>{translate('home_upload_title')}</h2>
           {renderStateBadge()}
         </div>
-        <p className="text-sm text-gray-600">
+        <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
           {translate('home_upload_helper')}
         </p>
       </div>
@@ -264,8 +278,12 @@ export default function UploadZone() {
         onDrop={handleDrop}
         className={`block border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
           isDragging
-            ? 'border-orange-400 bg-orange-50'
-            : 'border-gray-200 bg-gray-50 hover:border-orange-300'
+            ? isDark
+              ? 'border-orange-500 bg-orange-950/30'
+              : 'border-orange-400 bg-orange-50'
+            : isDark
+              ? 'border-neutral-700 bg-neutral-800 hover:border-orange-500/50'
+              : 'border-gray-200 bg-gray-50 hover:border-orange-300'
         } ${isProcessing ? 'opacity-75 pointer-events-none' : ''}`}
       >
         <input
@@ -283,7 +301,7 @@ export default function UploadZone() {
           </div>
 
           {/* Dropzone hint */}
-          <p className="text-base font-semibold text-gray-900">
+          <p className={`text-base font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
             {translate('home_upload_drop_text')}
           </p>
 
@@ -308,7 +326,11 @@ export default function UploadZone() {
                 e.preventDefault();
                 cameraInputRef.current?.click();
               }}
-              className="md:hidden px-6 py-3 rounded-xl border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:border-orange-400 hover:text-orange-600 transition-colors flex items-center justify-center gap-2"
+              className={`md:hidden px-6 py-3 rounded-xl border-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                isDark
+                  ? 'border-neutral-600 text-neutral-300 hover:border-orange-500/50 hover:text-orange-400'
+                  : 'border-gray-300 text-gray-700 hover:border-orange-400 hover:text-orange-600'
+              }`}
             >
               <Camera className="w-4 h-4" />
               {translate('home_upload_use_camera')}
@@ -324,26 +346,26 @@ export default function UploadZone() {
           </div>
 
           {/* Helper text for camera - mobile only */}
-          <p className="md:hidden text-xs text-gray-500 mt-2">
+          <p className={`md:hidden text-xs mt-2 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
             {translate('home_upload_camera_helper')}
           </p>
         </div>
       </label>
 
       {/* Small footer text */}
-      <p className="text-xs text-gray-400 mt-3 text-center">
+      <p className={`text-xs mt-3 text-center ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
         {translate('home_upload_limit')}
       </p>
 
       {files.length > 0 && (
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-800">
+            <p className={`text-sm font-semibold ${isDark ? 'text-neutral-200' : 'text-gray-800'}`}>
               {translate('upload_selected_files')}
             </p>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+              className={`text-xs font-semibold ${isDark ? 'text-orange-400 hover:text-orange-300' : 'text-orange-600 hover:text-orange-700'}`}
             >
               {translate('upload_replace_files')}
             </button>
@@ -352,22 +374,26 @@ export default function UploadZone() {
             {files.map((file) => (
               <div
                 key={file.name}
-                className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 bg-white"
+                className={`flex items-center justify-between rounded-xl border px-3 py-2 ${
+                  isDark
+                    ? 'border-neutral-700 bg-neutral-800'
+                    : 'border-gray-200 bg-white'
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <FileText className="w-4 h-4 text-gray-500" />
+                  <FileText className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
                   <div>
-                    <p className="text-sm font-semibold text-gray-900 line-clamp-1">
+                    <p className={`text-sm font-semibold line-clamp-1 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
                       {file.name}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
                       {file.type || 'file'} - {formatSize(file.size)}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => handleRemove(file.name)}
-                  className="p-1 rounded-full hover:bg-gray-100 text-gray-500"
+                  className={`p-1 rounded-full ${isDark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}
                   aria-label="Remove file"
                 >
                   <X className="w-4 h-4" />
@@ -396,22 +422,34 @@ export default function UploadZone() {
             </>
           )}
         </button>
-        <div className="flex-1 sm:flex-none sm:w-48 h-[60px] sm:h-12 inline-flex items-center justify-center rounded-xl border border-gray-200 text-sm text-gray-700 bg-white">
+        <div className={`flex-1 sm:flex-none sm:w-48 h-[60px] sm:h-12 inline-flex items-center justify-center rounded-xl border text-sm ${
+          isDark
+            ? 'border-neutral-700 text-neutral-300 bg-neutral-800'
+            : 'border-gray-200 text-gray-700 bg-white'
+        }`}>
           {files.length ? translate('upload_after_state_title') : translate('upload_action_waiting')}
         </div>
       </div>
 
       {error && (
-        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className={`mt-4 rounded-xl border p-3 text-sm ${
+          isDark
+            ? 'border-red-800/50 bg-red-950/30 text-red-400'
+            : 'border-red-200 bg-red-50 text-red-700'
+        }`}>
           <p className="font-semibold mb-1">{translate('upload_error_state')}</p>
           <p>{error || translate('upload_error_state_help')}</p>
         </div>
       )}
 
       {isProcessing && (
-        <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 p-3 text-sm text-orange-800">
+        <div className={`mt-4 rounded-xl border p-3 text-sm ${
+          isDark
+            ? 'border-orange-800/50 bg-orange-950/30 text-orange-400'
+            : 'border-orange-100 bg-orange-50 text-orange-800'
+        }`}>
           <p className="font-semibold">{translate('upload_processing_title')}</p>
-          <p className="text-xs text-orange-700 mt-1">
+          <p className={`text-xs mt-1 ${isDark ? 'text-orange-500' : 'text-orange-700'}`}>
             {translate('upload_processing_subtitle')}
           </p>
         </div>

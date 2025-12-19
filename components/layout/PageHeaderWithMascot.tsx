@@ -2,12 +2,14 @@
 
 import Image from 'next/image';
 import TopBarActions from './TopBarActions';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PageHeaderWithMascotProps {
   title: string;
   subtitle?: string;
   hideMyCoursesButton?: boolean;
   maxWidth?: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
+  showDarkModeToggle?: boolean;
 }
 
 /**
@@ -19,7 +21,10 @@ export default function PageHeaderWithMascot({
   subtitle,
   hideMyCoursesButton = false,
   maxWidth = '5xl',
+  showDarkModeToggle = false,
 }: PageHeaderWithMascotProps) {
+  const { isDark } = useTheme();
+
   const maxWidthClass = {
     md: 'max-w-md',
     lg: 'max-w-lg',
@@ -31,7 +36,11 @@ export default function PageHeaderWithMascot({
   }[maxWidth];
 
   return (
-    <header className="bg-white border-b border-gray-200">
+    <header className={`border-b transition-colors sticky top-0 z-50 backdrop-blur-xl ${
+      isDark && showDarkModeToggle
+        ? 'bg-neutral-900/95 border-neutral-800'
+        : 'bg-white/95 border-gray-200'
+    }`}>
       <div className={`${maxWidthClass} mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4`}>
         {/* Left side: Mascot + Title */}
         <div className="flex items-center gap-3 min-w-0">
@@ -44,17 +53,21 @@ export default function PageHeaderWithMascot({
           />
           <div className="min-w-0">
             {subtitle && (
-              <p className="text-xs font-medium text-orange-600 mb-0.5 truncate">
+              <p className={`text-xs font-medium mb-0.5 truncate ${
+                isDark && showDarkModeToggle ? 'text-orange-400' : 'text-orange-600'
+              }`}>
                 {subtitle}
               </p>
             )}
-            <h1 className="text-lg font-bold text-gray-900 truncate">{title}</h1>
+            <h1 className={`text-lg font-bold truncate ${
+              isDark && showDarkModeToggle ? 'text-neutral-50' : 'text-gray-900'
+            }`}>{title}</h1>
           </div>
         </div>
 
         {/* Right side: TopBarActions */}
         <div className="flex-shrink-0">
-          <TopBarActions hideMyCoursesButton={hideMyCoursesButton} />
+          <TopBarActions hideMyCoursesButton={hideMyCoursesButton} showDarkModeToggle={showDarkModeToggle} />
         </div>
       </div>
     </header>

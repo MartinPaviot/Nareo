@@ -557,31 +557,45 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
       console.log('   - Can be text-fixed:', readabilityCheck.canBeFixed ? 'YES' : 'NO');
     }
 
-    // Check if we have corrupted formula pages that need targeted OCR
-    if (parseResult.corruptedPages.size > 0 && parseResult.corruptedZones.length > 0) {
-      console.log(`🎯 TARGETED OCR: ${parseResult.corruptedPages.size} pages have corrupted formulas`);
+    // Combine corrupted pages AND poor pages for targeted OCR
+    // Both need OCR: corrupted (formula issues) and poor (graphics-heavy with little text)
+    const pagesToOCR = new Set<number>([
+      ...parseResult.corruptedPages,
+      ...parseResult.poorPages
+    ]);
+
+    // Check if we have pages that need targeted OCR
+    if (pagesToOCR.size > 0) {
+      const corruptedCount = parseResult.corruptedPages.size;
+      const poorCount = parseResult.poorPages.size;
+      console.log(`🎯 TARGETED OCR: ${pagesToOCR.size} pages need OCR`);
+      console.log(`   - Corrupted (formulas): ${corruptedCount} pages [${[...parseResult.corruptedPages].join(', ')}]`);
+      console.log(`   - Poor (graphics): ${poorCount} pages [${[...parseResult.poorPages].join(', ')}]`);
 
       // Only do targeted OCR if:
-      // 1. We have corrupted pages
-      // 2. The rest of the text is mostly readable (not severe corruption)
-      // 3. The number of corrupted pages is reasonable (< 50% of document)
+      // 1. We have pages to OCR
+      // 2. The number of pages to OCR is reasonable (< 60% of document)
+      // 3. Max 30 pages to OCR (increased from 5 to handle PowerPoint exports with graphics)
       const totalPages = parseResult.pageTexts.size;
-      const corruptedRatio = parseResult.corruptedPages.size / totalPages;
+      const ocrRatio = pagesToOCR.size / totalPages;
+      const MAX_PAGES_TO_OCR = 30;
 
-      if (corruptedRatio < 0.5) {
-        console.log(`   - Corrupted pages ratio: ${(corruptedRatio * 100).toFixed(1)}% - using targeted OCR`);
+      if (ocrRatio < 0.6 && pagesToOCR.size <= MAX_PAGES_TO_OCR) {
+        console.log(`   - Pages to OCR ratio: ${(ocrRatio * 100).toFixed(1)}% (${pagesToOCR.size} pages) - using targeted OCR`);
 
         try {
-          // Get OCR text for corrupted pages only
-          const ocrResults = await extractTextFromSpecificPages(buffer, parseResult.corruptedPages);
+          // Get OCR text for all pages that need it
+          const ocrResults = await extractTextFromSpecificPages(buffer, pagesToOCR);
 
-          // Rebuild full text, replacing corrupted pages with OCR results
+          // Rebuild full text, replacing OCR'd pages with OCR results
           let rebuiltText = '';
           for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
             if (ocrResults.has(pageNum)) {
               // Use OCR result for this page
-              rebuiltText += ocrResults.get(pageNum) + '\n\n';
-              console.log(`   ✅ Page ${pageNum}: replaced with OCR (${ocrResults.get(pageNum)?.length} chars)`);
+              const ocrText = ocrResults.get(pageNum) || '';
+              rebuiltText += ocrText + '\n\n';
+              const reason = parseResult.corruptedPages.has(pageNum) ? 'corrupted' : 'poor/graphics';
+              console.log(`   ✅ Page ${pageNum} (${reason}): replaced with OCR (${ocrText.length} chars)`);
             } else {
               // Use original text for this page
               const originalPageText = parseResult.pageTexts.get(pageNum) || '';
@@ -590,7 +604,9 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
           }
 
           const finalCleaned = cleanPDFText(rebuiltText);
-          console.log('✅ Targeted OCR complete - rebuilt document with formula fixes');
+          console.log('✅ Targeted OCR complete - rebuilt document');
+          console.log(`   - Original pages kept: ${totalPages - ocrResults.size}`);
+          console.log(`   - Pages OCR'd: ${ocrResults.size}`);
           console.log('📋 First 300 chars:', finalCleaned.substring(0, 300));
           return finalCleaned;
 
@@ -599,7 +615,7 @@ export async function parsePDF(buffer: Buffer): Promise<string> {
           // Fall through to text-based fixes
         }
       } else {
-        console.log(`   - Corrupted pages ratio: ${(corruptedRatio * 100).toFixed(1)}% - too high, will use full OCR if needed`);
+        console.log(`   - Pages to OCR ratio: ${(ocrRatio * 100).toFixed(1)}% - too high, will use full OCR if needed`);
       }
     }
 
@@ -701,6 +717,69 @@ interface PDFParseResult {
   pageTexts: Map<number, string>;
   corruptedPages: Set<number>;
   corruptedZones: CorruptedZone[];
+  poorPages: Set<number>;  // Pages with insufficient text (likely graphics-heavy)
+}
+
+/**
+ * Analysis of a single page's text quality
+ */
+interface PageQualityAnalysis {
+  pageNumber: number;
+  textLength: number;
+  wordCount: number;
+  hasSentences: boolean;
+  hasNumbers: boolean;
+  needsOCR: boolean;
+  reason: string;
+}
+
+/**
+ * Analyze if a page has insufficient text and needs OCR
+ * This detects "poor pages" - pages that are primarily graphical
+ * where pdf2json extracts only labels/titles but misses the visual content
+ */
+function analyzePageQuality(pageText: string, pageNumber: number): PageQualityAnalysis {
+  const text = pageText.trim();
+  const textLength = text.length;
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  const wordCount = words.length;
+
+  // Check for complete sentences (text ending with . ! or ?)
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const hasSentences = sentences.length >= 1;
+
+  // Check for numeric content (tables, data)
+  const hasNumbers = /\d+[.,]?\d*/.test(text);
+
+  // Heuristics for detecting pages that need OCR:
+  // Made LESS aggressive to avoid excessive OCR calls that cause timeouts
+  // Only flag truly empty/useless pages, not just short ones
+
+  let needsOCR = false;
+  let reason = 'Page has sufficient text';
+
+  // Rule 1: Nearly empty pages (< 30 chars) - only truly empty/graphic pages
+  // Lowered from 50 to 30 to avoid flagging slides with short titles
+  if (textLength < 30) {
+    needsOCR = true;
+    reason = `Nearly empty (${textLength} chars < 30)`;
+  }
+  // Rule 2: Very short pages (< 60 chars) with almost no words - probably just a label
+  // Lowered from 100/5 to 60/3 to be less aggressive
+  else if (textLength < 60 && wordCount < 3) {
+    needsOCR = true;
+    reason = `Label only (${wordCount} words, ${textLength} chars)`;
+  }
+
+  return {
+    pageNumber,
+    textLength,
+    wordCount,
+    hasSentences,
+    hasNumbers,
+    needsOCR,
+    reason
+  };
 }
 
 /**
@@ -757,6 +836,7 @@ async function parsePDFWithPdf2Json(buffer: Buffer): Promise<string> {
 /**
  * Parse PDF with full page-level detail for targeted OCR
  * Now includes smart table detection using Y-position clustering
+ * Enhanced with "poor page" detection for graphics-heavy pages
  */
 async function parsePDFWithPageDetail(buffer: Buffer): Promise<PDFParseResult> {
   return new Promise((resolve, reject) => {
@@ -774,6 +854,7 @@ async function parsePDFWithPageDetail(buffer: Buffer): Promise<PDFParseResult> {
         const pageTexts = new Map<number, string>();
         const corruptedPages = new Set<number>();
         const corruptedZones: CorruptedZone[] = [];
+        const poorPages = new Set<number>();
         let fullText = '';
 
         if (pdfData.Pages && Array.isArray(pdfData.Pages)) {
@@ -802,6 +883,16 @@ async function parsePDFWithPageDetail(buffer: Buffer): Promise<PDFParseResult> {
                 });
               }
             }
+
+            // NEW: Analyze page quality to detect "poor pages" (graphics-heavy)
+            // Only if not already flagged as corrupted (corruption takes priority)
+            if (!corruptedPages.has(pageNum)) {
+              const qualityAnalysis = analyzePageQuality(pageText, pageNum);
+              if (qualityAnalysis.needsOCR) {
+                poorPages.add(pageNum);
+                console.log(`📊 Page ${pageNum}: POOR - ${qualityAnalysis.reason}`);
+              }
+            }
           }
         }
 
@@ -821,7 +912,11 @@ async function parsePDFWithPageDetail(buffer: Buffer): Promise<PDFParseResult> {
           console.log(`⚠️ Found ${corruptedZones.length} corrupted formulas on ${corruptedPages.size} pages: [${[...corruptedPages].join(', ')}]`);
         }
 
-        resolve({ fullText, pageTexts, corruptedPages, corruptedZones });
+        if (poorPages.size > 0) {
+          console.log(`📉 Found ${poorPages.size} poor/graphics pages needing OCR: [${[...poorPages].join(', ')}]`);
+        }
+
+        resolve({ fullText, pageTexts, corruptedPages, corruptedZones, poorPages });
       } catch (error: any) {
         console.error('❌ Error processing PDF data:', error.message);
         reject(error);
@@ -1275,25 +1370,38 @@ export async function parsePDFWithPages(buffer: Buffer): Promise<ParsedPDFResult
       console.log('   - Can be text-fixed:', readabilityCheck.canBeFixed ? 'YES' : 'NO');
     }
 
-    // Check if we have corrupted formula pages that need targeted OCR
-    if (parseResult.corruptedPages.size > 0 && parseResult.corruptedZones.length > 0) {
-      console.log(`🎯 TARGETED OCR: ${parseResult.corruptedPages.size} pages have corrupted formulas`);
+    // Combine corrupted pages AND poor pages for targeted OCR
+    const pagesToOCR = new Set<number>([
+      ...parseResult.corruptedPages,
+      ...parseResult.poorPages
+    ]);
+
+    // Check if we have pages that need targeted OCR
+    if (pagesToOCR.size > 0) {
+      const corruptedCount = parseResult.corruptedPages.size;
+      const poorCount = parseResult.poorPages.size;
+      console.log(`🎯 TARGETED OCR: ${pagesToOCR.size} pages need OCR`);
+      console.log(`   - Corrupted (formulas): ${corruptedCount} pages`);
+      console.log(`   - Poor (graphics): ${poorCount} pages`);
 
       const totalPages = parseResult.pageTexts.size;
-      const corruptedRatio = parseResult.corruptedPages.size / totalPages;
+      const ocrRatio = pagesToOCR.size / totalPages;
+      const MAX_PAGES_TO_OCR = 30;
 
-      if (corruptedRatio < 0.5) {
-        console.log(`   - Corrupted pages ratio: ${(corruptedRatio * 100).toFixed(1)}% - using targeted OCR`);
+      if (ocrRatio < 0.6 && pagesToOCR.size <= MAX_PAGES_TO_OCR) {
+        console.log(`   - Pages to OCR ratio: ${(ocrRatio * 100).toFixed(1)}% (${pagesToOCR.size} pages) - using targeted OCR`);
 
         try {
-          const ocrResults = await extractTextFromSpecificPages(buffer, parseResult.corruptedPages);
+          const ocrResults = await extractTextFromSpecificPages(buffer, pagesToOCR);
 
           // Rebuild pages with OCR results
           const rebuiltPages: string[] = [];
           for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
             if (ocrResults.has(pageNum)) {
-              rebuiltPages.push(ocrResults.get(pageNum)!);
-              console.log(`   ✅ Page ${pageNum}: replaced with OCR (${ocrResults.get(pageNum)?.length} chars)`);
+              const ocrText = ocrResults.get(pageNum) || '';
+              rebuiltPages.push(ocrText);
+              const reason = parseResult.corruptedPages.has(pageNum) ? 'corrupted' : 'poor/graphics';
+              console.log(`   ✅ Page ${pageNum} (${reason}): replaced with OCR (${ocrText.length} chars)`);
             } else {
               const originalPageText = parseResult.pageTexts.get(pageNum) || '';
               rebuiltPages.push(cleanPDFText(originalPageText));
@@ -1302,7 +1410,7 @@ export async function parsePDFWithPages(buffer: Buffer): Promise<ParsedPDFResult
 
           const rebuiltText = rebuiltPages.join('\n\n');
           const finalCleaned = cleanPDFText(rebuiltText);
-          console.log('✅ Targeted OCR complete - rebuilt document with formula fixes');
+          console.log('✅ Targeted OCR complete - rebuilt document');
 
           return {
             text: finalCleaned,
@@ -1377,4 +1485,42 @@ export async function parsePDFWithPages(buffer: Buffer): Promise<ParsedPDFResult
 export async function parsePDFToPages(buffer: Buffer): Promise<string[]> {
   const result = await parsePDFWithPages(buffer);
   return result.pages;
+}
+
+/**
+ * Parse PDF and return RAW page texts WITHOUT OCR processing
+ * This is useful for detecting which pages have graphics (little text = likely graphic)
+ *
+ * Unlike parsePDFToPages, this function does NOT do OCR on poor pages,
+ * so pages with graphics will have their original (minimal) text content.
+ *
+ * @param buffer - PDF file buffer
+ * @returns Map of page number to raw text content
+ */
+export async function parsePDFToPagesRaw(buffer: Buffer): Promise<Map<number, string>> {
+  console.log('📄 Parsing PDF for raw page texts (no OCR)...');
+
+  const parseResult = await parsePDFWithPageDetail(buffer);
+
+  // Return the raw page texts from pdf2json without OCR enhancement
+  const rawPageTexts = new Map<number, string>();
+  for (const [pageNum, text] of parseResult.pageTexts) {
+    rawPageTexts.set(pageNum, cleanPDFText(text));
+  }
+
+  console.log(`📄 Extracted ${rawPageTexts.size} pages (raw, no OCR)`);
+
+  // Log summary of page text lengths for debugging
+  const shortPages: number[] = [];
+  for (const [pageNum, text] of rawPageTexts) {
+    if (text.trim().length < 200) {
+      shortPages.push(pageNum);
+    }
+  }
+
+  if (shortPages.length > 0) {
+    console.log(`📊 Pages with < 200 chars (likely graphics): [${shortPages.join(', ')}]`);
+  }
+
+  return rawPageTexts;
 }

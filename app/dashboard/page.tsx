@@ -17,6 +17,7 @@ import AddToFolderDialog from '@/components/course-management/AddToFolderDialog'
 import DeleteFolderDialog from '@/components/course-management/DeleteFolderDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useGamification } from '@/hooks/useGamification';
 import { useCourseManagement } from '@/hooks/useCourseManagement';
 import { trackEvent } from '@/lib/posthog';
@@ -40,6 +41,7 @@ function MyCoursesScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const [courses, setCourses] = useState<Course[]>([]);
   const [folders, setFolders] = useState<FolderWithCourses[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,7 +234,11 @@ function MyCoursesScreen() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${
+        isDark
+          ? 'bg-neutral-950'
+          : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+      }`}>
         <div className="text-center">
           <Image
             src="/chat/mascotte.png"
@@ -241,7 +247,7 @@ function MyCoursesScreen() {
             height={400}
             className="mx-auto mb-4 animate-bounce"
           />
-          <p className="text-gray-600">{translate('dashboard_loading')}</p>
+          <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('dashboard_loading')}</p>
         </div>
       </div>
     );
@@ -251,14 +257,20 @@ function MyCoursesScreen() {
   const coursesContent = (
     <div className="space-y-4">
       {courses.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
-          <div className="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto mb-4">
+        <div className={`rounded-2xl border border-dashed p-8 text-center ${
+          isDark
+            ? 'bg-neutral-900 border-neutral-700'
+            : 'bg-white border-gray-300'
+        }`}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+            isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-600'
+          }`}>
             <Upload className="w-6 h-6" />
           </div>
-          <p className="text-lg font-semibold text-gray-900 mb-1">
+          <p className={`text-lg font-semibold mb-1 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
             {translate('my_courses_empty_title')}
           </p>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className={`text-sm mb-4 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
             {translate('dashboard_empty_desc')}
           </p>
           <button
@@ -324,14 +336,20 @@ function MyCoursesScreen() {
   const foldersContent = (
     <div className="space-y-4">
       {folders.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
-          <div className="w-14 h-14 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+        <div className={`rounded-2xl border border-dashed p-8 text-center ${
+          isDark
+            ? 'bg-neutral-900 border-neutral-700'
+            : 'bg-white border-gray-300'
+        }`}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+            isDark ? 'bg-indigo-900/50 text-indigo-400' : 'bg-indigo-100 text-indigo-600'
+          }`}>
             <FolderPlus className="w-6 h-6" />
           </div>
-          <p className="text-lg font-semibold text-gray-900 mb-1">
+          <p className={`text-lg font-semibold mb-1 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
             {translate('add_to_folder_no_folders')}
           </p>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className={`text-sm mb-4 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
             {translate('add_to_folder_create_hint')}
           </p>
           <button
@@ -375,11 +393,16 @@ function MyCoursesScreen() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
+    <div className={`min-h-screen transition-colors ${
+      isDark
+        ? 'bg-neutral-950'
+        : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+    }`}>
       <PageHeaderWithMascot
         title={translate('my_courses_title')}
         subtitle={translate('dashboard_mascot_subtitle')}
         hideMyCoursesButton={true}
+        showDarkModeToggle={true}
       />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">

@@ -1,5 +1,88 @@
 @import "tailwindcss";
 
+/* ============================================
+   DARK MODE "WARM" PALETTE
+   Uses warm undertones to complement orange branding
+   ============================================ */
+
+:root {
+  /* Light mode (default) */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #fff7ed; /* orange-50 */
+  --color-bg-card: #ffffff;
+  --color-bg-elevated: #f9fafb;
+  --color-bg-input: #ffffff;
+
+  --color-border-primary: #e5e7eb;
+  --color-border-secondary: #f3f4f6;
+  --color-border-accent: #fed7aa;
+
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+  --color-text-inverse: #ffffff;
+
+  --color-accent-primary: #f97316; /* orange-500 */
+  --color-accent-hover: #ea580c; /* orange-600 */
+  --color-accent-soft: #ffedd5; /* orange-100 */
+  --color-accent-muted: rgba(249, 115, 22, 0.1);
+
+  --color-success: #22c55e;
+  --color-success-soft: #dcfce7;
+  --color-error: #ef4444;
+  --color-error-soft: #fef2f2;
+}
+
+/* Dark mode - Warm palette optimized for orange branding
+   Key principles:
+   - Background: #121212 (Material Design standard) for comfort
+   - Cards/Surfaces: #1E1E1E with subtle elevation
+   - Text: High contrast warm whites
+   - Orange accent: Softer #FB923C (orange-400) that's eye-friendly
+*/
+[data-theme="dark"] {
+  --color-bg-primary: #121212; /* Material Design dark - easier on eyes */
+  --color-bg-secondary: #1a1a1a; /* Slightly lighter for variation */
+  --color-bg-card: #1E1E1E; /* Card surfaces */
+  --color-bg-elevated: #252525; /* Elevated surfaces */
+  --color-bg-input: #2a2a2a; /* Input fields */
+
+  --color-border-primary: #333333; /* Subtle borders */
+  --color-border-secondary: #2a2a2a;
+  --color-border-accent: rgba(251, 146, 60, 0.4); /* orange-400/40 */
+
+  --color-text-primary: #E8E8E8; /* Warm off-white for body */
+  --color-text-secondary: #B0B0B0; /* Secondary text */
+  --color-text-muted: #707070; /* Muted text */
+  --color-text-inverse: #121212;
+
+  --color-accent-primary: #FB923C; /* orange-400 - main accent */
+  --color-accent-hover: #FDBA74; /* orange-300 - hover state */
+  --color-accent-soft: rgba(251, 146, 60, 0.15);
+  --color-accent-muted: rgba(251, 146, 60, 0.08);
+
+  --color-success: #4ade80; /* green-400 */
+  --color-success-soft: rgba(74, 222, 128, 0.15);
+  --color-error: #f87171; /* red-400 */
+  --color-error-soft: rgba(248, 113, 113, 0.15);
+}
+
+/* Utility classes using CSS variables */
+.bg-theme-primary { background-color: var(--color-bg-primary); }
+.bg-theme-secondary { background-color: var(--color-bg-secondary); }
+.bg-theme-card { background-color: var(--color-bg-card); }
+.bg-theme-elevated { background-color: var(--color-bg-elevated); }
+.bg-theme-accent-soft { background-color: var(--color-accent-soft); }
+
+.border-theme-primary { border-color: var(--color-border-primary); }
+.border-theme-secondary { border-color: var(--color-border-secondary); }
+.border-theme-accent { border-color: var(--color-border-accent); }
+
+.text-theme-primary { color: var(--color-text-primary); }
+.text-theme-secondary { color: var(--color-text-secondary); }
+.text-theme-muted { color: var(--color-text-muted); }
+.text-theme-accent { color: var(--color-accent-primary); }
+
 /* User Avatar Capsule - Blue pill design */
 .user-avatar-capsule {
   /* Layout */
@@ -321,4 +404,62 @@
 /* Base styles */
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================
+   TIPTAP EDITOR STYLES
+   Extends golden-note-content for editor mode
+   ============================================ */
+
+/* Main editor wrapper */
+.tiptap-editor {
+  min-height: 400px;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .tiptap-editor {
+    min-height: 500px;
+    padding: 1.5rem;
+  }
+}
+
+/* Inner editor content */
+.tiptap-editor .ProseMirror {
+  outline: none;
+  min-height: 350px;
+}
+
+@media (min-width: 640px) {
+  .tiptap-editor .ProseMirror {
+    min-height: 450px;
+  }
+}
+
+/* Placeholder */
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap-editor.dark-mode .ProseMirror p.is-editor-empty:first-child::before {
+  color: #737373;
+}
+
+/* Selection */
+.tiptap-editor ::selection {
+  background: rgba(249, 115, 22, 0.2);
+}
+
+.tiptap-editor.dark-mode ::selection {
+  background: rgba(249, 115, 22, 0.3);
+}
+
+/* Fix paragraph inside list items for TipTap */
+.tiptap-editor.golden-note-content li > p {
+  margin: 0;
+  display: inline;
 }

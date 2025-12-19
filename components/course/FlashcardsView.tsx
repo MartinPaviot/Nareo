@@ -1,10 +1,62 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Sparkles, ThumbsUp, ThumbsDown, Star, UserPlus } from 'lucide-react';
+import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Sparkles, ThumbsUp, ThumbsDown, Star, UserPlus, HelpCircle, Plus, X, Trash2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import GenerationLoadingScreen from './GenerationLoadingScreen';
+
+// Keyboard shortcuts tooltip
+function KeyboardHelpTooltip({ isDark }: { isDark?: boolean }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const { translate } = useLanguage();
+
+  return (
+    <div className="relative">
+      <button
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        onFocus={() => setIsVisible(true)}
+        onBlur={() => setIsVisible(false)}
+        onClick={() => setIsVisible(!isVisible)}
+        className={`p-1.5 transition-colors rounded-full ${
+          isDark
+            ? 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700'
+            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+        }`}
+        aria-label={translate('flashcards_keyboard_help') || 'Keyboard shortcuts'}
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
+      {isVisible && (
+        <div className={`absolute right-0 top-full mt-1 z-50 text-xs rounded-lg p-3 shadow-lg min-w-[200px] ${
+          isDark ? 'bg-neutral-700 text-neutral-100' : 'bg-gray-900 text-white'
+        }`}>
+          <div className="space-y-1.5">
+            <div className="flex justify-between gap-4">
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>← →</span>
+              <span>{translate('flashcards_nav_cards') || 'Navigate cards'}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>Space / ↑ ↓</span>
+              <span>{translate('flashcards_flip') || 'Flip card'}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>⌫ Backspace</span>
+              <span>{translate('flashcards_didnt_know') || "Didn't know"}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>↵ Enter</span>
+              <span>{translate('flashcards_knew_it') || 'Knew it'}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Flashcard {
   id: string;
@@ -20,12 +72,14 @@ interface Flashcard {
 interface FlashcardsViewProps {
   courseId: string;
   courseTitle: string;
+  courseStatus?: string; // 'pending' | 'processing' | 'ready' | 'failed'
 }
 
-export default function FlashcardsView({ courseId, courseTitle }: FlashcardsViewProps) {
+export default function FlashcardsView({ courseId, courseTitle, courseStatus }: FlashcardsViewProps) {
   const router = useRouter();
   const { translate } = useLanguage();
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -36,6 +90,12 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
   const [studyQueue, setStudyQueue] = useState<number[]>([]);
   const [sessionPoints, setSessionPoints] = useState(0);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newCardFront, setNewCardFront] = useState('');
+  const [newCardBack, setNewCardBack] = useState('');
+  const [addingCard, setAddingCard] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingCard, setDeletingCard] = useState(false);
 
   // Check if flashcards already exist
   useEffect(() => {
@@ -100,6 +160,92 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
     }
   };
 
+  const handleAddCard = async () => {
+    if (!user) {
+      setShowSignupModal(true);
+      return;
+    }
+
+    if (!newCardFront.trim() || !newCardBack.trim()) {
+      return;
+    }
+
+    setAddingCard(true);
+    try {
+      const response = await fetch(`/api/courses/${courseId}/flashcards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          front: newCardFront.trim(),
+          back: newCardBack.trim(),
+          type: 'definition', // Use 'definition' as default type for manual cards
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create flashcard');
+      }
+
+      const data = await response.json();
+      // Add the new flashcard to the list
+      setFlashcards((prev) => [...prev, data.flashcard]);
+      // Navigate to the new card
+      setCurrentIndex(flashcards.length);
+      setIsFlipped(false);
+      setHasAnswered(false);
+      // Reset form and close modal
+      setNewCardFront('');
+      setNewCardBack('');
+      setShowAddModal(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setAddingCard(false);
+    }
+  };
+
+  const handleDeleteCard = async () => {
+    if (!user) {
+      setShowSignupModal(true);
+      return;
+    }
+
+    const cardToDelete = flashcards[currentIndex];
+    if (!cardToDelete) return;
+
+    setDeletingCard(true);
+    try {
+      const response = await fetch(`/api/courses/${courseId}/flashcards?flashcardId=${cardToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete flashcard');
+      }
+
+      // Remove the flashcard from the list
+      const newFlashcards = flashcards.filter((_, idx) => idx !== currentIndex);
+      setFlashcards(newFlashcards);
+
+      // Adjust current index if needed
+      if (newFlashcards.length === 0) {
+        setCurrentIndex(0);
+      } else if (currentIndex >= newFlashcards.length) {
+        setCurrentIndex(newFlashcards.length - 1);
+      }
+
+      setIsFlipped(false);
+      setHasAnswered(false);
+      setShowDeleteModal(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setDeletingCard(false);
+    }
+  };
+
   // Build study queue based on mastery (cards with more incorrect answers appear more often)
   const buildStudyQueue = (cards: Flashcard[]): number[] => {
     const queue: number[] = [];
@@ -126,21 +272,67 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
     }
   }, [flashcards, studyQueue.length]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     setIsFlipped(false);
     setHasAnswered(false);
     setCurrentIndex((prev) => (prev + 1) % flashcards.length);
-  };
+  }, [flashcards.length]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     setIsFlipped(false);
     setHasAnswered(false);
     setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
-  };
+  }, [flashcards.length]);
 
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped);
-  };
+  const handleFlip = useCallback(() => {
+    setIsFlipped((prev) => !prev);
+  }, []);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (flashcards.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if user is typing in an input/textarea
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          handlePrev();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          handleNext();
+          break;
+        case 'ArrowUp':
+        case 'ArrowDown':
+        case ' ':
+          e.preventDefault();
+          handleFlip();
+          break;
+        case 'Backspace':
+          // "Didn't know" - only when flipped and not already answered
+          if (isFlipped && !hasAnswered) {
+            e.preventDefault();
+            handleFeedback(false);
+          }
+          break;
+        case 'Enter':
+          // "Knew it" - only when flipped and not already answered
+          if (isFlipped && !hasAnswered) {
+            e.preventDefault();
+            handleFeedback(true);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [flashcards.length, isFlipped, hasAnswered, handleNext, handlePrev, handleFlip]);
 
   const handleFeedback = async (correct: boolean) => {
     if (hasAnswered) return;
@@ -184,70 +376,83 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+      <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
+        isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+      }`}>
         <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-4" />
-        <p className="text-gray-600">{translate('loading')}</p>
+        <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('loading')}</p>
       </div>
     );
+  }
+
+  // Course still processing (text extraction) - show waiting message with mascot
+  if (courseStatus === 'pending' || courseStatus === 'processing') {
+    return <GenerationLoadingScreen type="extraction" />;
   }
 
   // No flashcards yet - show generate button
   if (flashcards.length === 0) {
     return (
       <>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
+        <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
+          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+        }`}>
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+            isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+          }`}>
             <Sparkles className="w-8 h-8 text-orange-500" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
             {translate('flashcards_title')}
           </h3>
-          <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
+          <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
             {translate('flashcards_description')}
           </p>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
+            <div className={`rounded-xl p-3 mb-4 text-sm ${
+              isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
+            }`}>
               {error}
             </div>
           )}
 
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                {translate('flashcards_generating')}
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5" />
-                {translate('flashcards_generate')}
-              </>
-            )}
-          </button>
+          {generating ? (
+            <GenerationLoadingScreen type="flashcards" compact />
+          ) : (
+            <button
+              onClick={handleGenerate}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+            >
+              <Sparkles className="w-5 h-5" />
+              {translate('flashcards_generate')}
+            </button>
+          )}
         </div>
 
         {/* Signup Modal */}
         {showSignupModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-              <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
+            <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
+              isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+            }`}>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+              }`}>
                 <UserPlus className="w-7 h-7 text-orange-500" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">
+              <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
                 {translate('flashcards_signup_title')}
               </h3>
-              <p className="text-sm text-gray-600 mb-6 text-center">
+              <p className={`text-sm mb-6 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
                 {translate('flashcards_signup_description')}
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowSignupModal(false)}
-                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                    isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
                 >
                   {translate('cancel')}
                 </button>
@@ -272,23 +477,46 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
     <div className="space-y-4">
       {/* Progress indicator and points */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
-        <span className="text-gray-600">{translate('flashcards_progress', { current: String(currentIndex + 1), total: String(flashcards.length) })}</span>
+        <span className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('flashcards_progress', { current: String(currentIndex + 1), total: String(flashcards.length) })}</span>
         <div className="flex items-center gap-2 sm:gap-4">
           {sessionPoints > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-orange-100 text-orange-600 rounded-full font-semibold text-xs sm:text-sm">
-              <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-orange-400" />
+            <span className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full font-semibold text-xs sm:text-sm ${
+              isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
+            }`}>
+              <Star className={`w-3 h-3 sm:w-4 sm:h-4 ${isDark ? 'fill-orange-400' : 'fill-orange-400'}`} />
               {sessionPoints} pts
             </span>
           )}
           <button
+            onClick={() => setShowAddModal(true)}
+            className={`inline-flex items-center gap-1 text-xs sm:text-sm ${
+              isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700'
+            }`}
+          >
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">{translate('flashcards_add') || 'Ajouter'}</span>
+          </button>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className={`inline-flex items-center gap-1 text-xs sm:text-sm ${
+              isDark ? 'text-red-400 hover:text-red-300' : 'text-red-500 hover:text-red-600'
+            }`}
+          >
+            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">{translate('flashcards_delete') || 'Supprimer'}</span>
+          </button>
+          <button
             onClick={handleGenerate}
             disabled={generating}
-            className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700 text-xs sm:text-sm"
+            className={`inline-flex items-center gap-1 text-xs sm:text-sm ${
+              isDark ? 'text-orange-400 hover:text-orange-300' : 'text-orange-600 hover:text-orange-700'
+            }`}
           >
             <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden xs:inline">{translate('flashcards_regenerate')}</span>
             <span className="xs:hidden">{translate('regenerate')}</span>
           </button>
+          <KeyboardHelpTooltip isDark={isDark} />
         </div>
       </div>
 
@@ -308,34 +536,44 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
         >
           {/* Front - Question */}
           <div
-            className="absolute inset-0 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center backface-hidden"
+            className={`absolute inset-0 rounded-2xl border shadow-sm p-6 sm:p-8 md:p-10 flex flex-col items-center justify-center backface-hidden transition-colors ${
+              isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+            }`}
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <span className="text-xs text-orange-500 font-semibold uppercase tracking-wide mb-2">
+            <span className="text-xs sm:text-sm text-orange-500 font-semibold uppercase tracking-wide mb-3">
               {translate(`flashcard_type_${currentCard.type}`) || currentCard.type}
             </span>
-            <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-center px-2">
+            <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center px-2 leading-tight ${
+              isDark ? 'text-neutral-50' : 'text-gray-900'
+            }`}>
               {currentCard.front}
             </h3>
-            <p className="text-xs sm:text-sm text-gray-400 mt-3 sm:mt-4">{translate('flashcards_tap_to_flip')}</p>
+            <p className={`text-sm sm:text-base mt-4 sm:mt-6 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{translate('flashcards_tap_to_flip')}</p>
           </div>
 
           {/* Back - Answer */}
           <div
-            className="absolute inset-0 bg-orange-50 rounded-2xl border border-orange-200 shadow-sm p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center overflow-y-auto"
+            className={`absolute inset-0 rounded-2xl border shadow-sm p-6 sm:p-8 md:p-10 flex flex-col items-center justify-center overflow-y-auto transition-colors ${
+              isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-50 border-orange-200'
+            }`}
             style={{
               backfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)',
             }}
           >
-            <span className="text-xs text-orange-600 font-semibold uppercase tracking-wide mb-2">
+            <span className={`text-xs sm:text-sm font-semibold uppercase tracking-wide mb-3 ${
+              isDark ? 'text-orange-400' : 'text-orange-600'
+            }`}>
               {translate('flashcards_answer')}
             </span>
-            <p className="text-sm sm:text-base md:text-lg text-gray-800 text-center leading-relaxed px-2">
+            <p className={`text-lg sm:text-xl md:text-2xl lg:text-3xl text-center leading-relaxed px-2 ${
+              isDark ? 'text-neutral-200' : 'text-gray-800'
+            }`}>
               {currentCard.back}
             </p>
             {!hasAnswered && (
-              <p className="text-xs sm:text-sm text-orange-400 mt-3 sm:mt-4">{translate('flashcards_rate_answer')}</p>
+              <p className={`text-sm sm:text-base mt-4 sm:mt-6 ${isDark ? 'text-orange-400/70' : 'text-orange-400'}`}>{translate('flashcards_rate_answer')}</p>
             )}
           </div>
         </div>
@@ -352,8 +590,8 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
             disabled={hasAnswered}
             className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-sm sm:text-base transition-all ${
               hasAnswered
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : isDark ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
             }`}
           >
             <ThumbsDown className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -368,8 +606,8 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
             disabled={hasAnswered}
             className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-sm sm:text-base transition-all ${
               hasAnswered
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : isDark ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30' : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
             }`}
           >
             <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -383,7 +621,9 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
       <div className="flex items-center justify-center gap-2 sm:gap-4">
         <button
           onClick={handlePrev}
-          className="p-2 sm:p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+          className={`p-2 sm:p-3 rounded-xl transition-colors ${
+            isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
         >
           <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
@@ -399,12 +639,12 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
                   setCurrentIndex(idx);
                 }}
                 className={`w-2 h-2 rounded-full transition-colors flex-shrink-0 ${
-                  idx === currentIndex ? 'bg-orange-500' : 'bg-gray-300'
+                  idx === currentIndex ? 'bg-orange-500' : isDark ? 'bg-neutral-700' : 'bg-gray-300'
                 }`}
               />
             ))
           ) : (
-            <span className="text-xs sm:text-sm text-gray-500">
+            <span className={`text-xs sm:text-sm ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
               {currentIndex + 1} / {flashcards.length}
             </span>
           )}
@@ -412,7 +652,9 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
 
         <button
           onClick={handleNext}
-          className="p-2 sm:p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+          className={`p-2 sm:p-3 rounded-xl transition-colors ${
+            isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
         >
           <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
@@ -421,20 +663,26 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
       {/* Signup Modal */}
       {showSignupModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-            <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
+          <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+          }`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+            }`}>
               <UserPlus className="w-7 h-7 text-orange-500" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">
+            <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
               {translate('flashcards_signup_title')}
             </h3>
-            <p className="text-sm text-gray-600 mb-6 text-center">
+            <p className={`text-sm mb-6 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
               {translate('flashcards_signup_description')}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSignupModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
                 {translate('cancel')}
               </button>
@@ -443,6 +691,150 @@ export default function FlashcardsView({ courseId, courseTitle }: FlashcardsView
                 className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
               >
                 {translate('auth_signup_button')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Flashcard Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className={`rounded-2xl max-w-lg w-full p-6 shadow-xl ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-xl font-bold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+                {translate('flashcards_add_title') || 'Ajouter une flashcard'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setNewCardFront('');
+                  setNewCardBack('');
+                }}
+                className={`p-2 rounded-full transition-colors ${
+                  isDark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+                  {translate('flashcards_add_front') || 'Recto (question/terme)'}
+                </label>
+                <textarea
+                  value={newCardFront}
+                  onChange={(e) => setNewCardFront(e.target.value)}
+                  placeholder={translate('flashcards_add_front_placeholder') || 'Ex: Quelle est la capitale de la France ?'}
+                  rows={2}
+                  className={`w-full p-3 rounded-xl border-2 focus:border-orange-500 focus:outline-none transition-colors resize-none ${
+                    isDark
+                      ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500'
+                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+                  {translate('flashcards_add_back') || 'Verso (réponse/définition)'}
+                </label>
+                <textarea
+                  value={newCardBack}
+                  onChange={(e) => setNewCardBack(e.target.value)}
+                  placeholder={translate('flashcards_add_back_placeholder') || 'Ex: Paris'}
+                  rows={3}
+                  className={`w-full p-3 rounded-xl border-2 focus:border-orange-500 focus:outline-none transition-colors resize-none ${
+                    isDark
+                      ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500'
+                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                  }`}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setNewCardFront('');
+                  setNewCardBack('');
+                }}
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {translate('cancel')}
+              </button>
+              <button
+                onClick={handleAddCard}
+                disabled={addingCard || !newCardFront.trim() || !newCardBack.trim()}
+                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                {addingCard ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {translate('flashcards_adding') || 'Ajout...'}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    {translate('flashcards_add_button') || 'Ajouter'}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+          }`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              isDark ? 'bg-red-500/20' : 'bg-red-100'
+            }`}>
+              <Trash2 className="w-7 h-7 text-red-500" />
+            </div>
+            <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+              {translate('flashcards_delete_title') || 'Supprimer cette flashcard ?'}
+            </h3>
+            <p className={`text-sm mb-6 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+              {translate('flashcards_delete_description') || 'Cette action est irréversible. La flashcard sera définitivement supprimée.'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deletingCard}
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {translate('cancel')}
+              </button>
+              <button
+                onClick={handleDeleteCard}
+                disabled={deletingCard}
+                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                {deletingCard ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {translate('flashcards_deleting') || 'Suppression...'}
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    {translate('flashcards_delete_confirm') || 'Supprimer'}
+                  </>
+                )}
               </button>
             </div>
           </div>

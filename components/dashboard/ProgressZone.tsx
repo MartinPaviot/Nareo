@@ -3,6 +3,7 @@
 import StreakBanner from './StreakBanner';
 import TodayActivity from './TodayActivity';
 import AddCourseCard from './AddCourseCard';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ProgressZoneProps {
   // Streak data
@@ -56,8 +57,14 @@ export default function ProgressZone({
   onChooseChapter,
   onUploadClick,
 }: ProgressZoneProps) {
+  const { isDark } = useTheme();
+
   return (
-    <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+    <div className={`rounded-3xl shadow-lg overflow-hidden ${
+      isDark
+        ? 'bg-neutral-900 border border-neutral-800'
+        : 'bg-white border border-gray-100'
+    }`}>
       {/* Top Band: Streak Banner */}
       <StreakBanner
         currentStreak={currentStreak}

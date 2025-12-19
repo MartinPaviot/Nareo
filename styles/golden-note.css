@@ -9,32 +9,37 @@
   overflow-wrap: break-word;
 }
 
-/* Headings */
+/* Headings - Light mode with clear visual hierarchy */
 .golden-note-content h1 {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   font-weight: 700;
-  color: #111827;
+  color: #111827; /* Gray-900 - main title stays dark */
   margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
   line-height: 1.3;
+  border-bottom: 3px solid #f97316; /* Orange underline - thicker */
+  padding-bottom: 0.75rem;
 }
 
 .golden-note-content h2 {
   font-size: 1.375rem;
   font-weight: 700;
-  color: #111827;
+  color: #ea580c; /* Orange-600 - section titles in orange */
   margin-top: 2.5rem;
   margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e5e7eb;
+  padding-left: 0.875rem;
+  border-left: 4px solid #f97316; /* Vertical orange bar */
+  border-bottom: none;
 }
 
 .golden-note-content h3 {
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #1f2937; /* Gray-800 - dark for readability */
   margin-top: 1.75rem;
   margin-bottom: 0.75rem;
+  padding-left: 0.625rem;
+  border-left: 2px solid #d1d5db; /* Gray-300 - subtle bar */
 }
 
 /* Paragraphs */
@@ -62,7 +67,7 @@
 .golden-note-content ol {
   margin-top: 0.75rem;
   margin-bottom: 1rem;
-  padding-left: 0;
+  padding-left: 1.5rem;
   list-style: none;
 }
 
@@ -73,39 +78,41 @@
 .golden-note-content ol > li {
   counter-increment: item;
   position: relative;
-  padding-left: 2rem;
+  padding-left: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
 .golden-note-content ol > li::before {
   content: counter(item) ".";
   position: absolute;
-  left: 0;
+  left: -1.5rem;
   font-weight: 600;
   color: #6b7280;
 }
 
 .golden-note-content ul > li {
   position: relative;
-  padding-left: 1.5rem;
+  padding-left: 0.5rem;
   margin-bottom: 0.625rem;
 }
 
 .golden-note-content ul > li::before {
   content: "";
   position: absolute;
-  left: 0;
-  top: 0.625rem;
+  left: -1rem;
+  top: 0.5rem;
   width: 6px;
   height: 6px;
   background-color: #9ca3af;
   border-radius: 50%;
 }
 
-/* Nested list items - definition style */
-.golden-note-content li > ul {
+/* Nested list items - second level */
+.golden-note-content li > ul,
+.golden-note-content li > ol {
   margin-top: 0.375rem;
   margin-bottom: 0;
+  padding-left: 1.25rem;
 }
 
 .golden-note-content li > ul > li {
@@ -115,10 +122,20 @@
 }
 
 .golden-note-content li > ul > li::before {
+  width: 5px;
+  height: 5px;
+  top: 0.45rem;
+  background-color: transparent;
+  border: 1.5px solid #9ca3af;
+}
+
+/* Third level nested lists */
+.golden-note-content li > ul > li > ul > li::before {
   width: 4px;
   height: 4px;
-  top: 0.5rem;
   background-color: #d1d5db;
+  border: none;
+  border-radius: 0;
 }
 
 /* Bold text in list items (term definitions) */
@@ -265,19 +282,23 @@
   }
 
   .golden-note-content h1 {
-    font-size: 1.25rem;
-    margin-bottom: 0.875rem;
+    font-size: 1.375rem;
+    margin-bottom: 1.25rem;
     margin-top: 0;
     line-height: 1.35;
+    border-bottom: 3px solid #f97316;
+    padding-bottom: 0.5rem;
   }
 
   .golden-note-content h2 {
-    font-size: 1.0625rem;
+    font-size: 1.125rem;
     font-weight: 700;
-    margin-top: 1.5rem;
+    margin-top: 1.75rem;
     margin-bottom: 0.625rem;
-    padding-bottom: 0.375rem;
-    border-bottom-width: 1px;
+    padding-left: 0.75rem;
+    border-left: 3px solid #f97316;
+    border-bottom: none;
+    color: #ea580c;
   }
 
   .golden-note-content h3 {
@@ -285,6 +306,9 @@
     font-weight: 600;
     margin-top: 1.25rem;
     margin-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid #d1d5db;
+    color: #1f2937;
   }
 
   .golden-note-content h4 {
@@ -311,10 +335,11 @@
   .golden-note-content ol {
     margin-top: 0.5rem;
     margin-bottom: 0.75rem;
+    padding-left: 1.25rem;
   }
 
   .golden-note-content ul > li {
-    padding-left: 1.25rem;
+    padding-left: 0.375rem;
     margin-bottom: 0.375rem;
     font-size: 0.875rem;
     line-height: 1.5;
@@ -323,11 +348,12 @@
   .golden-note-content ul > li::before {
     width: 5px;
     height: 5px;
-    top: 0.5rem;
+    top: 0.45rem;
+    left: -0.875rem;
   }
 
   .golden-note-content ol > li {
-    padding-left: 1.5rem;
+    padding-left: 0.375rem;
     margin-bottom: 0.375rem;
     font-size: 0.875rem;
     line-height: 1.5;
@@ -335,12 +361,24 @@
 
   .golden-note-content ol > li::before {
     font-size: 0.8125rem;
+    left: -1.25rem;
   }
 
-  /* Nested lists */
+  /* Nested lists mobile */
+  .golden-note-content li > ul,
+  .golden-note-content li > ol {
+    padding-left: 1rem;
+  }
+
   .golden-note-content li > ul > li {
     font-size: 0.8125rem;
     margin-bottom: 0.25rem;
+  }
+
+  .golden-note-content li > ul > li::before {
+    width: 4px;
+    height: 4px;
+    top: 0.4rem;
   }
 
   /* Code mobile */
@@ -410,4 +448,137 @@
   .golden-note-content h2:last-of-type {
     margin-top: 2rem;
   }
+}
+
+/* ============================================
+   DARK MODE STYLES
+   Material Design dark palette with orange accent
+   ============================================ */
+
+.golden-note-content.dark-mode {
+  color: #d4d4d4; /* neutral-300 - clean gray for body */
+}
+
+/* Dark mode headings - crisp white and soft orange for hierarchy */
+.golden-note-content.dark-mode h1 {
+  color: #fafafa; /* neutral-50 - crisp white for main titles */
+  border-bottom-color: #fb923c; /* orange-400 */
+}
+
+.golden-note-content.dark-mode h2 {
+  color: #fdba74; /* orange-300 - warm orange for section titles */
+  border-left-color: #fb923c; /* orange-400 */
+}
+
+.golden-note-content.dark-mode h3 {
+  color: #e5e5e5; /* neutral-200 - light gray for contrast */
+  border-left-color: #525252; /* neutral-600 - subtle in dark */
+}
+
+/* Dark mode paragraphs */
+.golden-note-content.dark-mode p {
+  color: #d4d4d4; /* neutral-300 */
+}
+
+.golden-note-content.dark-mode > p:first-of-type {
+  color: #a3a3a3; /* neutral-400 */
+}
+
+/* Dark mode lists */
+.golden-note-content.dark-mode ol > li::before {
+  color: #737373; /* neutral-500 */
+}
+
+.golden-note-content.dark-mode ul > li::before {
+  background-color: #737373; /* neutral-500 */
+}
+
+.golden-note-content.dark-mode li > ul > li {
+  color: #a3a3a3; /* neutral-400 */
+}
+
+.golden-note-content.dark-mode li > ul > li::before {
+  background-color: transparent;
+  border-color: #737373; /* neutral-500 */
+}
+
+.golden-note-content.dark-mode li > ul > li > ul > li::before {
+  background-color: #525252; /* neutral-600 */
+}
+
+/* Dark mode bold text */
+.golden-note-content.dark-mode li > strong:first-child,
+.golden-note-content.dark-mode strong {
+  color: #fafafa; /* neutral-50 */
+}
+
+/* Dark mode inline code */
+.golden-note-content.dark-mode code {
+  background-color: rgba(251, 146, 60, 0.15); /* orange-400/15 */
+  color: #fdba74; /* orange-300 */
+}
+
+/* Dark mode code blocks */
+.golden-note-content.dark-mode pre {
+  background-color: #171717; /* neutral-900 */
+  border-color: #404040; /* neutral-700 */
+}
+
+.golden-note-content.dark-mode pre code {
+  color: #d4d4d4; /* neutral-300 */
+}
+
+/* Dark mode blockquotes */
+.golden-note-content.dark-mode blockquote {
+  background-color: rgba(251, 146, 60, 0.1); /* orange-400/10 */
+  border-left-color: #fb923c; /* orange-400 */
+}
+
+.golden-note-content.dark-mode blockquote p {
+  color: #fed7aa; /* orange-200 */
+}
+
+/* Dark mode horizontal rules */
+.golden-note-content.dark-mode hr {
+  border-top-color: #404040; /* neutral-700 */
+}
+
+/* Dark mode math formulas */
+.golden-note-content.dark-mode .katex-display {
+  background-color: #171717; /* neutral-900 */
+}
+
+.golden-note-content.dark-mode .katex {
+  color: #d4d4d4; /* neutral-300 */
+}
+
+/* Dark mode formula explanation */
+.golden-note-content.dark-mode .katex-display + p > em:first-child,
+.golden-note-content.dark-mode p > em:only-child {
+  color: #a3a3a3; /* neutral-400 */
+}
+
+/* Dark mode links */
+.golden-note-content.dark-mode a {
+  color: #fb923c; /* orange-400 */
+}
+
+/* Dark mode tables */
+.golden-note-content.dark-mode th,
+.golden-note-content.dark-mode td {
+  border-color: #404040; /* neutral-700 */
+}
+
+.golden-note-content.dark-mode th {
+  background-color: #171717; /* neutral-900 */
+  color: #fafafa; /* neutral-50 */
+}
+
+.golden-note-content.dark-mode tr:nth-child(even) {
+  background-color: rgba(23, 23, 23, 0.5); /* neutral-900/50 */
+}
+
+/* Dark mode emphasis */
+.golden-note-content.dark-mode em {
+  color: #a3a3a3; /* neutral-400 */
 }

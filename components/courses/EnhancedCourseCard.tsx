@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { BookOpen, CheckCircle2, Clock, Lock, Play, Trophy } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface EnhancedCourseCardProps {
   course: {
@@ -25,6 +26,7 @@ interface EnhancedCourseCardProps {
 export default function EnhancedCourseCard({ course, hideStatusBadge = false }: EnhancedCourseCardProps) {
   const router = useRouter();
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
 
   const progressPercentage = course.chapter_count > 0
     ? Math.round((course.completed_chapters / course.chapter_count) * 100)
@@ -43,7 +45,9 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
   const getStatusBadge = () => {
     if (isFailed) {
       return (
-        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
+        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+          isDark ? 'bg-red-950/50 text-red-400' : 'bg-red-100 text-red-700'
+        }`}>
           <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
           {translate('course_status_failed')}
         </div>
@@ -52,7 +56,9 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
 
     if (isProcessing) {
       return (
-        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">
+        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+          isDark ? 'bg-yellow-950/50 text-yellow-400' : 'bg-yellow-100 text-yellow-700'
+        }`}>
           <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
           {translate('course_status_preparing')}
         </div>
@@ -61,7 +67,9 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
 
     if (progressPercentage === 100) {
       return (
-        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
+        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+          isDark ? 'bg-green-950/50 text-green-400' : 'bg-green-100 text-green-700'
+        }`}>
           <CheckCircle2 className="w-3 h-3" />
           {translate('course_status_completed')}
         </div>
@@ -70,7 +78,9 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
 
     if (course.in_progress_chapters > 0) {
       return (
-        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold">
+        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+          isDark ? 'bg-orange-950/50 text-orange-400' : 'bg-orange-100 text-orange-700'
+        }`}>
           <Clock className="w-3 h-3" />
           {translate('course_status_in_progress')}
         </div>
@@ -78,7 +88,9 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
     }
 
     return (
-      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">
+      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+        isDark ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-700'
+      }`}>
         <Play className="w-3 h-3" />
         {translate('course_status_ready')}
       </div>
@@ -89,17 +101,21 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
     <button
       onClick={() => router.push(`/courses/${course.id}/learn`)}
       disabled={isFailed}
-      className={`group text-left bg-white rounded-3xl border-2 border-gray-200 hover:border-orange-400 hover:shadow-xl transition-all p-5 flex flex-col gap-4 w-full ${
-        isFailed ? 'opacity-60 cursor-not-allowed' : ''
-      }`}
+      className={`group text-left rounded-3xl border-2 transition-all p-5 flex flex-col gap-4 w-full ${
+        isDark
+          ? 'bg-neutral-900 border-neutral-700 hover:border-orange-500/50 hover:shadow-xl hover:shadow-orange-500/10'
+          : 'bg-white border-gray-200 hover:border-orange-400 hover:shadow-xl'
+      } ${isFailed ? 'opacity-60 cursor-not-allowed' : ''}`}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0 pr-10">
-          <h3 className="text-base font-bold text-gray-900 line-clamp-1 mb-2 group-hover:text-orange-600 transition-colors">
+          <h3 className={`text-base font-bold line-clamp-1 mb-2 group-hover:text-orange-500 transition-colors ${
+            isDark ? 'text-neutral-100' : 'text-gray-900'
+          }`}>
             {course.title}
           </h3>
-          <p className="text-xs text-gray-500">
+          <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
             {translate('course_card_last_updated')}: {new Date(course.created_at).toLocaleDateString()}
           </p>
         </div>
@@ -112,12 +128,12 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
           {/* Progress Bar */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600 font-medium">
+              <span className={`font-medium ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
                 {translate('course_card_progress')}
               </span>
-              <span className="font-bold text-orange-600">{progressPercentage}%</span>
+              <span className={`font-bold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{progressPercentage}%</span>
             </div>
-            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className={`h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
               <div
                 className={`h-full ${getProgressColor()} transition-all duration-500 rounded-full`}
                 style={{ width: `${progressPercentage}%` }}
@@ -128,30 +144,30 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
           {/* Stats Grid */}
           <div className="grid grid-cols-3 gap-2">
             {/* Total Chapters */}
-            <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+            <div className={`rounded-xl p-2.5 text-center ${isDark ? 'bg-neutral-800' : 'bg-gray-50'}`}>
               <div className="flex items-center justify-center gap-1 mb-1">
-                <BookOpen className="w-3.5 h-3.5 text-gray-600" />
-                <span className="text-lg font-bold text-gray-900">{course.chapter_count}</span>
+                <BookOpen className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`} />
+                <span className={`text-lg font-bold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>{course.chapter_count}</span>
               </div>
-              <p className="text-xs text-gray-600">{translate('course_card_chapters')}</p>
+              <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{translate('course_card_chapters')}</p>
             </div>
 
             {/* Completed */}
-            <div className="bg-green-50 rounded-xl p-2.5 text-center">
+            <div className={`rounded-xl p-2.5 text-center ${isDark ? 'bg-green-950/40' : 'bg-green-50'}`}>
               <div className="flex items-center justify-center gap-1 mb-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                <span className="text-lg font-bold text-green-700">{course.completed_chapters}</span>
+                <CheckCircle2 className={`w-3.5 h-3.5 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
+                <span className={`text-lg font-bold ${isDark ? 'text-green-400' : 'text-green-700'}`}>{course.completed_chapters}</span>
               </div>
-              <p className="text-xs text-green-700">{translate('course_card_completed')}</p>
+              <p className={`text-xs ${isDark ? 'text-green-400' : 'text-green-700'}`}>{translate('course_card_completed')}</p>
             </div>
 
             {/* Score */}
-            <div className="bg-purple-50 rounded-xl p-2.5 text-center">
+            <div className={`rounded-xl p-2.5 text-center ${isDark ? 'bg-purple-950/40' : 'bg-purple-50'}`}>
               <div className="flex items-center justify-center gap-1 mb-1">
-                <Trophy className="w-3.5 h-3.5 text-purple-600" />
-                <span className="text-lg font-bold text-purple-700">{course.user_score || 0}</span>
+                <Trophy className={`w-3.5 h-3.5 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
+                <span className={`text-lg font-bold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{course.user_score || 0}</span>
               </div>
-              <p className="text-xs text-purple-700">{translate('learn_pts')}</p>
+              <p className={`text-xs ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>{translate('learn_pts')}</p>
             </div>
           </div>
         </div>
@@ -159,16 +175,20 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
 
       {/* Processing State */}
       {isProcessing && (
-        <div className="flex items-center gap-2 text-sm text-gray-600 bg-yellow-50 rounded-xl p-3">
-          <Lock className="w-4 h-4 text-yellow-600" />
+        <div className={`flex items-center gap-2 text-sm rounded-xl p-3 ${
+          isDark
+            ? 'text-neutral-300 bg-yellow-950/30'
+            : 'text-gray-600 bg-yellow-50'
+        }`}>
+          <Lock className={`w-4 h-4 ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`} />
           <span>{translate('course_card_processing_message')}</span>
         </div>
       )}
 
       {/* CTA */}
       {isReady && (
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <span className="text-sm font-semibold text-gray-700">
+        <div className={`flex items-center justify-between pt-2 border-t ${isDark ? 'border-neutral-700' : 'border-gray-100'}`}>
+          <span className={`text-sm font-semibold ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
             {progressPercentage === 100
               ? translate('course_card_review')
               : course.in_progress_chapters > 0

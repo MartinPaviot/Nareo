@@ -147,7 +147,9 @@ export async function GET(
           in_progress: !!attempt && !attempt.completed_at,
           score: attempt?.score ?? null,
           content_language: course.content_language || course.language || 'en',
-          status: chapter.status || 'ready', // Chapter processing status (default to 'ready' for backwards compatibility)
+          // Map 'pending_quiz' to 'ready' for frontend display since chapter content is ready
+          // The quiz just hasn't been generated yet
+          status: chapter.status === 'pending_quiz' ? 'ready' : (chapter.status || 'ready'),
         };
       })
     );
@@ -158,6 +160,7 @@ export async function GET(
         id: course.id,
         title: course.title,
         status: course.status,
+        quiz_status: course.quiz_status || 'pending', // Quiz generation status
         content_language: course.content_language || course.language || 'en',
       },
       chapters: chaptersWithAccess,

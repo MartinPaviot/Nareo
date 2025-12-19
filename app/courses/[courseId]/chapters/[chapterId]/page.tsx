@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle2, HelpCircle, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { trackEvent } from '@/lib/posthog';
 import { loadDemoCourse } from '@/lib/demoCourse';
 import { getLocalizedChapterTitleAsync } from '@/lib/content-translator';
@@ -27,9 +28,10 @@ interface QuizProgressDotsProps {
   answers: QuizAnswers;
   questionIds: string[];
   onNavigate: (index: number) => void;
+  isDark?: boolean;
 }
 
-function QuizProgressDots({ total, current, answers, questionIds, onNavigate }: QuizProgressDotsProps) {
+function QuizProgressDots({ total, current, answers, questionIds, onNavigate, isDark }: QuizProgressDotsProps) {
   const dotsContainerRef = useRef<HTMLDivElement>(null);
 
   // Show compact text for >15 questions
@@ -37,8 +39,8 @@ function QuizProgressDots({ total, current, answers, questionIds, onNavigate }: 
     const answeredCount = questionIds.filter(id => answers[id]?.selectedAnswer).length;
     return (
       <div className="flex items-center justify-center gap-2 py-2">
-        <span className="text-sm text-gray-600">{current + 1}/{total}</span>
-        <span className="text-xs text-gray-400">({answeredCount} répondues)</span>
+        <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{current + 1}/{total}</span>
+        <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>({answeredCount} répondues)</span>
       </div>
     );
   }
@@ -64,8 +66,11 @@ function QuizProgressDots({ total, current, answers, questionIds, onNavigate }: 
             <span
               className={`
                 block w-3 h-3 rounded-full transition-all duration-150
-                ${hasAnswer ? 'bg-gray-700' : 'border-2 border-gray-300 bg-transparent'}
-                ${isCurrent ? 'ring-2 ring-orange-500 ring-offset-2' : ''}
+                ${hasAnswer
+                  ? isDark ? 'bg-neutral-400' : 'bg-gray-700'
+                  : isDark ? 'border-2 border-neutral-600 bg-transparent' : 'border-2 border-gray-300 bg-transparent'
+                }
+                ${isCurrent ? `ring-2 ring-orange-500 ${isDark ? 'ring-offset-neutral-800' : 'ring-offset-white'} ring-offset-2` : ''}
                 group-hover:scale-125
               `}
             />
@@ -77,7 +82,7 @@ function QuizProgressDots({ total, current, answers, questionIds, onNavigate }: 
 }
 
 // Keyboard shortcuts tooltip
-function KeyboardHelpTooltip() {
+function KeyboardHelpTooltip({ isDark }: { isDark?: boolean }) {
   const [isVisible, setIsVisible] = useState(false);
 
   return (
@@ -88,28 +93,34 @@ function KeyboardHelpTooltip() {
         onFocus={() => setIsVisible(true)}
         onBlur={() => setIsVisible(false)}
         onClick={() => setIsVisible(!isVisible)}
-        className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+        className={`p-1.5 transition-colors rounded-full ${
+          isDark
+            ? 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700'
+            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+        }`}
         aria-label="Raccourcis clavier"
       >
         <HelpCircle className="w-4 h-4" />
       </button>
       {isVisible && (
-        <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg min-w-[180px]">
+        <div className={`absolute right-0 top-full mt-1 z-50 text-xs rounded-lg p-3 shadow-lg min-w-[180px] ${
+          isDark ? 'bg-neutral-700 text-neutral-100' : 'bg-gray-900 text-white'
+        }`}>
           <div className="space-y-1.5">
             <div className="flex justify-between gap-4">
-              <span className="text-gray-400">← →</span>
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>← →</span>
               <span>Questions</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-gray-400">↑ ↓</span>
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>↑ ↓</span>
               <span>Options</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-gray-400">A B C D</span>
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>A B C D</span>
               <span>Sélectionner</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className="text-gray-400">Entrée / Espace</span>
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>Entrée / Espace</span>
               <span>Valider</span>
             </div>
           </div>
@@ -124,26 +135,33 @@ interface ExitModalProps {
   remainingCount: number;
   onConfirm: () => void;
   onCancel: () => void;
+  isDark?: boolean;
 }
 
-function ExitConfirmModal({ remainingCount, onConfirm, onCancel }: ExitModalProps) {
+function ExitConfirmModal({ remainingCount, onConfirm, onCancel, isDark }: ExitModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Quitter le quiz ?</h3>
-        <p className="text-gray-600 mb-4">
+      <div className={`rounded-2xl p-6 max-w-sm w-full shadow-xl ${
+        isDark ? 'bg-neutral-800 border border-neutral-700' : 'bg-white'
+      }`}>
+        <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>Quitter le quiz ?</h3>
+        <p className={`mb-4 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
           Tu as {remainingCount} question{remainingCount > 1 ? 's' : ''} non répondue{remainingCount > 1 ? 's' : ''}.
         </p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50"
+            className={`flex-1 px-4 py-2 rounded-xl border font-medium transition-colors ${
+              isDark
+                ? 'border-neutral-600 text-neutral-300 hover:bg-neutral-700'
+                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+            }`}
           >
             Continuer
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-2 rounded-xl bg-gray-900 text-white font-medium hover:bg-black"
+            className="flex-1 px-4 py-2 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors"
           >
             Quitter
           </button>
@@ -188,9 +206,10 @@ interface ExplanationCardProps {
   translate: (key: string) => string;
   // Mapping from original index (0,1,2,3) to new shuffled label (A,B,C,D)
   letterMapping?: Record<number, string>;
+  isDark?: boolean;
 }
 
-function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt, points, translate, letterMapping }: ExplanationCardProps) {
+function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt, points, translate, letterMapping, isDark }: ExplanationCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   // Remap letter references in explanation to match shuffled order
@@ -229,42 +248,48 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
 
   return (
     <div className={`rounded-xl border-2 p-4 ${
-      isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+      isCorrect
+        ? isDark ? 'bg-green-500/15 border-green-500/40' : 'bg-green-50 border-green-200'
+        : isDark ? 'bg-red-500/15 border-red-500/40' : 'bg-red-50 border-red-200'
     }`}>
       {/* Badge result */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {isCorrect ? (
-            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
           ) : (
-            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <XCircle className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
           )}
-          <span className={`font-semibold text-sm ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+          <span className={`font-semibold text-sm ${
+            isCorrect
+              ? isDark ? 'text-green-400' : 'text-green-800'
+              : isDark ? 'text-red-400' : 'text-red-800'
+          }`}>
             {isCorrect ? translate('quiz_feedback_correct') : 'Incorrect'}
           </span>
         </div>
         {points > 0 && (
-          <span className="text-xs text-green-700 font-medium">+{points} {translate('learn_pts')}</span>
+          <span className={`text-xs font-medium ${isDark ? 'text-green-400' : 'text-green-700'}`}>+{points} {translate('learn_pts')}</span>
         )}
       </div>
 
       {/* Correct answer if incorrect */}
       {!isCorrect && correctAnswer && (
-        <p className="text-sm font-semibold text-gray-900 mb-2">
+        <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
           La bonne réponse était : {correctAnswer}
         </p>
       )}
 
       {/* Explanation */}
       {remappedExplanation && (
-        <div className="text-sm text-gray-700 leading-relaxed">
+        <div className={`text-sm leading-relaxed ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
           <p className={shouldTruncate && !expanded ? 'line-clamp-3' : ''}>
             {remappedExplanation}
           </p>
           {shouldTruncate && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="text-orange-600 font-medium mt-1 text-xs hover:underline"
+              className={`font-medium mt-1 text-xs hover:underline ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
             >
               {expanded ? 'Voir moins' : 'Voir plus'}
             </button>
@@ -274,9 +299,11 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
 
       {/* Source excerpt */}
       {sourceExcerpt && (
-        <div className="mt-3 p-3 bg-gray-100 rounded-lg border-l-4 border-gray-300">
-          <p className="text-xs text-gray-500 mb-1 font-medium">Extrait du cours :</p>
-          <p className="text-sm text-gray-600 italic leading-relaxed">&ldquo;{sourceExcerpt}&rdquo;</p>
+        <div className={`mt-3 p-3 rounded-lg border-l-4 ${
+          isDark ? 'bg-neutral-800 border-neutral-600' : 'bg-gray-100 border-gray-300'
+        }`}>
+          <p className={`text-xs mb-1 font-medium ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>Extrait du cours :</p>
+          <p className={`text-sm italic leading-relaxed ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>&ldquo;{sourceExcerpt}&rdquo;</p>
         </div>
       )}
     </div>
@@ -288,6 +315,7 @@ export default function ChapterQuizPage() {
   const params = useParams();
   const { user } = useAuth();
   const { translate, currentLanguage } = useLanguage();
+  const { isDark } = useTheme();
 
   const courseId = params?.courseId as string;
   const chapterId = params?.chapterId as string;
@@ -876,7 +904,9 @@ export default function ChapterQuizPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors ${
+        isDark ? 'bg-neutral-900' : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+      }`}>
         <div className="text-center">
           <Image
             src="/chat/mascotte.png"
@@ -885,7 +915,7 @@ export default function ChapterQuizPage() {
             height={400}
             className="mx-auto mb-4 animate-bounce"
           />
-          <p className="text-gray-600">{translate('learn_loading')}</p>
+          <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('learn_loading')}</p>
         </div>
       </div>
     );
@@ -893,23 +923,30 @@ export default function ChapterQuizPage() {
 
   if (!currentQuestion) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
-        <p className="text-gray-600">{translate('learn_error_question')}</p>
+      <div className={`min-h-screen flex items-center justify-center transition-colors ${
+        isDark ? 'bg-neutral-900' : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+      }`}>
+        <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('learn_error_question')}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 p-3 sm:p-6">
+    <div className={`min-h-screen p-3 sm:p-6 transition-colors ${
+      isDark ? 'bg-neutral-900' : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+    }`}>
       {showExitModal && (
         <ExitConfirmModal
           remainingCount={remainingCount}
           onConfirm={handleExitConfirm}
           onCancel={handleExitCancel}
+          isDark={isDark}
         />
       )}
       <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
-        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm">
+        <div className={`rounded-2xl border p-4 sm:p-5 shadow-sm transition-colors ${
+          isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+        }`}>
           <div className="flex items-center gap-3 mb-3">
             <Image
               src="/chat/mascotte.png"
@@ -919,16 +956,22 @@ export default function ChapterQuizPage() {
               className="rounded-2xl flex-shrink-0"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-xs uppercase tracking-wide text-orange-600 font-semibold">{courseTitle}</p>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{chapterTitle}</h1>
+              <p className={`text-xs uppercase tracking-wide font-semibold ${
+                isDark ? 'text-orange-400' : 'text-orange-600'
+              }`}>{courseTitle}</p>
+              <h1 className={`text-xl sm:text-2xl font-bold truncate ${
+                isDark ? 'text-neutral-50' : 'text-gray-900'
+              }`}>{chapterTitle}</h1>
             </div>
-            <KeyboardHelpTooltip />
+            <KeyboardHelpTooltip isDark={isDark} />
           </div>
-          <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
-            <span className="text-gray-500">
+          <div className={`flex items-center justify-between mt-2 text-sm ${
+            isDark ? 'text-neutral-400' : 'text-gray-600'
+          }`}>
+            <span className={isDark ? 'text-neutral-500' : 'text-gray-500'}>
               Question {currentIndex + 1} sur {questions.length}
             </span>
-            <span className="font-semibold text-orange-600">
+            <span className={`font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
               {score} / {totalPossiblePoints} {translate('learn_pts')}
             </span>
           </div>
@@ -936,12 +979,14 @@ export default function ChapterQuizPage() {
 
         <div
           ref={containerRef}
-          className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-5 shadow-lg space-y-3 sm:space-y-4"
+          className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 shadow-lg space-y-3 sm:space-y-4 transition-colors ${
+            isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+          }`}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <p className="text-sm sm:text-lg font-semibold text-gray-900">{currentQuestion?.question_text}</p>
+          <p className={`text-sm sm:text-lg font-semibold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{currentQuestion?.question_text}</p>
           {currentQuestion?.type === 'mcq' && currentQuestion.optionsList ? (
             <div className="space-y-2">
               {currentQuestion.optionsList.map((opt) => {
@@ -956,29 +1001,39 @@ export default function ChapterQuizPage() {
                 if (hasAnswered) {
                   // After answering: show green for correct, red for selected wrong
                   if (isCorrect) {
-                    buttonClasses += 'border-green-500 bg-green-500 ';
+                    buttonClasses += isDark
+                      ? 'border-green-500 bg-green-500/90 '
+                      : 'border-green-500 bg-green-500 ';
                     labelClasses += 'text-white ';
                     textClasses = 'text-white font-medium';
                   } else if (isSelectedAndWrong) {
-                    buttonClasses += 'border-red-500 bg-red-500 ';
+                    buttonClasses += isDark
+                      ? 'border-red-500 bg-red-500/90 '
+                      : 'border-red-500 bg-red-500 ';
                     labelClasses += 'text-white ';
                     textClasses = 'text-white';
                   } else {
-                    buttonClasses += 'border-gray-200 bg-gray-50 opacity-60 ';
-                    labelClasses += 'text-gray-400 ';
-                    textClasses = 'text-gray-600';
+                    buttonClasses += isDark
+                      ? 'border-neutral-700 bg-neutral-700/50 opacity-60 '
+                      : 'border-gray-200 bg-gray-50 opacity-60 ';
+                    labelClasses += isDark ? 'text-neutral-500 ' : 'text-gray-400 ';
+                    textClasses = isDark ? 'text-neutral-400' : 'text-gray-600';
                   }
                   buttonClasses += 'cursor-not-allowed';
                 } else {
                   // Before answering: show selection state
                   if (isSelected) {
-                    buttonClasses += 'border-orange-500 bg-orange-50 ';
-                    labelClasses += 'text-orange-600 ';
-                    textClasses = 'text-gray-900';
+                    buttonClasses += isDark
+                      ? 'border-orange-500 bg-orange-500/20 '
+                      : 'border-orange-500 bg-orange-50 ';
+                    labelClasses += isDark ? 'text-orange-400 ' : 'text-orange-600 ';
+                    textClasses = isDark ? 'text-neutral-100' : 'text-gray-900';
                   } else {
-                    buttonClasses += 'border-gray-200 hover:border-orange-300 ';
-                    labelClasses += 'text-orange-600 ';
-                    textClasses = 'text-gray-900';
+                    buttonClasses += isDark
+                      ? 'border-neutral-600 hover:border-orange-500/50 '
+                      : 'border-gray-200 hover:border-orange-300 ';
+                    labelClasses += isDark ? 'text-orange-400 ' : 'text-orange-600 ';
+                    textClasses = isDark ? 'text-neutral-200' : 'text-gray-900';
                   }
                 }
 
@@ -1006,7 +1061,11 @@ export default function ChapterQuizPage() {
               onChange={(e) => setAnswer(e.target.value)}
               rows={4}
               placeholder={translate('quiz_short_placeholder')}
-              className="w-full p-3 rounded-xl border-2 border-gray-200 focus:border-orange-500 focus:outline-none"
+              className={`w-full p-3 rounded-xl border-2 focus:border-orange-500 focus:outline-none transition-colors ${
+                isDark
+                  ? 'bg-neutral-700 border-neutral-600 text-neutral-100 placeholder-neutral-500'
+                  : 'bg-white border-gray-200 text-gray-900'
+              }`}
               disabled={!!feedback}
             />
           )}
@@ -1025,6 +1084,7 @@ export default function ChapterQuizPage() {
                 acc[opt.originalIndex] = opt.label;
                 return acc;
               }, {} as Record<number, string>)}
+              isDark={isDark}
             />
           )}
 
@@ -1044,7 +1104,11 @@ export default function ChapterQuizPage() {
             <button
               onClick={goToPrevious}
               disabled={currentIndex === 0}
-              className="px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`px-4 py-3 rounded-xl border font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+                isDark
+                  ? 'border-neutral-600 text-neutral-300 hover:bg-neutral-700'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
               aria-label="Question précédente"
             >
               ←
@@ -1054,7 +1118,11 @@ export default function ChapterQuizPage() {
             {feedback && currentIndex < questions.length - 1 && (
               <button
                 onClick={goToNext}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gray-900 text-white text-sm sm:text-base font-semibold hover:bg-black"
+                className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm sm:text-base font-semibold transition-colors ${
+                  isDark
+                    ? 'bg-neutral-700 text-neutral-100 hover:bg-neutral-600'
+                    : 'bg-gray-900 text-white hover:bg-black'
+                }`}
               >
                 {translate('quiz_next_question')}
                 <ArrowRight className="w-4 h-4" />
@@ -1071,7 +1139,7 @@ export default function ChapterQuizPage() {
                   Terminer le quiz
                 </button>
               ) : (
-                <span className="flex-1 text-center text-sm text-gray-500">
+                <span className={`flex-1 text-center text-sm ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
                   {remainingCount} question{remainingCount > 1 ? 's' : ''} restante{remainingCount > 1 ? 's' : ''}
                 </span>
               )
@@ -1081,7 +1149,11 @@ export default function ChapterQuizPage() {
             <button
               onClick={goToNext}
               disabled={currentIndex === questions.length - 1}
-              className="px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`px-4 py-3 rounded-xl border font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+                isDark
+                  ? 'border-neutral-600 text-neutral-300 hover:bg-neutral-700'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
               aria-label="Question suivante"
             >
               →
@@ -1095,6 +1167,7 @@ export default function ChapterQuizPage() {
             answers={quizAnswers}
             questionIds={questionIds}
             onNavigate={navigateToQuestion}
+            isDark={isDark}
           />
         </div>
       </div>

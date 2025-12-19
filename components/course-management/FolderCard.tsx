@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Trash2, FolderOpen } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { FolderWithCourses } from '@/types/course-management';
 import EnhancedCourseCard from '@/components/courses/EnhancedCourseCard';
 import CourseActionMenu from '@/components/course-management/CourseActionMenu';
@@ -25,13 +26,18 @@ export default function FolderCard({
   onDeleteCourse,
 }: FolderCardProps) {
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="bg-white rounded-3xl shadow-md border border-gray-200 overflow-hidden">
+    <div className={`rounded-3xl shadow-md border overflow-hidden ${
+      isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+    }`}>
       {/* Folder Header */}
       <div
-        className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+        className={`p-6 cursor-pointer transition-colors ${
+          isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'
+        }`}
         style={{
           borderLeft: `4px solid ${folder.color}`,
         }}
@@ -45,12 +51,14 @@ export default function FolderCard({
                 e.stopPropagation();
                 setIsExpanded(!isExpanded);
               }}
-              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              className={`p-2 rounded-full transition-colors ${
+                isDark ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'
+              }`}
             >
               {isExpanded ? (
-                <ChevronDown className="w-5 h-5 text-gray-600" />
+                <ChevronDown className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`} />
               ) : (
-                <ChevronRight className="w-5 h-5 text-gray-600" />
+                <ChevronRight className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`} />
               )}
             </button>
 
@@ -64,8 +72,8 @@ export default function FolderCard({
 
             {/* Folder Info */}
             <div>
-              <h3 className="text-xl font-bold text-gray-900">{folder.name}</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className={`text-xl font-bold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>{folder.name}</h3>
+              <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                 {folder.course_count} {translate('courses_count')}
               </p>
             </div>
@@ -80,10 +88,12 @@ export default function FolderCard({
                   onDeleteFolder(folder.id);
                 }
               }}
-              className="p-2 hover:bg-red-100 rounded-full transition-colors group"
+              className={`p-2 rounded-full transition-colors group ${
+                isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-100'
+              }`}
               title={translate('delete_folder_action')}
             >
-              <Trash2 className="w-5 h-5 text-gray-400 group-hover:text-red-600" />
+              <Trash2 className={`w-5 h-5 group-hover:text-red-500 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
             </button>
           </div>
         </div>
@@ -93,10 +103,12 @@ export default function FolderCard({
       {isExpanded && (
         <div className="px-6 pb-6 space-y-4">
           {folder.courses.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-              <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm text-gray-500">{translate('folder_empty')}</p>
-              <p className="text-xs text-gray-400 mt-1">
+            <div className={`text-center py-12 rounded-2xl border-2 border-dashed ${
+              isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'
+            }`}>
+              <FolderOpen className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-neutral-600' : 'text-gray-300'}`} />
+              <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('folder_empty')}</p>
+              <p className={`text-xs mt-1 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
                 {translate('folder_empty_hint')}
               </p>
             </div>

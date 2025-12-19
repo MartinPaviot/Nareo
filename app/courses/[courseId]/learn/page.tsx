@@ -2,16 +2,17 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, Loader2, Lock, Play, RotateCcw, BookOpen, Layers, FileText } from 'lucide-react';
+import { AlertCircle, Loader2, Lock, Play, RotateCcw, BookOpen, Layers, FileText, Sparkles, RefreshCw } from 'lucide-react';
+import GenerationLoadingScreen from '@/components/course/GenerationLoadingScreen';
 import Image from 'next/image';
 import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
 import ChapterScoreBadge from '@/components/course/ChapterScoreBadge';
 import PaywallModal from '@/components/course/PaywallModal';
-import CourseLoadingProgress from '@/components/course/CourseLoadingProgress';
 import FlashcardsView from '@/components/course/FlashcardsView';
 import APlusNoteView from '@/components/course/APlusNoteView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { trackEvent } from '@/lib/posthog';
 import { loadDemoCourse } from '@/lib/demoCourse';
 import { useCourseChapters } from '@/hooks/useCourseChapters';
@@ -34,6 +35,7 @@ interface CourseData {
   id: string;
   title: string;
   status: string;
+  quiz_status?: 'pending' | 'generating' | 'ready' | 'partial' | 'failed';
 }
 
 export default function CourseLearnPage() {
@@ -42,11 +44,23 @@ export default function CourseLearnPage() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const courseId = params?.courseId as string;
   const isDemoId = courseId?.startsWith('demo-');
 
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [quizGenerationError, setQuizGenerationError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+  const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
+  const [jobStatus, setJobStatus] = useState<{
+    stage: string;
+    elapsed_seconds: number | null;
+    last_update_seconds: number | null;
+    error_message: string | null;
+  } | null>(null);
 
   // Get initial tab from URL or default to 'note' (Study Sheet first in learning flow)
   const tabParam = searchParams.get('tab');
@@ -80,11 +94,168 @@ export default function CourseLearnPage() {
     error: apiError,
     isPolling,
     isListening,
+    refetch,
   } = useCourseChapters({
     courseId,
     enabled: !isDemoId, // Only enable for non-demo courses
     useRealtime: true, // Use Supabase Realtime for instant updates
   });
+
+  // Function to generate quiz on demand
+  const handleGenerateQuiz = useCallback(async () => {
+    if (isGeneratingQuiz || !courseId || isDemoId) return;
+
+    setIsGeneratingQuiz(true);
+    setQuizGenerationError(null);
+
+    try {
+      const response = await fetch(`/api/courses/${courseId}/quiz/generate`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error || 'Failed to generate quiz');
+      }
+
+      // Refetch course data to get updated quiz_status
+      await refetch();
+      trackEvent('quiz_generated', { userId: user?.id, courseId });
+    } catch (err) {
+      console.error('Error generating quiz:', err);
+      setQuizGenerationError(err instanceof Error ? err.message : 'Failed to generate quiz');
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+  }, [courseId, isDemoId, isGeneratingQuiz, refetch, user?.id]);
+
+  // Function to retry processing a stuck course
+  const handleRetryProcessing = useCallback(async () => {
+    if (isRetrying || !courseId || isDemoId) return;
+
+    setIsRetrying(true);
+    setRetryError(null);
+
+    try {
+      // First, try to fix the status if chapters already exist (course stuck at 'processing')
+      if (apiChapters.length > 0) {
+        console.log('Attempting to fix stuck course status (has chapters)');
+        const fixResponse = await fetch(`/api/courses/${courseId}/status`, {
+          method: 'POST',
+        });
+
+        if (fixResponse.ok) {
+          const fixData = await fixResponse.json();
+          if (fixData.success) {
+            console.log('Course status fixed successfully:', fixData);
+            await refetch();
+            trackEvent('course_status_fixed', { userId: user?.id, courseId });
+            return; // Success, no need to retry full pipeline
+          }
+        }
+      }
+
+      // If no chapters or fix didn't work, retry full pipeline
+      const response = await fetch(`/api/courses/${courseId}/retry`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error || 'Failed to retry processing');
+      }
+
+      // Reset processing start time
+      setProcessingStartTime(Date.now());
+      // Refetch course data to get updated status
+      await refetch();
+      trackEvent('course_retry', { userId: user?.id, courseId });
+    } catch (err) {
+      console.error('Error retrying processing:', err);
+      setRetryError(err instanceof Error ? err.message : 'Failed to retry processing');
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [courseId, isDemoId, isRetrying, refetch, user?.id, apiChapters.length]);
+
+  // Track processing start time to detect stuck courses
+  useEffect(() => {
+    if (!isDemoId && apiCourse && (apiCourse.status === 'pending' || apiCourse.status === 'processing')) {
+      if (!processingStartTime) {
+        setProcessingStartTime(Date.now());
+      }
+    } else if (apiCourse?.status === 'ready' || apiCourse?.status === 'failed') {
+      setProcessingStartTime(null);
+    }
+  }, [isDemoId, apiCourse?.status, processingStartTime]);
+
+  // State to track if course is stuck (updates every 10 seconds)
+  const [isStuck, setIsStuck] = useState(false);
+
+  // Update isStuck every 10 seconds while processing
+  useEffect(() => {
+    if (!processingStartTime) {
+      setIsStuck(false);
+      return;
+    }
+    if (!apiCourse || (apiCourse.status !== 'pending' && apiCourse.status !== 'processing')) {
+      setIsStuck(false);
+      return;
+    }
+
+    // Check immediately
+    const checkStuck = () => {
+      const elapsedMs = Date.now() - processingStartTime;
+      // Consider stuck if:
+      // - Processing for > 30 seconds AND still has 0 chapters
+      // - OR processing for > 2 minutes regardless
+      const hasNoChapters = apiChapters.length === 0;
+      const stuck = (elapsedMs > 30 * 1000 && hasNoChapters) || elapsedMs > 2 * 60 * 1000;
+      setIsStuck(stuck);
+    };
+    checkStuck();
+
+    // Then check every 10 seconds
+    const interval = setInterval(checkStuck, 10000);
+
+    return () => clearInterval(interval);
+  }, [processingStartTime, apiCourse?.status, apiChapters.length]);
+
+  // Fetch detailed job status while processing
+  useEffect(() => {
+    if (isDemoId || !courseId) return;
+    if (!apiCourse || (apiCourse.status !== 'pending' && apiCourse.status !== 'processing')) {
+      setJobStatus(null);
+      return;
+    }
+
+    const fetchJobStatus = async () => {
+      try {
+        const response = await fetch(`/api/courses/${courseId}/status`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.job) {
+            setJobStatus({
+              stage: data.job.stage,
+              elapsed_seconds: data.job.elapsed_seconds,
+              last_update_seconds: data.job.last_update_seconds,
+              error_message: data.job.error_message || data.course.error_message,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching job status:', err);
+      }
+    };
+
+    // Fetch immediately
+    fetchJobStatus();
+
+    // Then fetch every 5 seconds
+    const interval = setInterval(fetchJobStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, [isDemoId, courseId, apiCourse?.status]);
 
   // Load demo course data
   useEffect(() => {
@@ -138,9 +309,20 @@ export default function CourseLearnPage() {
   // In this case, we don't need to show "Free" or "Bonus" badges
   const hasFullAccess = isPremium || isFreeMonthlyCourse;
 
-  // Check if at least one chapter is ready (has status 'ready' OR has questions for backwards compatibility)
-  const hasReadyChapter = chapters.some(ch => ch.status === 'ready' || ch.question_count > 0);
-  const isStillProcessing = course?.status === 'pending' || course?.status === 'processing';
+  // Debug log for course status
+  useEffect(() => {
+    if (course) {
+      console.log('[DEBUG] Course status:', {
+        status: course.status,
+        quiz_status: course.quiz_status,
+        chapters_count: chapters.length,
+        isStuck,
+        processingTime: processingStartTime ? `${Math.round((Date.now() - processingStartTime) / 1000)}s` : null,
+        jobStage: jobStatus?.stage || null,
+      });
+    }
+  }, [course, chapters.length, isStuck, processingStartTime, jobStatus?.stage]);
+
 
   const handleChapterClick = (chapter: Chapter, index: number) => {
     // Chapter 1 is always accessible (even without account)
@@ -234,22 +416,33 @@ export default function CourseLearnPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
+    <div className={`min-h-screen transition-colors ${
+      isDark
+        ? 'bg-neutral-900'
+        : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+    }`}>
       <PageHeaderWithMascot
         title={course.title}
         subtitle={isDemoId ? 'Demo' : translate('learn_course_subtitle')}
         maxWidth="4xl"
+        showDarkModeToggle
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
         {/* Tabs - Study Sheet / Quiz / Flashcards (logical learning order) */}
-        <div className="flex gap-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-2">
+        <div className={`flex gap-2 rounded-2xl border shadow-sm p-2 transition-colors ${
+          isDark
+            ? 'bg-neutral-900 border-neutral-800'
+            : 'bg-white border-gray-200'
+        }`}>
           <button
             onClick={() => handleTabChange('note')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === 'note'
                 ? 'bg-orange-500 text-white'
-                : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+                : isDark
+                  ? 'text-neutral-400 hover:bg-neutral-800 hover:text-orange-400'
+                  : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
             }`}
           >
             <FileText className="w-4 h-4" />
@@ -260,7 +453,9 @@ export default function CourseLearnPage() {
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === 'quiz'
                 ? 'bg-orange-500 text-white'
-                : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+                : isDark
+                  ? 'text-neutral-400 hover:bg-neutral-800 hover:text-orange-400'
+                  : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
             }`}
           >
             <BookOpen className="w-4 h-4" />
@@ -271,7 +466,9 @@ export default function CourseLearnPage() {
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === 'flashcards'
                 ? 'bg-orange-500 text-white'
-                : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+                : isDark
+                  ? 'text-neutral-400 hover:bg-neutral-800 hover:text-orange-400'
+                  : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -279,34 +476,15 @@ export default function CourseLearnPage() {
           </button>
         </div>
 
-        {/* Processing progress - shown when course is pending/processing AND no chapter is ready yet */}
-        {!isDemoId && isStillProcessing && !hasReadyChapter && (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <CourseLoadingProgress
-              courseStatus={course?.status || 'pending'}
-              chaptersCount={chapters.length}
-              courseTitle={course?.title}
-            />
-          </div>
-        )}
-
-        {/* Partial loading banner - shown when processing but at least one chapter is ready */}
-        {!isDemoId && isStillProcessing && hasReadyChapter && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
-            <p className="text-sm text-orange-700">
-              {translate('course_loading_partial')}
-            </p>
-          </div>
-        )}
-
-        {/* Failed status banner */}
+        {/* Failed status banner - only show if course upload failed completely */}
         {!isDemoId && course?.status === 'failed' && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-3">
+          <div className={`rounded-2xl border p-4 text-sm flex items-start gap-3 ${
+            isDark ? 'border-red-500/30 bg-red-500/20 text-red-300' : 'border-red-200 bg-red-50 text-red-800'
+          }`}>
             <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="font-semibold">{translate('upload_processing_failed')}</p>
-              <p className="text-xs text-red-700 mt-1">
+              <p className={`text-xs mt-1 ${isDark ? 'text-red-400' : 'text-red-700'}`}>
                 {translate('upload_processing_failed_desc')}
               </p>
             </div>
@@ -316,31 +494,142 @@ export default function CourseLearnPage() {
         {/* Tab Content */}
         {activeTab === 'quiz' && (
           <>
-            {/* Chapters list - show when ready OR when at least one chapter is ready during processing */}
-            {!isDemoId && isStillProcessing && !hasReadyChapter ? null : chapters.length === 0 && (loading || isPolling || isListening) ? (
-              // Skeleton placeholders while loading/polling (fallback)
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="p-4 sm:p-5 flex items-start gap-4 animate-pulse">
-                    <div className="w-10 h-10 rounded-2xl bg-gray-200"></div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-                    </div>
-                    <div className="w-20 h-10 bg-gray-200 rounded-xl"></div>
+            {/* Course still processing (text extraction) - show waiting message with retry option */}
+            {!isDemoId && (course?.status === 'pending' || course?.status === 'processing') && (
+              <div className={`rounded-2xl border shadow-sm p-6 sm:p-8 text-center transition-colors ${
+                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+              }`}>
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+                  isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+                }`}>
+                  {isStuck ? (
+                    <AlertCircle className={`w-8 h-8 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
+                  ) : (
+                    <Loader2 className={`w-8 h-8 animate-spin ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
+                  )}
+                </div>
+                <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+                  {isStuck
+                    ? (translate('quiz_stuck_title') || 'Le traitement semble bloqué')
+                    : (translate('quiz_extracting_title') || 'Extraction du cours en cours...')}
+                </h3>
+                <p className={`text-sm max-w-md mx-auto ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+                  {isStuck
+                    ? (translate('quiz_stuck_description') || 'Le traitement prend plus de temps que prévu. Tu peux réessayer.')
+                    : (translate('quiz_extracting_description') || 'Le quiz sera disponible une fois l\'extraction terminée.')}
+                </p>
+                {/* Debug: Job status details */}
+                {jobStatus && (
+                  <div className={`mt-4 p-3 rounded-xl text-xs font-mono ${
+                    isDark ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    <div>Étape: <span className="font-bold">{jobStatus.stage || 'inconnue'}</span></div>
+                    {jobStatus.elapsed_seconds !== null && (
+                      <div>Temps écoulé: {Math.floor(jobStatus.elapsed_seconds / 60)}m {jobStatus.elapsed_seconds % 60}s</div>
+                    )}
+                    {jobStatus.last_update_seconds !== null && (
+                      <div>Dernière MAJ: il y a {jobStatus.last_update_seconds}s</div>
+                    )}
+                    {jobStatus.error_message && (
+                      <div className="text-red-500 mt-1">Erreur: {jobStatus.error_message}</div>
+                    )}
                   </div>
-                ))}
+                )}
+                {isStuck && (
+                  <div className="mt-6">
+                    {retryError && (
+                      <div className={`mb-4 p-3 rounded-xl text-sm ${
+                        isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600'
+                      }`}>
+                        {retryError}
+                      </div>
+                    )}
+                    <button
+                      onClick={handleRetryProcessing}
+                      disabled={isRetrying}
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 transition-colors"
+                    >
+                      {isRetrying ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {translate('retrying') || 'Relance en cours...'}
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-5 h-5" />
+                          {translate('retry_processing') || 'Réessayer'}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
-            ) : chapters.length === 0 ? (
-              // No chapters and not loading
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
-                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No chapters available yet.</p>
+            )}
+
+            {/* Quiz not generated yet - show generate button */}
+            {!isDemoId && course?.status === 'ready' && course?.quiz_status !== 'ready' && course?.quiz_status !== 'generating' && course?.quiz_status !== 'partial' && (
+              <div className={`rounded-2xl border shadow-sm p-6 sm:p-8 text-center transition-colors ${
+                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+              }`}>
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+                  isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+                }`}>
+                  <Sparkles className={`w-8 h-8 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
+                </div>
+                <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+                  {translate('quiz_generate_title') || 'Prêt à tester tes connaissances ?'}
+                </h3>
+                <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+                  {translate('quiz_generate_description') || 'Génère un quiz personnalisé basé sur ton cours pour réviser efficacement.'}
+                </p>
+                {quizGenerationError && (
+                  <div className={`mb-4 p-3 rounded-xl text-sm ${
+                    isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600'
+                  }`}>
+                    {quizGenerationError}
+                  </div>
+                )}
+                <button
+                  onClick={handleGenerateQuiz}
+                  disabled={isGeneratingQuiz}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 transition-colors"
+                >
+                  {isGeneratingQuiz ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      {translate('quiz_generating') || 'Génération en cours...'}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      {translate('quiz_generate_button') || 'Générer le Quiz'}
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Quiz generating - show progress with mascot rotation */}
+            {!isDemoId && course?.quiz_status === 'generating' && (
+              <GenerationLoadingScreen type="quiz" />
+            )}
+
+            {/* Chapters list - show when quiz is ready OR partial */}
+            {(isDemoId || course?.quiz_status === 'ready' || course?.quiz_status === 'partial') && (
+              <>
+                {chapters.length === 0 ? (
+              // No chapters available
+              <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
+                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+              }`}>
+                <AlertCircle className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-neutral-600' : 'text-gray-400'}`} />
+                <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('no_chapters_available') || 'Aucun chapitre disponible.'}</p>
               </div>
             ) : (
               // Chapters loaded - show list
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm divide-y divide-gray-100">
+              <div className={`rounded-2xl border shadow-sm divide-y transition-colors ${
+                isDark ? 'bg-neutral-900 border-neutral-800 divide-neutral-800' : 'bg-white border-gray-200 divide-gray-100'
+              }`}>
                 {chapters.map((chapter, index) => {
                   // Chapter is locked if: not chapter 1 AND (not logged in OR no full access)
                   const isLocked = index > 0 && (!user || !hasFullAccess) && !isDemoId;
@@ -351,38 +640,50 @@ export default function CourseLearnPage() {
                   return (
                     <div
                       key={chapter.id}
-                      className="p-3 sm:p-5 flex items-center gap-2.5 sm:gap-4 hover:bg-orange-50/40 transition-colors"
+                      className={`p-3 sm:p-5 flex items-center gap-2.5 sm:gap-4 transition-colors ${
+                        isDark ? 'hover:bg-neutral-800/50' : 'hover:bg-orange-50/40'
+                      }`}
                     >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-orange-100 text-orange-700 flex items-center justify-center font-semibold text-sm sm:text-base flex-shrink-0">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center font-semibold text-sm sm:text-base flex-shrink-0 ${
+                      isDark ? 'bg-orange-400/15 text-orange-300' : 'bg-orange-100 text-orange-700'
+                    }`}>
                       {index + 1}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                        <h3 className="text-sm sm:text-lg font-semibold text-gray-900 truncate">
+                        <h3 className={`text-sm sm:text-lg font-semibold truncate ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
                           {chapter.title}
                         </h3>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {/* Free badge for chapter 1 - hidden when user has full access */}
                           {index === 0 && !hasFullAccess && (
-                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-green-100 text-green-700 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                            <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
+                              isDark ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700'
+                            }`}>
                               {translate('course_detail_free_badge')}
                             </span>
                           )}
                           {/* Lock badge for chapters 2+ when user doesn't have full access */}
                           {isLocked && (
-                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                            <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap ${
+                              isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-600'
+                            }`}>
                               <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                               {translate('course_detail_locked_badge')}
                             </span>
                           )}
                           {isChapterProcessing && (
-                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-orange-100 text-orange-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                            <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap ${
+                              isDark ? 'bg-orange-400/15 text-orange-300' : 'bg-orange-100 text-orange-600'
+                            }`}>
                               <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
                               {translate('chapter_preparing')}
                             </span>
                           )}
                           {chapter.status === 'failed' && (
-                            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-red-100 text-red-600 text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                            <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold inline-flex items-center gap-0.5 sm:gap-1 whitespace-nowrap ${
+                              isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'
+                            }`}>
                               <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                               {translate('chapter_failed') || 'Erreur'}
                             </span>
@@ -390,19 +691,21 @@ export default function CourseLearnPage() {
                         </div>
                       </div>
                       {chapter.summary && (
-                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-1 sm:mb-2">{chapter.summary}</p>
+                        <p className={`text-xs sm:text-sm line-clamp-2 mb-1 sm:mb-2 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{chapter.summary}</p>
                       )}
-                      <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600">
-                        <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-gray-100">
+                      <div className={`flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs ${isDark ? 'text-neutral-500' : 'text-gray-600'}`}>
+                        <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${
+                          isDark ? 'bg-neutral-800' : 'bg-gray-100'
+                        }`}>
                           {chapter.question_count} {translate('chapter_questions')}
                         </span>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1.5 sm:gap-2 flex-shrink-0">
+                    <div className="flex flex-col items-center gap-1.5 sm:gap-2 flex-shrink-0">
                       {chapter.score !== null && chapter.question_count > 0 && (
                         <>
-                          {/* Mobile: compact score badge - same width as button */}
-                          <div className="sm:hidden w-full">
+                          {/* Mobile: compact score badge */}
+                          <div className="sm:hidden">
                             <ChapterScoreBadge
                               scorePts={chapter.score}
                               maxPts={chapter.question_count * 10}
@@ -423,9 +726,9 @@ export default function CourseLearnPage() {
                         disabled={!isChapterReady}
                         className={`inline-flex items-center justify-center gap-1 sm:gap-2 w-full sm:w-[180px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
                           !isChapterReady
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : isLocked
-                            ? 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
+                            ? isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-orange-500/20 hover:text-orange-400' : 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
                             : 'bg-orange-500 text-white hover:bg-orange-600'
                         }`}
                       >
@@ -453,32 +756,46 @@ export default function CourseLearnPage() {
               })}
               </div>
             )}
+              </>
+            )}
           </>
         )}
 
         {activeTab === 'flashcards' && (
-          <FlashcardsView courseId={courseId} courseTitle={course.title} />
+          <FlashcardsView
+            courseId={courseId}
+            courseTitle={course.title}
+            courseStatus={course.status}
+          />
         )}
 
         {activeTab === 'note' && (
-          <APlusNoteView courseId={courseId} courseTitle={course.title} />
+          <APlusNoteView
+            courseId={courseId}
+            courseTitle={course.title}
+            courseStatus={course.status}
+          />
         )}
 
       </main>
 
       {showSignupModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
+          <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+          }`}>
+            <h3 className={`text-xl font-bold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
               {translate('course_detail_locked_paywall')}
             </h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className={`text-sm mb-4 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
               {translate('course_detail_lock_two')}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSignupModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
                 {translate('cancel')}
               </button>

@@ -1,18 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { BookOpen, FolderOpen } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type TabView = 'courses' | 'folders';
 
 const STORAGE_KEY = 'aristo_dashboard_view';
-
-const MASCOT_IMAGES: Record<TabView, string> = {
-  courses: '/chat/Happy.png',
-  folders: '/chat/Drag_and_Drop.png',
-};
 
 interface DashboardTabsProps {
   initialView?: TabView;
@@ -41,6 +36,7 @@ export default function DashboardTabs({
   foldersContent,
 }: DashboardTabsProps) {
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<TabView>(initialView);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -63,8 +59,8 @@ export default function DashboardTabs({
   if (!isInitialized) {
     return (
       <div className="animate-pulse">
-        <div className="h-14 bg-gray-100 rounded-full w-72 mx-auto mb-6" />
-        <div className="h-64 bg-gray-100 rounded-2xl" />
+        <div className={`h-14 rounded-full w-72 mx-auto mb-6 ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`} />
+        <div className={`h-64 rounded-2xl ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`} />
       </div>
     );
   }
@@ -72,23 +68,20 @@ export default function DashboardTabs({
   return (
     <div className="space-y-6">
       {/* Tab Switcher Header */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex justify-center">
         {/* Pill Switcher */}
-        <div className="relative flex bg-gray-100 rounded-full p-1.5 shadow-inner">
-          {/* Animated Background Pill */}
-          <div
-            className={`absolute top-1.5 bottom-1.5 rounded-full bg-orange-500 shadow-md transition-all duration-300 ease-out ${
-              activeTab === 'courses' ? 'left-1.5 w-[calc(50%-6px)]' : 'left-[calc(50%+3px)] w-[calc(50%-6px)]'
-            }`}
-          />
-
+        <div className={`inline-flex rounded-full p-1 shadow-inner ${
+          isDark ? 'bg-neutral-800' : 'bg-gray-100'
+        }`}>
           {/* Courses Tab */}
           <button
             onClick={() => handleTabChange('courses')}
-            className={`relative z-10 flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-colors duration-200 ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
               activeTab === 'courses'
-                ? 'text-white'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-orange-500 text-white shadow-md'
+                : isDark
+                  ? 'text-neutral-400 hover:text-neutral-200'
+                  : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             <BookOpen className="w-4 h-4" />
@@ -98,7 +91,9 @@ export default function DashboardTabs({
                 className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold transition-colors duration-200 ${
                   activeTab === 'courses'
                     ? 'bg-white/20 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                    : isDark
+                      ? 'bg-neutral-700 text-neutral-300'
+                      : 'bg-gray-200 text-gray-600'
                 }`}
               >
                 {coursesCount}
@@ -109,10 +104,12 @@ export default function DashboardTabs({
           {/* Folders Tab */}
           <button
             onClick={() => handleTabChange('folders')}
-            className={`relative z-10 flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-colors duration-200 ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
               activeTab === 'folders'
-                ? 'text-white'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-orange-500 text-white shadow-md'
+                : isDark
+                  ? 'text-neutral-400 hover:text-neutral-200'
+                  : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             <FolderOpen className="w-4 h-4" />
@@ -122,27 +119,15 @@ export default function DashboardTabs({
                 className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold transition-colors duration-200 ${
                   activeTab === 'folders'
                     ? 'bg-white/20 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                    : isDark
+                      ? 'bg-neutral-700 text-neutral-300'
+                      : 'bg-gray-200 text-gray-600'
                 }`}
               >
                 {foldersCount}
               </span>
             )}
           </button>
-        </div>
-
-        {/* Mascot */}
-        <div className="relative flex-shrink-0 hidden sm:block">
-          <div className="relative w-12 h-12">
-            <Image
-              key={activeTab}
-              src={MASCOT_IMAGES[activeTab]}
-              alt="Nareo mascot"
-              width={48}
-              height={48}
-              className="object-contain drop-shadow-md animate-fadeIn"
-            />
-          </div>
         </div>
       </div>
 

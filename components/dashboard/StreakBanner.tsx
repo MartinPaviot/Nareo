@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Flame, Trophy, BookOpen, Star } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type MascotMood = 'happy' | 'neutral' | 'disappointed';
 
@@ -51,11 +52,16 @@ export default function StreakBanner({
   totalPoints = 0,
 }: StreakBannerProps) {
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const mood = getMascotMood(currentStreak, longestStreak);
   const mascotSrc = MASCOT_IMAGES[mood];
 
   return (
-    <div className="bg-gradient-to-r from-orange-50 via-orange-100/50 to-orange-50 rounded-t-3xl px-2 sm:px-6 py-2 sm:py-3 flex items-center gap-2 sm:gap-4">
+    <div className={`rounded-t-3xl px-2 sm:px-6 py-2 sm:py-3 flex items-center gap-2 sm:gap-4 ${
+      isDark
+        ? 'bg-gradient-to-r from-orange-950/40 via-orange-900/30 to-orange-950/40'
+        : 'bg-gradient-to-r from-orange-50 via-orange-100/50 to-orange-50'
+    }`}>
       {/* Stats - Distributed horizontally */}
       <div className="flex-1 flex items-center justify-between sm:flex-wrap sm:gap-y-2">
         {/* Current Streak */}
@@ -64,8 +70,8 @@ export default function StreakBanner({
             <Flame className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-white" />
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-gray-500 font-medium hidden sm:block">{translate('streak_current')}</p>
-            <p className="text-xs sm:text-lg font-bold text-orange-600">
+            <p className={`text-[10px] sm:text-xs font-medium hidden sm:block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('streak_current')}</p>
+            <p className={`text-xs sm:text-lg font-bold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
               {currentStreak}<span className="hidden sm:inline"> {translate('streak_days')}</span>
             </p>
           </div>
@@ -73,12 +79,12 @@ export default function StreakBanner({
 
         {/* Longest Streak */}
         <div className="flex items-center gap-1 sm:gap-2.5">
-          <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-purple-100 flex items-center justify-center">
-            <Trophy className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-purple-600" />
+          <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
+            <Trophy className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-gray-500 font-medium hidden sm:block">{translate('streak_record')}</p>
-            <p className="text-xs sm:text-lg font-bold text-purple-700">
+            <p className={`text-[10px] sm:text-xs font-medium hidden sm:block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('streak_record')}</p>
+            <p className={`text-xs sm:text-lg font-bold ${isDark ? 'text-purple-400' : 'text-purple-700'}`}>
               {longestStreak}<span className="hidden sm:inline"> {translate('streak_days')}</span>
             </p>
           </div>
@@ -86,12 +92,12 @@ export default function StreakBanner({
 
         {/* Total Quizzes */}
         <div className="flex items-center gap-1 sm:gap-2.5">
-          <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-orange-100 flex items-center justify-center">
-            <BookOpen className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-orange-600" />
+          <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-orange-900/50' : 'bg-orange-100'}`}>
+            <BookOpen className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-gray-500 font-medium hidden sm:block">{translate('stats_total_quizzes')}</p>
-            <p className="text-xs sm:text-lg font-bold text-orange-600">
+            <p className={`text-[10px] sm:text-xs font-medium hidden sm:block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_total_quizzes')}</p>
+            <p className={`text-xs sm:text-lg font-bold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
               {totalQuizzes}
             </p>
           </div>
@@ -99,12 +105,12 @@ export default function StreakBanner({
 
         {/* Total Points */}
         <div className="flex items-center gap-1 sm:gap-2.5">
-          <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-amber-100 flex items-center justify-center">
-            <Star className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-amber-600" />
+          <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-900/50' : 'bg-amber-100'}`}>
+            <Star className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-gray-500 font-medium hidden sm:block">{translate('stats_total_points')}</p>
-            <p className="text-xs sm:text-lg font-bold text-amber-600">
+            <p className={`text-[10px] sm:text-xs font-medium hidden sm:block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_total_points')}</p>
+            <p className={`text-xs sm:text-lg font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
               {totalPoints.toLocaleString()}
             </p>
           </div>
@@ -112,9 +118,13 @@ export default function StreakBanner({
 
         {/* Today's Badge (if any) - Hidden on mobile */}
         {todayBadge && (
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-yellow-100 rounded-full border border-yellow-200">
+          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border ${
+            isDark
+              ? 'bg-yellow-900/30 border-yellow-700/50'
+              : 'bg-yellow-100 border-yellow-200'
+          }`}>
             <span className="text-lg">{todayBadge.icon}</span>
-            <span className="text-sm font-semibold text-yellow-800">{todayBadge.name}</span>
+            <span className={`text-sm font-semibold ${isDark ? 'text-yellow-400' : 'text-yellow-800'}`}>{todayBadge.name}</span>
           </div>
         )}
       </div>

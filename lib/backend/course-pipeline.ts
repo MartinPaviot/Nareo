@@ -6,9 +6,7 @@ import { parseDocx } from "@/lib/document-parser";
 import { parseImage } from "@/lib/image-parser";
 import {
   extractTextFromImage,
-  generateChapterQuestions,
   generateChapterStructureFromCourseText,
-  generateConceptChapterQuestions,
 } from "@/lib/openai-vision";
 import { validateExtractedText, truncateTextIntelligently } from "@/lib/openai-fallback";
 import { logEvent } from "./analytics";
@@ -16,19 +14,16 @@ import { detectContentLanguageFromText } from "./language-detection";
 import {
   extractChapterText,
   LLM_CONFIG,
-  CourseDeduplicationTracker,
   type ChapterBoundary,
 } from "@/lib/llm";
-// Note: Flashcards are generated on-demand via /api/courses/[courseId]/flashcards/generate
+// Note: Quiz, Flashcards, and A+ Notes are all generated ON-DEMAND by the user
+// This allows customization before generation and makes upload much faster
 
 const RAW_BUCKET = "courses_raw";
 const MAX_PAGES = 100;
 const MAX_IMAGES = 6;
 const MIN_TEXT_LENGTH = 500;
 const DEFAULT_CONTENT_LANGUAGE = "en";
-
-// Parallel processing configuration
-const MAX_CONCURRENT_CHAPTERS = 3; // Process up to 3 chapters in parallel
 
 interface UploadPayload {
   userId: string | null;
@@ -380,252 +375,111 @@ export async function processCourseJob(jobId: string) {
       mode: hasRealPagePositions ? "real_page_positions" : "marker_based",
     });
 
-    // Initialize course-level deduplication tracker to prevent cross-chapter duplicates
-    const deduplicationTracker = new CourseDeduplicationTracker(0.65); // 65% similarity threshold
+    // === CHAPTER INSERTION (NO QUIZ GENERATION) ===
+    // Quiz generation is now ON-DEMAND via /api/courses/[courseId]/quiz/generate
+    // This makes upload much faster and allows user customization before generation
 
-    // === PARALLEL CHAPTER PROCESSING ===
-    // Process chapters in batches of MAX_CONCURRENT_CHAPTERS
-    // Mark each chapter as 'ready' immediately when done (progressive availability)
-    // Note: Flashcards and A+ Notes are generated ON-DEMAND by the user (not automatically)
-
-    // Prepare chapter data with boundaries
-    const chaptersWithText = chapters.map(chapter => {
+    // Insert chapters with their text (quiz generation is on-demand)
+    for (const chapter of chapters) {
       const boundary = chapterBoundaries.find(b => b.index === chapter.orderIndex + 1);
       const chapterText = boundary?.text || extractedText.substring(0, LLM_CONFIG.truncation.chapterText);
-      return { chapter, chapterText };
-    });
 
-    // Process chapters in parallel batches
-    for (let i = 0; i < chaptersWithText.length; i += MAX_CONCURRENT_CHAPTERS) {
-      const batch = chaptersWithText.slice(i, i + MAX_CONCURRENT_CHAPTERS);
+      try {
+        // Insert chapter with status 'ready' (text extracted, ready for quiz generation)
+        // Note: Using 'ready' for DB compatibility - quiz_status on course tracks quiz generation
+        const { error: chapterInsertError } = await admin.from("chapters").insert({
+          id: chapter.id,
+          course_id: course.id,
+          user_id: course.user_id,
+          order_index: chapter.orderIndex,
+          difficulty: chapter.difficulty,
+          title: chapter.title,
+          summary: chapter.summary,
+          importance: Math.min(3, Math.max(1, chapter.orderIndex + 1)),
+          source_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
+          extracted_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
+          status: 'ready', // Chapter text extracted, quiz generation is on-demand
+        });
+        if (chapterInsertError) {
+          console.error("Chapter insert failed", chapterInsertError);
+          throw chapterInsertError;
+        }
 
-      logStep("processing_chapter_batch", {
-        courseId: course.id,
-        batchStart: i,
-        batchSize: batch.length,
-        totalChapters: chapters.length,
-      });
-
-      await admin.from("pipeline_jobs").update({ stage: `chapters_batch_${i}` }).eq("id", jobId);
-
-      await Promise.all(
-        batch.map(async ({ chapter, chapterText }) => {
-          try {
-            // Insert chapter with status 'processing'
-            const { error: chapterInsertError } = await admin.from("chapters").insert({
-              id: chapter.id,
-              course_id: course.id,
-              user_id: course.user_id,
-              order_index: chapter.orderIndex,
-              difficulty: chapter.difficulty,
-              title: chapter.title,
-              summary: chapter.summary,
-              importance: Math.min(3, Math.max(1, chapter.orderIndex + 1)),
-              source_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
-              extracted_text: chapterText.substring(0, LLM_CONFIG.truncation.chapterText),
-              status: 'processing', // Start as processing
-            });
-            if (chapterInsertError) {
-              console.error("Chapter insert failed", chapterInsertError);
-              throw chapterInsertError;
-            }
-
-            // Insert concepts
-            for (const concept of chapter.concepts) {
-              const { error: conceptInsertError } = await admin.from("concepts").insert({
-                id: concept.id,
-                chapter_id: chapter.id,
-                course_id: course.id,
-                user_id: course.user_id,
-                title: concept.title,
-                description: concept.description,
-                importance: concept.importance ?? 1,
-                source_text: chapterText.substring(0, 2000),
-              });
-              if (conceptInsertError) {
-                console.error("Concept insert failed", conceptInsertError);
-                throw conceptInsertError;
-              }
-            }
-
-            const coverageMap = new Map<string, number>();
-            chapter.concepts.forEach(c => coverageMap.set(c.id, 0));
-
-            // Up to two passes to reach 95% coverage
-            let pass = 0;
-            let finalCoverage = 0;
-            let finalImportantCovered = false;
-            while (pass < 2) {
-              logStep("llm_questions_start", { courseId: course.id, chapterId: chapter.id, pass });
-
-              const generated = await generateConceptChapterQuestions(
-                {
-                  index: chapter.orderIndex + 1,
-                  title: chapter.title,
-                  short_summary: chapter.summary,
-                  difficulty: chapter.concepts[0]?.importance || 1,
-                  learning_objectives: chapter.learning_objectives,
-                  key_concepts: chapter.key_concepts,
-                },
-                chapterText,
-                modelLanguage,
-                { enableSemanticValidation: true }
-              );
-
-              const rawQuestions: any[] = Array.isArray(generated) ? generated : (generated as any).questions || [];
-
-              // Apply cross-chapter deduplication
-              const dedupeResult = deduplicationTracker.filterQuestions(
-                rawQuestions.map(q => ({ prompt: q.prompt || q.question, ...q })),
-                chapter.orderIndex
-              );
-              const questions: any[] = dedupeResult.filtered as any[];
-
-              if (dedupeResult.duplicatesRemoved > 0) {
-                logStep("cross_chapter_deduplication", {
-                  courseId: course.id,
-                  chapterId: chapter.id,
-                  originalCount: rawQuestions.length,
-                  afterDeduplication: questions.length,
-                });
-              }
-
-              // Insert questions
-              for (let idx = 0; idx < questions.length; idx++) {
-                const q = questions[idx];
-                const questionId = randomUUID();
-
-                const conceptIdsFromLLM: string[] = Array.isArray((q as any).concept_ids)
-                  ? (q as any).concept_ids.filter((id: string) => coverageMap.has(id))
-                  : [];
-                const fallbackConceptId = chapter.concepts[(idx + pass) % chapter.concepts.length]?.id;
-                const targetConceptIds: string[] = conceptIdsFromLLM.length > 0
-                  ? Array.from(new Set(conceptIdsFromLLM))
-                  : fallbackConceptId ? [fallbackConceptId] : [];
-
-                const rawOptions: string[] = Array.isArray(q.options) ? q.options : [];
-                const fixedOptions: string[] =
-                  rawOptions.length === 4
-                    ? rawOptions
-                    : [...rawOptions, "Option C", "Option D"].slice(0, 4);
-                const textCandidates = [q.expected_answer, q.correctAnswer, q.answer, q.answer_text].filter(Boolean) as string[];
-                const findIndexFromText = () =>
-                  fixedOptions.findIndex((opt: string) =>
-                    textCandidates.some(txt => txt && opt.toLowerCase() === txt.toLowerCase())
-                  );
-                const providedIndex =
-                  typeof q.correct_option_index === "number" &&
-                  q.correct_option_index >= 0 &&
-                  q.correct_option_index < fixedOptions.length
-                    ? q.correct_option_index
-                    : -1;
-                const derivedIndex = findIndexFromText();
-                const correctIndex = providedIndex >= 0 ? providedIndex : derivedIndex >= 0 ? derivedIndex : 0;
-                const correctOption = fixedOptions[correctIndex];
-
-                const { error: questionInsertError } = await admin.from("questions").insert({
-                  id: questionId,
-                  chapter_id: chapter.id,
-                  concept_id: null,
-                  question_number: q.questionNumber ?? q.order ?? idx + 1,
-                  question_text: q.prompt || q.question,
-                  answer_text: q.expected_answer || correctOption || q.correctAnswer || q.answer || null,
-                  options: fixedOptions,
-                  type: "mcq",
-                  difficulty: q.phase === "mcq" ? 2 : 3,
-                  phase: q.phase || "mcq",
-                  points: q.points ?? (q.type === "mcq" ? 10 : 35),
-                  correct_option_index: correctIndex,
-                  explanation: q.explanation || null,
-                  source_excerpt: q.source_reference || null,
-                  cognitive_level: q.cognitive_level || null,
-                });
-                if (questionInsertError) {
-                  console.error("Question insert failed", questionInsertError);
-                  throw questionInsertError;
-                }
-
-                for (const conceptId of targetConceptIds) {
-                  const { error: linkError } = await admin.from("question_concepts").insert({
-                    question_id: questionId,
-                    concept_id: conceptId,
-                  });
-                  if (!linkError) {
-                    coverageMap.set(conceptId, (coverageMap.get(conceptId) ?? 0) + 1);
-                  }
-                }
-              }
-
-              const covered = Array.from(coverageMap.values()).filter(v => v > 0).length;
-              finalCoverage = chapter.concepts.length > 0 ? covered / chapter.concepts.length : 1;
-              finalImportantCovered = chapter.concepts
-                .filter(c => c.importance >= 3)
-                .every(c => (coverageMap.get(c.id) ?? 0) >= 2);
-
-              await admin
-                .from("chapters")
-                .update({
-                  concept_count: chapter.concepts.length,
-                  covered_concepts: covered,
-                  coverage_ratio: finalCoverage,
-                })
-                .eq("id", chapter.id);
-
-              if (finalCoverage >= 0.95 && finalImportantCovered) {
-                break;
-              }
-              pass += 1;
-            }
-
-            // === CHAPTER IS NOW READY ===
-            // Mark chapter as ready IMMEDIATELY (progressive availability)
-            await admin
-              .from("chapters")
-              .update({ status: 'ready' })
-              .eq("id", chapter.id);
-
-            logStep("chapter_ready", {
-              courseId: course.id,
-              chapterId: chapter.id,
-              chapterIndex: chapter.orderIndex,
-              coverage: finalCoverage,
-            });
-
-            // Fire chapter notification (Supabase Realtime will pick this up)
-            console.log(`✅ Chapter ${chapter.orderIndex + 1} (${chapter.title}) is now READY`);
-
-          } catch (chapterError: any) {
-            // Mark chapter as failed but continue with other chapters
-            console.error(`Chapter ${chapter.id} failed:`, chapterError);
-            await admin
-              .from("chapters")
-              .update({ status: 'failed' })
-              .eq("id", chapter.id);
+        // Insert concepts
+        for (const concept of chapter.concepts) {
+          const { error: conceptInsertError } = await admin.from("concepts").insert({
+            id: concept.id,
+            chapter_id: chapter.id,
+            course_id: course.id,
+            user_id: course.user_id,
+            title: concept.title,
+            description: concept.description,
+            importance: concept.importance ?? 1,
+            source_text: chapterText.substring(0, 2000),
+          });
+          if (conceptInsertError) {
+            console.error("Concept insert failed", conceptInsertError);
+            throw conceptInsertError;
           }
-        })
-      );
+        }
+
+        logStep("chapter_inserted", {
+          courseId: course.id,
+          chapterId: chapter.id,
+          chapterIndex: chapter.orderIndex,
+          title: chapter.title,
+        });
+
+      } catch (chapterError: any) {
+        console.error(`Chapter ${chapter.id} insert failed:`, chapterError);
+        await admin
+          .from("chapters")
+          .update({ status: 'failed' })
+          .eq("id", chapter.id);
+      }
     }
 
-    // Count ready chapters
-    const { data: readyChapters } = await admin
+    // Count inserted chapters (regardless of status - if they exist, they were processed)
+    const { data: insertedChapters, error: countError } = await admin
       .from("chapters")
-      .select("id")
-      .eq("course_id", course.id)
-      .eq("status", "ready");
+      .select("id, status")
+      .eq("course_id", course.id);
 
-    const allChaptersReady = readyChapters?.length === chapters.length;
+    const readyChapters = insertedChapters?.filter(ch => ch.status === 'ready') || [];
+    const failedChapters = insertedChapters?.filter(ch => ch.status === 'failed') || [];
+
+    logStep("chapter_count_check", {
+      courseId: course.id,
+      totalInserted: insertedChapters?.length || 0,
+      readyCount: readyChapters.length,
+      failedCount: failedChapters.length,
+      expectedCount: chapters.length,
+    });
+
+    // Course is ready if we have at least some chapters inserted (even if not all)
+    // This prevents stuck 'processing' state when LLM returns duplicate indices
+    const hasChapters = (insertedChapters?.length || 0) > 0;
+    const allChaptersInserted = hasChapters;
 
     // No global LLM metadata here; keep existing course title/language
     const makePublic = !course.user_id; // guest uploads should be publicly readable
-    await admin.from("courses").update({
-      status: allChaptersReady ? "ready" : "processing", // Stay processing if some chapters failed
+    const updateResult = await admin.from("courses").update({
+      status: allChaptersInserted ? "ready" : "processing", // Ready for user to generate quiz/flashcards/notes
       title: course.title,
       language: contentLanguage,
       content_language: contentLanguage,
       is_public: makePublic ? true : course.is_public,
       error_message: null,
-      chapter_count: readyChapters?.length || 0,
+      chapter_count: readyChapters.length, // Only count ready chapters
+      quiz_status: 'pending', // Quiz not yet generated
     }).eq("id", course.id);
+
+    logStep("course_status_updated", {
+      courseId: course.id,
+      newStatus: allChaptersInserted ? "ready" : "processing",
+      chapterCount: readyChapters.length,
+      updateError: updateResult.error?.message || null,
+    });
 
     await admin
       .from("pipeline_jobs")

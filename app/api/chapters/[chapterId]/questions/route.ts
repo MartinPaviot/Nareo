@@ -13,20 +13,38 @@ export async function GET(
     const resolvedParams = "then" in context.params ? await context.params : context.params;
     const chapterId = resolvedParams.chapterId;
 
-    // Get chapter and verify access (owner, guest-owned, or public ready course)
-    const { data: chapter, error: chapterError } = await supabase
+    // Get chapter first (without join to diagnose issues)
+    const { data: chapterOnly, error: chapterOnlyError } = await supabase
       .from('chapters')
-      .select('*, courses!inner(*)')
+      .select('*')
       .eq('id', chapterId)
       .single();
 
-    if (chapterError || !chapter) {
-      return NextResponse.json({ error: 'Chapter not found' }, { status: 404 });
+    if (chapterOnlyError || !chapterOnly) {
+      console.error('Chapter not found (no join):', { chapterId, error: chapterOnlyError });
+      return NextResponse.json({ error: 'Chapter not found', chapterId, details: chapterOnlyError?.message }, { status: 404 });
     }
 
-    const isOwner = (!!userId && chapter.user_id === userId) || (!userId && !chapter.user_id);
+    // Get course info separately to avoid ambiguous relationship error
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('id', chapterOnly.course_id)
+      .single();
+
+    if (courseError || !course) {
+      console.error('Course not found for chapter:', { chapterId, courseId: chapterOnly.course_id, error: courseError });
+      return NextResponse.json({ error: 'Course not found for chapter', chapterId, courseId: chapterOnly.course_id, details: courseError?.message }, { status: 404 });
+    }
+
+    // Combine chapter and course data
+    const chapter = { ...chapterOnly, courses: course };
+
+    // Check access - user_id is on courses, not chapters
+    const courseUserId = chapter.courses?.user_id;
+    const isOwner = (!!userId && courseUserId === userId) || (!userId && !courseUserId);
     const isPublic = chapter.courses?.is_public === true && chapter.courses?.status === 'ready';
-    const isGuestReady = chapter.user_id === null && chapter.courses?.status === 'ready';
+    const isGuestReady = courseUserId === null && chapter.courses?.status === 'ready';
     if (!isOwner && !isPublic && !isGuestReady) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }

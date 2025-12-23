@@ -32,11 +32,11 @@ interface StatCardProps {
 
 function StatCard({ icon, value, label, bgColor, darkBgColor, textColor, darkTextColor, iconBgColor, darkIconBgColor, isDark }: StatCardProps) {
   return (
-    <div className={`rounded-2xl p-4 flex flex-col items-center justify-center gap-2 ${isDark ? darkBgColor : bgColor}`}>
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? darkIconBgColor : iconBgColor}`}>
+    <div className={`rounded-xl p-3 flex flex-col items-center justify-center gap-1 ${isDark ? darkBgColor : bgColor}`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? darkIconBgColor : iconBgColor}`}>
         {icon}
       </div>
-      <p className={`text-2xl font-bold ${isDark ? darkTextColor : textColor}`}>{value}</p>
+      <p className={`text-xl font-bold ${isDark ? darkTextColor : textColor}`}>{value}</p>
       <p className={`text-xs font-medium text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{label}</p>
     </div>
   );
@@ -64,16 +64,16 @@ export default function TodayActivity({
   };
 
   return (
-    <div className={`px-4 sm:px-6 py-5 ${isDark ? 'bg-neutral-900' : 'bg-white'}`}>
+    <div className={`px-4 sm:px-6 py-4 ${isDark ? 'bg-neutral-900' : 'bg-white'}`}>
       {/* Title */}
-      <h2 className={`text-lg font-bold mb-4 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+      <h2 className={`text-base font-bold mb-3 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
         {translate('today_activity_title')}
       </h2>
 
       {/* Stats Grid 2x2 */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
+      <div className="grid grid-cols-2 gap-2 mb-4">
         <StatCard
-          icon={<BookOpen className={`w-5 h-5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />}
+          icon={<BookOpen className={`w-4 h-4 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />}
           value={stats.quizzesCompleted}
           label={translate('today_quizzes')}
           bgColor="bg-orange-50"
@@ -85,7 +85,7 @@ export default function TodayActivity({
           isDark={isDark}
         />
         <StatCard
-          icon={<HelpCircle className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />}
+          icon={<HelpCircle className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />}
           value={stats.questionsAnswered}
           label={translate('today_questions')}
           bgColor="bg-blue-50"
@@ -97,7 +97,7 @@ export default function TodayActivity({
           isDark={isDark}
         />
         <StatCard
-          icon={<Zap className={`w-5 h-5 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />}
+          icon={<Zap className={`w-4 h-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />}
           value={stats.pointsEarned}
           label={translate('today_points')}
           bgColor="bg-purple-50"
@@ -109,7 +109,7 @@ export default function TodayActivity({
           isDark={isDark}
         />
         <StatCard
-          icon={<Target className={`w-5 h-5 ${isDark ? 'text-green-400' : 'text-green-600'}`} />}
+          icon={<Target className={`w-4 h-4 ${isDark ? 'text-green-400' : 'text-green-600'}`} />}
           value={`${stats.accuracy}%`}
           label={translate('today_accuracy')}
           bgColor="bg-green-50"
@@ -125,17 +125,17 @@ export default function TodayActivity({
       {/* CTA Button */}
       <button
         onClick={handleCTAClick}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+        className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
       >
         {hasQuizAvailable ? (
           <>
-            <Play className="w-5 h-5" />
+            <Play className="w-4 h-4" />
             {translate('today_cta_quiz')}
           </>
         ) : (
           <>
             {translate('today_cta_choose')}
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-4 h-4" />
           </>
         )}
       </button>

@@ -6,7 +6,10 @@ import { Loader2, Download, Copy, Check, Sparkles, RotateCcw, Pencil, X, Save, U
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 import GenerationLoadingScreen from './GenerationLoadingScreen';
+import PersonnalisationScreen from './PersonnalisationScreen';
+import { PersonnalisationConfig } from '@/types/personnalisation';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -72,6 +75,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
   const { translate } = useLanguage();
   const { user } = useAuth();
   const { isDark } = useTheme();
+  const { triggerRefresh } = useCoursesRefresh();
   const [noteContent, setNoteContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -84,6 +88,8 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [showPersonnalisation, setShowPersonnalisation] = useState(false);
+  const [lastConfig, setLastConfig] = useState<PersonnalisationConfig | null>(null); // Config utilisée pour la dernière génération
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Parse the note content to extract title, topics, and main content
@@ -129,7 +135,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
     return { title, topics, content };
   }, [noteContent, courseTitle]);
 
-  // Check if note already exists
+  // Check if note already exists and load saved config
   useEffect(() => {
     const fetchNote = async () => {
       setLoading(true);
@@ -139,6 +145,10 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
           const data = await response.json();
           if (data.content) {
             setNoteContent(data.content);
+          }
+          // Restaurer la config sauvegardée pour la régénération
+          if (data.config) {
+            setLastConfig(data.config as PersonnalisationConfig);
           }
         }
       } catch (err) {
@@ -151,11 +161,23 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
     fetchNote();
   }, [courseId]);
 
-  const handleGenerate = async () => {
+  // Show personnalisation screen before generating
+  const handleShowPersonnalisation = () => {
     // Check if user is logged in
     if (!user) {
       setShowSignupModal(true);
       return;
+    }
+    setShowPersonnalisation(true);
+  };
+
+  const handleGenerate = async (config?: PersonnalisationConfig) => {
+    // Hide personnalisation screen
+    setShowPersonnalisation(false);
+
+    // Sauvegarder la config pour la prochaine régénération
+    if (config) {
+      setLastConfig(config);
     }
 
     setGenerating(true);
@@ -166,6 +188,10 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
     try {
       const response = await fetch(`/api/courses/${courseId}/note/generate`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ config }),
       });
 
       if (!response.ok) {
@@ -204,6 +230,8 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
                 setNoteContent(data.content);
                 setGenerationProgress(100);
                 setGenerationMessage('');
+                // Trigger global refresh to update course cards
+                triggerRefresh();
               } else if (data.type === 'error') {
                 throw new Error(data.message || 'Generation failed');
               }
@@ -370,58 +398,36 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
     return <GenerationLoadingScreen type="extraction" />;
   }
 
-  // No note yet - show generate button
+  // No note yet - show personnalisation screen directly
   if (!noteContent || !parsedNote) {
+    // Show generation in progress
+    if (generating) {
+      return (
+        <GenerationLoadingScreen
+          type="note"
+          compact
+          progress={generationProgress}
+          progressMessage={translateProgressMessage(generationMessage, translate)}
+        />
+      );
+    }
+
+    // Show personnalisation screen directly (no intermediate button)
     return (
       <>
-        <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
-          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-        }`}>
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-            isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+        {error && (
+          <div className={`rounded-xl p-3 mb-4 text-sm ${
+            isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
           }`}>
-            <Sparkles className="w-8 h-8 text-orange-500" />
+            <span>{error}</span>
           </div>
-          <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-            {translate('aplus_note_title')}
-          </h3>
-          <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-            {translate('aplus_note_description')}
-          </p>
+        )}
 
-          {error && (
-            <div className={`rounded-xl p-3 mb-4 text-sm flex items-center justify-between ${
-              isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
-            }`}>
-              <span>{error}</span>
-              <button
-                onClick={handleGenerate}
-                className={`ml-3 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  isDark ? 'bg-red-500/30 hover:bg-red-500/40 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-700'
-                }`}
-              >
-                {translate('retry') || 'Retry'}
-              </button>
-            </div>
-          )}
-
-          {generating ? (
-            <GenerationLoadingScreen
-              type="note"
-              compact
-              progress={generationProgress}
-              progressMessage={translateProgressMessage(generationMessage, translate)}
-            />
-          ) : (
-            <button
-              onClick={handleGenerate}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
-            >
-              <Sparkles className="w-5 h-5" />
-              {translate('aplus_note_generate')}
-            </button>
-          )}
-        </div>
+        <PersonnalisationScreen
+          fileName={courseTitle}
+          onGenerate={handleGenerate}
+          isGenerating={generating}
+        />
 
         {/* Signup Modal */}
         {showSignupModal && (
@@ -466,6 +472,21 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
   // Show the note with structured header
   return (
     <>
+      {/* Personnalisation Modal for regeneration */}
+      {showPersonnalisation && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <PersonnalisationScreen
+              fileName={courseTitle}
+              onGenerate={handleGenerate}
+              onCancel={() => setShowPersonnalisation(false)}
+              isGenerating={generating}
+              initialConfig={lastConfig ?? undefined}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Floating toast notification for regeneration progress */}
       {generating && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
@@ -550,7 +571,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
             <span className="hidden xs:inline">{translate('edit')}</span>
           </button>
           <button
-            onClick={handleGenerate}
+            onClick={handleShowPersonnalisation}
             disabled={generating || isEditing}
             className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors disabled:opacity-50 ${
               isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/20' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'

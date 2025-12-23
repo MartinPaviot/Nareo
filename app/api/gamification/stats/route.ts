@@ -88,6 +88,38 @@ export async function GET(request: NextRequest) {
       .eq('activity_date', today)
       .single();
 
+    // Get today's challenge stats
+    const todayStart = new Date(today);
+    const todayEnd = new Date(today);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    // Get challenges completed today
+    const { data: todayChallenges } = await supabase
+      .from('challenge_players')
+      .select('id, score, challenge:challenges!inner(created_at, status)')
+      .eq('user_id', user.id)
+      .eq('challenge.status', 'finished')
+      .gte('challenge.created_at', todayStart.toISOString())
+      .lt('challenge.created_at', todayEnd.toISOString());
+
+    const todayChallengePoints = todayChallenges?.reduce((sum, cp: any) => sum + (cp.score || 0), 0) || 0;
+    const todayChallengesCount = todayChallenges?.length || 0;
+
+    // Get challenge answers for today's challenges to count questions
+    const todayPlayerIds = todayChallenges?.map((cp: any) => cp.id) || [];
+    let todayChallengeQuestions = 0;
+    let todayChallengeCorrect = 0;
+
+    if (todayPlayerIds.length > 0) {
+      const { data: todayAnswers } = await supabase
+        .from('challenge_answers')
+        .select('is_correct')
+        .in('player_id', todayPlayerIds);
+
+      todayChallengeQuestions = todayAnswers?.length || 0;
+      todayChallengeCorrect = todayAnswers?.filter((a: any) => a.is_correct).length || 0;
+    }
+
     // Get last 7 days activity for chart
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -97,6 +129,33 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .gte('activity_date', sevenDaysAgo.toISOString().split('T')[0])
       .order('activity_date', { ascending: true });
+
+    // Combine quiz and challenge stats for today's activity
+    const quizActivity = todayActivity || {
+      quizzes_completed: 0,
+      questions_answered: 0,
+      questions_correct: 0,
+      points_earned: 0,
+      time_spent_minutes: 0,
+    };
+
+    const hasChallengeActivity = todayChallengesCount > 0;
+    const hasQuizActivity = todayActivity !== null;
+
+    const combinedTodayActivity = (hasQuizActivity || hasChallengeActivity)
+      ? {
+          activity_date: today,
+          // Combine quiz + challenge counts
+          quizzes_completed: (quizActivity.quizzes_completed || 0) + todayChallengesCount,
+          questions_answered: (quizActivity.questions_answered || 0) + todayChallengeQuestions,
+          questions_correct: (quizActivity.questions_correct || 0) + todayChallengeCorrect,
+          points_earned: (quizActivity.points_earned || 0) + todayChallengePoints,
+          time_spent_minutes: quizActivity.time_spent_minutes || 0,
+          // Extra fields for debugging/display
+          challenge_points: todayChallengePoints,
+          challenges_completed: todayChallengesCount,
+        }
+      : null;
 
     return NextResponse.json({
       success: true,
@@ -111,7 +170,7 @@ export async function GET(request: NextRequest) {
         total_questions_correct: gamification?.total_questions_correct || 0,
       },
       badges: userBadges || [],
-      today_activity: todayActivity || null,
+      today_activity: combinedTodayActivity,
       recent_activity: recentActivity || [],
     });
   } catch (error) {

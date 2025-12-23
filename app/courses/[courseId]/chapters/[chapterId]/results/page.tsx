@@ -6,6 +6,7 @@ import { CheckCircle2, XCircle, ArrowLeft, RotateCcw, Trophy, Sparkles, Gift, X,
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 import { useGamification } from '@/hooks/useGamification';
 import { trackEvent } from '@/lib/posthog';
 import { saveAnonymousContext } from '@/lib/anonymous-session';
@@ -50,6 +51,7 @@ export default function QuizResultsPage() {
   const searchParams = useSearchParams();
   const { translate, currentLanguage } = useLanguage();
   const { user } = useAuth();
+  const { triggerRefresh } = useCoursesRefresh();
   const { recordActivity } = useGamification();
 
   const [newBadges, setNewBadges] = useState<BadgeEarned[]>([]);
@@ -103,6 +105,9 @@ export default function QuizResultsPage() {
           setNewBadges(badges);
           setShowBadgeCelebration(true);
         }
+
+        // Trigger refresh of course cards on dashboard
+        triggerRefresh();
       }
     };
 

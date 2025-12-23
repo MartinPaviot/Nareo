@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Menu, X, Moon, Sun, BookOpen, LogOut, LogIn, UserPlus, Globe, User, Crown } from 'lucide-react';
+import { Menu, X, Moon, Sun, BookOpen, LogOut, LogIn, UserPlus, Globe, User, Crown, Gamepad2, Users, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage, type Language } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -251,6 +251,55 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
             {/* Auth buttons */}
             {user ? (
               <>
+                {/* Challenge Mode */}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push('/defi');
+                  }}
+                  className={`flex items-center gap-3 h-11 px-4 rounded-xl text-sm font-medium transition-colors ${
+                    isDark
+                      ? 'text-neutral-300 hover:bg-neutral-800'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Gamepad2 className="w-4 h-4 text-green-500" />
+                  {translate('challenge_mode') || 'Mode Défi'}
+                </button>
+                {/* Friends */}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push('/amis');
+                  }}
+                  className={`flex items-center gap-3 h-11 px-4 rounded-xl text-sm font-medium transition-colors ${
+                    isDark
+                      ? 'text-neutral-300 hover:bg-neutral-800'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Users className="w-4 h-4 text-blue-500" />
+                  {translate('friends') || 'Amis'}
+                </button>
+                {/* Leaderboard */}
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push('/classement');
+                  }}
+                  className={`flex items-center gap-3 h-11 px-4 rounded-xl text-sm font-medium transition-colors ${
+                    isDark
+                      ? 'text-neutral-300 hover:bg-neutral-800'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                  {translate('leaderboard') || 'Classement'}
+                </button>
+
+                {/* Divider */}
+                <div className={`h-px my-1 ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`} />
+
                 {/* My Account */}
                 <button
                   onClick={() => {

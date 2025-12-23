@@ -1,0 +1,384 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+  Loader2,
+  ChevronDown,
+  Check,
+  Sparkles,
+  BookOpen,
+  Zap,
+  Lightbulb,
+  FileText,
+  Calculator,
+  GraduationCap,
+  Scale,
+  TrendingUp,
+  FlaskConical,
+  Globe,
+  Languages,
+  Code,
+  Stethoscope,
+  HelpCircle,
+  Layers
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import {
+  PersonnalisationConfig,
+  Matiere,
+  NiveauDetail,
+  RecapsConfig,
+  DEFAULT_CONFIG,
+  DEFAULT_RECAPS_BY_MATIERE,
+} from '@/types/personnalisation';
+
+interface PersonnalisationScreenProps {
+  fileName: string;
+  onGenerate: (config: PersonnalisationConfig) => void;
+  onCancel?: () => void;
+  isGenerating?: boolean;
+  initialConfig?: PersonnalisationConfig; // Config initiale pour pré-remplir (régénération)
+}
+
+// Matières avec labels et icônes colorées
+const MATIERES = [
+  { value: 'droit', label: 'Droit', icon: Scale, iconColor: 'text-amber-600' },
+  { value: 'economie', label: 'Économie / Finance / Gestion', icon: TrendingUp, iconColor: 'text-emerald-600' },
+  { value: 'sciences', label: 'Sciences (Maths, Physique, Chimie, Bio)', icon: FlaskConical, iconColor: 'text-violet-600' },
+  { value: 'histoire-geo', label: 'Histoire / Géographie / Sciences Po', icon: Globe, iconColor: 'text-blue-600' },
+  { value: 'langues', label: 'Langues', icon: Languages, iconColor: 'text-rose-600' },
+  { value: 'informatique', label: 'Informatique', icon: Code, iconColor: 'text-cyan-600' },
+  { value: 'medecine', label: 'Médecine / Santé', icon: Stethoscope, iconColor: 'text-red-600' },
+  { value: 'autre', label: 'Autre', icon: HelpCircle, iconColor: 'text-slate-500' },
+] as const;
+
+// Niveaux avec icônes colorées
+const NIVEAUX = [
+  { value: 'synthetique' as const, label: 'Synthétique', icon: Zap, description: 'Droit au but, concepts condensés', iconColor: 'text-yellow-500' },
+  { value: 'standard' as const, label: 'Standard', icon: BookOpen, description: 'Complet et structuré', iconColor: 'text-blue-500' },
+  { value: 'explicatif' as const, label: 'Explicatif', icon: Lightbulb, description: 'Avec raisonnements et contexte', iconColor: 'text-amber-500' },
+];
+
+// Récaps avec icônes colorées (schemas masqué car images désactivées)
+const RECAPS = [
+  { key: 'definitions' as const, label: 'Glossaire', icon: FileText, iconColor: 'text-indigo-500' },
+  { key: 'formules' as const, label: 'Récap formules', icon: Calculator, iconColor: 'text-teal-500' },
+];
+
+export default function PersonnalisationScreen({
+  fileName,
+  onGenerate,
+  onCancel,
+  isGenerating = false,
+  initialConfig,
+}: PersonnalisationScreenProps) {
+  const { isDark } = useTheme();
+
+  // Utiliser initialConfig si fournie (régénération), sinon les défauts
+  const [matiere, setMatiere] = useState<Matiere>(initialConfig?.matiere ?? DEFAULT_CONFIG.matiere);
+  const [niveau, setNiveau] = useState<NiveauDetail>(initialConfig?.niveau ?? DEFAULT_CONFIG.niveau);
+  const [recaps, setRecaps] = useState<RecapsConfig>(initialConfig?.recaps ?? DEFAULT_CONFIG.recaps);
+
+  // Track si l'utilisateur a manuellement modifié les récaps
+  const [recapsManuallySet, setRecapsManuallySet] = useState(!!initialConfig);
+
+  // Accordion states - un seul ouvert à la fois
+  const [openSection, setOpenSection] = useState<'matiere' | 'niveau' | 'recaps' | null>(null);
+
+  // Update recaps when matiere changes (sauf si déjà modifiés manuellement ou initialConfig fournie)
+  useEffect(() => {
+    if (!recapsManuallySet) {
+      setRecaps(DEFAULT_RECAPS_BY_MATIERE[matiere]);
+    }
+  }, [matiere, recapsManuallySet]);
+
+  const handleRecapToggle = (key: keyof RecapsConfig) => {
+    setRecapsManuallySet(true); // L'utilisateur a modifié manuellement
+    setRecaps((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleGenerate = () => {
+    onGenerate({ matiere, niveau, recaps });
+  };
+
+  const toggleSection = (section: 'matiere' | 'niveau' | 'recaps') => {
+    setOpenSection(openSection === section ? null : section);
+  };
+
+  const selectedMatiere = MATIERES.find((m) => m.value === matiere);
+  const selectedNiveau = NIVEAUX.find((n) => n.value === niveau);
+  const selectedRecapsCount = Object.values(recaps).filter(Boolean).length;
+
+  return (
+    <div className={`rounded-2xl border shadow-sm p-4 transition-colors ${
+      isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+    }`}>
+
+      {/* Header */}
+      <div className="mb-4">
+        <h3
+          className={`text-lg font-semibold ${
+            isDark ? 'text-neutral-100' : 'text-gray-900'
+          }`}
+        >
+          Génère ta fiche de révision
+        </h3>
+        <p
+          className={`text-sm mt-1 ${
+            isDark ? 'text-neutral-400' : 'text-gray-500'
+          }`}
+        >
+          Personnalise le contenu de ta fiche
+        </p>
+      </div>
+
+      {/* Section Matière */}
+      <div className="mb-2">
+        <button
+          type="button"
+          onClick={() => toggleSection('matiere')}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+            openSection === 'matiere'
+              ? isDark ? 'bg-neutral-800 border border-orange-500/50' : 'bg-orange-50/50 border border-orange-200'
+              : isDark ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600' : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              isDark ? 'bg-neutral-700' : 'bg-white shadow-sm border border-gray-100'
+            }`}>
+              {selectedMatiere ? (
+                <selectedMatiere.icon className={`w-[18px] h-[18px] ${selectedMatiere.iconColor}`} />
+              ) : (
+                <GraduationCap className={`w-[18px] h-[18px] ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+              )}
+            </div>
+            <div className="flex flex-col items-start min-w-0">
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                Matière
+              </span>
+              <span className={`text-sm font-semibold truncate ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+                {selectedMatiere?.label || 'Sélectionner'}
+              </span>
+            </div>
+          </div>
+          <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${openSection === 'matiere' ? 'rotate-180' : ''} ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+        </button>
+
+        {openSection === 'matiere' && (
+          <div className={`mt-1 rounded-xl border overflow-hidden ${isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'}`}>
+            {MATIERES.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => { setMatiere(option.value as Matiere); setOpenSection(null); }}
+                className={`w-full text-left px-4 py-3 transition-all flex items-center gap-3 ${
+                  matiere === option.value
+                    ? isDark ? 'bg-neutral-700/50' : 'bg-gray-50'
+                    : isDark ? 'hover:bg-neutral-700/30' : 'hover:bg-gray-50/50'
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  isDark ? 'bg-neutral-700' : 'bg-gray-100'
+                }`}>
+                  <option.icon className={`w-[18px] h-[18px] ${option.iconColor}`} />
+                </div>
+                <span className={`text-sm font-medium flex-1 ${
+                  matiere === option.value
+                    ? isDark ? 'text-white' : 'text-gray-900'
+                    : isDark ? 'text-neutral-300' : 'text-gray-700'
+                }`}>
+                  {option.label}
+                </span>
+                {matiere === option.value && (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center bg-orange-500">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Section Niveau */}
+      <div className="mb-2">
+        <button
+          type="button"
+          onClick={() => toggleSection('niveau')}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+            openSection === 'niveau'
+              ? isDark ? 'bg-neutral-800 border border-orange-500/50' : 'bg-orange-50/50 border border-orange-200'
+              : isDark ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600' : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              isDark ? 'bg-neutral-700' : 'bg-white shadow-sm border border-gray-100'
+            }`}>
+              {selectedNiveau ? (
+                <selectedNiveau.icon className={`w-[18px] h-[18px] ${selectedNiveau.iconColor}`} />
+              ) : (
+                <Layers className={`w-[18px] h-[18px] ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+              )}
+            </div>
+            <div className="flex flex-col items-start">
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Niveau de détail</span>
+              <span className={`text-sm font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+                {selectedNiveau?.label || 'Sélectionner'}
+              </span>
+            </div>
+          </div>
+          <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${openSection === 'niveau' ? 'rotate-180' : ''} ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+        </button>
+
+        {openSection === 'niveau' && (
+          <div className={`mt-1 rounded-xl border overflow-hidden ${isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'}`}>
+            {NIVEAUX.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => { setNiveau(option.value); setOpenSection(null); }}
+                className={`w-full text-left px-4 py-3 transition-all ${
+                  niveau === option.value
+                    ? isDark ? 'bg-neutral-700/50' : 'bg-gray-50'
+                    : isDark ? 'hover:bg-neutral-700/30' : 'hover:bg-gray-50/50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      isDark ? 'bg-neutral-700' : 'bg-gray-100'
+                    }`}>
+                      <option.icon className={`w-5 h-5 ${option.iconColor}`} />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${
+                        niveau === option.value
+                          ? isDark ? 'text-white' : 'text-gray-900'
+                          : isDark ? 'text-neutral-200' : 'text-gray-900'
+                      }`}>
+                        {option.label}
+                      </p>
+                      <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                        {option.description}
+                      </p>
+                    </div>
+                  </div>
+                  {niveau === option.value && (
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center bg-orange-500">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Section Récaps */}
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => toggleSection('recaps')}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+            openSection === 'recaps'
+              ? isDark ? 'bg-neutral-800 border border-orange-500/50' : 'bg-orange-50/50 border border-orange-200'
+              : isDark ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600' : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              isDark ? 'bg-neutral-700' : 'bg-white shadow-sm border border-gray-100'
+            }`}>
+              <FileText className={`w-[18px] h-[18px] ${selectedRecapsCount > 0 ? 'text-orange-500' : isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+            </div>
+            <div className="flex flex-col items-start">
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Récaps à la fin</span>
+              <span className={`text-sm font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+                {selectedRecapsCount > 0 ? `${selectedRecapsCount} sélectionné${selectedRecapsCount > 1 ? 's' : ''}` : 'Aucun'}
+              </span>
+            </div>
+          </div>
+          <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${openSection === 'recaps' ? 'rotate-180' : ''} ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+        </button>
+
+        {openSection === 'recaps' && (
+          <div className={`mt-1 rounded-xl border overflow-hidden ${isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'}`}>
+            {RECAPS.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => handleRecapToggle(option.key)}
+                className={`w-full text-left px-4 py-3 transition-all ${
+                  recaps[option.key]
+                    ? isDark ? 'bg-neutral-700/50' : 'bg-gray-50'
+                    : isDark ? 'hover:bg-neutral-700/30' : 'hover:bg-gray-50/50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                    recaps[option.key]
+                      ? 'bg-orange-500 border-orange-500'
+                      : isDark ? 'border-neutral-500 bg-transparent' : 'border-gray-300 bg-transparent'
+                  }`}>
+                    {recaps[option.key] && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                    isDark ? 'bg-neutral-700' : 'bg-gray-100'
+                  }`}>
+                    <option.icon className={`w-[18px] h-[18px] ${option.iconColor}`} />
+                  </div>
+                  <span className={`text-sm font-medium ${
+                    recaps[option.key]
+                      ? isDark ? 'text-white' : 'text-gray-900'
+                      : isDark ? 'text-neutral-300' : 'text-gray-700'
+                  }`}>
+                    {option.label}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Buttons */}
+      <div className={`flex gap-2 ${onCancel ? '' : ''}`}>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isGenerating}
+            className={`flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold transition-all disabled:opacity-50 ${
+              isDark
+                ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Annuler
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          className={`${onCancel ? 'flex-1' : 'w-full'} inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-all disabled:opacity-50 shadow-sm`}
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Génération en cours...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-5 h-5" />
+              {onCancel ? 'Régénérer' : 'Générer la fiche'}
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}

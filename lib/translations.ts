@@ -350,6 +350,7 @@ export const translations: Record<Language, Translations> = {
     flashcards_generate: 'Generate Flashcards',
     flashcards_generating: 'Generating...',
     flashcards_regenerate: 'Regenerate',
+    flashcards_fullscreen: 'Fullscreen',
     flashcards_progress: '{current} / {total}',
     flashcards_concept: 'Concept',
     flashcards_definition: 'Definition',
@@ -610,6 +611,28 @@ export const translations: Record<Language, Translations> = {
     my_courses_empty_cta: 'Upload a course',
     my_courses_button: 'My Courses',
     my_account_button: 'My Account',
+
+    // Challenge Mode
+    challenge_mode: 'Challenge Mode',
+    friends: 'Friends',
+    leaderboard: 'Leaderboard',
+
+    // Blog
+    blog_nav_button: 'Blog',
+    blog_title: 'Blog',
+    blog_subtitle: 'Tips and methods for effective studying',
+    blog_read_more: 'Read more',
+    blog_coming_soon_title: 'Articles coming soon',
+    blog_coming_soon_description: 'We are preparing articles on the best study methods. Come back soon!',
+    blog_newsletter_title: 'Stay informed',
+    blog_newsletter_description: 'Receive our latest study tips directly in your inbox.',
+    blog_newsletter_cta: 'Sign up for free',
+    blog_article_1_title: 'Active Recall: The Most Effective Study Method',
+    blog_article_1_description: 'Discover why actively testing yourself is much more effective than passively re-reading your notes.',
+    blog_article_2_title: 'Spaced Repetition: Memorize for the Long Term',
+    blog_article_2_description: 'Learn how to use the spacing effect to optimize your memorization.',
+    blog_article_3_title: 'The Pomodoro Technique: Stay Focused',
+    blog_article_3_description: 'A simple method to maintain your concentration and avoid burnout during study sessions.',
     course_status_preparing: 'In preparation',
     course_status_ready: 'Ready',
     course_status_failed: 'Reading failed',
@@ -662,7 +685,7 @@ export const translations: Record<Language, Translations> = {
     extraction_loading_title: 'Extracting course content...',
     extraction_loading_description: 'Once complete, you can generate your study sheet, quiz, and flashcards.',
     extraction_time_estimate: 'About 1-2 minutes',
-    note_generating_title: 'Generating A+ Note...',
+    note_generating_title: 'Generating study sheet...',
     note_generating_description_full: 'We are structuring your course into an optimized study sheet.',
     flashcards_generating_title: 'Generating flashcards...',
     flashcards_generating_description_full: 'We are creating memo cards for effective revision.',
@@ -1090,6 +1113,11 @@ export const translations: Record<Language, Translations> = {
     cgu_article10_p1: 'These ToS are governed by French law. In case of dispute relating to the interpretation or execution hereof, the parties shall endeavor to find an amicable solution. Failing this, the dispute shall be submitted to the competent courts of Rennes.',
     cgu_article11_title: 'Article 11 - Contact',
     cgu_article11_p1: 'For any questions regarding these ToS, you can contact us at:',
+
+    // Course Drawer
+    drawer_my_courses: 'My Courses',
+    drawer_no_courses: 'No courses yet',
+    drawer_other_courses: 'Other courses',
   },
   fr: {
     // Common
@@ -1436,6 +1464,7 @@ export const translations: Record<Language, Translations> = {
     flashcards_generate: 'Générer les Flashcards',
     flashcards_generating: 'Génération...',
     flashcards_regenerate: 'Régénérer',
+    flashcards_fullscreen: 'Plein écran',
     flashcards_progress: '{current} / {total}',
     flashcards_concept: 'Concept',
     flashcards_definition: 'Définition',
@@ -1694,7 +1723,30 @@ export const translations: Record<Language, Translations> = {
     my_courses_empty_title: 'Importe ton premier cours',
     my_courses_empty_cta: 'Téléverser un cours',
     my_courses_button: 'Mes cours',
+
+    // Blog
+    blog_nav_button: 'Blog',
+    blog_title: 'Blog',
+    blog_subtitle: 'Conseils et méthodes pour réviser efficacement',
+    blog_read_more: 'Lire la suite',
+    blog_coming_soon_title: 'Articles à venir',
+    blog_coming_soon_description: 'Nous préparons des articles sur les meilleures méthodes de révision. Revenez bientôt !',
+    blog_newsletter_title: 'Restez informé',
+    blog_newsletter_description: 'Recevez nos derniers conseils de révision directement dans votre boîte mail.',
+    blog_newsletter_cta: "S'inscrire gratuitement",
+    blog_article_1_title: 'Active Recall : La méthode de révision la plus efficace',
+    blog_article_1_description: 'Découvrez pourquoi se tester activement est beaucoup plus efficace que relire passivement ses notes.',
+    blog_article_2_title: 'Répétition espacée : Mémoriser sur le long terme',
+    blog_article_2_description: "Apprenez à utiliser l'effet d'espacement pour optimiser votre mémorisation.",
+    blog_article_3_title: 'La technique Pomodoro : Rester concentré',
+    blog_article_3_description: 'Une méthode simple pour maintenir votre concentration et éviter le burnout pendant vos sessions de révision.',
     my_account_button: 'Mon compte',
+
+    // Challenge Mode
+    challenge_mode: 'Mode Défi',
+    friends: 'Amis',
+    leaderboard: 'Classement',
+
     course_status_preparing: 'En préparation',
     course_status_ready: 'Prêt',
     course_status_failed: 'Lecture échouée',
@@ -1747,7 +1799,7 @@ export const translations: Record<Language, Translations> = {
     extraction_loading_title: 'Extraction du cours en cours...',
     extraction_loading_description: 'Une fois terminée, tu pourras générer ta fiche de révision, quiz et flashcards.',
     extraction_time_estimate: 'Environ 1 à 2 minutes',
-    note_generating_title: 'Génération de la fiche A+...',
+    note_generating_title: 'Génération de la fiche de révision...',
     note_generating_description_full: 'Nous structurons ton cours en une fiche de révision optimisée.',
     flashcards_generating_title: 'Génération des flashcards...',
     flashcards_generating_description_full: 'Nous créons des cartes mémo pour réviser efficacement.',
@@ -2175,6 +2227,11 @@ export const translations: Record<Language, Translations> = {
     cgu_article10_p1: "Les présentes CGU sont régies par le droit français. En cas de litige relatif à l'interprétation ou l'exécution des présentes, les parties s'efforceront de trouver une solution amiable. À défaut, le litige sera soumis aux tribunaux compétents de Rennes.",
     cgu_article11_title: 'Article 11 - Contact',
     cgu_article11_p1: 'Pour toute question relative aux présentes CGU, vous pouvez nous contacter à :',
+
+    // Course Drawer
+    drawer_my_courses: 'Mes cours',
+    drawer_no_courses: 'Aucun cours',
+    drawer_other_courses: 'Autres cours',
   },
   de: {
     // Common
@@ -2521,6 +2578,7 @@ export const translations: Record<Language, Translations> = {
     flashcards_generate: 'Karteikarten erstellen',
     flashcards_generating: 'Wird erstellt...',
     flashcards_regenerate: 'Neu erstellen',
+    flashcards_fullscreen: 'Vollbild',
     flashcards_progress: '{current} / {total}',
     flashcards_concept: 'Konzept',
     flashcards_definition: 'Definition',
@@ -2777,6 +2835,28 @@ export const translations: Record<Language, Translations> = {
     my_courses_empty_cta: 'Kurs hochladen',
     my_courses_button: 'Meine Kurse',
     my_account_button: 'Mein Konto',
+
+    // Challenge Mode
+    challenge_mode: 'Herausforderungsmodus',
+    friends: 'Freunde',
+    leaderboard: 'Rangliste',
+
+    // Blog
+    blog_nav_button: 'Blog',
+    blog_title: 'Blog',
+    blog_subtitle: 'Tipps und Methoden für effektives Lernen',
+    blog_read_more: 'Mehr lesen',
+    blog_coming_soon_title: 'Artikel in Kürze',
+    blog_coming_soon_description: 'Wir bereiten Artikel über die besten Lernmethoden vor. Komm bald wieder!',
+    blog_newsletter_title: 'Bleib informiert',
+    blog_newsletter_description: 'Erhalte unsere neuesten Lerntipps direkt in dein Postfach.',
+    blog_newsletter_cta: 'Kostenlos anmelden',
+    blog_article_1_title: 'Active Recall: Die effektivste Lernmethode',
+    blog_article_1_description: 'Entdecke, warum aktives Selbsttesten viel effektiver ist als passives Wiederlesen deiner Notizen.',
+    blog_article_2_title: 'Verteiltes Lernen: Langfristig merken',
+    blog_article_2_description: 'Lerne, wie du den Spacing-Effekt nutzt, um dein Gedächtnis zu optimieren.',
+    blog_article_3_title: 'Die Pomodoro-Technik: Konzentriert bleiben',
+    blog_article_3_description: 'Eine einfache Methode, um deine Konzentration aufrechtzuerhalten und Burnout beim Lernen zu vermeiden.',
     course_status_preparing: 'In Vorbereitung',
     course_status_ready: 'Bereit',
     course_status_failed: 'Lesen fehlgeschlagen',
@@ -2829,7 +2909,7 @@ export const translations: Record<Language, Translations> = {
     extraction_loading_title: 'Kurs wird extrahiert...',
     extraction_loading_description: 'Nach Abschluss kannst du dein Lernblatt, Quiz und Karteikarten generieren.',
     extraction_time_estimate: 'Etwa 1-2 Minuten',
-    note_generating_title: 'A+ Notiz wird erstellt...',
+    note_generating_title: 'Lernzettel wird erstellt...',
     note_generating_description_full: 'Wir strukturieren deinen Kurs in ein optimiertes Lernblatt.',
     flashcards_generating_title: 'Karteikarten werden erstellt...',
     flashcards_generating_description_full: 'Wir erstellen Lernkarten für effektives Wiederholen.',
@@ -3246,5 +3326,10 @@ export const translations: Record<Language, Translations> = {
     cgu_article10_p1: 'Diese AGB unterliegen französischem Recht. Bei Streitigkeiten bezüglich der Auslegung oder Ausführung werden die Parteien eine gütliche Lösung anstreben. Andernfalls wird die Streitigkeit den zuständigen Gerichten in Rennes vorgelegt.',
     cgu_article11_title: 'Artikel 11 - Kontakt',
     cgu_article11_p1: 'Für alle Fragen zu diesen AGB können Sie uns kontaktieren unter:',
+
+    // Course Drawer
+    drawer_my_courses: 'Meine Kurse',
+    drawer_no_courses: 'Noch keine Kurse',
+    drawer_other_courses: 'Andere Kurse',
   },
 };

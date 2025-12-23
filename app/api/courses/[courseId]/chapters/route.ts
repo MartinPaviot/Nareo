@@ -161,6 +161,7 @@ export async function GET(
         title: course.title,
         status: course.status,
         quiz_status: course.quiz_status || 'pending', // Quiz generation status
+        quiz_config: course.quiz_config || null, // Saved quiz config for regeneration
         content_language: course.content_language || course.language || 'en',
       },
       chapters: chaptersWithAccess,

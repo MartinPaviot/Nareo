@@ -1,62 +1,139 @@
 import OpenAI from 'openai';
 import { getServiceSupabase } from '@/lib/supabase';
 import { logEvent } from './analytics';
+import {
+  FlashcardConfig,
+  FlashcardNiveau,
+  Flashcard,
+  BasicCard,
+  ClozeCard,
+  ReversedCard,
+  FLASHCARD_COUNT_BY_NIVEAU,
+  DEFAULT_FLASHCARD_CONFIG,
+} from '@/types/flashcard-config';
+import {
+  FLASHCARD_SYSTEM_PROMPT,
+  getFlashcardUserPrompt,
+} from '@/lib/prompts/flashcard-prompt';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const FLASHCARDS_PROMPT = `Tu es un expert pédagogique. Génère des flashcards VARIÉES et COMPLÈTES pour réviser efficacement.
-
-=== INSTRUCTIONS ===
-
-EXCLURE du contenu :
-- Noms d'auteurs, professeurs
-- Informations administratives (dates, structure du cours)
-- Références aux TD, TP, exercices
-
-TYPES DE FLASHCARDS À GÉNÉRER (varier les types) :
-
-1. **Définition** : Terme → Définition complète
-   Exemple: {"type": "definition", "front": "Élasticité-prix de la demande", "back": "Mesure de la sensibilité de la quantité demandée aux variations de prix. Une élasticité élevée signifie que la demande réagit fortement aux changements de prix."}
-
-2. **Formule** : Nom → Formule + explication des variables
-   Exemple: {"type": "formula", "front": "Formule de l'élasticité-prix", "back": "εD = (ΔD/D) / (ΔP/P) où εD = élasticité, ΔD = variation de demande, D = demande initiale, ΔP = variation de prix, P = prix initial"}
-
-3. **Condition/Seuil** : Question sur un cas → Réponse avec le seuil
-   Exemple: {"type": "condition", "front": "Quand un bien est-il considéré comme inférieur ?", "back": "Quand l'élasticité-revenu est négative (εR < 0). La demande diminue quand le revenu augmente."}
-
-4. **Intuition** : Question "Que signifie..." → Explication concrète
-   Exemple: {"type": "intuition", "front": "Que signifie une élasticité-prix élevée ?", "back": "Une petite variation de prix entraîne une grande variation de la demande. Les consommateurs sont très sensibles au prix."}
-
-5. **Lien entre concepts** : Question sur la relation → Explication du lien
-   Exemple: {"type": "link", "front": "Relation entre prix d'équilibre et surplus total ?", "back": "Au prix d'équilibre (où offre = demande), le surplus total (consommateur + producteur) est maximisé."}
-
-=== FORMAT DE SORTIE ===
-
-Retourne un JSON avec les flashcards variées :
-{
-  "flashcards": [
-    {"type": "definition", "front": "...", "back": "..."},
-    {"type": "formula", "front": "...", "back": "..."},
-    ...
-  ]
-}
-
-Assure-toi de :
-- Couvrir TOUS les concepts importants du cours
-- Varier les types de flashcards
-- Rendre les réponses (back) complètes mais concises
-- Inclure les formules importantes avec leurs variables expliquées`;
-
-interface FlashcardData {
+/**
+ * Données de flashcard normalisées pour insertion en base
+ */
+interface FlashcardDBData {
   type: string;
   front: string;
   back: string;
+  cloze_text?: string;
+  cloze_answer?: string;
+  reversed_term?: string;
+  reversed_def?: string;
 }
 
 /**
- * Generate course-level flashcards from source text
+ * Convertit une flashcard LLM en format base de données
+ * Gère les 3 types Anki: basic, cloze, reversed
+ */
+function convertToDBFormat(card: Flashcard): FlashcardDBData {
+  switch (card.type) {
+    case 'basic':
+      return {
+        type: 'basic',
+        front: card.front,
+        back: card.back,
+      };
+
+    case 'cloze':
+      // Pour une carte cloze, on génère front/back à partir du texte à trous
+      // Front: texte avec [...] à la place du mot caché
+      // Back: le mot caché
+      const frontText = card.text.replace(/\{\{c1::([^}]+)\}\}/, '[...]');
+      return {
+        type: 'cloze',
+        front: frontText,
+        back: card.answer,
+        cloze_text: card.text,
+        cloze_answer: card.answer,
+      };
+
+    case 'reversed':
+      // Pour une carte reversed, on stocke terme/définition
+      // Le front sera le terme, le back la définition
+      // (L'UI pourra gérer l'inversion pour tester les 2 sens)
+      return {
+        type: 'reversed',
+        front: `${card.term} signifie ?`,
+        back: card.definition,
+        reversed_term: card.term,
+        reversed_def: card.definition,
+      };
+
+    default:
+      // Fallback pour anciens types ou types inconnus
+      return {
+        type: 'basic',
+        front: (card as any).front || '',
+        back: (card as any).back || '',
+      };
+  }
+}
+
+/**
+ * Valide et nettoie les flashcards générées par le LLM
+ */
+function validateAndCleanFlashcards(rawCards: any[]): Flashcard[] {
+  const validCards: Flashcard[] = [];
+
+  for (const card of rawCards) {
+    if (!card || typeof card !== 'object') continue;
+
+    const type = card.type;
+
+    if (type === 'basic') {
+      if (card.front && card.back) {
+        validCards.push({
+          type: 'basic',
+          front: String(card.front).trim(),
+          back: String(card.back).trim(),
+        });
+      }
+    } else if (type === 'cloze') {
+      if (card.text && card.answer) {
+        validCards.push({
+          type: 'cloze',
+          text: String(card.text).trim(),
+          cloze_id: card.cloze_id || 'c1',
+          answer: String(card.answer).trim(),
+        });
+      }
+    } else if (type === 'reversed') {
+      if (card.term && card.definition) {
+        validCards.push({
+          type: 'reversed',
+          term: String(card.term).trim(),
+          definition: String(card.definition).trim(),
+        });
+      }
+    } else {
+      // Fallback: traiter comme basic si front/back présents
+      if (card.front && card.back) {
+        validCards.push({
+          type: 'basic',
+          front: String(card.front).trim(),
+          back: String(card.back).trim(),
+        });
+      }
+    }
+  }
+
+  return validCards;
+}
+
+/**
+ * Generate course-level flashcards from source text (Anki quality)
  * This is called in parallel with chapter processing
  */
 export async function generateCourseFlashcards(
@@ -64,7 +141,8 @@ export async function generateCourseFlashcards(
   sourceText: string,
   courseTitle: string,
   contentLanguage: string,
-  userId: string | null
+  userId: string | null,
+  config: FlashcardConfig = DEFAULT_FLASHCARD_CONFIG
 ): Promise<{ success: boolean; count: number; error?: string }> {
   const admin = getServiceSupabase();
 
@@ -75,47 +153,45 @@ export async function generateCourseFlashcards(
       .update({ flashcards_status: 'generating' })
       .eq('id', courseId);
 
-    console.log(`[flashcard-generator] Starting generation for course ${courseId}`);
+    console.log(`[flashcard-generator] Starting Anki-quality generation for course ${courseId} (niveau: ${config.niveau})`);
 
-    const language = contentLanguage?.toUpperCase() || 'EN';
+    const language = (contentLanguage?.toUpperCase() || 'EN') as 'EN' | 'FR' | 'DE';
     const languageName = language === 'FR' ? 'French' : language === 'DE' ? 'German' : 'English';
-    const languageInstruction = `Generate all flashcards in ${languageName}. All content must be in ${languageName}.`;
+    const languageInstruction = `Generate all flashcards in ${languageName}. All content (front, back, text, term, definition) must be in ${languageName}.`;
 
-    // Generate flashcards using GPT-4o
+    // Tronquer le texte source (max 12000 caractères)
+    const truncatedText = sourceText.substring(0, 12000);
+
+    // Générer le prompt utilisateur selon le niveau
+    const userPrompt = getFlashcardUserPrompt(config.niveau, courseTitle, truncatedText);
+
+    // Generate flashcards using GPT-4o with new Anki prompt
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: `${FLASHCARDS_PROMPT}\n\n${languageInstruction}`,
+          content: `${FLASHCARD_SYSTEM_PROMPT}\n\n${languageInstruction}`,
         },
         {
           role: 'user',
-          content: `Create 20 flashcards from this course material:
-
-Title: ${courseTitle}
-
-Content:
-${sourceText.substring(0, 12000)}`,
+          content: userPrompt,
         },
       ],
       temperature: 0.4,
-      max_tokens: 4000,
+      max_tokens: 6000, // Augmenté pour supporter plus de cartes
       response_format: { type: 'json_object' },
     });
 
     const content = response.choices[0].message.content;
-    let flashcards: FlashcardData[] = [];
+    let flashcards: Flashcard[] = [];
 
     try {
       const parsed = JSON.parse(content || '{}');
       const rawFlashcards = Array.isArray(parsed) ? parsed : parsed.flashcards || [];
 
-      flashcards = rawFlashcards.map((fc: any) => ({
-        type: fc.type || 'definition',
-        front: fc.front || fc.concept || '',
-        back: fc.back || fc.definition || '',
-      })).filter((fc: FlashcardData) => fc.front && fc.back);
+      // Valider et nettoyer les flashcards
+      flashcards = validateAndCleanFlashcards(rawFlashcards);
     } catch (parseError) {
       console.error('[flashcard-generator] Error parsing flashcards:', parseError);
       throw new Error('Failed to parse generated flashcards');
@@ -125,16 +201,26 @@ ${sourceText.substring(0, 12000)}`,
       throw new Error('No valid flashcards generated');
     }
 
-    // Insert flashcards into the dedicated table
-    const flashcardRows = flashcards.map((fc) => ({
-      course_id: courseId,
-      chapter_id: null, // Course-level flashcards
-      type: ['definition', 'formula', 'condition', 'intuition', 'link'].includes(fc.type)
-        ? fc.type
-        : 'definition',
-      front: fc.front,
-      back: fc.back,
-    }));
+    // Log distribution des types
+    const typeCount = flashcards.reduce((acc, fc) => {
+      acc[fc.type] = (acc[fc.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`[flashcard-generator] Card distribution:`, typeCount);
+
+    // Convertir en format DB et insérer
+    const flashcardRows = flashcards.map((fc) => {
+      const dbData = convertToDBFormat(fc);
+      return {
+        course_id: courseId,
+        chapter_id: null, // Course-level flashcards
+        type: dbData.type,
+        front: dbData.front,
+        back: dbData.back,
+        // Note: les champs cloze_text, cloze_answer, reversed_term, reversed_def
+        // ne sont pas dans le schéma actuel - ils peuvent être ajoutés ultérieurement
+      };
+    });
 
     const { error: insertError } = await admin
       .from('flashcards')
@@ -151,12 +237,17 @@ ${sourceText.substring(0, 12000)}`,
       .update({ flashcards_status: 'ready' })
       .eq('id', courseId);
 
-    console.log(`[flashcard-generator] Generated ${flashcards.length} flashcards for course ${courseId}`);
+    console.log(`[flashcard-generator] Generated ${flashcards.length} Anki-quality flashcards for course ${courseId}`);
 
     await logEvent('flashcards_generated', {
       userId: userId ?? undefined,
       courseId,
-      payload: { count: flashcards.length, type: 'course_level' },
+      payload: {
+        count: flashcards.length,
+        type: 'course_level',
+        niveau: config.niveau,
+        distribution: typeCount,
+      },
     });
 
     return { success: true, count: flashcards.length };
@@ -180,7 +271,29 @@ ${sourceText.substring(0, 12000)}`,
 }
 
 /**
- * Generate chapter-level flashcards from chapter text
+ * Prompt simplifié pour les flashcards de chapitre (5-8 cartes)
+ */
+const CHAPTER_FLASHCARD_PROMPT = `You are an expert flashcard creator following Anki best practices.
+
+RULES:
+1. ONE fact per card (atomicity)
+2. Answers: MAX 15 words
+3. Use type "basic" for simple facts, "cloze" for context-dependent knowledge, "reversed" for acronyms
+4. For cloze: format is {{c1::answer}} with ONE cloze per card
+5. For reversed: term and definition that work both directions
+6. NO lists, NO multiple answers, NO administrative content
+
+OUTPUT FORMAT (JSON only):
+{
+  "flashcards": [
+    {"type": "basic", "front": "...", "back": "..."},
+    {"type": "cloze", "text": "The {{c1::term}} is...", "cloze_id": "c1", "answer": "term"},
+    {"type": "reversed", "term": "ABC", "definition": "Full Name"}
+  ]
+}`;
+
+/**
+ * Generate chapter-level flashcards from chapter text (Anki quality)
  * Called after each chapter is processed
  */
 export async function generateChapterFlashcards(
@@ -193,9 +306,9 @@ export async function generateChapterFlashcards(
   const admin = getServiceSupabase();
 
   try {
-    console.log(`[flashcard-generator] Generating flashcards for chapter ${chapterId}`);
+    console.log(`[flashcard-generator] Generating Anki-quality flashcards for chapter ${chapterId}`);
 
-    const language = contentLanguage?.toUpperCase() || 'EN';
+    const language = (contentLanguage?.toUpperCase() || 'EN') as 'EN' | 'FR' | 'DE';
     const languageName = language === 'FR' ? 'French' : language === 'DE' ? 'German' : 'English';
 
     const response = await openai.chat.completions.create({
@@ -203,11 +316,11 @@ export async function generateChapterFlashcards(
       messages: [
         {
           role: 'system',
-          content: `${FLASHCARDS_PROMPT}\n\nGenerate 5-8 flashcards in ${languageName} for this specific chapter.`,
+          content: `${CHAPTER_FLASHCARD_PROMPT}\n\nGenerate 5-8 flashcards in ${languageName}. All content must be in ${languageName}.`,
         },
         {
           role: 'user',
-          content: `Create flashcards for this chapter:
+          content: `Create 5-8 atomic flashcards for this chapter. Mix types (basic, cloze, reversed) based on content.
 
 Chapter: ${chapterTitle}
 
@@ -224,29 +337,25 @@ ${chapterText.substring(0, 6000)}`,
     const parsed = JSON.parse(content || '{}');
     const rawFlashcards = Array.isArray(parsed) ? parsed : parsed.flashcards || [];
 
-    const flashcards = rawFlashcards
-      .map((fc: any) => ({
-        type: fc.type || 'definition',
-        front: fc.front || '',
-        back: fc.back || '',
-      }))
-      .filter((fc: FlashcardData) => fc.front && fc.back);
+    // Valider et nettoyer les flashcards
+    const flashcards = validateAndCleanFlashcards(rawFlashcards);
 
     if (flashcards.length > 0) {
-      const flashcardRows = flashcards.map((fc: FlashcardData) => ({
-        course_id: courseId,
-        chapter_id: chapterId,
-        type: ['definition', 'formula', 'condition', 'intuition', 'link'].includes(fc.type)
-          ? fc.type
-          : 'definition',
-        front: fc.front,
-        back: fc.back,
-      }));
+      const flashcardRows = flashcards.map((fc) => {
+        const dbData = convertToDBFormat(fc);
+        return {
+          course_id: courseId,
+          chapter_id: chapterId,
+          type: dbData.type,
+          front: dbData.front,
+          back: dbData.back,
+        };
+      });
 
       await admin.from('flashcards').insert(flashcardRows);
     }
 
-    console.log(`[flashcard-generator] Generated ${flashcards.length} flashcards for chapter ${chapterId}`);
+    console.log(`[flashcard-generator] Generated ${flashcards.length} Anki-quality flashcards for chapter ${chapterId}`);
 
     return { success: true, count: flashcards.length };
   } catch (error) {

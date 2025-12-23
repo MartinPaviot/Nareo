@@ -21,6 +21,14 @@ interface CourseData {
   title: string;
   status: string; // 'pending' | 'processing' | 'ready' | 'failed'
   quiz_status?: 'pending' | 'generating' | 'ready' | 'partial' | 'failed'; // Quiz generation status
+  quiz_config?: {
+    niveau: string;
+    types: {
+      qcm: boolean;
+      vrai_faux: boolean;
+      texte_trous: boolean;
+    };
+  } | null; // Saved quiz config for regeneration
 }
 
 interface CourseChaptersResponse {

@@ -17,10 +17,10 @@ export async function GET(
 
     const supabase = await createSupabaseServerClient();
 
-    // Get course with note
+    // Get course with note and config
     const { data: course, error } = await supabase
       .from('courses')
-      .select('id, aplus_note')
+      .select('id, aplus_note, note_config')
       .eq('id', courseId)
       .eq('user_id', auth.user.id)
       .maybeSingle();
@@ -36,6 +36,7 @@ export async function GET(
 
     return NextResponse.json({
       content: course.aplus_note || null,
+      config: course.note_config || null,
     });
   } catch (error) {
     console.error('Error in note route:', error);

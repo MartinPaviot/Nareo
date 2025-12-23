@@ -2,53 +2,109 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { authenticateRequest } from '@/lib/api-auth';
 import OpenAI from 'openai';
+import {
+  FlashcardConfig,
+  FlashcardNiveau,
+  Flashcard,
+  FLASHCARD_COUNT_BY_NIVEAU,
+  DEFAULT_FLASHCARD_CONFIG,
+} from '@/types/flashcard-config';
+import {
+  FLASHCARD_SYSTEM_PROMPT,
+  getFlashcardUserPrompt,
+} from '@/lib/prompts/flashcard-prompt';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const FLASHCARDS_PROMPT = `Tu es un expert pédagogique. Génère des flashcards VARIÉES et COMPLÈTES pour réviser efficacement.
+/**
+ * Valide et nettoie les flashcards générées par le LLM
+ */
+function validateAndCleanFlashcards(rawCards: any[]): Flashcard[] {
+  const validCards: Flashcard[] = [];
 
-=== INSTRUCTIONS ===
+  for (const card of rawCards) {
+    if (!card || typeof card !== 'object') continue;
 
-EXCLURE du contenu :
-- Noms d'auteurs, professeurs
-- Informations administratives (dates, structure du cours)
-- Références aux TD, TP, exercices
+    const type = card.type;
 
-TYPES DE FLASHCARDS À GÉNÉRER (varier les types) :
+    if (type === 'basic') {
+      if (card.front && card.back) {
+        validCards.push({
+          type: 'basic',
+          front: String(card.front).trim(),
+          back: String(card.back).trim(),
+        });
+      }
+    } else if (type === 'cloze') {
+      if (card.text && card.answer) {
+        validCards.push({
+          type: 'cloze',
+          text: String(card.text).trim(),
+          cloze_id: card.cloze_id || 'c1',
+          answer: String(card.answer).trim(),
+        });
+      }
+    } else if (type === 'reversed') {
+      if (card.term && card.definition) {
+        validCards.push({
+          type: 'reversed',
+          term: String(card.term).trim(),
+          definition: String(card.definition).trim(),
+        });
+      }
+    } else {
+      // Fallback: traiter comme basic si front/back présents
+      if (card.front && card.back) {
+        validCards.push({
+          type: 'basic',
+          front: String(card.front).trim(),
+          back: String(card.back).trim(),
+        });
+      }
+    }
+  }
 
-1. **Définition** : Terme → Définition complète
-   Exemple: {"type": "definition", "front": "Élasticité-prix de la demande", "back": "Mesure de la sensibilité de la quantité demandée aux variations de prix. Une élasticité élevée signifie que la demande réagit fortement aux changements de prix."}
-
-2. **Formule** : Nom → Formule + explication des variables
-   Exemple: {"type": "formula", "front": "Formule de l'élasticité-prix", "back": "εD = (ΔD/D) / (ΔP/P) où εD = élasticité, ΔD = variation de demande, D = demande initiale, ΔP = variation de prix, P = prix initial"}
-
-3. **Condition/Seuil** : Question sur un cas → Réponse avec le seuil
-   Exemple: {"type": "condition", "front": "Quand un bien est-il considéré comme inférieur ?", "back": "Quand l'élasticité-revenu est négative (εR < 0). La demande diminue quand le revenu augmente."}
-
-4. **Intuition** : Question "Que signifie..." → Explication concrète
-   Exemple: {"type": "intuition", "front": "Que signifie une élasticité-prix élevée ?", "back": "Une petite variation de prix entraîne une grande variation de la demande. Les consommateurs sont très sensibles au prix."}
-
-5. **Lien entre concepts** : Question sur la relation → Explication du lien
-   Exemple: {"type": "link", "front": "Relation entre prix d'équilibre et surplus total ?", "back": "Au prix d'équilibre (où offre = demande), le surplus total (consommateur + producteur) est maximisé."}
-
-=== FORMAT DE SORTIE ===
-
-Retourne un JSON avec exactement 20 flashcards variées :
-{
-  "flashcards": [
-    {"type": "definition", "front": "...", "back": "..."},
-    {"type": "formula", "front": "...", "back": "..."},
-    ...
-  ]
+  return validCards;
 }
 
-Assure-toi de :
-- Couvrir TOUS les concepts importants du cours
-- Varier les types de flashcards
-- Rendre les réponses (back) complètes mais concises
-- Inclure les formules importantes avec leurs variables expliquées`;
+/**
+ * Convertit une flashcard LLM en format base de données
+ */
+function convertToDBFormat(card: Flashcard): { type: string; front: string; back: string } {
+  switch (card.type) {
+    case 'basic':
+      return {
+        type: 'basic',
+        front: card.front,
+        back: card.back,
+      };
+
+    case 'cloze':
+      // Front: texte avec [...] à la place du mot caché
+      const frontText = card.text.replace(/\{\{c1::([^}]+)\}\}/, '[...]');
+      return {
+        type: 'cloze',
+        front: frontText,
+        back: card.answer,
+      };
+
+    case 'reversed':
+      return {
+        type: 'reversed',
+        front: `${card.term} signifie ?`,
+        back: card.definition,
+      };
+
+    default:
+      return {
+        type: 'basic',
+        front: (card as any).front || '',
+        back: (card as any).back || '',
+      };
+  }
+}
 
 export async function POST(
   request: NextRequest,
@@ -61,6 +117,17 @@ export async function POST(
     const auth = await authenticateRequest(request);
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Parse request body for config
+    let config: FlashcardConfig = DEFAULT_FLASHCARD_CONFIG;
+    try {
+      const body = await request.json();
+      if (body.niveau && ['essentiel', 'complet', 'exhaustif'].includes(body.niveau)) {
+        config = { niveau: body.niveau as FlashcardNiveau };
+      }
+    } catch {
+      // If no body or parse error, use defaults
     }
 
     const supabase = await createSupabaseServerClient();
@@ -87,59 +154,45 @@ export async function POST(
     }
 
     // Determine language for generation
-    const language = course.content_language?.toUpperCase() || 'EN';
+    const language = (course.content_language?.toUpperCase() || 'EN') as 'EN' | 'FR' | 'DE';
     const languageName = language === 'FR' ? 'French' : language === 'DE' ? 'German' : 'English';
-    const languageInstruction = `Generate all flashcards in ${languageName}. All content must be in ${languageName}.`;
+    const languageInstruction = `Generate all flashcards in ${languageName}. All content (front, back, text, term, definition) must be in ${languageName}.`;
 
-    // Generate flashcards using GPT-4o
+    // Tronquer le texte source
+    const truncatedText = course.source_text.substring(0, 12000);
+
+    // Générer le prompt utilisateur selon le niveau
+    const userPrompt = getFlashcardUserPrompt(config.niveau, course.title, truncatedText);
+
+    console.log(`[flashcards/generate] Generating Anki-quality flashcards (niveau: ${config.niveau})`);
+
+    // Generate flashcards using GPT-4o with new Anki prompt
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: `${FLASHCARDS_PROMPT}\n\n${languageInstruction}`,
+          content: `${FLASHCARD_SYSTEM_PROMPT}\n\n${languageInstruction}`,
         },
         {
           role: 'user',
-          content: `Create 20 flashcards from this course material:
-
-Title: ${course.title}
-
-Content:
-${course.source_text.substring(0, 12000)}`,
+          content: userPrompt,
         },
       ],
       temperature: 0.4,
-      max_tokens: 4000,
+      max_tokens: 6000,
       response_format: { type: 'json_object' },
     });
 
     const content = response.choices[0].message.content;
-    let flashcards: Array<{
-      id?: string;
-      type: string;
-      front: string;
-      back: string;
-      mastery: string;
-      correctCount: number;
-      incorrectCount: number;
-    }> = [];
+    let flashcards: Flashcard[] = [];
 
     try {
       const parsed = JSON.parse(content || '{}');
       const rawFlashcards = Array.isArray(parsed) ? parsed : parsed.flashcards || [];
 
-      // Validate and filter flashcards
-      flashcards = rawFlashcards
-        .map((fc: { type?: string; front?: string; back?: string; concept?: string; definition?: string }) => ({
-          type: fc.type || 'definition',
-          front: fc.front || fc.concept || '',
-          back: fc.back || fc.definition || '',
-          mastery: 'new',
-          correctCount: 0,
-          incorrectCount: 0,
-        }))
-        .filter((fc: { front: string; back: string }) => fc.front && fc.back);
+      // Valider et nettoyer les flashcards
+      flashcards = validateAndCleanFlashcards(rawFlashcards);
     } catch (parseError) {
       console.error('Error parsing flashcards:', parseError);
       return NextResponse.json({ error: 'Failed to parse generated flashcards' }, { status: 500 });
@@ -149,22 +202,30 @@ ${course.source_text.substring(0, 12000)}`,
       return NextResponse.json({ error: 'No valid flashcards generated' }, { status: 500 });
     }
 
+    // Log distribution des types
+    const typeCount = flashcards.reduce((acc, fc) => {
+      acc[fc.type] = (acc[fc.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`[flashcards/generate] Card distribution:`, typeCount);
+
     // Delete existing flashcards for this course (regeneration)
     await supabase
       .from('flashcards')
       .delete()
       .eq('course_id', courseId);
 
-    // Insert flashcards into dedicated table
-    const flashcardRows = flashcards.map((fc: { type: string; front: string; back: string }) => ({
-      course_id: courseId,
-      chapter_id: null, // Course-level flashcards
-      type: ['definition', 'formula', 'condition', 'intuition', 'link'].includes(fc.type)
-        ? fc.type
-        : 'definition',
-      front: fc.front,
-      back: fc.back,
-    }));
+    // Convertir en format DB et insérer
+    const flashcardRows = flashcards.map((fc) => {
+      const dbData = convertToDBFormat(fc);
+      return {
+        course_id: courseId,
+        chapter_id: null, // Course-level flashcards
+        type: dbData.type,
+        front: dbData.front,
+        back: dbData.back,
+      };
+    });
 
     const { data: insertedFlashcards, error: insertError } = await supabase
       .from('flashcards')
@@ -182,6 +243,8 @@ ${course.source_text.substring(0, 12000)}`,
       .update({ flashcards_status: 'ready' })
       .eq('id', courseId);
 
+    console.log(`[flashcards/generate] Generated ${insertedFlashcards?.length || 0} Anki-quality flashcards`);
+
     // Return flashcards with IDs and default progress
     const flashcardsWithProgress = (insertedFlashcards || []).map(fc => ({
       id: fc.id,
@@ -193,7 +256,11 @@ ${course.source_text.substring(0, 12000)}`,
       incorrectCount: 0,
     }));
 
-    return NextResponse.json({ flashcards: flashcardsWithProgress });
+    return NextResponse.json({
+      flashcards: flashcardsWithProgress,
+      niveau: config.niveau,
+      distribution: typeCount,
+    });
   } catch (error) {
     console.error('Error generating flashcards:', error);
     return NextResponse.json(

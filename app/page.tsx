@@ -491,6 +491,15 @@ export default function HomePage() {
 
         {/* Desktop Navigation */}
         <div className="hidden sm:flex items-center gap-3">
+          <button
+            onClick={() => {
+              handleCtaClick('header_blog', '/blog');
+              router.push('/blog');
+            }}
+            className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            {translate('blog_nav_button') || 'Blog'}
+          </button>
           {!user && (
             <>
               <button
@@ -541,6 +550,18 @@ export default function HomePage() {
                 className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 {translate('my_courses_button')}
+              </button>
+
+              {/* Blog */}
+              <button
+                onClick={() => {
+                  handleCtaClick('header_blog', '/blog');
+                  setMobileMenuOpen(false);
+                  router.push('/blog');
+                }}
+                className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                {translate('blog_nav_button') || 'Blog'}
               </button>
 
               {/* Language Selection */}

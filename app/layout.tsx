@@ -6,6 +6,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { PosthogProvider } from '@/contexts/PosthogProvider';
+import { CoursesRefreshProvider } from '@/contexts/CoursesRefreshContext';
 import Footer from '@/components/layout/Footer';
 import CookieBannerWrapper from '@/components/layout/CookieBannerWrapper';
 import ConditionalGTM from '@/components/analytics/ConditionalGTM';
@@ -42,14 +43,16 @@ export default function RootLayout({
             <AuthProvider>
               <LanguageProvider>
                 <ThemeProvider>
-                  {/* Conditional GTM - only loads if analytics consent is given */}
-                  <ConditionalGTM />
-                  <div className="min-h-screen flex flex-col">
-                    <main className="flex-1">{children}</main>
-                    <Footer />
-                  </div>
-                  {/* Cookie consent banner */}
-                  <CookieBannerWrapper />
+                  <CoursesRefreshProvider>
+                    {/* Conditional GTM - only loads if analytics consent is given */}
+                    <ConditionalGTM />
+                    <div className="min-h-screen flex flex-col">
+                      <main className="flex-1">{children}</main>
+                      <Footer />
+                    </div>
+                    {/* Cookie consent banner */}
+                    <CookieBannerWrapper />
+                  </CoursesRefreshProvider>
                 </ThemeProvider>
               </LanguageProvider>
             </AuthProvider>

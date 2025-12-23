@@ -583,14 +583,25 @@ export default function ChapterQuizPage() {
 
   const normalizeOptions = (options?: Record<string, string> | string[] | null, correctIndex?: number) => {
     if (!options) return { optionsList: undefined, newCorrectIndex: undefined };
-    const entries = Array.isArray(options) ? options.map((v, idx) => [idx.toString(), v]) : Object.entries(options);
     const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-    // Create array with original indices
-    const optionsWithOriginalIndex = entries.map(([_, value], idx) => ({
-      value,
-      originalIndex: idx,
-    }));
+    // Create array with original indices - preserve the actual index from the source
+    let optionsWithOriginalIndex: { value: string; originalIndex: number }[];
+
+    if (Array.isArray(options)) {
+      // Array: index is the position in the array
+      optionsWithOriginalIndex = options.map((value, idx) => ({
+        value,
+        originalIndex: idx,
+      }));
+    } else {
+      // Object: use the numeric key as the original index, sorted by key
+      const sortedKeys = Object.keys(options).sort((a, b) => Number(a) - Number(b));
+      optionsWithOriginalIndex = sortedKeys.map((key) => ({
+        value: options[key],
+        originalIndex: Number(key),
+      }));
+    }
 
     // Shuffle the options
     const shuffled = shuffleArray(optionsWithOriginalIndex);
@@ -767,10 +778,22 @@ export default function ChapterQuizPage() {
       }
 
       // Send the ORIGINAL index to the API (before shuffle) for validation
-      const selectedOriginalIndex =
-        currentQuestion.type === 'mcq'
-          ? currentQuestion.optionsList?.find((o) => o.label === answerToValidate)?.originalIndex
-          : undefined;
+      const selectedOption = currentQuestion.type === 'mcq'
+        ? currentQuestion.optionsList?.find((o) => o.label === answerToValidate)
+        : undefined;
+      const selectedOriginalIndex = selectedOption?.originalIndex;
+
+      console.log('[quiz-frontend] Sending answer:', {
+        answerToValidate,
+        selectedOption,
+        selectedOriginalIndex,
+        questionCorrectIndex: currentQuestion.correct_option_index,
+        allOptions: currentQuestion.optionsList?.map(o => ({
+          label: o.label,
+          originalIndex: o.originalIndex,
+          value: o.value?.substring(0, 30)
+        }))
+      });
 
       const response = await fetch(`/api/questions/${currentQuestion.id}/check`, {
         method: 'POST',
@@ -797,6 +820,12 @@ export default function ChapterQuizPage() {
 
       // Mark as answered AFTER setting correctOptionId
       setHasAnswered(true);
+
+      console.log('[quiz-frontend] API response:', {
+        isCorrect: data.isCorrect,
+        correctOptionIndex: data.correctOptionIndex,
+        feedback: data.feedback,
+      });
 
       const feedbackData = {
         isCorrect: data.isCorrect,

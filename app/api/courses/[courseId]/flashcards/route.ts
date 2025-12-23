@@ -181,6 +181,90 @@ export async function POST(
   }
 }
 
+// PUT - Update a flashcard
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  try {
+    const { courseId } = await params;
+
+    // Authenticate user
+    const auth = await authenticateRequest(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabase = await createSupabaseServerClient();
+
+    // Check course exists and belongs to user
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('id', courseId)
+      .eq('user_id', auth.user.id)
+      .maybeSingle();
+
+    if (courseError) {
+      console.error('Error fetching course:', courseError);
+      return NextResponse.json({ error: 'Failed to fetch course' }, { status: 500 });
+    }
+
+    if (!course) {
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+
+    // Parse request body
+    const body = await request.json();
+    const { flashcardId, front, back } = body;
+
+    if (!flashcardId) {
+      return NextResponse.json({ error: 'Flashcard ID is required' }, { status: 400 });
+    }
+
+    if (!front || !back) {
+      return NextResponse.json({ error: 'Front and back are required' }, { status: 400 });
+    }
+
+    // Update the flashcard
+    const { data: flashcard, error: updateError } = await supabase
+      .from('flashcards')
+      .update({
+        front: front.trim(),
+        back: back.trim(),
+      })
+      .eq('id', flashcardId)
+      .eq('course_id', courseId)
+      .select('id, type, front, back, chapter_id, created_at')
+      .single();
+
+    if (updateError) {
+      console.error('Error updating flashcard:', updateError);
+      return NextResponse.json({ error: 'Failed to update flashcard' }, { status: 500 });
+    }
+
+    if (!flashcard) {
+      return NextResponse.json({ error: 'Flashcard not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      flashcard: {
+        id: flashcard.id,
+        type: flashcard.type,
+        front: flashcard.front,
+        back: flashcard.back,
+        chapterId: flashcard.chapter_id,
+      },
+    });
+  } catch (error) {
+    console.error('Error in flashcards PUT route:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE - Delete a flashcard
 export async function DELETE(
   request: NextRequest,

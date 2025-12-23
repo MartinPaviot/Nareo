@@ -17,6 +17,18 @@ import {
   type MCQQuestion,
   type VerifiableFact,
 } from './llm';
+import {
+  type QuizConfig,
+  type NiveauQuantite,
+  getAdjustedQuestionCount,
+  DEFAULT_QUIZ_CONFIG,
+} from '@/types/quiz-personnalisation';
+import {
+  getNiveauBlock,
+  getTrueFalsePrompt,
+  getFillBlankPrompt,
+  shuffleArray,
+} from './prompts/quiz-types';
 
 // Configuration pour utiliser l'API OpenAI directement
 export const openai = new OpenAI({
@@ -706,6 +718,7 @@ function calculateAdaptiveQuestionCount(
 // Now with retry, logging, validation, deduplication, and semantic validation
 // Phase 3: Pre-extract facts BEFORE generation to ensure questions are grounded in verifiable content
 // Phase 4: Adaptive question count based on content coverage
+// Phase 5: Quiz personalization with niveau (synthetique/standard/exhaustif)
 export async function generateConceptChapterQuestions(
   chapterMetadata: {
     index?: number;
@@ -721,6 +734,7 @@ export async function generateConceptChapterQuestions(
   options?: {
     enableSemanticValidation?: boolean;  // Phase 2: Enable LLM-based semantic validation
     facts?: VerifiableFact[];             // Pre-extracted facts for validation
+    quizConfig?: QuizConfig;              // Phase 5: Quiz personalization config
   }
 ) {
   const logContext = llmLogger.createContext('generateConceptChapterQuestions', LLM_CONFIG.models.primary);
@@ -764,7 +778,12 @@ Only create questions that can be directly answered using one of these facts.`
     preExtractedFacts
   );
 
-  console.log(`📊 Adaptive question count: ${adaptiveCount.count} (objectives: ${adaptiveCount.breakdown.objectives}, concepts: ${adaptiveCount.breakdown.concepts}, facts: ${adaptiveCount.breakdown.facts})`);
+  // Phase 5: Apply niveau multiplier from quiz config
+  const quizConfig = options?.quizConfig || DEFAULT_QUIZ_CONFIG;
+  const adjustedCount = getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
+  const niveauBlock = getNiveauBlock(quizConfig.niveau, adaptiveCount.count);
+
+  console.log(`📊 Adaptive question count: ${adaptiveCount.count} -> ${adjustedCount} (niveau: ${quizConfig.niveau}, objectives: ${adaptiveCount.breakdown.objectives}, concepts: ${adaptiveCount.breakdown.concepts}, facts: ${adaptiveCount.breakdown.facts})`);
 
   // Enhanced prompt with source_reference, cognitive_level, and strict quality rules
   const learningObjectives = learningObjectivesArray.length
@@ -827,12 +846,7 @@ DISTRACTOR QUALITY RULES (for wrong answers):
   d) Similar-sounding terms with different meanings
 - BAD distractors: completely unrelated topics, obviously absurd answers, or items that could also be correct
 
-ADAPTIVE QUESTION COUNT - CONTENT COVERAGE APPROACH:
-Generate EXACTLY ${adaptiveCount.count} questions to ensure complete coverage of the content.
-This count is calculated based on:
-- ${adaptiveCount.breakdown.objectives} learning objectives (each needs at least 1 question)
-- ${adaptiveCount.breakdown.concepts} key concepts (each needs at least 1 question)
-- ${adaptiveCount.breakdown.facts} verified facts (coverage distribution)
+${niveauBlock}
 
 COVERAGE REQUIREMENTS:
 1. Every learning objective MUST be tested by at least one question
@@ -840,7 +854,7 @@ COVERAGE REQUIREMENTS:
 3. Questions should be distributed across all verified facts when possible
 4. If content overlaps, one question can test multiple objectives/concepts (indicate in concept_tested field)
 
-Do NOT generate more or fewer than ${adaptiveCount.count} questions. Prioritize quality and coverage.
+Prioritize quality and coverage.
 
 Balance cognitive levels: 40% remember, 40% understand, 20% apply.
 
@@ -1435,4 +1449,366 @@ OBJECTIF PRINCIPAL : Cohérence absolue. Ne jamais réafficher l'introduction au
     console.error('Error generating Nareo response:', error);
     return "Je suis là pour t'aider ! Travaillons ensemble sur ce concept. 🐱📚";
   }
+}
+
+// ============================================================================
+// GÉNÉRATION DE QUESTIONS VRAI/FAUX
+// ============================================================================
+
+export async function generateTrueFalseQuestions(
+  chapterMetadata: {
+    index?: number;
+    title: string;
+    short_summary?: string;
+    difficulty?: number;
+    learning_objectives?: string[];
+    key_concepts?: string[];
+  },
+  chapterText: string,
+  language: 'EN' | 'FR' | 'DE' = 'EN',
+  options?: {
+    enableSemanticValidation?: boolean;
+    facts?: VerifiableFact[];
+    quizConfig?: QuizConfig;
+  }
+) {
+  const logContext = llmLogger.createContext('generateTrueFalseQuestions', LLM_CONFIG.models.primary);
+  console.log('🔘 Generating true/false questions for chapter:', chapterMetadata.title);
+
+  const languageInstruction = language === 'FR'
+    ? 'Generate ALL statements and explanations in French (français).'
+    : language === 'DE'
+      ? 'Generate ALL statements and explanations in German (Deutsch).'
+      : 'Generate ALL statements and explanations in English.';
+
+  const truncatedText = chapterText.substring(0, LLM_CONFIG.truncation.chapterText);
+
+  // Pre-extract facts
+  let preExtractedFacts: VerifiableFact[] = options?.facts || [];
+  if (preExtractedFacts.length === 0) {
+    console.log('📚 Pre-extracting verifiable facts for true/false...');
+    preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
+    console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+  }
+
+  const factsForPrompt = preExtractedFacts.length > 0
+    ? `\nVERIFIED FACTS FROM SOURCE (use these as source_reference):
+${preExtractedFacts.map((f, i) => `${i + 1}. [${f.category}] "${f.statement}"
+   Source: "${f.source_quote.substring(0, 100)}${f.source_quote.length > 100 ? '...' : ''}"`).join('\n')}
+
+IMPORTANT: Each statement's source_reference MUST be one of these verified facts.`
+    : '';
+
+  // Calculate adaptive count
+  const learningObjectivesArray = chapterMetadata.learning_objectives || [];
+  const keyConceptsArray = chapterMetadata.key_concepts || [];
+  const adaptiveCount = calculateAdaptiveQuestionCount(
+    learningObjectivesArray,
+    keyConceptsArray,
+    preExtractedFacts
+  );
+
+  const quizConfig = options?.quizConfig || DEFAULT_QUIZ_CONFIG;
+  const adjustedCount = getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
+
+  console.log(`📊 True/False question count: ${adjustedCount} (niveau: ${quizConfig.niveau})`);
+
+  const learningObjectives = learningObjectivesArray.length
+    ? `\nLEARNING OBJECTIVES TO TEST:\n${learningObjectivesArray.map((obj, i) => `${i + 1}. ${obj}`).join('\n')}`
+    : '';
+  const keyConcepts = keyConceptsArray.length
+    ? `\nKEY CONCEPTS TO COVER:\n${keyConceptsArray.map((c, i) => `${i + 1}. ${c}`).join('\n')}`
+    : '';
+
+  const prompt = getTrueFalsePrompt(
+    {
+      title: chapterMetadata.title,
+      difficulty: chapterMetadata.difficulty,
+      short_summary: chapterMetadata.short_summary,
+    },
+    quizConfig.niveau,
+    adaptiveCount.count,
+    factsForPrompt,
+    learningObjectives,
+    keyConcepts,
+    truncatedText
+  );
+
+  try {
+    const response = await withCircuitBreaker(
+      openaiCircuitBreaker,
+      () => withRetry(
+        async () => {
+          const result = await openai.chat.completions.create({
+            model: LLM_CONFIG.models.questionGeneration,
+            messages: [
+              {
+                role: 'system',
+                content: `Expert quiz creator for true/false questions. Return valid JSON only. ${languageInstruction}`,
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: LLM_CONFIG.temperatures.questionGeneration,
+            response_format: { type: 'json_object' },
+            max_tokens: LLM_CONFIG.maxTokens.questionGeneration,
+          });
+          return result;
+        },
+        { maxRetries: 3 }
+      ),
+      async () => {
+        logContext.setFallbackUsed();
+        return null;
+      }
+    );
+
+    if (!response) {
+      console.log('⚠️ Circuit breaker open for true/false generation');
+      logContext.setFallbackUsed().success();
+      return [];
+    }
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content || '{}');
+    const questions = parsed.questions || [];
+
+    if (response.usage) {
+      logContext.setTokens(response.usage);
+    }
+
+    console.log('✅ Generated', questions.length, 'true/false questions');
+    logContext.success();
+    return questions;
+  } catch (error: any) {
+    console.error('❌ Error generating true/false questions:', error);
+    logContext.setFallbackUsed().failure(error, error?.status);
+    return [];
+  }
+}
+
+// ============================================================================
+// GÉNÉRATION DE QUESTIONS TEXTE À TROUS
+// ============================================================================
+
+export async function generateFillBlankQuestions(
+  chapterMetadata: {
+    index?: number;
+    title: string;
+    short_summary?: string;
+    difficulty?: number;
+    learning_objectives?: string[];
+    key_concepts?: string[];
+  },
+  chapterText: string,
+  language: 'EN' | 'FR' | 'DE' = 'EN',
+  options?: {
+    enableSemanticValidation?: boolean;
+    facts?: VerifiableFact[];
+    quizConfig?: QuizConfig;
+  }
+) {
+  const logContext = llmLogger.createContext('generateFillBlankQuestions', LLM_CONFIG.models.primary);
+  console.log('📝 Generating fill-in-the-blank questions for chapter:', chapterMetadata.title);
+
+  const languageInstruction = language === 'FR'
+    ? 'Generate ALL sentences and explanations in French (français).'
+    : language === 'DE'
+      ? 'Generate ALL sentences and explanations in German (Deutsch).'
+      : 'Generate ALL sentences and explanations in English.';
+
+  const truncatedText = chapterText.substring(0, LLM_CONFIG.truncation.chapterText);
+
+  // Pre-extract facts
+  let preExtractedFacts: VerifiableFact[] = options?.facts || [];
+  if (preExtractedFacts.length === 0) {
+    console.log('📚 Pre-extracting verifiable facts for fill-blank...');
+    preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
+    console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+  }
+
+  const factsForPrompt = preExtractedFacts.length > 0
+    ? `\nVERIFIED FACTS FROM SOURCE (use these as source_reference):
+${preExtractedFacts.map((f, i) => `${i + 1}. [${f.category}] "${f.statement}"
+   Source: "${f.source_quote.substring(0, 100)}${f.source_quote.length > 100 ? '...' : ''}"`).join('\n')}
+
+IMPORTANT: Each question's source_reference MUST be one of these verified facts.`
+    : '';
+
+  // Calculate adaptive count
+  const learningObjectivesArray = chapterMetadata.learning_objectives || [];
+  const keyConceptsArray = chapterMetadata.key_concepts || [];
+  const adaptiveCount = calculateAdaptiveQuestionCount(
+    learningObjectivesArray,
+    keyConceptsArray,
+    preExtractedFacts
+  );
+
+  const quizConfig = options?.quizConfig || DEFAULT_QUIZ_CONFIG;
+  const adjustedCount = getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
+
+  console.log(`📊 Fill-blank question count: ${adjustedCount} (niveau: ${quizConfig.niveau})`);
+
+  const learningObjectives = learningObjectivesArray.length
+    ? `\nLEARNING OBJECTIVES TO TEST:\n${learningObjectivesArray.map((obj, i) => `${i + 1}. ${obj}`).join('\n')}`
+    : '';
+  const keyConcepts = keyConceptsArray.length
+    ? `\nKEY CONCEPTS TO COVER:\n${keyConceptsArray.map((c, i) => `${i + 1}. ${c}`).join('\n')}`
+    : '';
+
+  const prompt = getFillBlankPrompt(
+    {
+      title: chapterMetadata.title,
+      difficulty: chapterMetadata.difficulty,
+      short_summary: chapterMetadata.short_summary,
+    },
+    quizConfig.niveau,
+    adaptiveCount.count,
+    factsForPrompt,
+    learningObjectives,
+    keyConcepts,
+    truncatedText
+  );
+
+  try {
+    const response = await withCircuitBreaker(
+      openaiCircuitBreaker,
+      () => withRetry(
+        async () => {
+          const result = await openai.chat.completions.create({
+            model: LLM_CONFIG.models.questionGeneration,
+            messages: [
+              {
+                role: 'system',
+                content: `Expert quiz creator for fill-in-the-blank questions. Return valid JSON only. ${languageInstruction}`,
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: LLM_CONFIG.temperatures.questionGeneration,
+            response_format: { type: 'json_object' },
+            max_tokens: LLM_CONFIG.maxTokens.questionGeneration,
+          });
+          return result;
+        },
+        { maxRetries: 3 }
+      ),
+      async () => {
+        logContext.setFallbackUsed();
+        return null;
+      }
+    );
+
+    if (!response) {
+      console.log('⚠️ Circuit breaker open for fill-blank generation');
+      logContext.setFallbackUsed().success();
+      return [];
+    }
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content || '{}');
+    const questions = parsed.questions || [];
+
+    if (response.usage) {
+      logContext.setTokens(response.usage);
+    }
+
+    console.log('✅ Generated', questions.length, 'fill-blank questions');
+    logContext.success();
+    return questions;
+  } catch (error: any) {
+    console.error('❌ Error generating fill-blank questions:', error);
+    logContext.setFallbackUsed().failure(error, error?.status);
+    return [];
+  }
+}
+
+// ============================================================================
+// GÉNÉRATION DE QUIZ MIXTE (PLUSIEURS TYPES)
+// ============================================================================
+
+export async function generateMixedQuiz(
+  chapterMetadata: {
+    index?: number;
+    title: string;
+    short_summary?: string;
+    difficulty?: number;
+    learning_objectives?: string[];
+    key_concepts?: string[];
+  },
+  chapterText: string,
+  language: 'EN' | 'FR' | 'DE' = 'EN',
+  quizConfig: QuizConfig,
+  options?: {
+    enableSemanticValidation?: boolean;
+    facts?: VerifiableFact[];
+  }
+) {
+  console.log('🎲 Generating mixed quiz for chapter:', chapterMetadata.title);
+
+  // Pre-extract facts once for all question types
+  let preExtractedFacts: VerifiableFact[] = options?.facts || [];
+  if (preExtractedFacts.length === 0) {
+    console.log('📚 Pre-extracting verifiable facts for mixed quiz...');
+    preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
+    console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+  }
+
+  const allQuestions: any[] = [];
+  const activeTypes = Object.entries(quizConfig.types).filter(([, active]) => active);
+
+  if (activeTypes.length === 0) {
+    console.warn('⚠️ No question types selected, defaulting to QCM');
+    activeTypes.push(['qcm', true]);
+  }
+
+  // Generate questions for each active type
+  for (const [type] of activeTypes) {
+    const sharedOptions = {
+      enableSemanticValidation: options?.enableSemanticValidation,
+      facts: preExtractedFacts,
+      quizConfig,
+    };
+
+    let questions: any[] = [];
+
+    switch (type) {
+      case 'qcm':
+        questions = await generateConceptChapterQuestions(
+          chapterMetadata,
+          chapterText,
+          language,
+          sharedOptions
+        );
+        break;
+      case 'vrai_faux':
+        questions = await generateTrueFalseQuestions(
+          chapterMetadata,
+          chapterText,
+          language,
+          sharedOptions
+        );
+        break;
+      case 'texte_trous':
+        questions = await generateFillBlankQuestions(
+          chapterMetadata,
+          chapterText,
+          language,
+          sharedOptions
+        );
+        break;
+    }
+
+    allQuestions.push(...questions);
+  }
+
+  // Shuffle all questions together
+  const shuffledQuestions = shuffleArray(allQuestions);
+
+  console.log(`✅ Mixed quiz complete: ${shuffledQuestions.length} questions from ${activeTypes.length} type(s)`);
+  return shuffledQuestions;
 }

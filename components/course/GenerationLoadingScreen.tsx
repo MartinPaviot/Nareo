@@ -107,7 +107,7 @@ export default function GenerationLoadingScreen({
         };
       case 'note':
         return {
-          title: translate('note_generating_title') || 'Génération de la fiche A+...',
+          title: translate('note_generating_title') || 'Génération de la fiche de révision...',
           description: translate('note_generating_description_full') || 'Nous structurons votre cours en une fiche de révision optimisée.',
           timeEstimate: translate('generation_time_estimate') || 'Environ 2 à 3 minutes',
         };

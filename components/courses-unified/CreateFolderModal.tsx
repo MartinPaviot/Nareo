@@ -133,8 +133,8 @@ export default function CreateFolderModal({ isOpen, onClose }: CreateFolderModal
                         }`}
                         style={{
                           backgroundColor: colorOption.color,
-                          ringColor: colorOption.color,
-                        }}
+                          '--tw-ring-color': colorOption.color,
+                        } as React.CSSProperties}
                       />
                     ))}
                   </div>

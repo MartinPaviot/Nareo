@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { QuizConfig } from '@/types/quiz-personnalisation';
 
 interface Chapter {
   id: string;
@@ -21,14 +22,7 @@ interface CourseData {
   title: string;
   status: string; // 'pending' | 'processing' | 'ready' | 'failed'
   quiz_status?: 'pending' | 'generating' | 'ready' | 'partial' | 'failed'; // Quiz generation status
-  quiz_config?: {
-    niveau: string;
-    types: {
-      qcm: boolean;
-      vrai_faux: boolean;
-      texte_trous: boolean;
-    };
-  } | null; // Saved quiz config for regeneration
+  quiz_config?: QuizConfig | null; // Saved quiz config for regeneration
 }
 
 interface CourseChaptersResponse {

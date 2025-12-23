@@ -76,7 +76,7 @@ export async function POST(
     // Check answer based on question type
     let isCorrect = false;
     let feedback = '';
-    let effectiveCorrectIndex: number | undefined = undefined;
+    let effectiveCorrectIndex: number = 0;
 
     if (question.type === 'mcq') {
       const userAnswerRaw = String(answer).trim();

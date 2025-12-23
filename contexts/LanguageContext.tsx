@@ -8,7 +8,7 @@ export type { Language };
 interface LanguageContextType {
   currentLanguage: Language;
   setLanguage: (language: Language) => void;
-  translate: (key: string, params?: Record<string, string>) => string;
+  translate: (key: string, fallbackOrParams?: string | Record<string, string>, params?: Record<string, string>) => string;
   translateContent: (content: string, contentType?: string) => Promise<string>;
   translationCache: Map<string, { fr: string; en: string }>;
 }
@@ -57,13 +57,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   };
 
-  const translate = (key: string, params?: Record<string, string>): string => {
-    let translation = translations[currentLanguage][key] || translations['en'][key] || key;
+  const translate = (key: string, fallbackOrParams?: string | Record<string, string>, params?: Record<string, string>): string => {
+    // Determine fallback and params based on argument types
+    const fallback = typeof fallbackOrParams === 'string' ? fallbackOrParams : key;
+    const actualParams = typeof fallbackOrParams === 'object' ? fallbackOrParams : params;
+
+    let translation = translations[currentLanguage][key] || translations['en'][key] || fallback;
 
     // Replace parameters in translation if provided
-    if (params) {
-      Object.keys(params).forEach((paramKey) => {
-        translation = translation.replace(`{${paramKey}}`, params[paramKey]);
+    if (actualParams) {
+      Object.keys(actualParams).forEach((paramKey) => {
+        translation = translation.replace(`{${paramKey}}`, actualParams[paramKey]);
       });
     }
 

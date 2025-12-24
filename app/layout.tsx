@@ -27,6 +27,28 @@ export const metadata: Metadata = {
     ],
   },
   manifest: '/manifest.json',
+  openGraph: {
+    title: 'Nareo - AI-Powered Learning',
+    description: 'Transform your PDFs into interactive learning experiences with Nareo, your AI tutor',
+    url: 'https://nareo.fr',
+    siteName: 'Nareo',
+    images: [
+      {
+        url: 'https://nareo.fr/images/favicon-512x512.png',
+        width: 512,
+        height: 512,
+        alt: 'Nareo Logo',
+      },
+    ],
+    locale: 'fr_FR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Nareo - AI-Powered Learning',
+    description: 'Transform your PDFs into interactive learning experiences with Nareo, your AI tutor',
+    images: ['https://nareo.fr/images/favicon-512x512.png'],
+  },
 };
 
 export default function RootLayout({

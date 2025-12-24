@@ -1155,7 +1155,7 @@ export default function HomePage() {
                       router.push('/auth/signup');
                     }
                   }}
-                  className="w-full py-3 px-4 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all mt-auto"
+                  className="w-full py-3 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all mt-auto"
                 >
                   {user ? translate('my_courses_button') : translate('signup_plan_free_cta')}
                 </button>
@@ -1181,14 +1181,14 @@ export default function HomePage() {
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-orange-600">
                     {pricingBilling === 'annual'
-                      ? (currentLanguage === 'fr' || currentLanguage === 'de' ? '6,99 €' : '$6.99')
-                      : (currentLanguage === 'fr' || currentLanguage === 'de' ? '9,99 €' : '$9.99')
+                      ? (currentLanguage === 'en' ? '€6.99' : '6,99 €')
+                      : (currentLanguage === 'en' ? '€9.99' : '9,99 €')
                     }
                   </span>
                   <span className="ml-1 text-gray-500">{translate('paywall_price_per_month')}</span>
                   {pricingBilling === 'annual' ? (
                     <p className="text-sm text-gray-500 mt-1">
-                      {translate('paywall_billed_annually')} {currentLanguage === 'fr' || currentLanguage === 'de' ? '83,88 €' : '$83.88'}
+                      {translate('paywall_billed_annually')} {currentLanguage === 'en' ? '€83.88' : '83,88 €'}
                     </p>
                   ) : (
                     <p className="text-sm text-green-600 mt-1">

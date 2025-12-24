@@ -5,6 +5,7 @@ import type { MasteryLevel } from '@/lib/stats/types';
 import { MASTERY_CONFIG } from '@/lib/stats/constants';
 import { getPrecision } from '@/lib/stats/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Mapping mastery levels to translation keys
 const MASTERY_LEVEL_KEYS: Record<MasteryLevel, string> = {
@@ -33,6 +34,7 @@ export default function MasteryBar({
   compact = false,
 }: MasteryBarProps) {
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const config = MASTERY_CONFIG[masteryLevel];
   const precision = getPrecision(correctAnswers, totalQuestions);
   const isInDanger = daysUntilDegradation !== null && daysUntilDegradation !== undefined && daysUntilDegradation <= 2 && daysUntilDegradation > 0;
@@ -40,7 +42,7 @@ export default function MasteryBar({
   return (
     <div className={`${compact ? 'py-2' : 'py-3'}`}>
       <div className="flex items-center justify-between mb-1">
-        <span className={`font-medium text-gray-900 ${compact ? 'text-sm' : 'text-base'} truncate max-w-[200px]`}>
+        <span className={`font-medium ${isDark ? 'text-neutral-200' : 'text-gray-900'} ${compact ? 'text-sm' : 'text-base'} truncate max-w-[200px]`}>
           {chapterTitle}
         </span>
         <div className="flex items-center gap-2">
@@ -58,7 +60,7 @@ export default function MasteryBar({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-neutral-700' : 'bg-gray-100'}`}>
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${precision}%` }}
@@ -67,7 +69,7 @@ export default function MasteryBar({
             style={{ backgroundColor: config.color }}
           />
         </div>
-        <span className="text-xs text-gray-500 w-10 text-right">{precision}%</span>
+        <span className={`text-xs w-10 text-right ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{precision}%</span>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { getXPLevel, getXPProgress, getXPToNextLevel, formatNumber } from '@/lib/stats/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface XPDisplayProps {
   totalXP: number;
@@ -13,19 +14,24 @@ interface XPDisplayProps {
 
 export default function XPDisplay({ totalXP, showProgress = true, compact = false }: XPDisplayProps) {
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const currentLevel = getXPLevel(totalXP);
   const progress = getXPProgress(totalXP);
   const xpToNext = getXPToNextLevel(totalXP);
 
   if (compact) {
     return (
-      <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+      <div className={`rounded-xl p-4 border shadow-sm text-center ${
+        isDark
+          ? 'bg-neutral-800 border-neutral-700'
+          : 'bg-white border-gray-100'
+      }`}>
         <div className="flex items-center justify-center gap-2 mb-1">
           <Star className="w-4 h-4 text-orange-500" />
-          <span className="text-xs text-gray-500 font-medium">{translate('stats_label_level')}</span>
+          <span className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_label_level')}</span>
         </div>
-        <p className="text-xl font-bold text-gray-900">{currentLevel.level}</p>
-        <p className="text-xs text-gray-400">{formatNumber(totalXP)} XP</p>
+        <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{currentLevel.level}</p>
+        <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{formatNumber(totalXP)} XP</p>
       </div>
     );
   }

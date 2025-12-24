@@ -6,6 +6,7 @@ import { Check, Settings } from 'lucide-react';
 import type { DailyGoalLevel } from '@/lib/stats/types';
 import { DAILY_GOAL_CONFIG } from '@/lib/stats/constants';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import ProgressCircle from './ProgressCircle';
 import GoalLevelSelector from './GoalLevelSelector';
 
@@ -25,6 +26,7 @@ export default function DailyGoalCard({
   onGoalLevelChange,
 }: DailyGoalCardProps) {
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const [showSettings, setShowSettings] = useState(false);
 
   const progress = Math.min(100, Math.round((current / target) * 100));
@@ -38,16 +40,18 @@ export default function DailyGoalCard({
         transition={{ delay: 0.1 }}
         className={`rounded-2xl p-5 border relative overflow-hidden ${
           completed
-            ? 'bg-green-50 border-green-200'
-            : 'bg-white border-gray-100'
+            ? isDark ? 'bg-green-900/30 border-green-800' : 'bg-green-50 border-green-200'
+            : isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-100'
         }`}
       >
         {/* Settings button */}
         <button
           onClick={() => setShowSettings(true)}
-          className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+          className={`absolute top-4 right-4 p-1.5 rounded-full transition-colors ${
+            isDark ? 'hover:bg-neutral-700' : 'hover:bg-gray-100'
+          }`}
         >
-          <Settings className="w-4 h-4 text-gray-400" />
+          <Settings className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
         </button>
 
         <div className="flex items-center gap-5">
@@ -57,6 +61,7 @@ export default function DailyGoalCard({
             size={100}
             strokeWidth={8}
             progressColor={completed ? '#22C55E' : '#F97316'}
+            backgroundColor={isDark ? '#262626' : '#E5E7EB'}
           >
             {completed ? (
               <motion.div
@@ -68,21 +73,21 @@ export default function DailyGoalCard({
               </motion.div>
             ) : (
               <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{current}</p>
-                <p className="text-xs text-gray-500">/ {target}</p>
+                <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{current}</p>
+                <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>/ {target}</p>
               </div>
             )}
           </ProgressCircle>
 
           {/* Info */}
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-gray-500">{translate('stats_daily_goal_title')}</h3>
-            <p className={`text-lg font-semibold ${completed ? 'text-green-600' : 'text-gray-900'}`}>
+            <h3 className={`text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_daily_goal_title')}</h3>
+            <p className={`text-lg font-semibold ${completed ? 'text-green-600' : isDark ? 'text-white' : 'text-gray-900'}`}>
               {completed ? translate('stats_daily_goal_completed') : translate('stats_daily_goal_remaining', { count: String(target - current) })}
             </p>
             <div className="mt-2 flex items-center gap-2">
               <span className="text-lg">{config.emoji}</span>
-              <span className="text-sm text-gray-500">
+              <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                 {config.label} ({config.timeEstimate})
               </span>
             </div>

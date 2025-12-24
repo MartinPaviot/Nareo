@@ -7,6 +7,7 @@ import { useUserStats } from '@/hooks/useUserStats';
 import { useDailyActivity } from '@/hooks/useDailyActivity';
 import { useStreak } from '@/hooks/useStreak';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { getPrecision } from '@/lib/stats/utils';
 import StreakCard from './StreakCard';
 import DailyGoalCard from './DailyGoalCard';
@@ -21,23 +22,29 @@ interface StatCardProps {
   value: string | number;
   subValue?: string;
   valueColor?: string;
+  isDark?: boolean;
 }
 
-function StatCard({ icon: Icon, label, value, subValue, valueColor = 'text-gray-900' }: StatCardProps) {
+function StatCard({ icon: Icon, label, value, subValue, valueColor = 'text-gray-900', isDark = false }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+    <div className={`rounded-xl p-4 border shadow-sm text-center ${
+      isDark
+        ? 'bg-neutral-800 border-neutral-700'
+        : 'bg-white border-gray-100'
+    }`}>
       <div className="flex items-center justify-center gap-2 mb-1">
-        <Icon className="w-4 h-4 text-gray-400" />
-        <span className="text-xs text-gray-500 font-medium">{label}</span>
+        <Icon className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+        <span className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{label}</span>
       </div>
-      <p className={`text-xl font-bold ${valueColor}`}>{value}</p>
-      {subValue && <p className="text-xs text-gray-400">{subValue}</p>}
+      <p className={`text-xl font-bold ${isDark && valueColor === 'text-gray-900' ? 'text-white' : valueColor}`}>{value}</p>
+      {subValue && <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{subValue}</p>}
     </div>
   );
 }
 
 export default function StatsModule() {
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const { stats, isLoading: statsLoading, updateDailyGoalLevel } = useUserStats();
   const { todayActivity, isLoading: activityLoading } = useDailyActivity();
   const { currentStreak, longestStreak, streakState, freezesAvailable, previousStreakLost, checkMilestones } = useStreak();
@@ -133,6 +140,7 @@ export default function StatsModule() {
           label={translate('stats_label_quiz')}
           value={todayActivity?.quizzes_completed || 0}
           subValue={translate('stats_label_today')}
+          isDark={isDark}
         />
         <StatCard
           icon={Target}
@@ -140,13 +148,15 @@ export default function StatsModule() {
           value={`${precision}%`}
           subValue={translate('stats_label_today')}
           valueColor={precision >= 70 ? 'text-green-600' : precision >= 50 ? 'text-yellow-600' : 'text-red-500'}
+          isDark={isDark}
         />
         <XPDisplay totalXP={stats?.total_xp || 0} compact />
         <StatCard
           icon={Trophy}
           label={translate('stats_label_record')}
-          value={`${longestStreak}j`}
+          value={`${longestStreak}${translate('stats_days_abbreviation')}`}
           subValue={translate('stats_label_best_streak')}
+          isDark={isDark}
         />
       </div>
 

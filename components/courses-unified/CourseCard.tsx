@@ -77,6 +77,20 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
   const masteryColor = getMasteryColor(course.mastery_percentage);
   const masteryPercentage = Math.round(course.mastery_percentage);
 
+  // Dark mode freshness colors (softer for eyes)
+  const getDarkFreshnessColors = (level: string) => {
+    switch (level) {
+      case 'fresh': return { bg: '#14532d50', color: '#4ade80' }; // green-900/30, green-400
+      case 'moderate': return { bg: '#71350750', color: '#facc15' }; // yellow-900/30, yellow-400
+      case 'stale': return { bg: '#7c2d1250', color: '#fb923c' }; // orange-900/30, orange-400
+      case 'critical': return { bg: '#7f1d1d50', color: '#f87171' }; // red-900/30, red-400
+      default: return { bg: '#26262650', color: '#a3a3a3' };
+    }
+  };
+
+  const freshnessBg = isDark ? getDarkFreshnessColors(freshnessConfig.level).bg : freshnessConfig.bgColor;
+  const freshnessColor = isDark ? getDarkFreshnessColors(freshnessConfig.level).color : freshnessConfig.color;
+
   // Get CTA icon
   const getCTAIcon = () => {
     if (!smartCTA) return ArrowRight;
@@ -135,8 +149,8 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
           <div
             className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
             style={{
-              backgroundColor: freshnessConfig.bgColor,
-              color: freshnessConfig.color,
+              backgroundColor: freshnessBg,
+              color: freshnessColor,
             }}
           >
             {formatDaysSince(course.days_since_study)}

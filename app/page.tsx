@@ -1114,7 +1114,7 @@ export default function HomePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               {/* Free Plan */}
-              <div className="rounded-2xl border-2 border-gray-200 bg-white p-6 shadow-lg hover:border-gray-300 transition-all">
+              <div className="rounded-2xl border-2 border-gray-200 bg-white p-6 shadow-lg hover:border-gray-300 transition-all flex flex-col">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
                     <Zap className="w-6 h-6 text-gray-600" />
@@ -1130,7 +1130,7 @@ export default function HomePage() {
                   <span className="ml-1 text-gray-500">{translate('paywall_price_per_month')}</span>
                 </div>
 
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-3 mb-6 flex-grow">
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-600">{translate('signup_plan_free_feature_1')}</span>
@@ -1155,14 +1155,14 @@ export default function HomePage() {
                       router.push('/auth/signup');
                     }
                   }}
-                  className="w-full py-3 px-4 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all"
+                  className="w-full py-3 px-4 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all mt-auto"
                 >
                   {user ? translate('my_courses_button') : translate('signup_plan_free_cta')}
                 </button>
               </div>
 
               {/* Premium Plan */}
-              <div className="relative rounded-2xl border-2 border-orange-500 bg-white p-6 shadow-xl">
+              <div className="relative rounded-2xl border-2 border-orange-500 bg-white p-6 shadow-xl flex flex-col">
                 {/* Recommended Badge */}
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-500 text-white text-sm font-bold rounded-full">
                   {translate('signup_plan_premium_badge')}
@@ -1197,7 +1197,7 @@ export default function HomePage() {
                   )}
                 </div>
 
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-3 mb-6 flex-grow">
                   <li className="flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-700">{translate('signup_plan_premium_feature_1')}</span>
@@ -1226,7 +1226,7 @@ export default function HomePage() {
                       router.push('/auth/signup');
                     }
                   }}
-                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 mt-auto"
                 >
                   <Crown className="w-5 h-5" />
                   {translate('signup_plan_premium_cta')}

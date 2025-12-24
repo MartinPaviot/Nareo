@@ -1,55 +1,57 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Calendar, Clock, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import TopBarActions from '@/components/layout/TopBarActions';
-
-// Articles statiques (à terme, pourra venir d'un CMS ou d'une base de données)
-const BLOG_ARTICLES = [
-  {
-    id: 'active-recall',
-    slug: 'active-recall-methode-revision',
-    titleKey: 'blog_article_1_title',
-    descriptionKey: 'blog_article_1_description',
-    image: '/images/blog/active-recall.jpg',
-    category: 'Méthode',
-    readTime: 5,
-    date: '2024-12-20',
-    published: true,
-  },
-  {
-    id: 'spaced-repetition',
-    slug: 'repetition-espacee-memorisation',
-    titleKey: 'blog_article_2_title',
-    descriptionKey: 'blog_article_2_description',
-    image: '/images/blog/spaced-repetition.jpg',
-    category: 'Méthode',
-    readTime: 7,
-    date: '2024-12-18',
-    published: true,
-  },
-  {
-    id: 'pomodoro',
-    slug: 'technique-pomodoro-concentration',
-    titleKey: 'blog_article_3_title',
-    descriptionKey: 'blog_article_3_description',
-    image: '/images/blog/pomodoro.jpg',
-    category: 'Productivité',
-    readTime: 4,
-    date: '2024-12-15',
-    published: true,
-  },
-];
+import type { BlogArticle } from '@/types/blog';
+import { getLocalizedTitle, getLocalizedExcerpt } from '@/types/blog';
 
 export default function BlogPage() {
   const router = useRouter();
-  const { translate } = useLanguage();
+  const { translate, currentLanguage } = useLanguage();
   const { isDark } = useTheme();
 
-  const publishedArticles = BLOG_ARTICLES.filter((a) => a.published);
+  const [articles, setArticles] = useState<BlogArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        const response = await fetch('/api/blog');
+        const data = await response.json();
+
+        if (data.success && data.articles) {
+          setArticles(data.articles);
+        }
+      } catch (error) {
+        console.error('Error fetching blog articles:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, []);
+
+  const language = currentLanguage as 'fr' | 'en' | 'de';
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const locales: Record<string, string> = {
+      fr: 'fr-FR',
+      en: 'en-US',
+      de: 'de-DE',
+    };
+    return date.toLocaleDateString(locales[currentLanguage] || 'fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-neutral-950' : 'bg-gradient-to-b from-orange-50 via-white to-orange-50'}`}>
@@ -87,10 +89,29 @@ export default function BlogPage() {
             </p>
           </section>
 
-          {/* Articles Grid */}
-          {publishedArticles.length > 0 ? (
+          {/* Loading State */}
+          {loading ? (
             <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {publishedArticles.map((article) => (
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={`rounded-2xl border overflow-hidden animate-pulse ${
+                    isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  <div className={`aspect-video ${isDark ? 'bg-neutral-800' : 'bg-gray-200'}`} />
+                  <div className="p-4 space-y-3">
+                    <div className={`h-6 rounded ${isDark ? 'bg-neutral-800' : 'bg-gray-200'}`} />
+                    <div className={`h-4 rounded w-3/4 ${isDark ? 'bg-neutral-800' : 'bg-gray-200'}`} />
+                    <div className={`h-4 rounded w-1/2 ${isDark ? 'bg-neutral-800' : 'bg-gray-200'}`} />
+                  </div>
+                </div>
+              ))}
+            </section>
+          ) : articles.length > 0 ? (
+            /* Articles Grid */
+            <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {articles.map((article) => (
                 <article
                   key={article.id}
                   onClick={() => router.push(`/blog/${article.slug}`)}
@@ -102,15 +123,24 @@ export default function BlogPage() {
                 >
                   {/* Image placeholder */}
                   <div className={`aspect-video relative overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    {article.image_url ? (
                       <Image
-                        src="/chat/mascotte.png"
-                        alt=""
-                        width={80}
-                        height={80}
-                        className="opacity-30"
+                        src={article.image_url}
+                        alt={getLocalizedTitle(article, language)}
+                        fill
+                        className="object-cover"
                       />
-                    </div>
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Image
+                          src="/chat/mascotte.png"
+                          alt=""
+                          width={80}
+                          height={80}
+                          className="opacity-30"
+                        />
+                      </div>
+                    )}
                     {/* Category badge */}
                     <div className="absolute top-3 left-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -119,6 +149,16 @@ export default function BlogPage() {
                         {article.category}
                       </span>
                     </div>
+                    {/* Featured badge */}
+                    {article.featured && (
+                      <div className="absolute top-3 right-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          isDark ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {translate('blog_featured') || 'En vedette'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Content */}
@@ -126,25 +166,21 @@ export default function BlogPage() {
                     <h2 className={`text-lg font-bold line-clamp-2 group-hover:text-orange-500 transition-colors ${
                       isDark ? 'text-neutral-100' : 'text-gray-900'
                     }`}>
-                      {translate(article.titleKey as any) || article.titleKey}
+                      {getLocalizedTitle(article, language)}
                     </h2>
                     <p className={`text-sm line-clamp-2 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-                      {translate(article.descriptionKey as any) || article.descriptionKey}
+                      {getLocalizedExcerpt(article, language)}
                     </p>
 
                     {/* Meta */}
                     <div className={`flex items-center gap-4 text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        {new Date(article.date).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
+                        {formatDate(article.created_at)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
-                        {article.readTime} min
+                        {article.read_time} min
                       </span>
                     </div>
 
@@ -158,6 +194,7 @@ export default function BlogPage() {
               ))}
             </section>
           ) : (
+            /* Empty State */
             <section className={`rounded-2xl border p-12 text-center ${
               isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
             }`}>

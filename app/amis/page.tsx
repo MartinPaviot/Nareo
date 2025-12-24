@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import FriendsList from '@/components/defi/FriendsList';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
@@ -17,6 +18,7 @@ export default function AmisPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   const [userProfile, setUserProfile] = useState<{ friend_code: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +48,7 @@ export default function AmisPage() {
         setUserProfile(profile);
       } else {
         // Create profile if it doesn't exist
-        const displayName = user?.email?.split('@')[0] || 'Utilisateur';
+        const displayName = user?.email?.split('@')[0] || translate('friends_user');
         const { data: newProfile } = await supabase
           .from('user_profiles')
           .insert({
@@ -104,10 +106,10 @@ export default function AmisPage() {
               isDark ? 'text-white' : 'text-gray-900'
             }`}>
               <Users className="w-6 h-6" />
-              Mes amis
+              {translate('friends_title')}
             </h1>
             <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Gérez vos amis et défiez-les
+              {translate('friends_subtitle')}
             </p>
           </div>
         </div>

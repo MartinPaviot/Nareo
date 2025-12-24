@@ -124,32 +124,51 @@ export function calculateCourseMastery(chapters: ChapterMastery[]): number {
 }
 
 /**
- * Group chapter mastery by course
+ * Group chapter mastery by course, sorted by most recent activity
  */
 export function groupMasteryByCourse(
   masteryData: ChapterMastery[]
 ): CourseMasterySummary[] {
-  const courseMap = new Map<string, ChapterMastery[]>();
+  const courseMap = new Map<string, { chapters: ChapterMastery[]; lastActivity: Date }>();
 
   for (const chapter of masteryData) {
-    const existing = courseMap.get(chapter.course_id) || [];
-    existing.push(chapter);
-    courseMap.set(chapter.course_id, existing);
+    const existing = courseMap.get(chapter.course_id);
+    const chapterUpdated = new Date(chapter.updated_at);
+
+    if (existing) {
+      existing.chapters.push(chapter);
+      // Keep track of the most recent activity for this course
+      if (chapterUpdated > existing.lastActivity) {
+        existing.lastActivity = chapterUpdated;
+      }
+    } else {
+      courseMap.set(chapter.course_id, {
+        chapters: [chapter],
+        lastActivity: chapterUpdated,
+      });
+    }
   }
 
   const summaries: CourseMasterySummary[] = [];
 
-  courseMap.forEach((chapters, courseId) => {
-    const masteredCount = chapters.filter(c => c.mastery_level === 'mastered').length;
+  courseMap.forEach((data, courseId) => {
+    const masteredCount = data.chapters.filter(c => c.mastery_level === 'mastered').length;
 
     summaries.push({
       course_id: courseId,
-      course_title: chapters[0].course_title || 'Untitled Course',
-      chapters,
-      overall_mastery: calculateCourseMastery(chapters),
+      course_title: data.chapters[0].course_title || 'Untitled Course',
+      chapters: data.chapters,
+      overall_mastery: calculateCourseMastery(data.chapters),
       mastered_count: masteredCount,
-      total_chapters: chapters.length,
+      total_chapters: data.chapters.length,
     });
+  });
+
+  // Sort by most recent activity (descending)
+  summaries.sort((a, b) => {
+    const aLastActivity = courseMap.get(a.course_id)!.lastActivity;
+    const bLastActivity = courseMap.get(b.course_id)!.lastActivity;
+    return bLastActivity.getTime() - aLastActivity.getTime();
   });
 
   return summaries;

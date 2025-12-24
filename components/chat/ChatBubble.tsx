@@ -7,6 +7,7 @@ import NareoAvatar from './NareoAvatar';
 import UserMessageBubble from './UserMessageBubble';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ChatBubbleProps {
   message: ChatMessage;
@@ -89,6 +90,7 @@ function cleanMessageText(content: string): string {
 export default function ChatBubble({ message }: ChatBubbleProps): React.ReactElement {
   const isUser = message.role === 'user';
   const { user } = useAuth();
+  const { isDark } = useTheme();
   
   // Apply permanent text cleaning to all messages
   const cleanedContent = cleanMessageText(message.content);
@@ -139,7 +141,9 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
           <div className="text-sm leading-relaxed">
             {questionParts.map((part, idx) => (
               <p key={idx} className={cn(
-                part.startsWith('Question') ? 'font-semibold text-gray-900 mb-2' : 'text-gray-700'
+                part.startsWith('Question')
+                  ? cn('font-semibold mb-2', isDark ? 'text-gray-100' : 'text-gray-900')
+                  : isDark ? 'text-gray-300' : 'text-gray-700'
               )}>
                 {part}
               </p>
@@ -171,7 +175,7 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
                     <span className="font-semibold text-orange-600 min-w-[24px]">
                       {letter}
                     </span>
-                    <span className="text-sm text-gray-700 flex-1">
+                    <span className={cn('text-sm flex-1', isDark ? 'text-gray-300' : 'text-gray-700')}>
                       {optionText}
                     </span>
                   </div>
@@ -182,7 +186,7 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
           
           {/* Hint */}
           {hint && (
-            <p className="text-xs text-gray-500 italic mt-2">
+            <p className={cn('text-xs italic mt-2', isDark ? 'text-gray-400' : 'text-gray-500')}>
               {hint}
             </p>
           )}
@@ -216,7 +220,7 @@ export default function ChatBubble({ message }: ChatBubbleProps): React.ReactEle
         </div>
         
         {/* Timestamp */}
-        <span className="text-xs text-gray-500 mt-1 px-2">
+        <span className={cn('text-xs mt-1 px-2', isDark ? 'text-gray-400' : 'text-gray-500')}>
           {formatTime(message.timestamp)}
         </span>
       </div>

@@ -19,12 +19,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { ChallengeListItem, UserChallengeStats } from '@/types/defi';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
 
 // Helper pour formater la date relative
-function formatRelativeTime(dateString: string): string {
+function formatRelativeTime(dateString: string, translate: (key: string, params?: Record<string, string | number>) => string): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -32,11 +33,11 @@ function formatRelativeTime(dateString: string): string {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return "À l'instant";
-  if (diffMins < 60) return `Il y a ${diffMins} min`;
-  if (diffHours < 24) return `Il y a ${diffHours}h`;
-  if (diffDays === 1) return 'Hier';
-  if (diffDays < 7) return `Il y a ${diffDays} jours`;
+  if (diffMins < 1) return translate('relative_time_now');
+  if (diffMins < 60) return translate('relative_time_minutes_ago', { minutes: diffMins });
+  if (diffHours < 24) return translate('relative_time_hours_ago', { hours: diffHours });
+  if (diffDays === 1) return translate('relative_time_yesterday');
+  if (diffDays < 7) return translate('relative_time_days_ago', { days: diffDays });
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
@@ -44,6 +45,7 @@ export default function DefiPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   const [activeChallenges, setActiveChallenges] = useState<ChallengeListItem[]>([]);
   const [recentChallenges, setRecentChallenges] = useState<ChallengeListItem[]>([]);
@@ -205,8 +207,8 @@ export default function DefiPage() {
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <PageHeaderWithMascot
-        title="Mode Défi"
-        subtitle="Affronte tes amis en temps réel"
+        title={translate('challenge_mode')}
+        subtitle={translate('challenge_subtitle')}
         maxWidth="4xl"
         showDarkModeToggle
       />
@@ -225,7 +227,7 @@ export default function DefiPage() {
                   {stats.total_played}
                 </p>
                 <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Défis joués
+                  {translate('challenge_played')}
                 </p>
               </div>
               <div className="text-center">
@@ -236,7 +238,7 @@ export default function DefiPage() {
                   {stats.total_wins}
                 </p>
                 <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Victoires
+                  {translate('challenge_victories')}
                 </p>
               </div>
               <div className="text-center">
@@ -247,7 +249,7 @@ export default function DefiPage() {
                   {stats.total_points}
                 </p>
                 <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Points
+                  {translate('challenge_points')}
                 </p>
               </div>
             </div>
@@ -270,9 +272,9 @@ export default function DefiPage() {
                 <Plus className="w-6 h-6" />
               </div>
               <div className="flex-1">
-                <h2 className="font-bold text-lg">Créer un défi</h2>
+                <h2 className="font-bold text-lg">{translate('challenge_create')}</h2>
                 <p className="text-sm text-white/80">
-                  Invite tes amis
+                  {translate('challenge_invite_friends')}
                 </p>
               </div>
               <ArrowRight className="w-5 h-5 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
@@ -287,10 +289,10 @@ export default function DefiPage() {
               </div>
               <div>
                 <h2 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Rejoindre
+                  {translate('challenge_join')}
                 </h2>
                 <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Avec un code
+                  {translate('challenge_with_code')}
                 </p>
               </div>
             </div>
@@ -326,7 +328,7 @@ export default function DefiPage() {
               isDark ? 'text-gray-400' : 'text-gray-500'
             }`}>
               <Play className="w-4 h-4 text-green-500" />
-              En cours
+              {translate('challenge_in_progress')}
             </h2>
             <div className="space-y-2">
               {activeChallenges.map((challenge) => (
@@ -343,7 +345,7 @@ export default function DefiPage() {
               isDark ? 'text-gray-400' : 'text-gray-500'
             }`}>
               <Clock className="w-4 h-4" />
-              Historique
+              {translate('challenge_history')}
             </h2>
             <div className="space-y-2">
               {recentChallenges.map((challenge) => (
@@ -362,17 +364,17 @@ export default function DefiPage() {
               <Gamepad2 className={`w-8 h-8 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
             </div>
             <p className={`text-lg font-medium mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Prêt à relever un défi ?
+              {translate('challenge_ready')}
             </p>
             <p className={`text-sm mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-              Crée un défi et invite tes amis !
+              {translate('challenge_create_invite')}
             </p>
             <Link
               href="/defi/creer"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Créer mon premier défi
+              {translate('challenge_create_first')}
             </Link>
           </div>
         )}
@@ -389,6 +391,7 @@ function ChallengeCard({
   isDark: boolean;
 }) {
   const router = useRouter();
+  const { translate } = useLanguage();
   const isFinished = challenge.status === 'finished';
   const isWinner = challenge.my_rank === 1;
   const isActive = challenge.status === 'lobby' || challenge.status === 'playing';
@@ -445,18 +448,18 @@ function ChallengeCard({
                   ? 'bg-green-500/20 text-green-500'
                   : 'bg-yellow-500/20 text-yellow-600'
               }`}>
-                {challenge.status === 'lobby' ? 'En attente' : 'En jeu'}
+                {challenge.status === 'lobby' ? translate('challenge_waiting') : translate('challenge_playing')}
               </span>
             )}
           </div>
           <div className={`flex items-center gap-2 text-sm mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             <span className="font-mono text-xs">{challenge.code}</span>
             <span>•</span>
-            <span>{challenge.player_count} joueur{challenge.player_count > 1 ? 's' : ''}</span>
+            <span>{challenge.player_count} {challenge.player_count > 1 ? translate('challenge_players_plural') : translate('challenge_players')}</span>
             {isFinished && (
               <>
                 <span>•</span>
-                <span>{formatRelativeTime(challenge.created_at)}</span>
+                <span>{formatRelativeTime(challenge.created_at, translate)}</span>
               </>
             )}
           </div>

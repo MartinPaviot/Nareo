@@ -27,12 +27,12 @@ import ChapterScoreBadge from './ChapterScoreBadge';
 import QuizPersonnalisationScreen from './QuizPersonnalisationScreen';
 import { QuizConfig, DEFAULT_QUIZ_CONFIG } from '@/types/quiz-personnalisation';
 
-// Question type labels
-const QUESTION_TYPE_LABELS: Record<string, string> = {
-  mcq: 'QCM',
-  multiple_choice: 'QCM',
-  true_false: 'Vrai/Faux',
-  fill_blank: 'Texte à trous',
+// Question type translation keys
+const QUESTION_TYPE_KEYS: Record<string, string> = {
+  mcq: 'quiz_question_type_mcq',
+  multiple_choice: 'quiz_question_type_mcq',
+  true_false: 'quiz_question_type_true_false',
+  fill_blank: 'quiz_question_type_fill_blank',
 };
 
 const QUESTION_TYPE_ICONS: Record<string, typeof ListChecks> = {
@@ -373,7 +373,7 @@ export default function QuizChapterManagement({
               >
                 <Icon className={`w-4 h-4 ${newQuestionType === type ? 'text-orange-500' : isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
                 <span className={`text-xs font-medium ${newQuestionType === type ? 'text-orange-500' : isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-                  {QUESTION_TYPE_LABELS[type]}
+                  {translate(QUESTION_TYPE_KEYS[type])}
                 </span>
               </button>
             );
@@ -384,17 +384,17 @@ export default function QuizChapterManagement({
       {/* Question Text */}
       <div>
         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-          {newQuestionType === 'fill_blank' ? 'Phrase (utilisez _____ pour le trou)' : 'Question'}
+          {translate('quiz_question_text_label')}
         </label>
         <textarea
           value={newQuestionText}
           onChange={(e) => setNewQuestionText(e.target.value)}
           placeholder={
             newQuestionType === 'fill_blank'
-              ? 'Ex: Le _____ est le coût moyen pondéré du capital.'
+              ? translate('quiz_question_text_placeholder_fill')
               : newQuestionType === 'true_false'
-              ? 'Ex: Le WACC représente le coût moyen pondéré du capital.'
-              : 'Ex: Quelle est la formule du WACC ?'
+              ? translate('quiz_question_text_placeholder_tf')
+              : translate('quiz_question_text_placeholder_mcq')
           }
           rows={2}
           className={`w-full p-3 rounded-xl border-2 focus:border-orange-500 focus:outline-none transition-colors resize-none ${
@@ -409,7 +409,7 @@ export default function QuizChapterManagement({
       {newQuestionType === 'mcq' && (
         <div>
           <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-            Options (cochez la bonne réponse)
+            {translate('quiz_options_label')}
           </label>
           <div className="space-y-2">
             {newOptions.map((option, idx) => (
@@ -452,10 +452,10 @@ export default function QuizChapterManagement({
       {newQuestionType === 'true_false' && (
         <div>
           <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-            Cette affirmation est :
+            {translate('quiz_statement_label')}
           </label>
           <div className="flex gap-3">
-            {['Vrai', 'Faux'].map((label, idx) => (
+            {[translate('quiz_true'), translate('quiz_false')].map((label, idx) => (
               <button
                 key={label}
                 type="button"
@@ -481,7 +481,7 @@ export default function QuizChapterManagement({
       {newQuestionType === 'fill_blank' && (
         <div>
           <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-            Réponse correcte
+            {translate('quiz_correct_answer_label')}
           </label>
           <input
             type="text"
@@ -500,12 +500,12 @@ export default function QuizChapterManagement({
       {/* Explanation */}
       <div>
         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-          Explication (optionnel)
+          {translate('quiz_explanation_label')}
         </label>
         <textarea
           value={newExplanation}
           onChange={(e) => setNewExplanation(e.target.value)}
-          placeholder="Explication affichée après la réponse..."
+          placeholder={translate('quiz_explanation_placeholder')}
           rows={2}
           className={`w-full p-3 rounded-xl border-2 focus:border-orange-500 focus:outline-none transition-colors resize-none ${
             isDark
@@ -522,7 +522,7 @@ export default function QuizChapterManagement({
       {/* Action bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
         <span className={isDark ? 'text-neutral-400' : 'text-gray-600'}>
-          {chapters.length} chapitre{chapters.length > 1 ? 's' : ''} - {chapters.reduce((sum, c) => sum + c.question_count, 0)} questions
+          {translate('quiz_chapters_count', { count: chapters.length.toString(), questions: chapters.reduce((sum, c) => sum + c.question_count, 0).toString() })}
         </span>
         <div className="flex items-center gap-2 sm:gap-4">
           {/* Launch Challenge button */}
@@ -536,8 +536,8 @@ export default function QuizChapterManagement({
               }`}
             >
               <Gamepad2 className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Lancer un défi</span>
-              <span className="sm:hidden">Défi</span>
+              <span className="hidden sm:inline">{translate('quiz_launch_challenge')}</span>
+              <span className="sm:hidden">{translate('challenge_title')}</span>
             </button>
           )}
           <button
@@ -548,7 +548,7 @@ export default function QuizChapterManagement({
             }`}
           >
             <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span>Régénérer</span>
+            <span>{translate('quiz_regenerate')}</span>
           </button>
         </div>
       </div>
@@ -559,7 +559,7 @@ export default function QuizChapterManagement({
           isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
         }`}>
           <AlertCircle className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-neutral-600' : 'text-gray-400'}`} />
-          <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>Aucun chapitre disponible.</p>
+          <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('quiz_no_chapters')}</p>
         </div>
       ) : (
         <div className={`rounded-2xl border shadow-sm divide-y transition-colors ${
@@ -669,7 +669,7 @@ export default function QuizChapterManagement({
                   <div className={`px-3 sm:px-5 pb-4 ${isDark ? 'bg-neutral-800/30' : 'bg-gray-50/50'}`}>
                     <div className="flex items-center justify-between mb-3 pt-2">
                       <span className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                        Questions du chapitre
+                        {translate('quiz_chapter_questions')}
                       </span>
                       <button
                         onClick={() => openAddModal(chapter.id)}
@@ -678,7 +678,7 @@ export default function QuizChapterManagement({
                         }`}
                       >
                         <Plus className="w-3 h-3" />
-                        Ajouter
+                        {translate('quiz_add_question')}
                       </button>
                     </div>
 
@@ -688,7 +688,7 @@ export default function QuizChapterManagement({
                       </div>
                     ) : chapterQuestions.length === 0 ? (
                       <p className={`text-xs text-center py-4 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
-                        Aucune question dans ce chapitre
+                        {translate('quiz_no_questions')}
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -709,7 +709,7 @@ export default function QuizChapterManagement({
                                   <div className="flex items-center gap-2 mb-1">
                                     <Icon className={`w-3 h-3 flex-shrink-0 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
                                     <span className={`text-[10px] uppercase ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
-                                      {QUESTION_TYPE_LABELS[question.type] || question.type}
+                                      {translate(QUESTION_TYPE_KEYS[question.type]) || question.type}
                                     </span>
                                   </div>
                                   <p className={`text-sm line-clamp-2 ${isDark ? 'text-neutral-200' : 'text-gray-800'}`}>
@@ -756,7 +756,7 @@ export default function QuizChapterManagement({
           }`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-xl font-bold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-                Ajouter une question
+                {translate('quiz_add_question_title')}
               </h3>
               <button
                 onClick={() => { setShowAddModal(false); resetForm(); }}
@@ -777,7 +777,7 @@ export default function QuizChapterManagement({
                   isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Annuler
+                {translate('cancel')}
               </button>
               <button
                 onClick={handleAddQuestion}
@@ -787,12 +787,12 @@ export default function QuizChapterManagement({
                 {addingQuestion ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Ajout...
+                    {translate('quiz_adding')}
                   </>
                 ) : (
                   <>
                     <Plus className="w-4 h-4" />
-                    Ajouter
+                    {translate('quiz_add_question')}
                   </>
                 )}
               </button>
@@ -809,7 +809,7 @@ export default function QuizChapterManagement({
           }`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-xl font-bold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-                Modifier la question
+                {translate('quiz_edit_question_title')}
               </h3>
               <button
                 onClick={() => { setShowEditModal(false); resetForm(); }}
@@ -830,7 +830,7 @@ export default function QuizChapterManagement({
                   isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Annuler
+                {translate('cancel')}
               </button>
               <button
                 onClick={handleEditQuestion}
@@ -840,12 +840,12 @@ export default function QuizChapterManagement({
                 {editingQuestion ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Enregistrement...
+                    {translate('quiz_saving')}
                   </>
                 ) : (
                   <>
                     <Pencil className="w-4 h-4" />
-                    Enregistrer
+                    {translate('save')}
                   </>
                 )}
               </button>
@@ -866,10 +866,10 @@ export default function QuizChapterManagement({
               <Trash2 className="w-7 h-7 text-red-500" />
             </div>
             <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-              Supprimer cette question ?
+              {translate('quiz_delete_question_title')}
             </h3>
             <p className={`text-sm mb-2 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-              Cette action est irréversible.
+              {translate('quiz_delete_question_irreversible')}
             </p>
             <p className={`text-sm mb-6 text-center line-clamp-2 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
               &ldquo;{selectedQuestion.questionText}&rdquo;
@@ -882,7 +882,7 @@ export default function QuizChapterManagement({
                   isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Annuler
+                {translate('cancel')}
               </button>
               <button
                 onClick={handleDeleteQuestion}
@@ -892,12 +892,12 @@ export default function QuizChapterManagement({
                 {deletingQuestion ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Suppression...
+                    {translate('quiz_deleting')}
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Supprimer
+                    {translate('delete')}
                   </>
                 )}
               </button>

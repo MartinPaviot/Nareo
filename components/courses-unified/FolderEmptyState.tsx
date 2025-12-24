@@ -2,6 +2,7 @@
 
 import { Upload } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FolderEmptyStateProps {
   folderId: string;
@@ -9,6 +10,7 @@ interface FolderEmptyStateProps {
 
 export default function FolderEmptyState({ folderId }: FolderEmptyStateProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   const handleUpload = () => {
     // Scroll to upload zone
@@ -30,16 +32,16 @@ export default function FolderEmptyState({ folderId }: FolderEmptyStateProps) {
         <Upload className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
       </div>
       <p className={`font-medium mb-1 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-        Dossier vide
+        {translate('folder_empty_title')}
       </p>
       <p className={`text-sm mb-4 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-        Ajoute ton premier cours
+        {translate('folder_empty_subtitle')}
       </p>
       <button
         onClick={handleUpload}
         className="text-sm text-orange-500 hover:text-orange-600 font-medium"
       >
-        Importer un cours
+        {translate('folder_import_course')}
       </button>
     </div>
   );

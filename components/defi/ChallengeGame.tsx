@@ -10,6 +10,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Challenge,
   ChallengeQuestion,
@@ -57,6 +58,7 @@ export default function ChallengeGame({
   onSubmitAnswer,
 }: ChallengeGameProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
@@ -135,7 +137,7 @@ export default function ChallengeGame({
             {timeRemaining || 3}
           </div>
           <p className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Le défi commence...
+            {translate('challenge_starting')}
           </p>
         </div>
       </div>
@@ -198,14 +200,14 @@ export default function ChallengeGame({
                   </div>
                   <div>
                     <p className={`text-xl font-bold ${myResult.is_correct ? 'text-green-500' : 'text-red-500'}`}>
-                      {myResult.is_correct ? 'Bonne réponse !' : 'Mauvaise réponse'}
+                      {myResult.is_correct ? translate('challenge_correct_answer') : translate('challenge_wrong_answer')}
                     </p>
                     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                       {myResult.response_time_ms > 0
-                        ? `Répondu en ${(myResult.response_time_ms / 1000).toFixed(1)}s`
-                        : 'Temps écoulé'}
+                        ? translate('challenge_answered_in', { time: (myResult.response_time_ms / 1000).toFixed(1) })
+                        : translate('challenge_time_up')}
                       {' • '}
-                      {myRank === 1 ? '1er' : `${myRank}${myRank === 2 ? 'nd' : 'ème'}`} au classement
+                      {translate('challenge_rank_position', { rank: String(myRank) })}
                     </p>
                   </div>
                 </div>
@@ -215,7 +217,7 @@ export default function ChallengeGame({
                   }`}>
                     +{myResult.points_earned}
                   </p>
-                  <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>points</p>
+                  <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{translate('leaderboard_points')}</p>
                 </div>
               </div>
             </div>
@@ -226,7 +228,7 @@ export default function ChallengeGame({
             {/* La question */}
             <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
               <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Question
+                {translate('challenge_question_label')}
               </p>
               <p className={`font-medium leading-relaxed ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                 {lastQuestionResults.question_text}
@@ -236,7 +238,7 @@ export default function ChallengeGame({
             {/* La réponse attendue - style neutre/informatif */}
             <div className={`p-4 border-b ${isDark ? 'border-gray-700 bg-gray-750' : 'border-gray-100 bg-gray-50'}`}>
               <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Réponse attendue
+                {translate('challenge_expected_answer')}
               </p>
               <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {lastQuestionResults.correct_answer}
@@ -254,7 +256,7 @@ export default function ChallengeGame({
                   </div>
                   <div className="flex-1">
                     <p className={`text-xs font-medium uppercase tracking-wide mb-1 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                      À retenir
+                      {translate('challenge_remember')}
                     </p>
                     <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                       {lastQuestionResults.explanation}
@@ -270,10 +272,10 @@ export default function ChallengeGame({
             <div className={`px-4 py-3 flex items-center justify-between border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
               <h3 className={`text-sm font-medium flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                 <Trophy className="w-4 h-4 text-orange-500" />
-                Classement
+                {translate('challenge_ranking')}
               </h3>
               <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Score total
+                {translate('challenge_total_score')}
               </span>
             </div>
             <div>
@@ -315,7 +317,7 @@ export default function ChallengeGame({
                         <span className={`text-xs px-1.5 py-0.5 rounded ${
                           isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
                         }`}>
-                          toi
+                          {translate('challenge_you').toLowerCase()}
                         </span>
                       )}
                       {/* Petit indicateur correct/incorrect */}
@@ -353,7 +355,7 @@ export default function ChallengeGame({
       }`}>
         <div className="text-center">
           <div className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Chargement de la question...
+            {translate('challenge_loading_question')}
           </div>
         </div>
       </div>
@@ -469,7 +471,7 @@ export default function ChallengeGame({
 
         {questionData.type === 'true_false' && (
           <div className="grid grid-cols-2 gap-4">
-            {['Vrai', 'Faux'].map((option) => {
+            {[{ value: 'Vrai', key: 'challenge_true' }, { value: 'Faux', key: 'challenge_false' }].map(({ value: option, key }) => {
               const isSelected = selectedAnswer === option;
               // Ne pas révéler la bonne réponse - la réponse sera révélée dans l'écran des résultats
 
@@ -486,7 +488,7 @@ export default function ChallengeGame({
                         : 'bg-white hover:bg-gray-50 border-2 border-gray-200 text-gray-900 shadow-sm'
                   } disabled:cursor-not-allowed`}
                 >
-                  {option}
+                  {translate(key)}
                 </button>
               );
             })}
@@ -501,7 +503,7 @@ export default function ChallengeGame({
               onChange={(e) => setFillBlankInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleFillBlankSubmit()}
               disabled={hasAnswered}
-              placeholder="Ta réponse..."
+              placeholder={translate('challenge_your_answer')}
               className={`w-full p-4 rounded-xl text-lg ${
                 hasAnswered
                   ? isDark
@@ -523,7 +525,7 @@ export default function ChallengeGame({
                   : 'bg-orange-500 hover:bg-orange-600 text-white'
               } disabled:cursor-not-allowed`}
             >
-              Valider
+              {translate('challenge_validate')}
             </button>
           </div>
         )}
@@ -537,10 +539,10 @@ export default function ChallengeGame({
               <Check className="w-6 h-6 text-orange-500" />
               <div>
                 <p className={`font-bold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                  Réponse envoyée !
+                  {translate('challenge_answer_sent')}
                 </p>
                 <p className={`text-sm ${isDark ? 'text-orange-300' : 'text-orange-500'}`}>
-                  En attente des autres joueurs...
+                  {translate('challenge_waiting_others_short')}
                 </p>
               </div>
             </div>

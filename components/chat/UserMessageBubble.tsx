@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 
 interface UserMessageBubbleProps {
   content: string;
@@ -36,6 +38,7 @@ function getInitials(name: string): string {
 
 export default function UserMessageBubble({ content, timestamp, userName }: UserMessageBubbleProps): React.ReactElement {
   const initials = getInitials(userName || '');
+  const { isDark } = useTheme();
   
   return (
     <div className="flex justify-end items-start gap-3 mb-4 w-full">
@@ -49,7 +52,7 @@ export default function UserMessageBubble({ content, timestamp, userName }: User
         </div>
         
         {/* Timestamp */}
-        <span className="text-xs text-gray-500 mt-1 px-2">
+        <span className={cn('text-xs mt-1 px-2', isDark ? 'text-gray-400' : 'text-gray-500')}>
           {timestamp}
         </span>
       </div>

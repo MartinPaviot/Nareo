@@ -13,6 +13,7 @@ import {
   Gamepad2,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useFriends } from '@/hooks/defi/useFriends';
 import { Friendship, UserProfile } from '@/types/defi';
 
@@ -28,6 +29,7 @@ export default function FriendsList({
   onChallengeFriend,
 }: FriendsListProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
   const {
     friends,
     pendingRequests,
@@ -67,7 +69,7 @@ export default function FriendsList({
       setFriendCode('');
       setShowAddModal(false);
     } else {
-      setAddError(result.error || 'Erreur inconnue');
+      setAddError(result.error || translate('friends_unknown_error'));
     }
 
     setAdding(false);
@@ -90,7 +92,7 @@ export default function FriendsList({
   };
 
   const handleRemove = async (friendshipId: string) => {
-    if (!confirm('Es-tu sûr de vouloir supprimer cet ami ?')) return;
+    if (!confirm(translate('friends_remove_confirm'))) return;
 
     try {
       await removeFriend(friendshipId);
@@ -117,21 +119,21 @@ export default function FriendsList({
           isDark ? 'text-white' : 'text-gray-900'
         }`}>
           <Users className="w-5 h-5" />
-          Mes amis ({friends.length})
+          {translate('friends_list_title')} ({friends.length})
         </h2>
         <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm transition-colors"
         >
           <UserPlus className="w-4 h-4" />
-          Ajouter
+          {translate('friends_add_button')}
         </button>
       </div>
 
       {/* My friend code */}
       <div className={`mb-6 p-4 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
         <p className={`text-sm mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          Mon code ami
+          {translate('friends_code_label')}
         </p>
         <div className="flex items-center gap-2">
           <span className={`font-mono font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -158,7 +160,7 @@ export default function FriendsList({
           <h3 className={`text-sm font-medium mb-3 ${
             isDark ? 'text-gray-400' : 'text-gray-500'
           }`}>
-            Demandes en attente ({pendingRequests.length})
+            {translate('friends_pending_requests')} ({pendingRequests.length})
           </h3>
           <div className="space-y-2">
             {pendingRequests.map((request) => (
@@ -179,7 +181,7 @@ export default function FriendsList({
                       {request.friend_profile.display_name}
                     </p>
                     <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Veut devenir ton ami
+                      {translate('friends_wants_friend')}
                     </p>
                   </div>
                 </div>
@@ -223,8 +225,7 @@ export default function FriendsList({
       ) : (
         <div className={`text-center py-8 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Aucun ami pour le moment</p>
-          <p className="text-sm mt-1">Ajoutez des amis pour les défier !</p>
+          <p>{translate('friends_empty_message')}</p>
         </div>
       )}
 
@@ -237,7 +238,7 @@ export default function FriendsList({
             <h3 className={`text-lg font-semibold mb-4 ${
               isDark ? 'text-white' : 'text-gray-900'
             }`}>
-              Ajouter un ami
+              {translate('friends_add_title')}
             </h3>
 
             {addError && (
@@ -253,13 +254,13 @@ export default function FriendsList({
               <label className={`block text-sm font-medium mb-2 ${
                 isDark ? 'text-gray-400' : 'text-gray-600'
               }`}>
-                Code ami
+                {translate('friends_code_label')}
               </label>
               <input
                 type="text"
                 value={friendCode}
                 onChange={(e) => setFriendCode(e.target.value.toUpperCase())}
-                placeholder="XXXX-0000"
+                placeholder={translate('friends_add_placeholder')}
                 className={`w-full px-4 py-3 rounded-lg font-mono text-lg tracking-wider uppercase ${
                   isDark
                     ? 'bg-gray-700 text-white placeholder-gray-500 border border-gray-600'
@@ -281,7 +282,7 @@ export default function FriendsList({
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 }`}
               >
-                Annuler
+                {translate('cancel')}
               </button>
               <button
                 onClick={handleAddFriend}
@@ -293,7 +294,7 @@ export default function FriendsList({
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4" />
-                    Ajouter
+                    {translate('friends_add_button')}
                   </>
                 )}
               </button>
@@ -340,7 +341,6 @@ function FriendCard({
           <button
             onClick={() => onChallenge(friendship.friend_profile.id)}
             className="p-2 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors"
-            title="Défier"
           >
             <Gamepad2 className="w-4 h-4" />
           </button>
@@ -352,7 +352,6 @@ function FriendCard({
               ? 'bg-gray-600 hover:bg-red-600 text-gray-400 hover:text-white'
               : 'bg-gray-200 hover:bg-red-100 text-gray-500 hover:text-red-600'
           }`}
-          title="Supprimer"
         >
           <Trash2 className="w-4 h-4" />
         </button>

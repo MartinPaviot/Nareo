@@ -12,6 +12,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   FlashcardConfig,
   FlashcardNiveau,
@@ -26,27 +27,27 @@ interface FlashcardPersonnalisationScreenProps {
   initialConfig?: FlashcardConfig;
 }
 
-// Niveaux avec icônes Lucide
+// Niveaux avec icônes Lucide - les labels/descriptions sont traduits dans le composant
 const NIVEAUX = [
   {
     value: 'essentiel' as const,
-    label: 'Essentiel',
+    labelKey: 'flashcards_level_essential',
     icon: Zap,
-    description: 'Concepts clés uniquement (~10 cartes)',
+    descriptionKey: 'flashcards_level_essential_desc',
     iconColor: 'text-yellow-500',
   },
   {
     value: 'complet' as const,
-    label: 'Complet',
+    labelKey: 'flashcards_level_complete',
     icon: BookOpen,
-    description: 'Couverture équilibrée (~20 cartes)',
+    descriptionKey: 'flashcards_level_complete_desc',
     iconColor: 'text-blue-500',
   },
   {
     value: 'exhaustif' as const,
-    label: 'Exhaustif',
+    labelKey: 'flashcards_level_exhaustive',
     icon: Target,
-    description: 'Vocabulaire complet (~30 cartes)',
+    descriptionKey: 'flashcards_level_exhaustive_desc',
     iconColor: 'text-purple-500',
   },
 ];
@@ -58,6 +59,7 @@ export default function FlashcardPersonnalisationScreen({
   initialConfig,
 }: FlashcardPersonnalisationScreenProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   // Utiliser initialConfig si fournie, sinon les défauts
   const [niveau, setNiveau] = useState<FlashcardNiveau>(
@@ -88,14 +90,14 @@ export default function FlashcardPersonnalisationScreen({
             isDark ? 'text-neutral-100' : 'text-gray-900'
           }`}
         >
-          Génère tes flashcards
+          {translate('flashcards_personalization_title')}
         </h3>
         <p
           className={`text-sm mt-1 ${
             isDark ? 'text-neutral-400' : 'text-gray-500'
           }`}
         >
-          Cartes de révision qualité Anki
+          {translate('flashcards_personalization_subtitle')}
         </p>
       </div>
 
@@ -140,14 +142,14 @@ export default function FlashcardPersonnalisationScreen({
                   isDark ? 'text-neutral-400' : 'text-gray-500'
                 }`}
               >
-                Nombre de cartes
+                {translate('flashcards_card_count_label')}
               </span>
               <span
                 className={`text-sm font-semibold ${
                   isDark ? 'text-neutral-100' : 'text-gray-900'
                 }`}
               >
-                {selectedNiveau?.label || 'Sélectionner'}
+                {selectedNiveau ? translate(selectedNiveau.labelKey) : translate('flashcards_card_count_select')}
               </span>
             </div>
           </div>
@@ -207,14 +209,14 @@ export default function FlashcardPersonnalisationScreen({
                             : 'text-gray-900'
                         }`}
                       >
-                        {option.label}
+                        {translate(option.labelKey)}
                       </p>
                       <p
                         className={`text-xs ${
                           isDark ? 'text-neutral-400' : 'text-gray-500'
                         }`}
                       >
-                        {option.description}
+                        {translate(option.descriptionKey)}
                       </p>
                     </div>
                   </div>
@@ -238,7 +240,7 @@ export default function FlashcardPersonnalisationScreen({
             : 'bg-gray-50 text-gray-500'
         }`}
       >
-        3 types de cartes : définitions, textes à trous et cartes réversibles (acronymes).
+        {translate('flashcards_card_types_info')}
       </div>
 
       {/* Buttons */}
@@ -254,7 +256,7 @@ export default function FlashcardPersonnalisationScreen({
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Annuler
+            {translate('cancel')}
           </button>
         )}
         <button
@@ -268,12 +270,12 @@ export default function FlashcardPersonnalisationScreen({
           {isGenerating ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Génération en cours...
+              {translate('flashcards_generating_text')}
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              {onCancel ? 'Régénérer' : 'Générer mes flashcards'}
+              {onCancel ? translate('flashcards_regenerating') : translate('flashcards_generate_button')}
             </>
           )}
         </button>

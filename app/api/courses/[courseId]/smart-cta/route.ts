@@ -57,9 +57,8 @@ export async function GET(
       const level = masteryMap.get(incompleteChapter.id);
       ctaResult = {
         type: !level || level === 'not_started' ? 'start_chapter' : 'continue_chapter',
-        label: !level || level === 'not_started'
-          ? `Commencer Ch.${incompleteChapter.chapter_number}`
-          : `Continuer Ch.${incompleteChapter.chapter_number}`,
+        label_key: !level || level === 'not_started' ? 'cta_start_chapter' : 'cta_continue_chapter',
+        chapter_number: incompleteChapter.chapter_number,
         target_id: incompleteChapter.id,
         target_type: 'chapter',
         cards_to_review: 0,
@@ -67,7 +66,7 @@ export async function GET(
     } else {
       ctaResult = {
         type: 'review',
-        label: 'Reviser le cours',
+        label_key: 'cta_review_course',
         target_id: courseId,
         target_type: 'course',
         cards_to_review: 0,

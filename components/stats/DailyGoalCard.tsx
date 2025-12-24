@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Settings } from 'lucide-react';
 import type { DailyGoalLevel } from '@/lib/stats/types';
 import { DAILY_GOAL_CONFIG } from '@/lib/stats/constants';
+import { useLanguage } from '@/contexts/LanguageContext';
 import ProgressCircle from './ProgressCircle';
 import GoalLevelSelector from './GoalLevelSelector';
 
@@ -23,6 +24,7 @@ export default function DailyGoalCard({
   goalLevel,
   onGoalLevelChange,
 }: DailyGoalCardProps) {
+  const { translate } = useLanguage();
   const [showSettings, setShowSettings] = useState(false);
 
   const progress = Math.min(100, Math.round((current / target) * 100));
@@ -74,9 +76,9 @@ export default function DailyGoalCard({
 
           {/* Info */}
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-gray-500">Objectif du jour</h3>
+            <h3 className="text-sm font-medium text-gray-500">{translate('stats_daily_goal_title')}</h3>
             <p className={`text-lg font-semibold ${completed ? 'text-green-600' : 'text-gray-900'}`}>
-              {completed ? 'Objectif atteint !' : `${target - current} questions restantes`}
+              {completed ? translate('stats_daily_goal_completed') : translate('stats_daily_goal_remaining', { count: String(target - current) })}
             </p>
             <div className="mt-2 flex items-center gap-2">
               <span className="text-lg">{config.emoji}</span>
@@ -97,7 +99,7 @@ export default function DailyGoalCard({
               className="mt-4 text-center"
             >
               <p className="text-sm text-green-600 font-medium">
-                +25 XP bonus !
+                {translate('stats_label_xp_bonus')}
               </p>
             </motion.div>
           )}

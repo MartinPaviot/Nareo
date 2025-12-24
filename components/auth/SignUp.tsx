@@ -8,6 +8,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Eye, EyeOff, ArrowLeft, Loader2, RefreshCw, Mail } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 import PlanSelector from './PlanSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAnonymousContext, clearAnonymousContext } from '@/lib/anonymous-session';
@@ -18,6 +20,7 @@ export default function SignUp() {
   const returnTo = searchParams.get('returnTo') || '/';
   const stepParam = searchParams.get('step');
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const { user } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
@@ -224,22 +227,35 @@ export default function SignUp() {
   // Show loading while waiting for user to load after email verification
   if (showPlanSelector && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
+      <div className={cn(
+        'min-h-screen flex items-center justify-center p-4',
+        isDark
+          ? 'bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900'
+          : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+      )}>
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-4" />
-          <p className="text-gray-600">{translate('loading')}</p>
+          <p className={isDark ? 'text-gray-400' : 'text-gray-600'}>{translate('loading')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
+    <div className={cn(
+      'min-h-screen flex items-center justify-center p-4',
+      isDark
+        ? 'bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900'
+        : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+    )}>
       <div className="max-w-md w-full">
         {/* Back Button */}
         <button
           onClick={() => router.push(returnTo)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          className={cn(
+            'flex items-center gap-2 mb-4 transition-colors',
+            isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-900'
+          )}
         >
           <ArrowLeft className="w-5 h-5" />
           <span>{translate('account_back')}</span>
@@ -255,47 +271,56 @@ export default function SignUp() {
             className="mx-auto mb-6"
             priority
           />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className={cn('text-3xl font-bold mb-2', isDark ? 'text-gray-100' : 'text-gray-900')}>
             {translate('auth_signup_title')}
           </h1>
-          <p className="text-gray-600">{translate('auth_signup_subtitle')}</p>
+          <p className={isDark ? 'text-gray-400' : 'text-gray-600'}>{translate('auth_signup_subtitle')}</p>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
+        <div className={cn('rounded-2xl shadow-lg p-8', isDark ? 'bg-neutral-800' : 'bg-white')}>
           {/* Email Verification Success Message */}
           {emailVerificationSent ? (
             <div className="space-y-4">
-              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 text-center">
-                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className={cn(
+                'border-2 rounded-xl p-6 text-center',
+                isDark ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'
+              )}>
+                <div className={cn(
+                  'mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4',
+                  isDark ? 'bg-green-900/30' : 'bg-green-100'
+                )}>
+                  <svg className={cn('w-8 h-8', isDark ? 'text-green-400' : 'text-green-600')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                <h3 className={cn('text-xl font-bold mb-2', isDark ? 'text-gray-100' : 'text-gray-900')}>
                   {translate('auth_signup_email_verification_title')}
                 </h3>
-                <p className="text-sm text-gray-700 mb-2">
+                <p className={cn('text-sm mb-2', isDark ? 'text-gray-300' : 'text-gray-700')}>
                   {translate('auth_signup_verification_required')}
                 </p>
-                <p className="text-xs text-gray-600">
+                <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-600')}>
                   {translate('auth_signup_verification_info')}
                 </p>
               </div>
 
               {/* Resend email section */}
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <p className="text-sm text-gray-500 mb-3 text-center">
+              <div className={cn('border-t pt-4 mt-4', isDark ? 'border-gray-700' : 'border-gray-200')}>
+                <p className={cn('text-sm mb-3 text-center', isDark ? 'text-gray-400' : 'text-gray-500')}>
                   {translate('auth_error_resend_prompt')}
                 </p>
 
                 {resendSuccess ? (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
-                    <div className="flex items-center justify-center gap-2 text-green-700">
+                  <div className={cn(
+                    'p-4 border rounded-xl',
+                    isDark ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'
+                  )}>
+                    <div className={cn('flex items-center justify-center gap-2', isDark ? 'text-green-400' : 'text-green-700')}>
                       <Mail className="w-5 h-5" />
                       <p className="font-medium">{translate('auth_error_email_sent')}</p>
                     </div>
-                    <p className="text-sm text-green-600 mt-2 text-center">
+                    <p className={cn('text-sm mt-2 text-center', isDark ? 'text-green-400' : 'text-green-600')}>
                       {translate('auth_error_check_inbox')}
                     </p>
                   </div>
@@ -306,10 +331,15 @@ export default function SignUp() {
                       value={resendEmail}
                       onChange={(e) => setResendEmail(e.target.value)}
                       placeholder={translate('auth_email_placeholder')}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className={cn(
+                        'w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500',
+                        isDark
+                          ? 'bg-neutral-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                          : 'bg-white border-gray-200 text-gray-900'
+                      )}
                     />
                     {resendError && (
-                      <p className="text-sm text-red-600">{resendError}</p>
+                      <p className={cn('text-sm', isDark ? 'text-red-400' : 'text-red-600')}>{resendError}</p>
                     )}
                     <button
                       onClick={handleResendEmail}
@@ -348,7 +378,12 @@ export default function SignUp() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading || loading}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+                className={cn(
+                  'w-full flex items-center justify-center gap-3 px-4 py-3 border-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed mb-4',
+                  isDark
+                    ? 'border-gray-600 text-gray-200 hover:bg-neutral-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                )}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -362,10 +397,10 @@ export default function SignUp() {
               {/* Separator */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
+                  <div className={cn('w-full border-t', isDark ? 'border-gray-600' : 'border-gray-300')}></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">{translate('auth_oauth_separator')}</span>
+                  <span className={cn('px-4', isDark ? 'bg-neutral-800 text-gray-400' : 'bg-white text-gray-500')}>{translate('auth_oauth_separator')}</span>
                 </div>
               </div>
 
@@ -374,7 +409,7 @@ export default function SignUp() {
             <div>
               <label
                 htmlFor="firstName"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className={cn('block text-sm font-medium mb-2', isDark ? 'text-gray-300' : 'text-gray-700')}
               >
                 {translate('auth_signup_firstname_label')}
               </label>
@@ -383,7 +418,12 @@ export default function SignUp() {
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                className={cn(
+                  'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition',
+                  isDark
+                    ? 'bg-neutral-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                )}
                 placeholder={translate('auth_signup_firstname_placeholder')}
                 disabled={loading}
               />
@@ -393,7 +433,7 @@ export default function SignUp() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className={cn('block text-sm font-medium mb-2', isDark ? 'text-gray-300' : 'text-gray-700')}
               >
                 {translate('auth_signup_email_label')}
               </label>
@@ -402,7 +442,12 @@ export default function SignUp() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                className={cn(
+                  'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition',
+                  isDark
+                    ? 'bg-neutral-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                )}
                 placeholder={translate('auth_signup_email_placeholder')}
                 disabled={loading}
               />
@@ -412,7 +457,7 @@ export default function SignUp() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className={cn('block text-sm font-medium mb-2', isDark ? 'text-gray-300' : 'text-gray-700')}
               >
                 {translate('auth_signup_password_label')}
               </label>
@@ -422,27 +467,35 @@ export default function SignUp() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                  className={cn(
+                    'w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition',
+                    isDark
+                      ? 'bg-neutral-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                  )}
                   placeholder={translate('auth_signup_password_placeholder')}
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  className={cn(
+                    'absolute right-3 top-1/2 -translate-y-1/2 transition-colors',
+                    isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
+                  )}
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{translate('auth_signup_password_hint')}</p>
+              <p className={cn('text-xs mt-1', isDark ? 'text-gray-400' : 'text-gray-500')}>{translate('auth_signup_password_hint')}</p>
             </div>
 
             {/* Confirm Password */}
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className={cn('block text-sm font-medium mb-2', isDark ? 'text-gray-300' : 'text-gray-700')}
               >
                 {translate('auth_reset_confirm_label')}
               </label>
@@ -452,14 +505,22 @@ export default function SignUp() {
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                  className={cn(
+                    'w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition',
+                    isDark
+                      ? 'bg-neutral-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                  )}
                   placeholder={translate('auth_reset_confirm_placeholder')}
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  className={cn(
+                    'absolute right-3 top-1/2 -translate-y-1/2 transition-colors',
+                    isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
+                  )}
                   tabIndex={-1}
                 >
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -477,11 +538,14 @@ export default function SignUp() {
                     id="acceptCGU"
                     checked={acceptedCGU}
                     onChange={(e) => setAcceptedCGU(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                    className={cn(
+                      'h-4 w-4 rounded text-orange-500 focus:ring-orange-500 cursor-pointer',
+                      isDark ? 'border-gray-600 bg-neutral-700' : 'border-gray-300'
+                    )}
                     disabled={loading}
                   />
                 </div>
-                <span className="text-sm text-gray-600">
+                <span className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
                   {translate('auth_signup_cgu_label')}{' '}
                   <Link href="/cgu" className="text-orange-500 hover:text-orange-600 underline" target="_blank" onClick={(e) => e.stopPropagation()}>
                     {translate('auth_signup_cgu_link')}
@@ -502,11 +566,14 @@ export default function SignUp() {
                     id="acceptMarketing"
                     checked={acceptedMarketing}
                     onChange={(e) => setAcceptedMarketing(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                    className={cn(
+                      'h-4 w-4 rounded text-orange-500 focus:ring-orange-500 cursor-pointer',
+                      isDark ? 'border-gray-600 bg-neutral-700' : 'border-gray-300'
+                    )}
                     disabled={loading}
                   />
                 </div>
-                <span className="text-sm text-gray-600">
+                <span className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
                   {translate('auth_signup_marketing_label')}
                 </span>
               </label>
@@ -514,7 +581,12 @@ export default function SignUp() {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className={cn(
+                'px-4 py-3 rounded-lg text-sm border',
+                isDark
+                  ? 'bg-red-900/20 border-red-800 text-red-400'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              )}>
                 {error}
               </div>
             )}
@@ -531,7 +603,7 @@ export default function SignUp() {
 
           {/* Sign In Link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
               {translate('auth_signup_have_account')}{' '}
               <Link
                 href={`/auth/signin${returnTo !== '/' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}

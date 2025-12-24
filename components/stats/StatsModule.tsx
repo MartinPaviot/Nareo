@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useUserStats } from '@/hooks/useUserStats';
 import { useDailyActivity } from '@/hooks/useDailyActivity';
 import { useStreak } from '@/hooks/useStreak';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { getPrecision } from '@/lib/stats/utils';
 import StreakCard from './StreakCard';
 import DailyGoalCard from './DailyGoalCard';
@@ -24,8 +25,8 @@ interface StatCardProps {
 
 function StatCard({ icon: Icon, label, value, subValue, valueColor = 'text-gray-900' }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-      <div className="flex items-center gap-2 mb-1">
+    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+      <div className="flex items-center justify-center gap-2 mb-1">
         <Icon className="w-4 h-4 text-gray-400" />
         <span className="text-xs text-gray-500 font-medium">{label}</span>
       </div>
@@ -36,6 +37,7 @@ function StatCard({ icon: Icon, label, value, subValue, valueColor = 'text-gray-
 }
 
 export default function StatsModule() {
+  const { translate } = useLanguage();
   const { stats, isLoading: statsLoading, updateDailyGoalLevel } = useUserStats();
   const { todayActivity, isLoading: activityLoading } = useDailyActivity();
   const { currentStreak, longestStreak, streakState, freezesAvailable, previousStreakLost, checkMilestones } = useStreak();
@@ -119,8 +121,8 @@ export default function StatsModule() {
         onClick={handleStartSession}
       >
         {todayActivity?.questions_answered && todayActivity.questions_answered > 0
-          ? 'Continuer ma session'
-          : 'Commencer à réviser'}
+          ? translate('stats_cta_continue')
+          : translate('stats_cta_start')}
         <ArrowRight className="w-5 h-5" />
       </motion.button>
 
@@ -128,23 +130,23 @@ export default function StatsModule() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           icon={BookOpen}
-          label="Quiz"
+          label={translate('stats_label_quiz')}
           value={todayActivity?.quizzes_completed || 0}
-          subValue="aujourd'hui"
+          subValue={translate('stats_label_today')}
         />
         <StatCard
           icon={Target}
-          label="Précision"
+          label={translate('stats_label_precision')}
           value={`${precision}%`}
-          subValue="aujourd'hui"
+          subValue={translate('stats_label_today')}
           valueColor={precision >= 70 ? 'text-green-600' : precision >= 50 ? 'text-yellow-600' : 'text-red-500'}
         />
         <XPDisplay totalXP={stats?.total_xp || 0} compact />
         <StatCard
           icon={Trophy}
-          label="Record"
+          label={translate('stats_label_record')}
           value={`${longestStreak}j`}
-          subValue="meilleur streak"
+          subValue={translate('stats_label_best_streak')}
         />
       </div>
 

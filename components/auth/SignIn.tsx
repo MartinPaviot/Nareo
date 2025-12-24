@@ -8,12 +8,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 
 export default function SignIn() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/';
   const { translate } = useLanguage();
+  const { isDark } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -96,12 +99,20 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
+    <div className={cn(
+      'min-h-screen flex items-center justify-center p-4',
+      isDark
+        ? 'bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900'
+        : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+    )}>
       <div className="max-w-md w-full">
         {/* Back Button */}
         <button
           onClick={() => router.push(returnTo)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          className={cn(
+            'flex items-center gap-2 mb-4 transition-colors',
+            isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-900'
+          )}
         >
           <ArrowLeft className="w-5 h-5" />
           <span>{translate('account_back')}</span>
@@ -117,20 +128,28 @@ export default function SignIn() {
             className="mx-auto mb-6"
             priority
           />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className={cn('text-3xl font-bold mb-2', isDark ? 'text-gray-100' : 'text-gray-900')}>
             {translate('auth_signin_title')}
           </h1>
-          <p className="text-gray-600">{translate('auth_signin_subtitle')}</p>
+          <p className={isDark ? 'text-gray-400' : 'text-gray-600'}>{translate('auth_signin_subtitle')}</p>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
+        <div className={cn(
+          'rounded-2xl shadow-lg p-8',
+          isDark ? 'bg-neutral-800' : 'bg-white'
+        )}>
           {/* Google Sign In Button */}
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={googleLoading || loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+            className={cn(
+              'w-full flex items-center justify-center gap-3 px-4 py-3 border-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed mb-4',
+              isDark
+                ? 'border-gray-600 text-gray-200 hover:bg-neutral-700'
+                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            )}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -144,10 +163,10 @@ export default function SignIn() {
           {/* Separator */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className={cn('w-full border-t', isDark ? 'border-gray-600' : 'border-gray-300')}></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">{translate('auth_oauth_separator')}</span>
+              <span className={cn('px-4', isDark ? 'bg-neutral-800 text-gray-400' : 'bg-white text-gray-500')}>{translate('auth_oauth_separator')}</span>
             </div>
           </div>
 
@@ -156,7 +175,7 @@ export default function SignIn() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className={cn('block text-sm font-medium mb-2', isDark ? 'text-gray-300' : 'text-gray-700')}
               >
                 {translate('auth_signin_email_label')}
               </label>
@@ -165,7 +184,12 @@ export default function SignIn() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                className={cn(
+                  'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition',
+                  isDark
+                    ? 'bg-neutral-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                )}
                 placeholder={translate('auth_signin_email_placeholder')}
                 disabled={loading}
               />
@@ -175,7 +199,7 @@ export default function SignIn() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className={cn('block text-sm font-medium mb-2', isDark ? 'text-gray-300' : 'text-gray-700')}
               >
                 {translate('auth_signin_password_label')}
               </label>
@@ -185,14 +209,22 @@ export default function SignIn() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                  className={cn(
+                    'w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition',
+                    isDark
+                      ? 'bg-neutral-700 border-gray-600 text-gray-100 placeholder-gray-400'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                  )}
                   placeholder={translate('auth_signin_password_placeholder')}
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  className={cn(
+                    'absolute right-3 top-1/2 -translate-y-1/2 transition-colors',
+                    isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
+                  )}
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -212,7 +244,12 @@ export default function SignIn() {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className={cn(
+                'px-4 py-3 rounded-lg text-sm border',
+                isDark
+                  ? 'bg-red-900/20 border-red-800 text-red-400'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              )}>
                 {error}
               </div>
             )}
@@ -229,7 +266,7 @@ export default function SignIn() {
 
           {/* Sign Up Link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
               {translate('auth_signin_no_account')}{' '}
               <Link
                 href={`/auth/signup${returnTo !== '/' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}

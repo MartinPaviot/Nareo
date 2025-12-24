@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       client_reference_id: courseId,
       customer_email: auth.user.email,
       billing_address_collection: 'required',
+      allow_promotion_codes: true,
       metadata: {
         userId: auth.user.id,
         courseId: courseId,

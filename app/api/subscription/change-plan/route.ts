@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/compte?plan_changed=cancelled`,
       customer: profile.stripe_customer_id || undefined,
       customer_email: !profile.stripe_customer_id ? auth.user.email : undefined,
+      allow_promotion_codes: true,
       subscription_data: {
         // Start billing after current subscription ends
         billing_cycle_anchor: currentPeriodEnd,

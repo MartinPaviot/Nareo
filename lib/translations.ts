@@ -611,6 +611,7 @@ export const translations: Record<Language, Translations> = {
     my_courses_empty_cta: 'Upload a course',
     my_courses_button: 'My Courses',
     my_account_button: 'My Account',
+    upgrade_button: 'Upgrade',
 
     // Challenge Mode
     challenge_mode: 'Challenge Mode',
@@ -793,6 +794,7 @@ export const translations: Record<Language, Translations> = {
     paywall_save: 'Save',
     paywall_billed_annually: 'Billed',
     paywall_billed_monthly: 'No commitment',
+    pricing_cancel_anytime: 'Cancel anytime',
     paywall_plan_annual_desc: '',
     paywall_plan_monthly_desc: '',
 
@@ -2043,6 +2045,7 @@ export const translations: Record<Language, Translations> = {
     blog_article_3_title: 'La technique Pomodoro : Rester concentré',
     blog_article_3_description: 'Une méthode simple pour maintenir votre concentration et éviter le burnout pendant vos sessions de révision.',
     my_account_button: 'Mon compte',
+    upgrade_button: 'Passer Premium',
 
     // Challenge Mode
     challenge_mode: 'Mode Défi',
@@ -2204,6 +2207,7 @@ export const translations: Record<Language, Translations> = {
     paywall_save: 'Économise',
     paywall_billed_annually: 'Facturé',
     paywall_billed_monthly: 'Sans engagement',
+    pricing_cancel_anytime: 'Annulable à tout moment',
     paywall_plan_annual_desc: '',
     paywall_plan_monthly_desc: '',
 
@@ -3436,6 +3440,7 @@ export const translations: Record<Language, Translations> = {
     my_courses_empty_cta: 'Kurs hochladen',
     my_courses_button: 'Meine Kurse',
     my_account_button: 'Mein Konto',
+    upgrade_button: 'Auf Premium',
 
     // Challenge Mode
     challenge_mode: 'Herausforderungsmodus',
@@ -3618,6 +3623,7 @@ export const translations: Record<Language, Translations> = {
     paywall_save: 'Spare',
     paywall_billed_annually: 'Abgerechnet',
     paywall_billed_monthly: 'Keine Bindung',
+    pricing_cancel_anytime: 'Jederzeit kündbar',
     paywall_plan_annual_desc: '',
     paywall_plan_monthly_desc: '',
 

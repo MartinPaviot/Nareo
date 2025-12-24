@@ -15,6 +15,7 @@ interface WorkingPageMenuProps {
 interface UserProfile {
   full_name: string | null;
   avatar_url: string | null;
+  isPremium: boolean;
 }
 
 const LANGUAGE_OPTIONS: { code: Language; label: string; flag: string }[] = [
@@ -59,6 +60,7 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
             setProfile({
               full_name: data.profile.full_name,
               avatar_url: data.profile.avatar_url,
+              isPremium: data.profile.isPremium || false,
             });
           }
         })
@@ -102,6 +104,17 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
 
   return (
     <div className="flex items-center gap-2" ref={menuRef}>
+      {/* Upgrade Button - Only for non-premium logged-in users */}
+      {user && profile && !profile.isPremium && (
+        <button
+          onClick={() => router.push('/paywall')}
+          className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
+        >
+          <Crown className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">{translate('upgrade_button')}</span>
+        </button>
+      )}
+
       {/* My Courses Button - Direct access for logged-in users */}
       {user && !hideMyCoursesButton && (
         <button

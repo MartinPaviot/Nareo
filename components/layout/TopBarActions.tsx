@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Menu, X, Moon, Sun } from 'lucide-react';
+import { BookOpen, Crown, Menu, X, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage, type Language } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -30,6 +30,21 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
   const { toggleTheme, isDark } = useTheme();
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isPremium, setIsPremium] = useState(true); // Default to true to avoid flash
+
+  // Fetch user profile to check premium status
+  useEffect(() => {
+    if (user) {
+      fetch('/api/profile', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.profile) {
+            setIsPremium(data.profile.isPremium || false);
+          }
+        })
+        .catch(err => console.error('Error fetching profile:', err));
+    }
+  }, [user]);
 
   const handleMyCoursesClick = () => {
     if (user) {
@@ -50,9 +65,21 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
       {/* Desktop version */}
       <div className={`hidden sm:flex items-center gap-3 ${className || ''}`}>
         <LanguageToggle />
-        {!hideMyCoursesButton && (
+        {/* Upgrade Button - Only for non-premium logged-in users */}
+        {user && !isPremium && (
           <button
-            onClick={handleMyCoursesClick}
+            onClick={() => router.push('/paywall')}
+            className="flex items-center gap-1.5 h-10 px-4 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-sm hover:shadow-md"
+          >
+            <Crown className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              {translate('upgrade_button')}
+            </span>
+          </button>
+        )}
+        {!hideMyCoursesButton && user && (
+          <button
+            onClick={() => router.push('/dashboard')}
             className="flex items-center gap-2 h-10 px-4 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <BookOpen className="w-4 h-4 text-gray-600" />
@@ -82,12 +109,26 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
         {mobileMenuOpen && (
           <div className="absolute top-full right-0 mt-2 w-64 border border-gray-200 bg-white rounded-xl shadow-lg z-50">
             <div className="flex flex-col p-3 gap-2">
-              {/* My Courses */}
-              {!hideMyCoursesButton && (
+              {/* Upgrade Button - Only for non-premium logged-in users */}
+              {user && !isPremium && (
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    handleMyCoursesClick();
+                    router.push('/paywall');
+                  }}
+                  className="flex items-center justify-center gap-2 h-11 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold hover:from-orange-600 hover:to-orange-700 transition-colors"
+                >
+                  <Crown className="w-4 h-4" />
+                  {translate('upgrade_button')}
+                </button>
+              )}
+
+              {/* My Courses - only show when user is logged in */}
+              {!hideMyCoursesButton && user && (
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push('/dashboard');
                   }}
                   className="flex items-center justify-center h-11 px-4 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold transition-colors"
                 >

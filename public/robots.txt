@@ -1,0 +1,6 @@
+# Robots.txt for Nareo
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://www.usenareo.com/sitemap.xml

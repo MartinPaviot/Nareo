@@ -4,6 +4,16 @@ import { motion } from 'framer-motion';
 import type { MasteryLevel } from '@/lib/stats/types';
 import { MASTERY_CONFIG } from '@/lib/stats/constants';
 import { getPrecision } from '@/lib/stats/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+// Mapping mastery levels to translation keys
+const MASTERY_LEVEL_KEYS: Record<MasteryLevel, string> = {
+  not_started: 'mastery_not_started',
+  discovery: 'mastery_discovery',
+  learning: 'mastery_learning',
+  acquired: 'mastery_acquired',
+  mastered: 'mastery_mastered',
+};
 
 interface MasteryBarProps {
   chapterTitle: string;
@@ -22,6 +32,7 @@ export default function MasteryBar({
   daysUntilDegradation,
   compact = false,
 }: MasteryBarProps) {
+  const { translate } = useLanguage();
   const config = MASTERY_CONFIG[masteryLevel];
   const precision = getPrecision(correctAnswers, totalQuestions);
   const isInDanger = daysUntilDegradation !== null && daysUntilDegradation !== undefined && daysUntilDegradation <= 2 && daysUntilDegradation > 0;
@@ -42,7 +53,7 @@ export default function MasteryBar({
             className={`text-xs font-medium px-2 py-0.5 rounded-full`}
             style={{ backgroundColor: config.color + '20', color: config.color }}
           >
-            {config.label}
+            {translate(MASTERY_LEVEL_KEYS[masteryLevel])}
           </span>
         </div>
       </div>

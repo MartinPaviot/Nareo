@@ -23,6 +23,7 @@ import {
   Layers
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   PersonnalisationConfig,
   Matiere,
@@ -33,46 +34,46 @@ import {
 } from '@/types/personnalisation';
 
 interface PersonnalisationScreenProps {
-  fileName: string;
+  fileName?: string; // Optional, kept for backwards compatibility
   onGenerate: (config: PersonnalisationConfig) => void;
   onCancel?: () => void;
   isGenerating?: boolean;
   initialConfig?: PersonnalisationConfig; // Config initiale pour pré-remplir (régénération)
 }
 
-// Matières avec labels et icônes colorées
+// Matières avec labels traduits via clés
 const MATIERES = [
-  { value: 'droit', label: 'Droit', icon: Scale, iconColor: 'text-amber-600' },
-  { value: 'economie', label: 'Économie / Finance / Gestion', icon: TrendingUp, iconColor: 'text-emerald-600' },
-  { value: 'sciences', label: 'Sciences (Maths, Physique, Chimie, Bio)', icon: FlaskConical, iconColor: 'text-violet-600' },
-  { value: 'histoire-geo', label: 'Histoire / Géographie / Sciences Po', icon: Globe, iconColor: 'text-blue-600' },
-  { value: 'langues', label: 'Langues', icon: Languages, iconColor: 'text-rose-600' },
-  { value: 'informatique', label: 'Informatique', icon: Code, iconColor: 'text-cyan-600' },
-  { value: 'medecine', label: 'Médecine / Santé', icon: Stethoscope, iconColor: 'text-red-600' },
-  { value: 'autre', label: 'Autre', icon: HelpCircle, iconColor: 'text-slate-500' },
+  { value: 'droit', labelKey: 'subject_law', icon: Scale, iconColor: 'text-amber-600' },
+  { value: 'economie', labelKey: 'subject_economics', icon: TrendingUp, iconColor: 'text-emerald-600' },
+  { value: 'sciences', labelKey: 'subject_sciences', icon: FlaskConical, iconColor: 'text-violet-600' },
+  { value: 'histoire-geo', labelKey: 'subject_history_geo', icon: Globe, iconColor: 'text-blue-600' },
+  { value: 'langues', labelKey: 'subject_languages', icon: Languages, iconColor: 'text-rose-600' },
+  { value: 'informatique', labelKey: 'subject_computer_science', icon: Code, iconColor: 'text-cyan-600' },
+  { value: 'medecine', labelKey: 'subject_medicine', icon: Stethoscope, iconColor: 'text-red-600' },
+  { value: 'autre', labelKey: 'subject_other', icon: HelpCircle, iconColor: 'text-slate-500' },
 ] as const;
 
-// Niveaux avec icônes colorées
+// Niveaux avec clés de traduction
 const NIVEAUX = [
-  { value: 'synthetique' as const, label: 'Synthétique', icon: Zap, description: 'Droit au but, concepts condensés', iconColor: 'text-yellow-500' },
-  { value: 'standard' as const, label: 'Standard', icon: BookOpen, description: 'Complet et structuré', iconColor: 'text-blue-500' },
-  { value: 'explicatif' as const, label: 'Explicatif', icon: Lightbulb, description: 'Avec raisonnements et contexte', iconColor: 'text-amber-500' },
+  { value: 'synthetique' as const, labelKey: 'detail_level_synthetic', icon: Zap, descriptionKey: 'detail_level_synthetic_desc', iconColor: 'text-yellow-500' },
+  { value: 'standard' as const, labelKey: 'detail_level_standard', icon: BookOpen, descriptionKey: 'detail_level_standard_desc', iconColor: 'text-blue-500' },
+  { value: 'explicatif' as const, labelKey: 'detail_level_explanatory', icon: Lightbulb, descriptionKey: 'detail_level_explanatory_desc', iconColor: 'text-amber-500' },
 ];
 
-// Récaps avec icônes colorées (schemas masqué car images désactivées)
+// Récaps avec clés de traduction
 const RECAPS = [
-  { key: 'definitions' as const, label: 'Glossaire', icon: FileText, iconColor: 'text-indigo-500' },
-  { key: 'formules' as const, label: 'Récap formules', icon: Calculator, iconColor: 'text-teal-500' },
+  { key: 'definitions' as const, labelKey: 'recap_glossary', icon: FileText, iconColor: 'text-indigo-500' },
+  { key: 'formules' as const, labelKey: 'recap_formulas', icon: Calculator, iconColor: 'text-teal-500' },
 ];
 
 export default function PersonnalisationScreen({
-  fileName,
   onGenerate,
   onCancel,
   isGenerating = false,
   initialConfig,
 }: PersonnalisationScreenProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   // Utiliser initialConfig si fournie (régénération), sinon les défauts
   const [matiere, setMatiere] = useState<Matiere>(initialConfig?.matiere ?? DEFAULT_CONFIG.matiere);
@@ -121,14 +122,14 @@ export default function PersonnalisationScreen({
             isDark ? 'text-neutral-100' : 'text-gray-900'
           }`}
         >
-          Génère ta fiche de révision
+          {translate('study_sheet_title')}
         </h3>
         <p
           className={`text-sm mt-1 ${
             isDark ? 'text-neutral-400' : 'text-gray-500'
           }`}
         >
-          Personnalise le contenu de ta fiche
+          {translate('study_sheet_subtitle')}
         </p>
       </div>
 
@@ -155,10 +156,10 @@ export default function PersonnalisationScreen({
             </div>
             <div className="flex flex-col items-start min-w-0">
               <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                Matière
+                {translate('study_sheet_subject_label')}
               </span>
               <span className={`text-sm font-semibold truncate ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-                {selectedMatiere?.label || 'Sélectionner'}
+                {selectedMatiere ? translate(selectedMatiere.labelKey) : translate('study_sheet_subject_select')}
               </span>
             </div>
           </div>
@@ -188,7 +189,7 @@ export default function PersonnalisationScreen({
                     ? isDark ? 'text-white' : 'text-gray-900'
                     : isDark ? 'text-neutral-300' : 'text-gray-700'
                 }`}>
-                  {option.label}
+                  {translate(option.labelKey)}
                 </span>
                 {matiere === option.value && (
                   <div className="w-5 h-5 rounded-full flex items-center justify-center bg-orange-500">
@@ -223,9 +224,9 @@ export default function PersonnalisationScreen({
               )}
             </div>
             <div className="flex flex-col items-start">
-              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Niveau de détail</span>
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('study_sheet_detail_level_label')}</span>
               <span className={`text-sm font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-                {selectedNiveau?.label || 'Sélectionner'}
+                {selectedNiveau ? translate(selectedNiveau.labelKey) : translate('study_sheet_subject_select')}
               </span>
             </div>
           </div>
@@ -258,10 +259,10 @@ export default function PersonnalisationScreen({
                           ? isDark ? 'text-white' : 'text-gray-900'
                           : isDark ? 'text-neutral-200' : 'text-gray-900'
                       }`}>
-                        {option.label}
+                        {translate(option.labelKey)}
                       </p>
                       <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                        {option.description}
+                        {translate(option.descriptionKey)}
                       </p>
                     </div>
                   </div>
@@ -295,9 +296,9 @@ export default function PersonnalisationScreen({
               <FileText className={`w-[18px] h-[18px] ${selectedRecapsCount > 0 ? 'text-orange-500' : isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
             </div>
             <div className="flex flex-col items-start">
-              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Récaps à la fin</span>
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('study_sheet_recaps_label')}</span>
               <span className={`text-sm font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-                {selectedRecapsCount > 0 ? `${selectedRecapsCount} sélectionné${selectedRecapsCount > 1 ? 's' : ''}` : 'Aucun'}
+                {selectedRecapsCount > 0 ? translate('study_sheet_recaps_selected', { count: selectedRecapsCount.toString() }) : translate('study_sheet_recaps_none')}
               </span>
             </div>
           </div>
@@ -335,7 +336,7 @@ export default function PersonnalisationScreen({
                       ? isDark ? 'text-white' : 'text-gray-900'
                       : isDark ? 'text-neutral-300' : 'text-gray-700'
                   }`}>
-                    {option.label}
+                    {translate(option.labelKey)}
                   </span>
                 </div>
               </button>
@@ -357,7 +358,7 @@ export default function PersonnalisationScreen({
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Annuler
+            {translate('cancel')}
           </button>
         )}
         <button
@@ -369,12 +370,12 @@ export default function PersonnalisationScreen({
           {isGenerating ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Génération en cours...
+              {translate('study_sheet_generating')}
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              {onCancel ? 'Régénérer' : 'Générer la fiche'}
+              {onCancel ? translate('study_sheet_regenerate') : translate('study_sheet_generate')}
             </>
           )}
         </button>

@@ -52,7 +52,9 @@ export interface PriorityItem {
 
 export interface SmartCTA {
   type: 'flashcards' | 'start_chapter' | 'continue_chapter' | 'review';
-  label: string;
+  label?: string; // Legacy field for backward compatibility
+  label_key?: string; // Translation key
+  chapter_number?: number; // For chapter-specific CTAs
   target_id: string;
   target_type: 'flashcards' | 'chapter' | 'course';
   cards_to_review: number;

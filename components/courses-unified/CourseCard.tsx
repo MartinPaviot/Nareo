@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Layers, Play, RefreshCw, BookOpen, FolderInput, FolderMinus } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Course } from '@/lib/courses/types';
 import { useSmartCTA } from '@/hooks/useSmartCTA';
 import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
@@ -19,6 +20,7 @@ interface CourseCardProps {
 
 export default function CourseCard({ course, onClick, folderId, showActions = true }: CourseCardProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
   const { smartCTA, isLoading: ctaLoading } = useSmartCTA(course.id);
   const { folders, moveCourse } = useCoursesOrganized();
   const [showMoveModal, setShowMoveModal] = useState(false);
@@ -26,6 +28,24 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
   const isLongPress = useRef(false);
 
   const availableFolders = folders.filter(f => f.id !== folderId);
+
+  // Get translated CTA label
+  const getCTALabel = useCallback(() => {
+    if (!smartCTA) return translate('continue');
+
+    // Support for label_key (new format)
+    if (smartCTA.label_key) {
+      const baseLabel = translate(smartCTA.label_key);
+      // Append chapter number if available
+      if (smartCTA.chapter_number !== undefined && smartCTA.label_key !== 'cta_review_course') {
+        return `${baseLabel} ${smartCTA.chapter_number}`;
+      }
+      return baseLabel;
+    }
+
+    // Fallback to legacy label field
+    return smartCTA.label || translate('continue');
+  }, [smartCTA, translate]);
 
   const handleTouchStart = useCallback(() => {
     isLongPress.current = false;
@@ -96,7 +116,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
           </h3>
           {course.current_chapter && (
             <p className={`text-sm mt-0.5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-              Ch.{course.current_chapter.chapter_number} en cours
+              {translate('course_chapter_in_progress', { chapter: course.current_chapter.chapter_number })}
             </p>
           )}
         </div>
@@ -128,7 +148,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1">
           <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-            Maîtrise
+            {translate('course_mastery_label')}
           </span>
           <span className={`text-xs font-medium ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
             {masteryPercentage}%
@@ -151,14 +171,14 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
           <div className="flex items-center gap-1.5">
             <BookOpen className={`w-4 h-4 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
             <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-              {course.mastered_chapters}/{course.total_chapters} chapitres
+              {course.mastered_chapters}/{course.total_chapters} {translate('courses_chapters_label')}
             </span>
           </div>
           {course.cards_to_review > 0 && (
             <div className="flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-purple-500" />
               <span className="text-sm text-purple-500 font-medium">
-                {course.cards_to_review} cartes
+                {course.cards_to_review} {translate('courses_cards_label')}
               </span>
             </div>
           )}
@@ -174,10 +194,10 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
         }}
       >
         {ctaLoading ? (
-          <span>Chargement...</span>
+          <span>{translate('course_loading')}</span>
         ) : (
           <>
-            <span>{smartCTA?.label || 'Continuer'}</span>
+            <span>{getCTALabel()}</span>
             <CTAIcon className="w-4 h-4" />
           </>
         )}
@@ -209,7 +229,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
                 isDark ? 'border-neutral-800' : 'border-gray-100'
               }`}>
                 <h3 className={`font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-                  Déplacer "{course.name}"
+                  {translate('folder_move_title', { name: course.name })}
                 </h3>
               </div>
 
@@ -226,7 +246,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
                     }`}
                   >
                     <FolderMinus className="w-5 h-5" />
-                    <span className="font-medium">Retirer du dossier</span>
+                    <span className="font-medium">{translate('folder_remove_from')}</span>
                   </button>
                 )}
 
@@ -260,7 +280,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
                   <div className={`px-4 py-3 text-sm ${
                     isDark ? 'text-neutral-500' : 'text-gray-400'
                   }`}>
-                    Créez d'abord un dossier pour organiser vos cours
+                    {translate('folder_no_folders')}
                   </div>
                 ) : null}
               </div>
@@ -277,7 +297,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
                       : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
-                  Annuler
+                  {translate('cancel')}
                 </button>
               </div>
             </div>

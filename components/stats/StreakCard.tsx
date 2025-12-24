@@ -1,11 +1,23 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Clock } from 'lucide-react';
 import type { StreakState } from '@/lib/stats/types';
-import { STREAK_COLORS, STREAK_MESSAGES } from '@/lib/stats/constants';
+import { STREAK_COLORS } from '@/lib/stats/constants';
+import { useLanguage } from '@/contexts/LanguageContext';
+import ProgressCircle from './ProgressCircle';
 import StreakFlame from './StreakFlame';
-import StreakCountdown from './StreakCountdown';
 import StreakFreezeIndicator from './StreakFreezeIndicator';
+import { useStreakCountdown } from '@/hooks/useStreakCountdown';
+
+// Couleurs du cercle selon l'état
+const CIRCLE_COLORS: Record<StreakState, { progress: string; background: string }> = {
+  on_fire: { progress: '#F97316', background: '#FED7AA' },
+  at_risk: { progress: '#EAB308', background: '#FEF3C7' },
+  lost: { progress: '#9CA3AF', background: '#E5E7EB' },
+  protected: { progress: '#3B82F6', background: '#BFDBFE' },
+  new_user: { progress: '#9CA3AF', background: '#E5E7EB' },
+};
 
 interface StreakCardProps {
   currentStreak: number;
@@ -22,15 +34,14 @@ export default function StreakCard({
   freezesAvailable,
   previousStreakLost
 }: StreakCardProps) {
+  const { translate } = useLanguage();
+  const timeLeft = useStreakCountdown();
   const colors = STREAK_COLORS[state];
+  const circleColors = CIRCLE_COLORS[state];
 
-  const getMessage = () => {
-    const message = STREAK_MESSAGES[state];
-    if (typeof message === 'function') {
-      return message(previousStreakLost);
-    }
-    return message;
-  };
+  // Calculer la progression du cercle basée sur le temps restant dans la journée
+  // Le cercle se remplit quand l'utilisateur a validé son streak aujourd'hui
+  const progress = state === 'on_fire' || state === 'protected' ? 100 : 0;
 
   return (
     <motion.div
@@ -43,43 +54,51 @@ export default function StreakCard({
         <div className="absolute inset-0 bg-gradient-to-br from-orange-100/50 to-transparent" />
       )}
 
+      {/* Streak Freeze indicator - top right */}
+      <div className="absolute top-4 right-4">
+        <StreakFreezeIndicator count={freezesAvailable} />
+      </div>
+
       <div className="relative z-10">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <StreakFlame state={state} />
-            <div>
-              <h3 className={`text-sm font-medium ${colors.text}`}>Série</h3>
-              <p className="text-3xl font-bold text-gray-900">
-                {currentStreak} <span className="text-lg font-normal text-gray-500">jours</span>
+        <div className="flex items-center gap-5">
+          {/* Circle with flame inside */}
+          <ProgressCircle
+            progress={progress}
+            size={100}
+            strokeWidth={8}
+            progressColor={circleColors.progress}
+            backgroundColor={circleColors.background}
+          >
+            <StreakFlame state={state} size="lg" />
+          </ProgressCircle>
+
+          {/* Info */}
+          <div className="flex-1">
+            <h3 className="text-sm font-medium text-gray-500">{translate('streak_label')}</h3>
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-semibold text-gray-900">
+                {currentStreak} {translate('streak_days')}
               </p>
+              {/* Record badge */}
+              {currentStreak > 0 && currentStreak >= longestStreak && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 rounded-full"
+                >
+                  <span className="text-xs font-semibold text-orange-600">{translate('streak_personal_record')}</span>
+                </motion.div>
+              )}
+            </div>
+            {/* Timer */}
+            <div className="mt-2 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-500">
+                {translate('streak_time_remaining')}: <span className="font-mono font-semibold">{timeLeft}</span>
+              </span>
             </div>
           </div>
-
-          {/* Streak Freeze indicator */}
-          <StreakFreezeIndicator count={freezesAvailable} />
         </div>
-
-        {/* Contextual message */}
-        <div className={`text-sm ${colors.text} font-medium`}>
-          {getMessage()}
-        </div>
-
-        {/* Countdown if at_risk */}
-        {state === 'at_risk' && (
-          <StreakCountdown />
-        )}
-
-        {/* Record */}
-        {currentStreak > 0 && currentStreak >= longestStreak && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="mt-3 inline-flex items-center gap-1 px-2 py-1 bg-orange-100 rounded-full"
-          >
-            <span className="text-xs font-semibold text-orange-600">Record personnel !</span>
-          </motion.div>
-        )}
       </div>
     </motion.div>
   );

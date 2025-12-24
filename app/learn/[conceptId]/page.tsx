@@ -175,7 +175,9 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
       // Vérifier si l'introduction est déjà dans l'historique
       const hasIntroduction = messages.some(msg =>
         msg.role === 'assistant' &&
-        (msg.content.includes('Bonjour ! Je suis Nareo') || msg.content.includes('Bienvenue dans le chapitre'))
+        (msg.content.includes('Bonjour ! Je suis Nareo') || msg.content.includes('Bienvenue dans le chapitre') ||
+         msg.content.includes('Hello! I am Nareo') || msg.content.includes('Welcome to chapter') ||
+         msg.content.includes('Hallo! Ich bin Nareo') || msg.content.includes('Willkommen bei Kapitel'))
       );
 
       if (!hasHistory && startQuestionNumber === 1) {
@@ -185,7 +187,7 @@ export default function LearnChapterPage({ params }: { params: Promise<{ concept
 
         await addMessage({
           role: 'assistant',
-          content: `👋 Bonjour ! Je suis Nareo, votre assistant d'apprentissage.\n\n📚 Bienvenue dans le chapitre **${localizedTitle}** !\n\nCe chapitre contient 5 questions pour tester votre compréhension. Chaque question ne peut être répondue qu'une seule fois. Je vous donnerai un feedback pédagogique après chaque réponse, puis nous passerons à la question suivante.\n\n**🎯 Points par question :**\n• Questions 1-3 (QCM) : 10 points chacune\n• Questions 4-5 (Réponse courte/Réflexive) : 35 points chacune\n\n**📝 Important :** Une seule tentative par question. Réfléchissez bien avant de répondre !\n\n✨ Commençons !`,
+          content: translate('learn_intro_full', { chapterTitle: localizedTitle }),
           aristoState: 'happy',
         });
 

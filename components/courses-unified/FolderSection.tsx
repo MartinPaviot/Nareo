@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Folder } from '@/lib/courses/types';
 import { useFoldersManagement } from '@/hooks/useFoldersManagement';
 import CourseCard from './CourseCard';
@@ -20,6 +21,7 @@ interface FolderSectionProps {
 export default function FolderSection({ folder }: FolderSectionProps) {
   const router = useRouter();
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
   const { toggleFolderCollapse, deleteFolder } = useFoldersManagement();
   const [isCollapsed, setIsCollapsed] = useState(folder.is_collapsed);
   const [showMenu, setShowMenu] = useState(false);
@@ -40,7 +42,7 @@ export default function FolderSection({ folder }: FolderSectionProps) {
   };
 
   const handleDelete = async () => {
-    if (confirm('Supprimer ce dossier ? Les cours seront déplacés dans "Non classés".')) {
+    if (confirm(translate('folder_delete_confirm'))) {
       await deleteFolder(folder.id, 'uncategorize');
     }
     setShowMenu(false);
@@ -93,7 +95,7 @@ export default function FolderSection({ folder }: FolderSectionProps) {
               ? 'bg-neutral-800 text-neutral-400'
               : 'bg-gray-200 text-gray-600'
           }`}>
-            {folder.course_count} cours
+            {folder.course_count} {folder.course_count === 1 ? translate('course_count_singular') : translate('courses_count_label')}
           </span>
         </div>
 
@@ -133,7 +135,7 @@ export default function FolderSection({ folder }: FolderSectionProps) {
                   }`}
                 >
                   <Pencil className="w-4 h-4" />
-                  Renommer
+                  {translate('folder_rename')}
                 </button>
                 <button
                   onClick={handleDelete}
@@ -142,7 +144,7 @@ export default function FolderSection({ folder }: FolderSectionProps) {
                   }`}
                 >
                   <Trash2 className="w-4 h-4" />
-                  Supprimer
+                  {translate('folder_delete')}
                 </button>
               </motion.div>
             )}

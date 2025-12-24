@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useLeaderboard } from '@/hooks/defi/useLeaderboard';
 
 interface WeeklyLeaderboardProps {
@@ -18,6 +19,7 @@ interface WeeklyLeaderboardProps {
 
 export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
   const { isDark } = useTheme();
+  const { translate, currentLanguage: language } = useLanguage();
   const { leaderboard, myRank, myPoints, loading, error, refetch } = useLeaderboard(userId);
 
   const getRankIcon = (rank: number) => {
@@ -72,7 +74,8 @@ export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
   weekEnd.setDate(weekStart.getDate() + 6);
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const localeMap: Record<string, string> = { fr: 'fr-FR', en: 'en-US', de: 'de-DE' };
+    return date.toLocaleDateString(localeMap[language] || 'fr-FR', { day: 'numeric', month: 'short' });
   };
 
   if (loading) {
@@ -94,7 +97,7 @@ export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
             isDark ? 'text-white' : 'text-gray-900'
           }`}>
             <Trophy className="w-5 h-5 text-yellow-500" />
-            Classement hebdomadaire
+            {translate('leaderboard_weekly_title')}
           </h2>
           <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
             {formatDate(weekStart)} - {formatDate(weekEnd)}
@@ -118,7 +121,7 @@ export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                Ta position
+                {translate('leaderboard_your_position')}
               </p>
               <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {myRank === 1 ? '🥇' : myRank === 2 ? '🥈' : myRank === 3 ? '🥉' : `#${myRank}`}
@@ -126,7 +129,7 @@ export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
             </div>
             <div className="text-right">
               <p className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                Tes points
+                {translate('leaderboard_your_points')}
               </p>
               <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {myPoints}
@@ -178,7 +181,7 @@ export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
                         <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
                           isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'
                         }`}>
-                          Toi
+                          {translate('challenge_you')}
                         </span>
                       )}
                     </p>
@@ -187,11 +190,11 @@ export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
                     }`}>
                       <span className="flex items-center gap-1">
                         <Target className="w-3 h-3" />
-                        {entry.challenges_played} défis
+                        {entry.challenges_played} {translate('leaderboard_challenges')}
                       </span>
                       <span className="flex items-center gap-1">
                         <Zap className="w-3 h-3" />
-                        {entry.challenges_won} victoires
+                        {entry.challenges_won} {translate('leaderboard_victories')}
                       </span>
                     </div>
                   </div>
@@ -205,7 +208,7 @@ export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
                     {entry.points}
                   </p>
                   <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    points
+                    {translate('leaderboard_points')}
                   </p>
                 </div>
               </div>
@@ -215,8 +218,8 @@ export default function WeeklyLeaderboard({ userId }: WeeklyLeaderboardProps) {
       ) : (
         <div className={`text-center py-8 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
           <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Aucun classement cette semaine</p>
-          <p className="text-sm mt-1">Jouez des défis pour apparaître ici !</p>
+          <p>{translate('leaderboard_no_ranking')}</p>
+          <p className="text-sm mt-1">{translate('leaderboard_play_challenges')}</p>
         </div>
       )}
     </div>

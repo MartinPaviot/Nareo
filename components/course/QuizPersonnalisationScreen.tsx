@@ -14,6 +14,7 @@ import {
   TextCursor,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   QuizConfig,
   NiveauQuantite,
@@ -30,51 +31,53 @@ interface QuizPersonnalisationScreenProps {
   initialConfig?: QuizConfig;
 }
 
+// Niveau translation keys mapping
+const NIVEAU_TRANSLATION_KEYS: Record<NiveauQuantite, { label: string; description: string }> = {
+  synthetique: { label: 'quiz_perso_level_synthetic', description: 'quiz_perso_level_synthetic_desc' },
+  standard: { label: 'quiz_perso_level_standard', description: 'quiz_perso_level_standard_desc' },
+  exhaustif: { label: 'quiz_perso_level_exhaustive', description: 'quiz_perso_level_exhaustive_desc' },
+};
+
 // Niveaux avec icônes Lucide
 const NIVEAUX = [
   {
     value: 'synthetique' as const,
-    label: 'Synthétique',
     icon: Zap,
-    description: 'Questions essentielles uniquement',
     iconColor: 'text-yellow-500',
   },
   {
     value: 'standard' as const,
-    label: 'Standard',
     icon: BookOpen,
-    description: 'Couverture équilibrée',
     iconColor: 'text-blue-500',
   },
   {
     value: 'exhaustif' as const,
-    label: 'Exhaustif',
     icon: Target,
-    description: 'Couverture complète et détaillée',
     iconColor: 'text-purple-500',
   },
 ];
+
+// Question type translation keys mapping
+const TYPE_TRANSLATION_KEYS: Record<keyof QuizTypesConfig, { label: string; description: string }> = {
+  qcm: { label: 'quiz_perso_type_mcq', description: 'quiz_perso_type_mcq_desc' },
+  vrai_faux: { label: 'quiz_perso_type_tf', description: 'quiz_perso_type_tf_desc' },
+  texte_trous: { label: 'quiz_perso_type_fill', description: 'quiz_perso_type_fill_desc' },
+};
 
 // Types de questions avec icônes
 const TYPES_QUESTIONS = [
   {
     key: 'qcm' as const,
-    label: 'QCM',
-    description: '4 choix, 1 bonne réponse',
     icon: ListChecks,
     iconColor: 'text-emerald-500',
   },
   {
     key: 'vrai_faux' as const,
-    label: 'Vrai / Faux',
-    description: 'Affirmer ou infirmer une proposition',
     icon: ToggleLeft,
     iconColor: 'text-orange-500',
   },
   {
     key: 'texte_trous' as const,
-    label: 'Texte à trous',
-    description: 'Compléter avec le terme exact',
     icon: TextCursor,
     iconColor: 'text-cyan-500',
   },
@@ -87,6 +90,7 @@ export default function QuizPersonnalisationScreen({
   initialConfig,
 }: QuizPersonnalisationScreenProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   // Utiliser initialConfig si fournie, sinon les défauts
   const [niveau, setNiveau] = useState<NiveauQuantite>(
@@ -134,14 +138,14 @@ export default function QuizPersonnalisationScreen({
             isDark ? 'text-neutral-100' : 'text-gray-900'
           }`}
         >
-          Génère ton quiz
+          {translate('quiz_perso_title')}
         </h3>
         <p
           className={`text-sm mt-1 ${
             isDark ? 'text-neutral-400' : 'text-gray-500'
           }`}
         >
-          Personnalise le nombre et les types de questions
+          {translate('quiz_perso_subtitle')}
         </p>
       </div>
 
@@ -186,14 +190,14 @@ export default function QuizPersonnalisationScreen({
                   isDark ? 'text-neutral-400' : 'text-gray-500'
                 }`}
               >
-                Nombre de questions
+                {translate('quiz_perso_question_count')}
               </span>
               <span
                 className={`text-sm font-semibold ${
                   isDark ? 'text-neutral-100' : 'text-gray-900'
                 }`}
               >
-                {selectedNiveau?.label || 'Sélectionner'}
+                {selectedNiveau ? translate(NIVEAU_TRANSLATION_KEYS[selectedNiveau.value].label) : translate('quiz_perso_select')}
               </span>
             </div>
           </div>
@@ -253,14 +257,14 @@ export default function QuizPersonnalisationScreen({
                             : 'text-gray-900'
                         }`}
                       >
-                        {option.label}
+                        {translate(NIVEAU_TRANSLATION_KEYS[option.value].label)}
                       </p>
                       <p
                         className={`text-xs ${
                           isDark ? 'text-neutral-400' : 'text-gray-500'
                         }`}
                       >
-                        {option.description}
+                        {translate(NIVEAU_TRANSLATION_KEYS[option.value].description)}
                       </p>
                     </div>
                   </div>
@@ -315,7 +319,7 @@ export default function QuizPersonnalisationScreen({
                   isDark ? 'text-neutral-400' : 'text-gray-500'
                 }`}
               >
-                Types de questions
+                {translate('quiz_perso_question_types')}
               </span>
               <span
                 className={`text-sm font-semibold ${
@@ -323,8 +327,8 @@ export default function QuizPersonnalisationScreen({
                 }`}
               >
                 {selectedTypesCount > 0
-                  ? `${selectedTypesCount} sélectionné${selectedTypesCount > 1 ? 's' : ''}`
-                  : 'Aucun'}
+                  ? translate('quiz_perso_selected', { count: selectedTypesCount.toString() })
+                  : translate('quiz_perso_none')}
               </span>
             </div>
           </div>
@@ -401,14 +405,14 @@ export default function QuizPersonnalisationScreen({
                             : 'text-gray-700'
                         }`}
                       >
-                        {option.label}
+                        {translate(TYPE_TRANSLATION_KEYS[option.key].label)}
                       </span>
                       <p
                         className={`text-xs ${
                           isDark ? 'text-neutral-400' : 'text-gray-500'
                         }`}
                       >
-                        {option.description}
+                        {translate(TYPE_TRANSLATION_KEYS[option.key].description)}
                       </p>
                     </div>
                   </div>
@@ -428,7 +432,7 @@ export default function QuizPersonnalisationScreen({
               : 'bg-gray-50 text-gray-500'
           }`}
         >
-          Les questions seront mélangées aléatoirement.
+          {translate('quiz_perso_shuffle_note')}
         </div>
       )}
 
@@ -445,7 +449,7 @@ export default function QuizPersonnalisationScreen({
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Annuler
+            {translate('quiz_perso_cancel')}
           </button>
         )}
         <button
@@ -459,12 +463,12 @@ export default function QuizPersonnalisationScreen({
           {isGenerating ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Génération en cours...
+              {translate('quiz_perso_generating')}
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              {onCancel ? 'Régénérer' : 'Générer mon quiz'}
+              {onCancel ? translate('quiz_perso_regenerate') : translate('quiz_perso_generate')}
             </>
           )}
         </button>

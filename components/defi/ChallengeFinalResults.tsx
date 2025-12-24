@@ -12,6 +12,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Challenge, FinalScore } from '@/types/defi';
 
 interface ChallengeFinalResultsProps {
@@ -27,6 +28,7 @@ export default function ChallengeFinalResults({
 }: ChallengeFinalResultsProps) {
   const router = useRouter();
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   const myResult = finalScores.find((s) => s.player_id === playerId);
   const myRank = myResult?.rank || finalScores.length;
@@ -81,10 +83,10 @@ export default function ChallengeFinalResults({
           </div>
           <h1 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             {isWinner
-              ? 'Victoire !'
+              ? translate('challenge_final_victory')
               : myRank <= 3
-                ? `${myRank}${myRank === 2 ? 'ème' : 'ème'} place !`
-                : 'Défi terminé !'}
+                ? translate('challenge_final_place', { rank: String(myRank) })
+                : translate('challenge_final_finished')}
           </h1>
           <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             {challenge.question_count} questions • {challenge.time_per_question}s/question
@@ -109,7 +111,7 @@ export default function ChallengeFinalResults({
                   {myResult.score}
                 </div>
                 <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Score total
+                  {translate('challenge_final_score_total')}
                 </div>
               </div>
               <div className="text-center">
@@ -117,7 +119,7 @@ export default function ChallengeFinalResults({
                   +{myResult.points_earned}
                 </div>
                 <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Points gagnés
+                  {translate('challenge_final_points_earned')}
                 </div>
               </div>
             </div>
@@ -130,7 +132,7 @@ export default function ChallengeFinalResults({
                     {myResult.correct_answers}/{myResult.total_answers}
                   </div>
                   <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Bonnes réponses
+                    {translate('challenge_final_correct_answers')}
                   </div>
                 </div>
               </div>
@@ -143,7 +145,7 @@ export default function ChallengeFinalResults({
                       : '-'}
                   </div>
                   <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Temps moyen
+                    {translate('challenge_final_avg_time')}
                   </div>
                 </div>
               </div>
@@ -154,7 +156,7 @@ export default function ChallengeFinalResults({
                     {Math.round((myResult.correct_answers / Math.max(myResult.total_answers, 1)) * 100)}%
                   </div>
                   <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                    Précision
+                    {translate('challenge_final_precision')}
                   </div>
                 </div>
               </div>
@@ -170,7 +172,7 @@ export default function ChallengeFinalResults({
             isDark ? 'text-white' : 'text-gray-900'
           }`}>
             <Trophy className="w-5 h-5 text-yellow-500" />
-            Classement final
+            {translate('challenge_final_leaderboard')}
           </h2>
 
           <div className="space-y-2">
@@ -202,12 +204,12 @@ export default function ChallengeFinalResults({
                         <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
                           isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700'
                         }`}>
-                          Toi
+                          {translate('challenge_you')}
                         </span>
                       )}
                     </p>
                     <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      {score.correct_answers}/{score.total_answers} bonnes réponses
+                      {score.correct_answers}/{score.total_answers} {translate('challenge_final_correct')}
                     </p>
                   </div>
                 </div>
@@ -233,7 +235,7 @@ export default function ChallengeFinalResults({
             className="w-full py-3 px-4 rounded-xl font-medium bg-orange-500 hover:bg-orange-600 text-white transition-colors flex items-center justify-center gap-2"
           >
             <Home className="w-5 h-5" />
-            Retour aux défis
+            {translate('challenge_final_back_challenges')}
           </button>
 
           <button
@@ -245,7 +247,7 @@ export default function ChallengeFinalResults({
             }`}
           >
             <RotateCcw className="w-5 h-5" />
-            Nouveau défi
+            {translate('challenge_final_new_challenge')}
           </button>
         </div>
       </div>

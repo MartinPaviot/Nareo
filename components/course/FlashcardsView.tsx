@@ -1130,7 +1130,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
           }`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-xl font-bold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-                Modifier la flashcard
+                {translate('flashcards_edit_title')}
               </h3>
               <button
                 onClick={() => {
@@ -1149,7 +1149,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             <div className="space-y-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-                  Recto (question/terme)
+                  {translate('flashcards_edit_front_label')}
                 </label>
                 <textarea
                   value={editCardFront}
@@ -1165,7 +1165,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-                  Verso (réponse/définition)
+                  {translate('flashcards_edit_back_label')}
                 </label>
                 <textarea
                   value={editCardBack}
@@ -1201,12 +1201,12 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
                 {editingCard ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Enregistrement...
+                    {translate('flashcards_edit_saving')}
                   </>
                 ) : (
                   <>
                     <Pencil className="w-4 h-4" />
-                    Enregistrer
+                    {translate('flashcards_edit_save')}
                   </>
                 )}
               </button>

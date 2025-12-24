@@ -160,7 +160,7 @@ export default function ChallengeLobby({
         <div className="text-center mb-8">
           <div className="text-4xl mb-2">🎮</div>
           <h1 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Défi en attente
+            {translate('challenge_waiting_players')}
           </h1>
           {challenge.chapter?.title && (
             <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -180,7 +180,7 @@ export default function ChallengeLobby({
             isDark ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-700'
           }`}>
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Connexion en cours...</span>
+            <span>{translate('challenge_connecting')}</span>
           </div>
         )}
 
@@ -198,7 +198,7 @@ export default function ChallengeLobby({
           isDark ? 'bg-gray-800' : 'bg-white shadow-md'
         }`}>
           <p className={`text-sm mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Code du défi
+            {translate('challenge_code_label')}
           </p>
           <p className={`text-4xl font-mono font-bold tracking-wider mb-4 ${
             isDark ? 'text-white' : 'text-gray-900'
@@ -218,12 +218,12 @@ export default function ChallengeLobby({
               {copied ? (
                 <>
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Copié !</span>
+                  <span>{translate('friends_code_copied')}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>Copier le code</span>
+                  <span>{translate('copy')}</span>
                 </>
               )}
             </button>
@@ -250,7 +250,7 @@ export default function ChallengeLobby({
               isDark ? 'text-white' : 'text-gray-900'
             }`}>
               <Users className="w-5 h-5" />
-              Joueurs ({players.length}/{MAX_PLAYERS_PER_CHALLENGE})
+              {translate('challenge_players_plural')} ({players.length}/{MAX_PLAYERS_PER_CHALLENGE})
             </h2>
           </div>
 
@@ -283,14 +283,14 @@ export default function ChallengeLobby({
                         <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
                           isDark ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700'
                         }`}>
-                          Hôte
+                          {translate('challenge_host')}
                         </span>
                       )}
                       {player.id === playerId && (
                         <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
                           isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700'
                         }`}>
-                          Toi
+                          {translate('challenge_you')}
                         </span>
                       )}
                     </p>
@@ -301,14 +301,14 @@ export default function ChallengeLobby({
                   {player.is_ready ? (
                     <span className="flex items-center gap-1 text-green-500 font-medium">
                       <Check className="w-4 h-4" />
-                      Prêt
+                      {translate('challenge_player_ready')}
                     </span>
                   ) : (
                     <span className={`flex items-center gap-1 ${
                       isDark ? 'text-gray-500' : 'text-gray-400'
                     }`}>
                       <Clock className="w-4 h-4" />
-                      En attente
+                      {translate('challenge_waiting')}
                     </span>
                   )}
                 </div>
@@ -318,7 +318,7 @@ export default function ChallengeLobby({
             {players.length === 0 && (
               <div className={`text-center py-8 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                <p>Chargement des joueurs...</p>
+                <p>{translate('challenge_loading')}</p>
               </div>
             )}
           </div>
@@ -341,12 +341,12 @@ export default function ChallengeLobby({
               {localReady ? (
                 <>
                   <Check className="w-5 h-5" />
-                  Annuler (prêt)
+                  {translate('challenge_cancel_ready')}
                 </>
               ) : (
                 <>
                   <Check className="w-5 h-5" />
-                  Je suis prêt !
+                  {translate('challenge_ready_toggle')}
                 </>
               )}
             </button>
@@ -367,12 +367,12 @@ export default function ChallengeLobby({
               {allPlayersReady ? (
                 <>
                   <Play className="w-5 h-5" />
-                  Lancer le défi
+                  {translate('challenge_launch')}
                 </>
               ) : (
                 <>
                   <Clock className="w-5 h-5" />
-                  En attente ({players.filter((p) => p.is_ready).length}/{players.length} prêts)
+                  {translate('challenge_waiting_for_ready', { ready: String(players.filter((p) => p.is_ready).length), total: String(players.length) })}
                 </>
               )}
             </button>
@@ -387,7 +387,7 @@ export default function ChallengeLobby({
             }`}
           >
             <LogOut className="w-5 h-5" />
-            Quitter le défi
+            {translate('challenge_leave')}
           </button>
         </div>
 

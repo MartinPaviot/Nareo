@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { getXPLevel, getXPProgress, getXPToNextLevel, formatNumber } from '@/lib/stats/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface XPDisplayProps {
   totalXP: number;
@@ -11,16 +12,17 @@ interface XPDisplayProps {
 }
 
 export default function XPDisplay({ totalXP, showProgress = true, compact = false }: XPDisplayProps) {
+  const { translate } = useLanguage();
   const currentLevel = getXPLevel(totalXP);
   const progress = getXPProgress(totalXP);
   const xpToNext = getXPToNextLevel(totalXP);
 
   if (compact) {
     return (
-      <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2 mb-1">
+      <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+        <div className="flex items-center justify-center gap-2 mb-1">
           <Star className="w-4 h-4 text-orange-500" />
-          <span className="text-xs text-gray-500 font-medium">Niveau</span>
+          <span className="text-xs text-gray-500 font-medium">{translate('stats_label_level')}</span>
         </div>
         <p className="text-xl font-bold text-gray-900">{currentLevel.level}</p>
         <p className="text-xs text-gray-400">{formatNumber(totalXP)} XP</p>
@@ -40,21 +42,21 @@ export default function XPDisplay({ totalXP, showProgress = true, compact = fals
             <Star className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="text-sm text-white/80">Niveau {currentLevel.level}</p>
+            <p className="text-sm text-white/80">{translate('stats_label_level')} {currentLevel.level}</p>
             <p className="text-lg font-bold">{currentLevel.name}</p>
           </div>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold">{formatNumber(totalXP)}</p>
-          <p className="text-sm text-white/80">XP total</p>
+          <p className="text-sm text-white/80">{translate('stats_xp_total')}</p>
         </div>
       </div>
 
       {showProgress && xpToNext > 0 && (
         <div>
           <div className="flex justify-between text-xs text-white/80 mb-1">
-            <span>Prochain niveau</span>
-            <span>{formatNumber(xpToNext)} XP restants</span>
+            <span>{translate('stats_xp_next_level')}</span>
+            <span>{translate('stats_xp_remaining', { count: formatNumber(xpToNext) })}</span>
           </div>
           <div className="h-2 bg-white/20 rounded-full overflow-hidden">
             <motion.div

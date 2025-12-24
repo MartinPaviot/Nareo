@@ -4,6 +4,14 @@ import { motion } from 'framer-motion';
 import { X, Check } from 'lucide-react';
 import type { DailyGoalLevel } from '@/lib/stats/types';
 import { DAILY_GOAL_CONFIG } from '@/lib/stats/constants';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+// Mapping des niveaux vers les clés de traduction
+const LEVEL_TRANSLATION_KEYS: Record<DailyGoalLevel, { label: string; time: string }> = {
+  tranquille: { label: 'daily_goal_level_relaxed', time: 'daily_goal_level_relaxed_time' },
+  standard: { label: 'daily_goal_level_standard', time: 'daily_goal_level_standard_time' },
+  intensif: { label: 'daily_goal_level_intensive', time: 'daily_goal_level_intensive_time' },
+};
 
 interface GoalLevelSelectorProps {
   currentLevel: DailyGoalLevel;
@@ -16,6 +24,7 @@ export default function GoalLevelSelector({
   onSelect,
   onClose,
 }: GoalLevelSelectorProps) {
+  const { translate } = useLanguage();
   const levels: DailyGoalLevel[] = ['tranquille', 'standard', 'intensif'];
 
   return (
@@ -34,7 +43,7 @@ export default function GoalLevelSelector({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Objectif quotidien</h2>
+          <h2 className="text-xl font-bold text-gray-900">{translate('stats_daily_goal_selector_title')}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
@@ -44,12 +53,13 @@ export default function GoalLevelSelector({
         </div>
 
         <p className="text-sm text-gray-500 mb-6">
-          Choisis le niveau qui correspond a ton rythme de revision.
+          {translate('stats_daily_goal_selector_subtitle')}
         </p>
 
         <div className="space-y-3">
           {levels.map((level) => {
             const config = DAILY_GOAL_CONFIG[level];
+            const translationKeys = LEVEL_TRANSLATION_KEYS[level];
             const isSelected = level === currentLevel;
 
             return (
@@ -66,9 +76,9 @@ export default function GoalLevelSelector({
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{config.emoji}</span>
                     <div>
-                      <p className="font-semibold text-gray-900">{config.label}</p>
+                      <p className="font-semibold text-gray-900">{translate(translationKeys.label)}</p>
                       <p className="text-sm text-gray-500">
-                        {config.base} questions/jour - {config.timeEstimate}
+                        {config.base} {translate('stats_daily_goal_questions_per_day')} - {translate(translationKeys.time)}
                       </p>
                     </div>
                   </div>
@@ -84,7 +94,7 @@ export default function GoalLevelSelector({
         </div>
 
         <p className="mt-4 text-xs text-gray-400 text-center">
-          L'objectif s'adapte automatiquement a ton historique et aux weekends.
+          {translate('stats_daily_goal_selector_auto')}
         </p>
       </motion.div>
     </motion.div>

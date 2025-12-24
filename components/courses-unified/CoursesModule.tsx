@@ -18,6 +18,7 @@ import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
 import { useCourseSearch } from '@/hooks/useCourseSearch';
 import { usePriorityItems } from '@/hooks/usePriorityItems';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Course } from '@/lib/courses/types';
 import PrioritySection from './PrioritySection';
 import FolderSection from './FolderSection';
@@ -29,6 +30,7 @@ import DragOverlayCard from './DragOverlayCard';
 
 export default function CoursesModule() {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
   const { folders, uncategorized, isLoading, moveCourse } = useCoursesOrganized();
   const { priorityItems } = usePriorityItems();
   const { searchQuery, setSearchQuery, searchResults, isSearching, clearSearch } = useCourseSearch();
@@ -84,7 +86,7 @@ export default function CoursesModule() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Rechercher un cours..."
+            placeholder={translate('courses_search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-full pl-10 pr-10 py-2.5 rounded-xl border transition-colors ${
@@ -115,7 +117,7 @@ export default function CoursesModule() {
           }`}
         >
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Dossier</span>
+          <span className="hidden sm:inline">{translate('courses_create_folder')}</span>
         </motion.button>
       </div>
 
@@ -186,15 +188,16 @@ export default function CoursesModule() {
 
 function EmptyCoursesState({ onCreateFolder }: { onCreateFolder: () => void }) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   return (
     <div className={`text-center py-12 rounded-2xl ${isDark ? 'bg-neutral-900' : 'bg-gray-50'}`}>
       <div className="text-5xl mb-4">📚</div>
       <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-        Aucun cours pour l'instant
+        {translate('courses_empty_title')}
       </h3>
       <p className={`mb-6 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-        Importe ton premier cours pour commencer à réviser
+        {translate('courses_empty_subtitle')}
       </p>
       <div className="flex items-center justify-center gap-3">
         <button
@@ -206,7 +209,7 @@ function EmptyCoursesState({ onCreateFolder }: { onCreateFolder: () => void }) {
           }`}
         >
           <Plus className="w-4 h-4" />
-          Créer un dossier
+          {translate('courses_create_folder_button')}
         </button>
       </div>
     </div>

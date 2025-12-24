@@ -74,7 +74,7 @@ export default function FolderCard({
             <div>
               <h3 className={`text-xl font-bold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>{folder.name}</h3>
               <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                {folder.course_count} {translate('courses_count')}
+                {folder.course_count} {folder.course_count === 1 ? translate('course_count_singular') : translate('courses_count')}
               </p>
             </div>
           </div>

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Challenge } from '@/types/defi';
 
 function JoinChallengeContent() {
@@ -18,6 +19,7 @@ function JoinChallengeContent() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   const codeFromUrl = searchParams.get('code') || '';
 
@@ -59,7 +61,7 @@ function JoinChallengeContent() {
         setChallengePreview(data.challenge);
       }
     } catch (err) {
-      setError('Erreur de connexion');
+      setError(translate('challenge_join_error'));
       setChallengePreview(null);
     } finally {
       setPreviewLoading(false);
@@ -68,7 +70,7 @@ function JoinChallengeContent() {
 
   const handleJoin = async () => {
     if (!code.trim() || !displayName.trim()) {
-      setError('Remplis tous les champs');
+      setError(translate('challenge_join_fill_fields'));
       return;
     }
 
@@ -88,7 +90,7 @@ function JoinChallengeContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de la connexion au défi');
+        throw new Error(data.error || translate('challenge_connection_error'));
       }
 
       // Store player ID for the lobby
@@ -125,10 +127,10 @@ function JoinChallengeContent() {
           </Link>
           <div>
             <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Rejoindre un défi
+              {translate('challenge_join_title')}
             </h1>
             <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Entrez le code du défi
+              {translate('challenge_code_placeholder')}
             </p>
           </div>
         </div>
@@ -152,7 +154,7 @@ function JoinChallengeContent() {
             <label className={`block text-sm font-medium mb-2 ${
               isDark ? 'text-gray-400' : 'text-gray-600'
             }`}>
-              Code du défi
+              {translate('challenge_code_label')}
             </label>
             <input
               type="text"
@@ -190,7 +192,7 @@ function JoinChallengeContent() {
                       'Quiz personnalisé'}
                   </p>
                   <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Hébergé par {challengePreview.host?.display_name || 'Inconnu'}
+                    {translate('challenge_host')}: {challengePreview.host?.display_name || '?'}
                   </p>
                 </div>
               </div>
@@ -199,14 +201,14 @@ function JoinChallengeContent() {
                   isDark ? 'text-gray-400' : 'text-gray-500'
                 }`}>
                   <Users className="w-4 h-4" />
-                  {challengePreview.players?.length || 0} joueur(s)
+                  {challengePreview.players?.length || 0} {translate('challenge_players')}
                 </span>
                 <span className={`px-2 py-0.5 rounded ${
                   challengePreview.status === 'lobby'
                     ? 'bg-green-500/20 text-green-500'
                     : 'bg-yellow-500/20 text-yellow-500'
                 }`}>
-                  {challengePreview.status === 'lobby' ? 'En attente' : 'En cours'}
+                  {challengePreview.status === 'lobby' ? translate('challenge_waiting') : translate('challenge_playing')}
                 </span>
               </div>
             </div>
@@ -217,13 +219,13 @@ function JoinChallengeContent() {
             <label className={`block text-sm font-medium mb-2 ${
               isDark ? 'text-gray-400' : 'text-gray-600'
             }`}>
-              Ton pseudo
+              {translate('challenge_username_placeholder')}
             </label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Entre ton pseudo"
+              placeholder={translate('challenge_username_placeholder')}
               maxLength={20}
               className={`w-full px-4 py-3 rounded-lg ${
                 isDark
@@ -246,12 +248,12 @@ function JoinChallengeContent() {
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Connexion...
+                {translate('challenge_connecting')}
               </>
             ) : (
               <>
                 <Users className="w-5 h-5" />
-                Rejoindre le défi
+                {translate('challenge_join_button')}
               </>
             )}
           </button>

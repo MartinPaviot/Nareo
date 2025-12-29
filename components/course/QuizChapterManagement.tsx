@@ -19,6 +19,7 @@ import {
   ToggleLeft,
   TextCursor,
   Gamepad2,
+  UserPlus,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,6 +125,7 @@ export default function QuizChapterManagement({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [showSignupModal, setShowSignupModal] = useState(false);
 
   // Form states
   const [selectedChapterId, setSelectedChapterId] = useState<string>('');
@@ -541,7 +543,7 @@ export default function QuizChapterManagement({
             </button>
           )}
           <button
-            onClick={() => setShowRegenerateModal(true)}
+            onClick={() => user ? setShowRegenerateModal(true) : setShowSignupModal(true)}
             disabled={isGenerating}
             className={`inline-flex items-center gap-1 text-xs sm:text-sm ${
               isDark ? 'text-orange-400 hover:text-orange-300' : 'text-orange-600 hover:text-orange-700'
@@ -923,6 +925,43 @@ export default function QuizChapterManagement({
               isGenerating={isGenerating}
               initialConfig={lastQuizConfig}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Signup Modal */}
+      {showSignupModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+          }`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+            }`}>
+              <UserPlus className="w-7 h-7 text-orange-500" />
+            </div>
+            <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+              {translate('signup_to_continue_title')}
+            </h3>
+            <p className={`text-sm mb-6 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+              {translate('signup_to_continue_description')}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSignupModal(false)}
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {translate('cancel')}
+              </button>
+              <button
+                onClick={() => router.push('/auth/signup')}
+                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+              >
+                {translate('auth_signup_button')}
+              </button>
+            </div>
           </div>
         </div>
       )}

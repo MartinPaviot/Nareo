@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Download, Copy, Check, Sparkles, RotateCcw, Pencil, X, Save, UserPlus, Lock } from 'lucide-react';
+import { Loader2, Download, Copy, Check, Sparkles, RotateCcw, Pencil, X, Save, UserPlus } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -468,10 +468,10 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
                 <UserPlus className="w-7 h-7 text-orange-500" />
               </div>
               <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-                {translate('aplus_note_signup_title')}
+                {translate('signup_to_continue_title')}
               </h3>
               <p className={`text-sm mb-6 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-                {translate('aplus_note_signup_description')}
+                {translate('signup_to_continue_description')}
               </p>
               <div className="flex gap-3">
                 <button
@@ -558,7 +558,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
         </h1>
 
         {/* Action buttons - wrap on mobile */}
-        {/* For anonymous users: show lock icon on restricted actions */}
         <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           <button
             onClick={handleCopyWithAuth}
@@ -569,8 +568,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
           >
             {copied ? (
               <Check className="w-4 h-4 text-green-500" />
-            ) : !user ? (
-              <Lock className="w-4 h-4" />
             ) : (
               <Copy className="w-4 h-4" />
             )}
@@ -585,8 +582,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
           >
             {downloading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
-            ) : !user ? (
-              <Lock className="w-4 h-4" />
             ) : (
               <Download className="w-4 h-4" />
             )}
@@ -599,7 +594,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
               isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
           >
-            {!user ? <Lock className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+            <Pencil className="w-4 h-4" />
             <span className="hidden xs:inline">{translate('edit')}</span>
           </button>
           <button
@@ -611,8 +606,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
           >
             {generating ? (
               <Loader2 className="w-4 h-4 animate-spin" />
-            ) : !user ? (
-              <Lock className="w-4 h-4" />
             ) : (
               <RotateCcw className="w-4 h-4" />
             )}

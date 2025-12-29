@@ -785,7 +785,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             }`}
             title={translate('flashcards_add') || 'Ajouter'}
           >
-            {!user ? <Lock className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            <Plus className="w-4 h-4" />
           </button>
           <button
             onClick={() => user ? openEditModal() : setShowSignupModal(true)}
@@ -794,7 +794,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             }`}
             title="Modifier"
           >
-            {!user ? <Lock className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+            <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={() => user ? setShowDeleteModal(true) : setShowSignupModal(true)}
@@ -803,7 +803,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             }`}
             title={translate('flashcards_delete') || 'Supprimer'}
           >
-            {!user ? <Lock className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+            <Trash2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => user ? setShowRegenerateModal(true) : setShowSignupModal(true)}
@@ -813,7 +813,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             }`}
             title={translate('flashcards_regenerate') || 'Régénérer'}
           >
-            {!user ? <Lock className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+            <RotateCcw className="w-4 h-4" />
           </button>
           <button
             onClick={() => setIsFullscreen(true)}
@@ -980,10 +980,10 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               <UserPlus className="w-7 h-7 text-orange-500" />
             </div>
             <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-              {translate('flashcards_signup_title')}
+              {translate('signup_to_continue_title')}
             </h3>
             <p className={`text-sm mb-6 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-              {translate('flashcards_signup_description')}
+              {translate('signup_to_continue_description')}
             </p>
             <div className="flex gap-3">
               <button

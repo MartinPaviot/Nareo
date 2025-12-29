@@ -384,6 +384,8 @@ export const translations: Record<Language, Translations> = {
     flashcard_type_custom: 'Custom',
     flashcards_signup_title: 'Create an account to generate flashcards',
     flashcards_signup_description: 'Sign up for free to generate AI-powered flashcards and boost your revision sessions.',
+    signup_to_continue_title: 'Create an account to continue',
+    signup_to_continue_description: 'Sign up for free to unlock all Nareo features and save your progress.',
     flashcards_limit_title: 'Unlock all flashcards',
     flashcards_limit_description: 'Create a free account to access all {{count}} remaining flashcards and boost your revision!',
 
@@ -1799,6 +1801,8 @@ export const translations: Record<Language, Translations> = {
     flashcard_type_custom: 'Personnalisée',
     flashcards_signup_title: 'Crée un compte pour générer des flashcards',
     flashcards_signup_description: 'Inscris-toi gratuitement pour générer des flashcards par IA et booster tes révisions.',
+    signup_to_continue_title: 'Crée un compte pour continuer',
+    signup_to_continue_description: 'Inscris-toi gratuitement pour débloquer toutes les fonctionnalités de Nareo et sauvegarder ta progression.',
     flashcards_limit_title: 'Débloque toutes les flashcards',
     flashcards_limit_description: 'Crée un compte gratuit pour accéder aux {{count}} flashcards restantes et booster tes révisions !',
 
@@ -3214,6 +3218,8 @@ export const translations: Record<Language, Translations> = {
     flashcard_type_custom: 'Benutzerdefiniert',
     flashcards_signup_title: 'Erstelle ein Konto, um Karteikarten zu generieren',
     flashcards_signup_description: 'Melde dich kostenlos an, um KI-gestützte Karteikarten zu erstellen und deine Lerneinheiten zu verbessern.',
+    signup_to_continue_title: 'Erstelle ein Konto, um fortzufahren',
+    signup_to_continue_description: 'Melde dich kostenlos an, um alle Nareo-Funktionen freizuschalten und deinen Fortschritt zu speichern.',
     flashcards_limit_title: 'Alle Karteikarten freischalten',
     flashcards_limit_description: 'Erstelle ein kostenloses Konto, um auf alle {{count}} verbleibenden Karteikarten zuzugreifen und dein Lernen zu verbessern!',
 

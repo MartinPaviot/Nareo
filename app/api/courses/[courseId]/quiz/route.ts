@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/api-auth';
+
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
 
 // GET - Fetch all questions for a course
 export async function GET(
@@ -10,21 +17,44 @@ export async function GET(
   try {
     const { courseId } = await params;
 
-    // Authenticate user
+    // Try to authenticate user (optional for guest users)
     const auth = await authenticateRequest(request);
-    if (!auth) {
+    const guestSessionId = getGuestSessionIdFromRequest(request);
+
+    // Must have either authentication or guest session
+    if (!auth && !guestSessionId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
+    const admin = getServiceSupabase();
 
-    // Check course exists and belongs to user
-    const { data: course, error: courseError } = await supabase
-      .from('courses')
-      .select('id, quiz_status')
-      .eq('id', courseId)
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
+    // Check course exists and belongs to user/guest
+    let course;
+    let courseError;
+
+    if (auth) {
+      // Authenticated user: must own the course
+      const result = await supabase
+        .from('courses')
+        .select('id, quiz_status')
+        .eq('id', courseId)
+        .eq('user_id', auth.user.id)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    } else {
+      // Guest user: course must have no user_id and matching guest_session_id
+      const result = await admin
+        .from('courses')
+        .select('id, quiz_status, user_id, guest_session_id')
+        .eq('id', courseId)
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    }
 
     if (courseError) {
       console.error('Error fetching course:', courseError);
@@ -35,8 +65,11 @@ export async function GET(
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
+    // Use admin client for guest users to bypass RLS
+    const dbClient = auth ? supabase : admin;
+
     // Fetch chapters for this course
-    const { data: chapters, error: chaptersError } = await supabase
+    const { data: chapters, error: chaptersError } = await dbClient
       .from('chapters')
       .select('id, title, order_index')
       .eq('course_id', courseId)
@@ -52,7 +85,7 @@ export async function GET(
     let questions: any[] = [];
 
     if (chapterIds.length > 0) {
-      const { data: questionsData, error: questionsError } = await supabase
+      const { data: questionsData, error: questionsError } = await dbClient
         .from('questions')
         .select('*')
         .in('chapter_id', chapterIds)
@@ -66,11 +99,11 @@ export async function GET(
       questions = questionsData || [];
     }
 
-    // Fetch user progress for these questions
+    // Fetch user progress for these questions (only for authenticated users)
     const questionIds = questions.map(q => q.id);
     let progressMap: Record<string, { isCorrect: boolean; attemptedAt: string }> = {};
 
-    if (questionIds.length > 0) {
+    if (auth && questionIds.length > 0) {
       const { data: progress } = await supabase
         .from('quiz_attempts')
         .select('question_id, is_correct, created_at')

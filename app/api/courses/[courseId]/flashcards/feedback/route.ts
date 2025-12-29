@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/api-auth';
+
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
 
 type Mastery = 'new' | 'learning' | 'reviewing' | 'mastered';
 
@@ -42,9 +49,12 @@ export async function POST(
   try {
     const { courseId } = await params;
 
-    // Authenticate user
+    // Try to authenticate user (optional for guest users)
     const auth = await authenticateRequest(request);
-    if (!auth) {
+    const guestSessionId = getGuestSessionIdFromRequest(request);
+
+    // Must have either authentication or guest session
+    if (!auth && !guestSessionId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -56,10 +66,14 @@ export async function POST(
     }
 
     const supabase = await createSupabaseServerClient();
-    const userId = auth.user.id;
+    const admin = getServiceSupabase();
+    const userId = auth?.user.id || null;
 
-    // Check if flashcard exists and belongs to user's course
-    const { data: flashcard, error: flashcardError } = await supabase
+    // Use admin client for guest users to bypass RLS
+    const dbClient = auth ? supabase : admin;
+
+    // Check if flashcard exists
+    const { data: flashcard, error: flashcardError } = await dbClient
       .from('flashcards')
       .select('id, course_id')
       .eq('id', flashcardId)
@@ -69,25 +83,50 @@ export async function POST(
       return NextResponse.json({ error: 'Flashcard not found' }, { status: 404 });
     }
 
-    // Verify user owns the course
-    const { data: course, error: courseError } = await supabase
-      .from('courses')
-      .select('id')
-      .eq('id', flashcard.course_id)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Verify user/guest owns the course
+    let course;
+    let courseError;
+
+    if (auth) {
+      const result = await supabase
+        .from('courses')
+        .select('id')
+        .eq('id', flashcard.course_id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    } else {
+      const result = await admin
+        .from('courses')
+        .select('id')
+        .eq('id', flashcard.course_id)
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    }
 
     if (courseError || !course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
     // Get or create progress record
-    const { data: existingProgress } = await supabase
+    let existingProgressQuery = dbClient
       .from('flashcard_progress')
       .select('correct_count, incorrect_count, mastery')
-      .eq('user_id', userId)
-      .eq('flashcard_id', flashcardId)
-      .maybeSingle();
+      .eq('flashcard_id', flashcardId);
+
+    if (userId) {
+      existingProgressQuery = existingProgressQuery.eq('user_id', userId);
+    } else {
+      existingProgressQuery = existingProgressQuery
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId);
+    }
+
+    const { data: existingProgress } = await existingProgressQuery.maybeSingle();
 
     const currentCorrect = existingProgress?.correct_count || 0;
     const currentIncorrect = existingProgress?.incorrect_count || 0;
@@ -95,24 +134,62 @@ export async function POST(
     const newMastery = calculateMastery(currentCorrect, currentIncorrect, correct);
     const nextReview = calculateNextReview(newMastery);
 
-    // Upsert progress
-    const { error: upsertError } = await supabase
-      .from('flashcard_progress')
-      .upsert({
-        user_id: userId,
-        flashcard_id: flashcardId,
-        correct_count: correct ? currentCorrect + 1 : currentCorrect,
-        incorrect_count: correct ? currentIncorrect : currentIncorrect + 1,
-        mastery: newMastery,
-        next_review_at: nextReview.toISOString(),
-        last_reviewed_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,flashcard_id',
-      });
+    // Build upsert data
+    const progressData: any = {
+      flashcard_id: flashcardId,
+      correct_count: correct ? currentCorrect + 1 : currentCorrect,
+      incorrect_count: correct ? currentIncorrect : currentIncorrect + 1,
+      mastery: newMastery,
+      next_review_at: nextReview.toISOString(),
+      last_reviewed_at: new Date().toISOString(),
+    };
 
-    if (upsertError) {
-      console.error('Error updating progress:', upsertError);
-      return NextResponse.json({ error: 'Failed to update progress' }, { status: 500 });
+    // Set user_id or guest_session_id
+    if (userId) {
+      progressData.user_id = userId;
+    } else {
+      progressData.guest_session_id = guestSessionId;
+    }
+
+    // Upsert progress - need different conflict handling for guest vs user
+    const conflictColumn = userId ? 'user_id,flashcard_id' : 'guest_session_id,flashcard_id';
+
+    // For guests, we need to handle this differently since there might not be a unique constraint
+    // First try to find existing, then insert or update
+    if (existingProgress) {
+      // Update existing
+      let updateQuery = dbClient
+        .from('flashcard_progress')
+        .update({
+          correct_count: progressData.correct_count,
+          incorrect_count: progressData.incorrect_count,
+          mastery: progressData.mastery,
+          next_review_at: progressData.next_review_at,
+          last_reviewed_at: progressData.last_reviewed_at,
+        })
+        .eq('flashcard_id', flashcardId);
+
+      if (userId) {
+        updateQuery = updateQuery.eq('user_id', userId);
+      } else {
+        updateQuery = updateQuery.is('user_id', null).eq('guest_session_id', guestSessionId);
+      }
+
+      const { error: updateError } = await updateQuery;
+      if (updateError) {
+        console.error('Error updating progress:', updateError);
+        return NextResponse.json({ error: 'Failed to update progress' }, { status: 500 });
+      }
+    } else {
+      // Insert new
+      const { error: insertError } = await dbClient
+        .from('flashcard_progress')
+        .insert(progressData);
+
+      if (insertError) {
+        console.error('Error inserting progress:', insertError);
+        return NextResponse.json({ error: 'Failed to save progress' }, { status: 500 });
+      }
     }
 
     return NextResponse.json({

@@ -1,23 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
+
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
 
 // POST: Create or update quiz attempt
 export async function POST(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request);
-    if (!auth) {
+    const guestSessionId = getGuestSessionIdFromRequest(request);
+
+    // Must have either authentication or guest session
+    if (!auth && !guestSessionId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userId = auth.user.id;
+    const admin = getServiceSupabase();
+    const userId = auth?.user.id || null;
 
     const body = await request.json();
     const { chapterId, courseId, score, answers, completed } = body;
 
     console.log('[quiz-attempts POST] Received:', {
       userId,
+      guestSessionId: guestSessionId ? 'present' : 'absent',
       chapterId,
       courseId,
       score,
@@ -31,16 +43,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Use admin client for guest users to bypass RLS
+    const dbClient = auth ? supabase : admin;
+
     // Check if there's an existing incomplete attempt
-    const { data: existingAttempt } = await supabase
+    let existingAttemptQuery = dbClient
       .from('quiz_attempts')
       .select('*')
       .eq('chapter_id', chapterId)
-      .eq('user_id', userId)
       .is('completed_at', null)
       .order('started_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
+
+    // Filter by user_id or guest_session_id
+    if (userId) {
+      existingAttemptQuery = existingAttemptQuery.eq('user_id', userId);
+    } else {
+      existingAttemptQuery = existingAttemptQuery
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId);
+    }
+
+    const { data: existingAttempt } = await existingAttemptQuery.single();
 
     if (existingAttempt) {
       // Update existing attempt
@@ -54,7 +78,7 @@ export async function POST(request: NextRequest) {
         updateData.completed_at = new Date().toISOString();
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await dbClient
         .from('quiz_attempts')
         .update(updateData)
         .eq('id', existingAttempt.id)
@@ -71,16 +95,24 @@ export async function POST(request: NextRequest) {
     } else {
       // Create new attempt
       console.log('[quiz-attempts POST] Creating new attempt');
-      const { data, error } = await supabase
+      const insertData: any = {
+        course_id: courseId,
+        chapter_id: chapterId,
+        score: score ?? 0,
+        answers: answers || {},
+        completed_at: completed ? new Date().toISOString() : null,
+      };
+
+      // Set user_id or guest_session_id
+      if (userId) {
+        insertData.user_id = userId;
+      } else {
+        insertData.guest_session_id = guestSessionId;
+      }
+
+      const { data, error } = await dbClient
         .from('quiz_attempts')
-        .insert({
-          user_id: userId,
-          course_id: courseId,
-          chapter_id: chapterId,
-          score: score ?? 0,
-          answers: answers || {},
-          completed_at: completed ? new Date().toISOString() : null,
-        })
+        .insert(insertData)
         .select()
         .single();
 

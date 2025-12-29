@@ -78,6 +78,54 @@ export async function POST(request: NextRequest) {
         .eq('course_id', courseId);
     }
 
+    // Migrate quiz attempts from guest to user
+    const { data: guestAttempts, error: attemptsError } = await supabase
+      .from('quiz_attempts')
+      .select('id')
+      .eq('guest_session_id', guestSessionId)
+      .is('user_id', null);
+
+    if (!attemptsError && guestAttempts && guestAttempts.length > 0) {
+      const { error: updateAttemptsError } = await supabase
+        .from('quiz_attempts')
+        .update({
+          user_id: userId,
+          guest_session_id: null,
+        })
+        .eq('guest_session_id', guestSessionId)
+        .is('user_id', null);
+
+      if (updateAttemptsError) {
+        console.error('Error migrating quiz attempts:', updateAttemptsError);
+      } else {
+        console.log(`✅ Migrated ${guestAttempts.length} quiz attempt(s) to user ${userId}`);
+      }
+    }
+
+    // Migrate flashcard progress from guest to user
+    const { data: guestProgress, error: progressError } = await supabase
+      .from('flashcard_progress')
+      .select('id')
+      .eq('guest_session_id', guestSessionId)
+      .is('user_id', null);
+
+    if (!progressError && guestProgress && guestProgress.length > 0) {
+      const { error: updateProgressError } = await supabase
+        .from('flashcard_progress')
+        .update({
+          user_id: userId,
+          guest_session_id: null,
+        })
+        .eq('guest_session_id', guestSessionId)
+        .is('user_id', null);
+
+      if (updateProgressError) {
+        console.error('Error migrating flashcard progress:', updateProgressError);
+      } else {
+        console.log(`✅ Migrated ${guestProgress.length} flashcard progress record(s) to user ${userId}`);
+      }
+    }
+
     // Update monthly_upload_count for the user (count linked courses as uploads)
     const now = new Date();
     const { data: profile } = await supabase

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/api-auth';
+
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
 
 export async function GET(
   request: NextRequest,
@@ -9,21 +16,44 @@ export async function GET(
   try {
     const { courseId } = await params;
 
-    // Authenticate user
+    // Try to authenticate user (optional for guest users)
     const auth = await authenticateRequest(request);
-    if (!auth) {
+    const guestSessionId = getGuestSessionIdFromRequest(request);
+
+    // Must have either authentication or guest session
+    if (!auth && !guestSessionId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
+    const admin = getServiceSupabase();
 
-    // Check course exists and belongs to user
-    const { data: course, error: courseError } = await supabase
-      .from('courses')
-      .select('id, flashcards_status')
-      .eq('id', courseId)
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
+    // Check course exists and belongs to user/guest
+    let course;
+    let courseError;
+
+    if (auth) {
+      // Authenticated user: must own the course
+      const result = await supabase
+        .from('courses')
+        .select('id, flashcards_status')
+        .eq('id', courseId)
+        .eq('user_id', auth.user.id)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    } else {
+      // Guest user: course must have no user_id and matching guest_session_id
+      const result = await admin
+        .from('courses')
+        .select('id, flashcards_status, user_id, guest_session_id')
+        .eq('id', courseId)
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    }
 
     if (courseError) {
       console.error('Error fetching course:', courseError);
@@ -34,8 +64,11 @@ export async function GET(
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
+    // Use admin client for guest users to bypass RLS
+    const dbClient = auth ? supabase : admin;
+
     // Fetch flashcards from dedicated table
-    const { data: flashcards, error: flashcardsError } = await supabase
+    const { data: flashcards, error: flashcardsError } = await dbClient
       .from('flashcards')
       .select('id, type, front, back, chapter_id, created_at')
       .eq('course_id', courseId)
@@ -46,11 +79,11 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch flashcards' }, { status: 500 });
     }
 
-    // Fetch user progress for these flashcards
+    // Fetch user progress for these flashcards (only for authenticated users)
     const flashcardIds = flashcards?.map(f => f.id) || [];
     let progressMap: Record<string, { mastery: string; correctCount: number; incorrectCount: number }> = {};
 
-    if (flashcardIds.length > 0) {
+    if (auth && flashcardIds.length > 0) {
       const { data: progress } = await supabase
         .from('flashcard_progress')
         .select('flashcard_id, mastery, correct_count, incorrect_count')

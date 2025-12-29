@@ -61,6 +61,7 @@ export default function QuizResultsPage() {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<AIFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [isFirstCourse, setIsFirstCourse] = useState(true);
 
   const courseId = params?.courseId as string;
   const chapterId = params?.chapterId as string;
@@ -139,6 +140,21 @@ export default function QuizResultsPage() {
           percentage,
         },
       });
+
+      // Check if this is the first course for the guest user
+      const checkFirstCourse = async () => {
+        try {
+          const response = await fetch('/api/courses/guest-count');
+          if (response.ok) {
+            const data = await response.json();
+            // If guest has more than 1 course, it's not their first
+            setIsFirstCourse(data.count <= 1);
+          }
+        } catch (error) {
+          console.error('Error checking guest course count:', error);
+        }
+      };
+      checkFirstCourse();
 
       // Small delay to let the results render first
       const timer = setTimeout(() => {
@@ -326,11 +342,13 @@ export default function QuizResultsPage() {
                 </p>
               </div>
 
-              <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
-                <p className="text-sm text-orange-800">
-                  {translate('results_signup_modal_benefit')}
-                </p>
-              </div>
+              {!isFirstCourse && (
+                <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
+                  <p className="text-sm text-orange-800">
+                    {translate('results_signup_modal_benefit')}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <button

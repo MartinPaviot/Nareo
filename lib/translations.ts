@@ -731,7 +731,7 @@ export const translations: Record<Language, Translations> = {
     results_back_to_course: 'Back to course',
     results_signup_modal_title: 'Congratulations!',
     results_signup_modal_subtitle: 'You just completed your first quiz!',
-    results_signup_modal_cta: 'Sign up to unlock the full course',
+    results_signup_modal_cta: 'Sign up for free',
     results_signup_modal_benefit: 'Create a free account to unlock all chapters, flashcards and your A+ Note!',
 
     // Pedagogical Feedback Block
@@ -2148,7 +2148,7 @@ export const translations: Record<Language, Translations> = {
     results_back_to_course: 'Retour au cours',
     results_signup_modal_title: 'Félicitations !',
     results_signup_modal_subtitle: 'Tu viens de terminer ton premier quiz !',
-    results_signup_modal_cta: 'Inscris-toi pour débloquer tout le cours',
+    results_signup_modal_cta: 'Inscris-toi gratuitement',
     results_signup_modal_benefit: 'Crée un compte gratuit pour débloquer tous les chapitres, les flashcards et ta A+ Note !',
 
     // Pedagogical Feedback Block
@@ -3568,7 +3568,7 @@ export const translations: Record<Language, Translations> = {
     results_back_to_course: 'Zurück zum Kurs',
     results_signup_modal_title: 'Herzlichen Glückwunsch!',
     results_signup_modal_subtitle: 'Du hast dein erstes Quiz abgeschlossen!',
-    results_signup_modal_cta: 'Registriere dich, um den gesamten Kurs freizuschalten',
+    results_signup_modal_cta: 'Registriere dich kostenlos',
     results_signup_modal_benefit: 'Erstelle ein kostenloses Konto, um alle Kapitel, Karteikarten und deine A+ Note freizuschalten!',
 
     // Pedagogical Feedback Block

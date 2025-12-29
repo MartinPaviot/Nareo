@@ -7,6 +7,12 @@ import { generateMixedQuiz } from '@/lib/openai-vision';
 import { CourseDeduplicationTracker } from '@/lib/llm';
 import { QuizConfig, DEFAULT_QUIZ_CONFIG } from '@/types/quiz-personnalisation';
 
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
+
 // Parallel processing configuration - reduced to 1 for better progress tracking
 const MAX_CONCURRENT_CHAPTERS = 1;
 
@@ -67,9 +73,12 @@ export async function POST(
 ) {
   const { courseId } = await params;
 
-  // Authenticate user
+  // Try to authenticate user (optional for guest users)
   const auth = await authenticateRequest(request);
-  if (!auth) {
+  const guestSessionId = getGuestSessionIdFromRequest(request);
+
+  // Must have either authentication or guest session
+  if (!auth && !guestSessionId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -96,16 +105,37 @@ export async function POST(
   const supabase = await createSupabaseServerClient();
   const admin = getServiceSupabase();
 
-  console.log(`[quiz-generate] Authenticated, courseId: ${courseId}`);
+  console.log(`[quiz-generate] Auth: ${auth ? 'authenticated' : 'guest'}, courseId: ${courseId}`);
 
   try {
     // Get course
-    const { data: course, error: courseError } = await supabase
-      .from('courses')
-      .select('id, title, content_language, quiz_status, user_id')
-      .eq('id', courseId)
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
+    // For authenticated users: check user_id match
+    // For guest users: check guest_session_id match and user_id is null
+    let course;
+    let courseError;
+
+    if (auth) {
+      // Authenticated user: must own the course
+      const result = await supabase
+        .from('courses')
+        .select('id, title, content_language, quiz_status, user_id')
+        .eq('id', courseId)
+        .eq('user_id', auth.user.id)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    } else {
+      // Guest user: course must have no user_id and matching guest_session_id
+      const result = await admin
+        .from('courses')
+        .select('id, title, content_language, quiz_status, user_id, guest_session_id')
+        .eq('id', courseId)
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    }
 
     if (courseError || !course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Sparkles, ThumbsUp, ThumbsDown, Star, UserPlus, HelpCircle, Plus, X, Trash2, Pencil, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Sparkles, ThumbsUp, ThumbsDown, Star, UserPlus, HelpCircle, Plus, X, Trash2, Pencil, Maximize2, Minimize2, Lock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -96,6 +96,9 @@ interface FlashcardsViewProps {
   courseStatus?: string; // 'pending' | 'processing' | 'ready' | 'failed'
 }
 
+// Number of flashcards accessible without an account
+const GUEST_FLASHCARD_LIMIT = 5;
+
 export default function FlashcardsView({ courseId, courseTitle, courseStatus }: FlashcardsViewProps) {
   const router = useRouter();
   const { translate } = useLanguage();
@@ -112,6 +115,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
   const [studyQueue, setStudyQueue] = useState<number[]>([]);
   const [sessionPoints, setSessionPoints] = useState(0);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [showCardLimitModal, setShowCardLimitModal] = useState(false); // Modal when trying to access card 6+
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCardFront, setNewCardFront] = useState('');
   const [newCardBack, setNewCardBack] = useState('');
@@ -124,6 +128,10 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
   const [editCardBack, setEditCardBack] = useState('');
   const [editingCard, setEditingCard] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Check if current card index is beyond guest limit
+  const isCardLocked = !user && currentIndex >= GUEST_FLASHCARD_LIMIT;
+  const remainingLockedCards = !user ? Math.max(0, flashcards.length - GUEST_FLASHCARD_LIMIT) : 0;
 
   // Check if flashcards already exist
   useEffect(() => {
@@ -158,9 +166,11 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
     fetchFlashcards();
   }, [courseId]);
 
-  const handleGenerate = async (config?: FlashcardConfig) => {
-    // Check if user is logged in
-    if (!user) {
+  // Initial generation is allowed for anonymous users
+  // Regeneration requires an account
+  const handleGenerate = async (config?: FlashcardConfig, isRegeneration: boolean = false) => {
+    // For regeneration, require account
+    if (isRegeneration && !user) {
       setShowSignupModal(true);
       return;
     }
@@ -375,20 +385,37 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
   }, [flashcards, studyQueue.length]);
 
   const handleNext = useCallback(() => {
+    const nextIndex = (currentIndex + 1) % flashcards.length;
+    // Check if next card is locked for guests
+    if (!user && nextIndex >= GUEST_FLASHCARD_LIMIT) {
+      setShowCardLimitModal(true);
+      return;
+    }
     setIsFlipped(false);
     setHasAnswered(false);
-    setCurrentIndex((prev) => (prev + 1) % flashcards.length);
-  }, [flashcards.length]);
+    setCurrentIndex(nextIndex);
+  }, [currentIndex, flashcards.length, user]);
 
   const handlePrev = useCallback(() => {
+    const prevIndex = (currentIndex - 1 + flashcards.length) % flashcards.length;
+    // Check if prev card is locked for guests (wrapping around)
+    if (!user && prevIndex >= GUEST_FLASHCARD_LIMIT) {
+      setShowCardLimitModal(true);
+      return;
+    }
     setIsFlipped(false);
     setHasAnswered(false);
-    setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
-  }, [flashcards.length]);
+    setCurrentIndex(prevIndex);
+  }, [currentIndex, flashcards.length, user]);
 
   const handleFlip = useCallback(() => {
+    // Don't flip if card is locked
+    if (isCardLocked) {
+      setShowCardLimitModal(true);
+      return;
+    }
     setIsFlipped((prev) => !prev);
-  }, []);
+  }, [isCardLocked]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -752,41 +779,41 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             </span>
           )}
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => user ? setShowAddModal(true) : setShowSignupModal(true)}
             className={`p-1.5 rounded-md transition-colors ${
               isDark ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10' : 'text-green-600 hover:text-green-700 hover:bg-green-50'
             }`}
             title={translate('flashcards_add') || 'Ajouter'}
           >
-            <Plus className="w-4 h-4" />
+            {!user ? <Lock className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           </button>
           <button
-            onClick={openEditModal}
+            onClick={() => user ? openEditModal() : setShowSignupModal(true)}
             className={`p-1.5 rounded-md transition-colors ${
               isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10' : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
             }`}
             title="Modifier"
           >
-            <Pencil className="w-4 h-4" />
+            {!user ? <Lock className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
           </button>
           <button
-            onClick={() => setShowDeleteModal(true)}
+            onClick={() => user ? setShowDeleteModal(true) : setShowSignupModal(true)}
             className={`p-1.5 rounded-md transition-colors ${
               isDark ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' : 'text-red-500 hover:text-red-600 hover:bg-red-50'
             }`}
             title={translate('flashcards_delete') || 'Supprimer'}
           >
-            <Trash2 className="w-4 h-4" />
+            {!user ? <Lock className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
           </button>
           <button
-            onClick={() => setShowRegenerateModal(true)}
+            onClick={() => user ? setShowRegenerateModal(true) : setShowSignupModal(true)}
             disabled={generating}
             className={`p-1.5 rounded-md transition-colors ${
               isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/10' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
             }`}
             title={translate('flashcards_regenerate') || 'Régénérer'}
           >
-            <RotateCcw className="w-4 h-4" />
+            {!user ? <Lock className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
           </button>
           <button
             onClick={() => setIsFullscreen(true)}
@@ -1224,11 +1251,48 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             <FlashcardPersonnalisationScreen
               onGenerate={(config) => {
                 setShowRegenerateModal(false);
-                handleGenerate(config);
+                handleGenerate(config, true); // true = regeneration
               }}
               onCancel={() => setShowRegenerateModal(false)}
               isGenerating={generating}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Card Limit Modal for Anonymous Users */}
+      {showCardLimitModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+          }`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+            }`}>
+              <Lock className="w-7 h-7 text-orange-500" />
+            </div>
+            <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+              {translate('flashcards_limit_title')}
+            </h3>
+            <p className={`text-sm mb-6 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+              {translate('flashcards_limit_description', { count: String(remainingLockedCards) })}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCardLimitModal(false)}
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {translate('cancel')}
+              </button>
+              <button
+                onClick={() => router.push('/auth/signup')}
+                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+              >
+                {translate('auth_signup_button')}
+              </button>
+            </div>
           </div>
         </div>
       )}

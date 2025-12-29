@@ -384,6 +384,8 @@ export const translations: Record<Language, Translations> = {
     flashcard_type_custom: 'Custom',
     flashcards_signup_title: 'Create an account to generate flashcards',
     flashcards_signup_description: 'Sign up for free to generate AI-powered flashcards and boost your revision sessions.',
+    flashcards_limit_title: 'Unlock all flashcards',
+    flashcards_limit_description: 'Create a free account to access all {{count}} remaining flashcards and boost your revision!',
 
     // Study Sheet (formerly A+ Note)
     aplus_note_title: 'Study Sheet',
@@ -1797,6 +1799,8 @@ export const translations: Record<Language, Translations> = {
     flashcard_type_custom: 'Personnalisée',
     flashcards_signup_title: 'Crée un compte pour générer des flashcards',
     flashcards_signup_description: 'Inscris-toi gratuitement pour générer des flashcards par IA et booster tes révisions.',
+    flashcards_limit_title: 'Débloque toutes les flashcards',
+    flashcards_limit_description: 'Crée un compte gratuit pour accéder aux {{count}} flashcards restantes et booster tes révisions !',
 
     // Study Sheet (formerly A+ Note)
     aplus_note_title: 'Fiche de révision',
@@ -3210,6 +3214,8 @@ export const translations: Record<Language, Translations> = {
     flashcard_type_custom: 'Benutzerdefiniert',
     flashcards_signup_title: 'Erstelle ein Konto, um Karteikarten zu generieren',
     flashcards_signup_description: 'Melde dich kostenlos an, um KI-gestützte Karteikarten zu erstellen und deine Lerneinheiten zu verbessern.',
+    flashcards_limit_title: 'Alle Karteikarten freischalten',
+    flashcards_limit_description: 'Erstelle ein kostenloses Konto, um auf alle {{count}} verbleibenden Karteikarten zuzugreifen und dein Lernen zu verbessern!',
 
     // Study Sheet (formerly A+ Note)
     aplus_note_title: 'Lernblatt',

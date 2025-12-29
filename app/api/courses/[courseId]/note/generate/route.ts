@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/api-auth';
 import OpenAI from 'openai';
 import { PersonnalisationConfig, DEFAULT_CONFIG } from '@/types/personnalisation';
@@ -9,6 +10,12 @@ import { getGlossairePrompt } from '@/lib/prompts/multi-pass/glossaire';
 import { getVerificationPrompt } from '@/lib/prompts/multi-pass/verification';
 import { getSinglePassPrompt } from '@/lib/prompts/single-pass';
 import { getRecapsPrompt, shouldGenerateRecaps, RECAPS_HEADER } from '@/lib/prompts/recaps';
+
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
 
 // Image extraction temporarily disabled due to pdfjs-dist/Turbopack incompatibility
 type AnalyzedImage = { url: string; description: string; title?: string; type: string; };
@@ -422,9 +429,12 @@ export async function POST(
 ) {
   const { courseId } = await params;
 
-  // Authenticate user
+  // Try to authenticate user (optional for guest users)
   const auth = await authenticateRequest(request);
-  if (!auth) {
+  const guestSessionId = getGuestSessionIdFromRequest(request);
+
+  // Must have either authentication or guest session
+  if (!auth && !guestSessionId) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
@@ -432,14 +442,36 @@ export async function POST(
   }
 
   const supabase = await createSupabaseServerClient();
+  const admin = getServiceSupabase();
 
   // Get course with source text and storage path
-  const { data: course, error } = await supabase
-    .from('courses')
-    .select('id, title, source_text, content_language, storage_path, storage_bucket')
-    .eq('id', courseId)
-    .eq('user_id', auth.user.id)
-    .maybeSingle();
+  // For authenticated users: check user_id match
+  // For guest users: check guest_session_id match and user_id is null
+  let course;
+  let error;
+
+  if (auth) {
+    // Authenticated user: must own the course
+    const result = await supabase
+      .from('courses')
+      .select('id, title, source_text, content_language, storage_path, storage_bucket')
+      .eq('id', courseId)
+      .eq('user_id', auth.user.id)
+      .maybeSingle();
+    course = result.data;
+    error = result.error;
+  } else {
+    // Guest user: course must have no user_id and matching guest_session_id
+    const result = await admin
+      .from('courses')
+      .select('id, title, source_text, content_language, storage_path, storage_bucket, user_id, guest_session_id')
+      .eq('id', courseId)
+      .is('user_id', null)
+      .eq('guest_session_id', guestSessionId)
+      .maybeSingle();
+    course = result.data;
+    error = result.error;
+  }
 
   if (error) {
     console.error('Error fetching course:', error);
@@ -601,8 +633,8 @@ export async function POST(
 
       sendProgress({ type: 'progress', message: 'Saving note...', progress: 95 });
 
-      // Save note and config to course
-      const { error: updateError } = await supabase
+      // Save note and config to course (use admin client to bypass RLS for guest users)
+      const { error: updateError } = await admin
         .from('courses')
         .update({
           aplus_note: noteContent,

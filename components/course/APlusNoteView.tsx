@@ -499,6 +499,43 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
   // Show the note with structured header
   return (
     <>
+      {/* Signup Modal for anonymous users */}
+      {showSignupModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+          }`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+            }`}>
+              <UserPlus className="w-7 h-7 text-orange-500" />
+            </div>
+            <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+              {translate('signup_to_continue_title')}
+            </h3>
+            <p className={`text-sm mb-6 text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+              {translate('signup_to_continue_description')}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSignupModal(false)}
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {translate('cancel')}
+              </button>
+              <button
+                onClick={() => router.push('/auth/signup')}
+                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+              >
+                {translate('auth_signup_button')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Personnalisation Modal for regeneration */}
       {showPersonnalisation && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">

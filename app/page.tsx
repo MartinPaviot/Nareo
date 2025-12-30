@@ -95,9 +95,9 @@ function HeroPreviewCarousel({ translate }: { translate: (key: string) => string
   ];
 
   return (
-    <div className="w-full max-w-[400px]">
+    <div className="w-full max-w-[320px] sm:max-w-[400px] mx-auto">
       {/* Cards Container */}
-      <div className="relative h-[360px]">
+      <div className="relative h-[300px] sm:h-[360px] bg-gray-50 rounded-2xl">
 
         {/* Slide 0: Summary */}
         <div
@@ -882,11 +882,11 @@ export default function HomePage() {
       </header>
 
       <main className="px-4 sm:px-6 pb-12 pt-4">
-        <div className="max-w-5xl mx-auto space-y-12 overflow-hidden">
+        <div className="max-w-5xl mx-auto space-y-12">
           {/* Hero section: left content (55%) + mascot right (45%) */}
           <section className="flex flex-col lg:flex-row items-center gap-6 lg:gap-4 mb-12">
             {/* Left side - 55% width on desktop */}
-            <div className="lg:w-[55%] flex flex-col justify-center space-y-4 text-center lg:text-left order-2 lg:order-1">
+            <div className="lg:w-[55%] flex flex-col justify-center space-y-4 text-center lg:text-left order-1 lg:order-1">
               <h1 className="text-2xl sm:text-3xl lg:text-[2.5rem] font-bold text-gray-900 leading-tight lg:leading-snug">
                 <span className="relative inline-block">
                   <span className="relative z-10">{translate('home_hero_title_highlight')}</span>
@@ -900,7 +900,8 @@ export default function HomePage() {
               <p className="text-lg lg:text-xl text-gray-700">
                 {translate('home_hero_subtitle')}
               </p>
-              <div className="flex flex-col items-center lg:items-start pt-2">
+              {/* CTA Button - Hidden on mobile, shown on desktop */}
+              <div className="hidden lg:flex flex-col items-start pt-2">
                 <button
                   onClick={() => {
                     handleCtaClick('hero_primary', '#upload');
@@ -913,8 +914,18 @@ export default function HomePage() {
               </div>
             </div>
             {/* Right side - 45% width on desktop, preview carousel */}
-            <div className="lg:w-[45%] flex justify-center items-center order-1 lg:order-2">
+            <div className="w-full lg:w-[45%] flex flex-col justify-center items-center order-2 lg:order-2 gap-6">
               <HeroPreviewCarousel translate={translate} />
+              {/* CTA Button - Shown on mobile only, after carousel */}
+              <button
+                onClick={() => {
+                  handleCtaClick('hero_primary', '#upload');
+                  document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="lg:hidden inline-flex items-center justify-center h-12 px-6 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 shadow-md"
+              >
+                {translate('home_hero_cta_primary')}
+              </button>
             </div>
           </section>
 

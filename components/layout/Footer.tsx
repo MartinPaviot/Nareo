@@ -65,110 +65,94 @@ export default function Footer() {
           ? 'bg-gray-900 border-gray-700'
           : 'bg-white border-gray-200'
       }`}>
-        <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10 sm:py-12">
-          <div className="flex flex-wrap md:flex-nowrap justify-between gap-y-8 gap-x-8">
-            {/* Brand */}
-            <div className="w-full md:w-auto md:max-w-[200px]">
-              <Link href="/" className="flex items-center gap-2 mb-3">
+        <div className="max-w-5xl mx-auto px-6 sm:px-8 pt-6 sm:pt-8 pb-4">
+          {/* CTA Section */}
+          <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 mb-6 border-b ${
+            isDark ? 'border-gray-700' : 'border-gray-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className="relative -my-4">
                 <Image
                   src="/chat/mascotte.png"
                   alt="Nareo"
-                  width={32}
-                  height={32}
+                  width={48}
+                  height={48}
                   className="rounded-lg"
                 />
-                <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Nareo</span>
-              </Link>
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                Ta plateforme intelligente pour étudier mieux et plus vite.
+              </div>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Prêt à améliorer tes révisions ?
               </p>
             </div>
-
-            {/* Legal Information */}
-            <div className="w-1/2 md:w-auto">
-              <h3 className={`font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>Informations légales</h3>
-              <ul className={`space-y-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                <li>
-                  <Link href="/cgu" className="hover:text-orange-500 transition-colors">
-                    Conditions d&apos;utilisation
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/cgv" className="hover:text-orange-500 transition-colors">
-                    Conditions de vente
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/mentions-legales" className="hover:text-orange-500 transition-colors">
-                    Mentions légales
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/confidentialite" className="hover:text-orange-500 transition-colors">
-                    Politique de confidentialité
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/cookies" className="hover:text-orange-500 transition-colors">
-                    Politique des cookies
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Support */}
-            <div className="w-1/2 md:w-auto">
-              <h3 className={`font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>Support</h3>
-              <ul className={`space-y-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                <li>
-                  <button
-                    onClick={() => setShowContactModal(true)}
-                    className="hover:text-orange-500 transition-colors"
-                  >
-                    Contact
-                  </button>
-                </li>
-                <li>
-                  <Link href="/compte" className="hover:text-orange-500 transition-colors">
-                    Paramètres du compte
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Follow Us */}
-            <div className="w-1/2 md:w-auto">
-              <h3 className={`font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>Nous suivre</h3>
-              <ul className={`space-y-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                <li>
-                  <a
-                    href="https://instagram.com/nareo.music"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-orange-500 transition-colors"
-                  >
-                    Instagram
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://tiktok.com/@nareo.music"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-orange-500 transition-colors"
-                  >
-                    TikTok
-                  </a>
-                </li>
-              </ul>
+            <div className="flex gap-3">
+              <Link
+                href="/login"
+                className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Créer un compte
+              </Link>
+              <Link
+                href="/upload"
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                  isDark
+                    ? 'border-gray-600 text-gray-300 hover:bg-gray-800'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Déposer un cours
+              </Link>
             </div>
           </div>
 
-          {/* Copyright */}
-          <div className={`mt-10 pt-6 border-t text-center ${
-            isDark ? 'border-gray-700' : 'border-gray-200'
+          {/* Links row */}
+          <div className={`flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm ${
+            isDark ? 'text-gray-400' : 'text-gray-600'
           }`}>
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>© 2025 Nareo</p>
+            <Link href="/blog" className="hover:text-orange-500 transition-colors">
+              Blog
+            </Link>
+            <Link href="/cgu" className="hover:text-orange-500 transition-colors">
+              CGU
+            </Link>
+            <Link href="/cgv" className="hover:text-orange-500 transition-colors">
+              CGV
+            </Link>
+            <Link href="/mentions-legales" className="hover:text-orange-500 transition-colors">
+              Mentions légales
+            </Link>
+            <Link href="/confidentialite" className="hover:text-orange-500 transition-colors">
+              Confidentialité
+            </Link>
+            <Link href="/cookies" className="hover:text-orange-500 transition-colors">
+              Cookies
+            </Link>
+            <button
+              onClick={() => setShowContactModal(true)}
+              className="hover:text-orange-500 transition-colors"
+            >
+              Contact
+            </button>
+            <a
+              href="https://instagram.com/nareo.music"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-orange-500 transition-colors"
+            >
+              Instagram
+            </a>
+            <a
+              href="https://tiktok.com/@nareo.music"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-orange-500 transition-colors"
+            >
+              TikTok
+            </a>
+          </div>
+
+          {/* Copyright */}
+          <div className="mt-4 text-center">
+            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>© 2025 Nareo</p>
           </div>
         </div>
       </footer>

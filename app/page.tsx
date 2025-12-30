@@ -4,20 +4,41 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
+  ArrowRight,
+  BarChart2,
+  BarChart3,
+  BookOpen,
+  Brain,
+  Building2,
+  Calculator,
   Camera,
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CircleHelp,
   Crown,
   FileText,
+  FlaskConical,
+  Globe,
+  HelpCircle,
+  Highlighter,
+  Landmark,
+  Layers,
   LayoutList,
   Loader2,
+  Megaphone,
   Menu,
-  ShieldCheck,
+  RotateCcw,
+  Scale,
   Sparkles,
+  Stethoscope,
   Target,
+  TrendingDown,
+  TrendingUp,
   Upload,
+  Users,
+  Wallet,
   X,
   Zap,
 } from 'lucide-react';
@@ -27,6 +48,267 @@ import { useLanguage, type Language } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackEvent } from '@/lib/posthog';
 import { HomeTestimonials } from '@/components/home/Testimonials';
+
+// Hero Preview Carousel Component (Summary, Quiz, Flashcard) - Faithful to actual UI
+function HeroPreviewCarousel({ translate }: { translate: (key: string) => string }) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  // Auto-rotate slides every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % 3);
+      setSelectedAnswer(null);
+      setIsFlipped(false);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-flip flashcard when on slide 2
+  useEffect(() => {
+    if (activeSlide === 2) {
+      const flipTimer = setTimeout(() => {
+        setIsFlipped(true);
+      }, 1500);
+      return () => clearTimeout(flipTimer);
+    }
+  }, [activeSlide]);
+
+  const quizAnswers = [
+    { letter: 'A', text: translate('home_hero_quiz_answer_a') },
+    { letter: 'B', text: translate('home_hero_quiz_answer_b') },
+    { letter: 'C', text: translate('home_hero_quiz_answer_c'), correct: true },
+    { letter: 'D', text: translate('home_hero_quiz_answer_d') },
+  ];
+
+  const goToSlide = (index: number) => {
+    setActiveSlide(index);
+    setSelectedAnswer(null);
+    setIsFlipped(false);
+  };
+
+  const slideLabels = [
+    translate('home_hero_tab_summary'),
+    translate('home_hero_tab_quiz'),
+    translate('home_hero_tab_flashcards'),
+  ];
+
+  return (
+    <div className="w-full max-w-[400px]">
+      {/* Cards Container */}
+      <div className="relative h-[360px]">
+
+        {/* Slide 0: Summary */}
+        <div
+          className={`absolute inset-0 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 ${
+            activeSlide === 0
+              ? 'opacity-100 translate-x-0 rotate-0 z-10'
+              : activeSlide === 1
+              ? 'opacity-0 translate-x-12 rotate-2 z-0'
+              : 'opacity-0 -translate-x-12 -rotate-2 z-0'
+          }`}
+        >
+          {/* Content */}
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-orange-500" />
+              <span className="text-xs font-semibold text-gray-800">{translate('home_hero_summary_for')}</span>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 mb-3">{translate('home_hero_summary_main_title')}</h3>
+            {/* Section with orange left border */}
+            <div className="border-l-[3px] border-orange-500 pl-3 space-y-2">
+              <p className="text-sm font-semibold text-orange-600">{translate('home_hero_summary_section1')}</p>
+              <div>
+                <p className="text-xs font-semibold text-gray-800 mb-1.5">{translate('home_hero_summary_section1_subtitle')}</p>
+                <ul className="space-y-1.5 text-xs text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">•</span>
+                    <span><span className="font-medium text-gray-700">{translate('home_hero_summary_section1_point1')}</span>: {translate('home_hero_summary_section1_point1_desc')}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">•</span>
+                    <span><span className="font-medium text-gray-700">{translate('home_hero_summary_section1_point2')}</span>: {translate('home_hero_summary_section1_point2_desc')}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">•</span>
+                    <span><span className="font-medium text-gray-700">{translate('home_hero_summary_section1_point3')}</span>: {translate('home_hero_summary_section1_point3_desc')}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className="border-l-[3px] border-orange-500 pl-3 mt-3 space-y-2">
+              <p className="text-sm font-semibold text-orange-600">{translate('home_hero_summary_section2')}</p>
+              <div>
+                <p className="text-xs font-semibold text-gray-800 mb-1.5">{translate('home_hero_summary_section2_subtitle')}</p>
+                <ul className="space-y-1.5 text-xs text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">•</span>
+                    <span><span className="font-medium text-gray-700">{translate('home_hero_summary_section2_point1')}</span>: {translate('home_hero_summary_section2_point1_desc')}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">•</span>
+                    <span><span className="font-medium text-gray-700">{translate('home_hero_summary_section2_point2')}</span>: {translate('home_hero_summary_section2_point2_desc')}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Slide 1: Quiz */}
+        <div
+          className={`absolute inset-0 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 ${
+            activeSlide === 1
+              ? 'opacity-100 translate-x-0 rotate-0 z-10'
+              : activeSlide === 2
+              ? 'opacity-0 translate-x-12 rotate-2 z-0'
+              : 'opacity-0 -translate-x-12 -rotate-2 z-0'
+          }`}
+        >
+          {/* Header with mascot */}
+          <div className="bg-orange-50 px-3 py-1.5 flex items-center gap-2 border-b border-orange-100">
+            <Image src="/chat/mascotte.png" alt="Nareo" width={28} height={28} className="object-contain" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] text-gray-500 uppercase tracking-wide font-medium">{translate('home_hero_quiz_file')}</p>
+              <p className="text-xs font-bold text-gray-900">{translate('home_hero_quiz_chapter')}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between px-3 py-1 border-b border-gray-100 bg-gray-50/50">
+            <p className="text-[10px] text-gray-500">{translate('home_hero_quiz_question_of')}</p>
+            <p className="text-[10px] font-semibold text-orange-600">{translate('home_hero_quiz_points')}</p>
+          </div>
+          {/* Question */}
+          <div className="px-3 py-2 space-y-2">
+            <p className="text-xs font-semibold text-gray-900 leading-snug">{translate('home_hero_quiz_question')}</p>
+            <div className="space-y-1.5">
+              {quizAnswers.map((answer, index) => (
+                <button
+                  key={answer.letter}
+                  onClick={() => setSelectedAnswer(index)}
+                  className={`w-full flex items-start gap-2 px-2.5 py-2 rounded-lg border text-left transition-all duration-200 ${
+                    selectedAnswer === index
+                      ? answer.correct ? 'border-green-400 bg-green-50' : 'border-red-300 bg-red-50'
+                      : 'border-gray-200 hover:border-orange-200 hover:bg-orange-50/30'
+                  }`}
+                >
+                  <span className={`flex-shrink-0 text-[10px] font-bold ${selectedAnswer === index ? (answer.correct ? 'text-green-600' : 'text-red-500') : 'text-orange-500'}`}>
+                    {answer.letter}.
+                  </span>
+                  <span className="text-[10px] text-gray-700 leading-snug">{answer.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Navigation footer */}
+          <div className="absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-3 py-1.5">
+            <div className="flex items-center justify-between">
+              <button className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:border-orange-300 hover:text-orange-500 transition-colors">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <span className="text-[10px] text-gray-500">{translate('home_hero_quiz_remaining')}</span>
+              <button className="w-6 h-6 rounded-full border border-orange-300 bg-orange-50 flex items-center justify-center text-orange-500 hover:bg-orange-100 transition-colors">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex items-center justify-center gap-0.5 mt-1">
+              {[...Array(10)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    i === 0 ? 'bg-orange-500' : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Slide 2: Flashcard */}
+        <div
+          className={`absolute inset-0 transition-all duration-500 ${
+            activeSlide === 2
+              ? 'opacity-100 translate-x-0 rotate-0 z-10'
+              : activeSlide === 0
+              ? 'opacity-0 translate-x-12 rotate-2 z-0'
+              : 'opacity-0 -translate-x-12 -rotate-2 z-0'
+          }`}
+          style={{ perspective: '1000px' }}
+        >
+          <div
+            onClick={() => setIsFlipped(!isFlipped)}
+            className="w-full h-full cursor-pointer"
+            style={{
+              transformStyle: 'preserve-3d',
+              transition: 'transform 0.6s',
+              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+            }}
+          >
+            {/* Front - Question */}
+            <div
+              className="absolute inset-0 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col"
+              style={{ backfaceVisibility: 'hidden' }}
+            >
+              <div className="px-4 py-2 text-xs text-orange-600 font-medium border-b border-gray-100">1 / 20</div>
+              {/* Card content */}
+              <div className="flex-1 flex flex-col items-center justify-center px-5 text-center">
+                <p className="text-xs font-semibold text-orange-500 uppercase tracking-wider mb-3">{translate('home_hero_flashcard_category')}</p>
+                <p className="text-lg font-bold text-gray-900 mb-4">{translate('home_hero_flashcard_question')}</p>
+                <p className="text-sm text-gray-400">{translate('home_hero_flashcard_tap')}</p>
+              </div>
+              {/* Navigation */}
+              <div className="flex items-center justify-center gap-4 pb-4">
+                <button className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm text-gray-500 font-medium">1 / 20</span>
+                <button className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            {/* Back - Answer */}
+            <div
+              className="absolute inset-0 bg-orange-50 rounded-2xl shadow-2xl border border-orange-200 overflow-hidden flex flex-col"
+              style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+            >
+              <div className="px-4 py-1.5 text-xs text-orange-600 font-medium border-b border-orange-200">1 / 20</div>
+              {/* Card content */}
+              <div className="flex-1 flex flex-col items-center justify-center px-5 text-center">
+                <p className="text-xs font-semibold text-orange-500 uppercase tracking-wider mb-3">{translate('home_hero_flashcard_answer_label')}</p>
+                <p className="text-base font-bold text-gray-800 mb-2">{translate('home_hero_flashcard_formula')}</p>
+                <p className="text-xs text-gray-600 leading-relaxed mb-3">{translate('home_hero_flashcard_explanation')}</p>
+                <p className="text-xs text-orange-500 font-medium">{translate('home_hero_flashcard_rate')}</p>
+              </div>
+              {/* Rating buttons */}
+              <div className="flex items-center justify-center gap-3 pb-2">
+                <button className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-red-200 text-red-500 text-sm font-medium bg-white hover:bg-red-50">
+                  <X className="w-4 h-4" /> {translate('home_hero_flashcard_no')}
+                </button>
+                <button className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-green-200 text-green-600 text-sm font-medium bg-white hover:bg-green-50">
+                  <CheckCircle2 className="w-4 h-4" /> {translate('home_hero_flashcard_yes')}
+                </button>
+              </div>
+              <div className="flex items-center justify-center gap-4 pb-3">
+                <button className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-gray-500">
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm text-gray-500 font-medium">1 / 20</span>
+                <button className="w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-gray-500">
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const ACCEPTED_TYPES = [
   'image/jpeg',
@@ -478,31 +760,20 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-orange-50">
-      <header className="sticky top-0 z-50 bg-gradient-to-b from-orange-50 to-white/95 backdrop-blur-sm border-b border-orange-100/50 flex items-center justify-between px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-50 bg-gradient-to-b from-orange-50 to-white/95 backdrop-blur-sm border-b border-orange-100/50 flex items-center justify-between px-4 py-2 sm:px-6">
+        <div className="flex items-center gap-2">
           <Image
             src="/chat/mascotte.png"
             alt="Nareo Mascotte"
-            width={100}
-            height={100}
-            className="rounded-2xl"
+            width={40}
+            height={40}
+            className="rounded-xl"
           />
-          <div>
-            <p className="text-sm font-semibold text-gray-900">Nareo</p>
-          </div>
+          <p className="text-base font-semibold text-gray-900">Nareo</p>
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden sm:flex items-center gap-3">
-          <button
-            onClick={() => {
-              handleCtaClick('header_blog', '/blog');
-              router.push('/blog');
-            }}
-            className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            {translate('blog_nav_button') || 'Blog'}
-          </button>
+        <div className="hidden sm:flex items-center gap-2">
           {!user && (
             <>
               <button
@@ -510,7 +781,7 @@ export default function HomePage() {
                   handleCtaClick('header_signin', '/auth/signin');
                   router.push('/auth/signin');
                 }}
-                className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center justify-center h-9 px-4 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 {translate('auth_signin_button')}
               </button>
@@ -519,7 +790,7 @@ export default function HomePage() {
                   handleCtaClick('header_signup', '/auth/signup');
                   router.push('/auth/signup');
                 }}
-                className="inline-flex items-center justify-center h-10 px-4 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
+                className="inline-flex items-center justify-center h-9 px-4 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
               >
                 {translate('auth_signup_button')}
               </button>
@@ -551,23 +822,11 @@ export default function HomePage() {
                     setMobileMenuOpen(false);
                     router.push('/dashboard');
                   }}
-                  className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  className="flex items-center justify-center h-11 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                 >
                   {translate('my_courses_button')}
                 </button>
               )}
-
-              {/* Blog */}
-              <button
-                onClick={() => {
-                  handleCtaClick('header_blog', '/blog');
-                  setMobileMenuOpen(false);
-                  router.push('/blog');
-                }}
-                className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                {translate('blog_nav_button') || 'Blog'}
-              </button>
 
               {/* Language Selection */}
               <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -599,7 +858,7 @@ export default function HomePage() {
                       setMobileMenuOpen(false);
                       router.push('/auth/signin');
                     }}
-                    className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    className="flex items-center justify-center h-11 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     {translate('auth_signin_button')}
                   </button>
@@ -609,31 +868,39 @@ export default function HomePage() {
                       setMobileMenuOpen(false);
                       router.push('/auth/signup');
                     }}
-                    className="flex items-center justify-center h-12 px-4 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
+                    className="flex items-center justify-center h-11 px-4 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
                   >
                     {translate('auth_signup_button')}
                   </button>
                 </>
               ) : (
-                <SignOutButton className="flex items-center justify-center h-12 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50" />
+                <SignOutButton className="flex items-center justify-center h-11 px-4 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50" />
               )}
             </div>
           </div>
         )}
       </header>
 
-      <main className="px-4 sm:px-6 pb-12 pt-8">
-        <div className="max-w-5xl mx-auto space-y-12">
-          {/* Hero section: left content + larger right card for visual balance */}
-          <section className="flex flex-col lg:flex-row items-center gap-10 mb-12">
-            <div className="flex-1 space-y-5 text-center lg:text-left">
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-snug">
+      <main className="px-4 sm:px-6 pb-12 pt-4">
+        <div className="max-w-5xl mx-auto space-y-12 overflow-hidden">
+          {/* Hero section: left content (55%) + mascot right (45%) */}
+          <section className="flex flex-col lg:flex-row items-center gap-6 lg:gap-4 mb-12">
+            {/* Left side - 55% width on desktop */}
+            <div className="lg:w-[55%] flex flex-col justify-center space-y-4 text-center lg:text-left order-2 lg:order-1">
+              <h1 className="text-2xl sm:text-3xl lg:text-[2.5rem] font-bold text-gray-900 leading-tight lg:leading-snug">
+                <span className="relative inline-block">
+                  <span className="relative z-10">{translate('home_hero_title_highlight')}</span>
+                  <span className="absolute bottom-0 left-0 w-full h-[40%] bg-gradient-to-r from-orange-300 to-amber-300 -z-0 rounded-sm"></span>
+                </span>
                 {translate('home_hero_title')}
+                <br className="hidden lg:block" />
+                {translate('home_hero_title_line2')}
+                <span className="text-orange-500">{translate('home_hero_title_end')}</span>
               </h1>
-              <p className="text-xl text-gray-700">
+              <p className="text-lg lg:text-xl text-gray-700">
                 {translate('home_hero_subtitle')}
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-2">
+              <div className="flex flex-col items-center lg:items-start pt-2">
                 <button
                   onClick={() => {
                     handleCtaClick('hero_primary', '#upload');
@@ -643,48 +910,125 @@ export default function HomePage() {
                 >
                   {translate('home_hero_cta_primary')}
                 </button>
-                <button
-                  onClick={() => {
-                    handleCtaClick('hero_secondary', '#how-it-works');
-                    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="sm:hidden inline-flex items-center justify-center h-12 px-6 rounded-xl border border-orange-200 text-orange-700 font-semibold bg-white hover:bg-orange-50"
-                >
-                  {translate('home_hero_cta_secondary')}
-                </button>
               </div>
             </div>
-            <div className="flex-1 w-full">
-              {/* Hero right card: mascot center-left, benefits right in single row */}
-              <div className="w-full rounded-3xl border border-orange-100 shadow-xl bg-white px-4 py-6 md:px-6 md:py-8">
-                <div className="flex flex-col md:flex-row items-center md:items-center gap-4 md:gap-6">
-                  <div className="flex justify-center md:justify-start flex-shrink-0">
-                    <Image
-                      src="/chat/mascotte.png"
-                      alt="Nareo mascot"
-                      width={160}
-                      height={160}
-                      className="object-contain"
-                      priority
-                    />
+            {/* Right side - 45% width on desktop, preview carousel */}
+            <div className="lg:w-[45%] flex justify-center items-center order-1 lg:order-2">
+              <HeroPreviewCarousel translate={translate} />
+            </div>
+          </section>
+
+          {/* Why quizzes - Comparison with Hero Stat */}
+          <section className="space-y-5">
+            {/* Title + Hero Stat + Source - grouped together */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-gray-900">{translate('home_why_title')}</h2>
+              <div className="flex flex-col items-center">
+                <span className="text-4xl md:text-5xl font-bold text-orange-500">+50%</span>
+                <span className="text-base text-gray-600 mt-1">{translate('home_why_hero_stat')}</span>
+              </div>
+              {/* Source - directly under the stat */}
+              <div className="inline-flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2 mx-auto">
+                <BarChart2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <span className="text-xs text-gray-600">{translate('home_why_source_short')}</span>
+              </div>
+            </div>
+
+            {/* Comparison cards */}
+            <div className="flex flex-col md:flex-row items-stretch justify-center gap-4 md:gap-0 max-w-3xl mx-auto relative">
+
+              {/* Card PERDANTE */}
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl p-5 md:rounded-r-none">
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-5">
+                  <span className="text-2xl">😵</span>
+                  <span className="font-semibold text-gray-500">{translate('home_why_left_title')}</span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mb-5">
+                  <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
+                    <div className="h-full bg-red-400 rounded-full" style={{ width: '34%' }}></div>
                   </div>
-                  <div className="flex flex-col md:flex-col gap-2 md:gap-3 w-full">
-                    <span className="inline-flex items-center gap-2 px-4 py-2.5 md:px-4 md:py-2.5 rounded-full bg-white border border-orange-100 text-sm md:text-base font-semibold text-orange-700 shadow-sm whitespace-nowrap">
-                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                      {translate('home_hero_tag1')}
-                    </span>
-                    <span className="inline-flex items-center gap-2 px-4 py-2.5 md:px-4 md:py-2.5 rounded-full bg-white border border-orange-100 text-sm md:text-base font-semibold text-orange-700 shadow-sm whitespace-nowrap">
-                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                      {translate('home_hero_tag2')}
-                    </span>
-                    <span className="inline-flex items-center gap-2 px-4 py-2.5 md:px-4 md:py-2.5 rounded-full bg-white border border-orange-100 text-sm md:text-base font-semibold text-orange-700 shadow-sm whitespace-nowrap">
-                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                      {translate('home_hero_tag3')}
-                    </span>
+                  <span className="text-sm text-gray-500">{translate('home_why_left_retention')}</span>
+                </div>
+
+                {/* Liste */}
+                <ul className="space-y-3 mb-5">
+                  <li className="flex items-center gap-3 text-gray-600">
+                    <BookOpen className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <span className="text-sm">{translate('home_why_left_item1')}</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-gray-600">
+                    <Highlighter className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <span className="text-sm">{translate('home_why_left_item2')}</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-gray-600">
+                    <RotateCcw className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <span className="text-sm">{translate('home_why_left_item3')}</span>
+                  </li>
+                </ul>
+
+                {/* Résultat */}
+                <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+                  <TrendingDown className="w-5 h-5 text-red-500" />
+                  <span className="text-red-500 font-medium text-sm">{translate('home_why_left_result')}</span>
+                </div>
+              </div>
+
+              {/* Badge VS - Mobile only */}
+              <div className="flex md:hidden items-center justify-center -my-2">
+                <div className="w-10 h-10 bg-white border-2 border-gray-200 rounded-full flex items-center justify-center shadow-md">
+                  <span className="text-xs font-bold text-gray-400">VS</span>
+                </div>
+              </div>
+
+              {/* Card GAGNANTE */}
+              <div className="flex-1 bg-orange-50 border border-orange-300 rounded-2xl p-5 md:rounded-l-none md:border-l-0 relative">
+
+                {/* Badge "Prouvé" */}
+                <div className="absolute -top-3 right-4 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  {translate('home_why_badge')}
+                </div>
+
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-5 mt-1">
+                  <span className="text-2xl">🧠</span>
+                  <span className="font-semibold text-gray-900">{translate('home_why_right_title')}</span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mb-5">
+                  <div className="h-3 bg-orange-100 rounded-full overflow-hidden mb-2">
+                    <div className="h-full bg-orange-500 rounded-full" style={{ width: '84%' }}></div>
                   </div>
+                  <span className="text-sm text-gray-700 font-medium">{translate('home_why_right_retention')}</span>
+                </div>
+
+                {/* Liste */}
+                <ul className="space-y-3 mb-5">
+                  <li className="flex items-center gap-3 text-gray-700">
+                    <FileText className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                    <span className="text-sm" dangerouslySetInnerHTML={{ __html: translate('home_why_right_item1') }} />
+                  </li>
+                  <li className="flex items-center gap-3 text-gray-700">
+                    <HelpCircle className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                    <span className="text-sm" dangerouslySetInnerHTML={{ __html: translate('home_why_right_item2') }} />
+                  </li>
+                  <li className="flex items-center gap-3 text-gray-700">
+                    <Layers className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                    <span className="text-sm" dangerouslySetInnerHTML={{ __html: translate('home_why_right_item3') }} />
+                  </li>
+                </ul>
+
+                {/* Résultat */}
+                <div className="flex items-center gap-2 pt-4 border-t border-orange-200">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  <span className="text-green-600 font-medium text-sm">{translate('home_why_right_result')}</span>
                 </div>
               </div>
             </div>
+
           </section>
 
           {/* How it works */}
@@ -695,31 +1039,99 @@ export default function HomePage() {
               </h2>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-orange-100 bg-white shadow-sm p-5 text-left space-y-2">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-orange-700 font-bold">1</div>
-                <p className="text-lg font-semibold text-gray-900">{translate('home_hiw_step1_title')}</p>
-                <p className="text-sm text-gray-600">{translate('home_hiw_step1_desc')}</p>
+              <div className="rounded-2xl border border-orange-100 bg-white shadow-sm p-5 text-center space-y-2">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-orange-700 font-bold mx-auto">1</div>
+                <p className="text-base font-semibold text-gray-900 line-clamp-1">{translate('home_hiw_step1_title')}</p>
+                <p className="text-sm text-gray-600 line-clamp-2">{translate('home_hiw_step1_desc')}</p>
               </div>
-              <div className="rounded-2xl border border-orange-100 bg-white shadow-sm p-5 text-left space-y-2">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-orange-700 font-bold">2</div>
-                <p className="text-lg font-semibold text-gray-900">{translate('home_hiw_step2_title')}</p>
-                <p className="text-sm text-gray-600">{translate('home_hiw_step2_desc')}</p>
+              <div className="rounded-2xl border border-orange-100 bg-white shadow-sm p-5 text-center space-y-2">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-orange-700 font-bold mx-auto">2</div>
+                <p className="text-base font-semibold text-gray-900 line-clamp-1">{translate('home_hiw_step2_title')}</p>
+                <p className="text-sm text-gray-600 line-clamp-2">{translate('home_hiw_step2_desc')}</p>
               </div>
-              <div className="rounded-2xl border border-orange-100 bg-white shadow-sm p-5 text-left space-y-2">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-orange-700 font-bold">3</div>
-                <p className="text-lg font-semibold text-gray-900">{translate('home_hiw_step3_title')}</p>
-                <p className="text-sm text-gray-600">{translate('home_hiw_step3_desc')}</p>
+              <div className="rounded-2xl border border-orange-100 bg-white shadow-sm p-5 text-center space-y-2">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-orange-700 font-bold mx-auto">3</div>
+                <p className="text-base font-semibold text-gray-900 line-clamp-1">{translate('home_hiw_step3_title')}</p>
+                <p className="text-sm text-gray-600 line-clamp-2">{translate('home_hiw_step3_desc')}</p>
               </div>
             </div>
+          </section>
+
+          {/* Subjects coverage - Marquee */}
+          <section className="space-y-4">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900">{translate('home_subjects_title')}</h2>
+            </div>
+
+            {/* Marquee container */}
+            <div className="overflow-hidden w-full">
+              <div
+                className="flex gap-3 sm:gap-4 animate-marquee hover:[animation-play-state:paused]"
+                style={{ width: 'max-content' }}
+              >
+                {/* First set of pills */}
+                {[
+                  { icon: TrendingUp, label: translate('marquee_economy') },
+                  { icon: Megaphone, label: translate('marquee_marketing') },
+                  { icon: Scale, label: translate('marquee_law') },
+                  { icon: Brain, label: translate('marquee_psychology') },
+                  { icon: Wallet, label: translate('marquee_finance') },
+                  { icon: Landmark, label: translate('marquee_history') },
+                  { icon: Globe, label: translate('marquee_languages') },
+                  { icon: BarChart3, label: translate('marquee_management') },
+                  { icon: Building2, label: translate('marquee_polisci') },
+                  { icon: Users, label: translate('marquee_sociology') },
+                  { icon: BookOpen, label: translate('marquee_literature') },
+                  { icon: FlaskConical, label: translate('marquee_socialsciences') },
+                  { icon: Stethoscope, label: translate('marquee_medicine') },
+                  { icon: Calculator, label: translate('marquee_accounting') },
+                ].map((subject, index) => (
+                  <div
+                    key={`first-${index}`}
+                    className="flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-white border border-gray-200 rounded-full shadow-sm flex-shrink-0"
+                  >
+                    <subject.icon className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-orange-500" />
+                    <span className="text-sm font-medium text-gray-700">{subject.label}</span>
+                  </div>
+                ))}
+                {/* Duplicated set for seamless loop */}
+                {[
+                  { icon: TrendingUp, label: translate('marquee_economy') },
+                  { icon: Megaphone, label: translate('marquee_marketing') },
+                  { icon: Scale, label: translate('marquee_law') },
+                  { icon: Brain, label: translate('marquee_psychology') },
+                  { icon: Wallet, label: translate('marquee_finance') },
+                  { icon: Landmark, label: translate('marquee_history') },
+                  { icon: Globe, label: translate('marquee_languages') },
+                  { icon: BarChart3, label: translate('marquee_management') },
+                  { icon: Building2, label: translate('marquee_polisci') },
+                  { icon: Users, label: translate('marquee_sociology') },
+                  { icon: BookOpen, label: translate('marquee_literature') },
+                  { icon: FlaskConical, label: translate('marquee_socialsciences') },
+                  { icon: Stethoscope, label: translate('marquee_medicine') },
+                  { icon: Calculator, label: translate('marquee_accounting') },
+                ].map((subject, index) => (
+                  <div
+                    key={`second-${index}`}
+                    className="flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-white border border-gray-200 rounded-full shadow-sm flex-shrink-0"
+                  >
+                    <subject.icon className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-orange-500" />
+                    <span className="text-sm font-medium text-gray-700">{subject.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 text-center">{translate('home_subjects_subtitle')}</p>
           </section>
 
           {/* Upload area */}
           <section id="upload" className="grid lg:grid-cols-1 gap-6 items-start">
             <div className="bg-white/80 backdrop-blur rounded-3xl border border-orange-100 shadow-lg p-4 sm:p-6">
               {/* Header - Title and subtitle with formats */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-lg font-bold text-gray-900">
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <h2 className="text-base font-bold text-gray-900">
                     {translate('home_upload_title')}{' '}
                     <span className="relative inline-block">
                       <span className="relative z-10">{translate('home_upload_title_highlight')}</span>
@@ -728,7 +1140,7 @@ export default function HomePage() {
                   </h2>
                   {renderStateBadge()}
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs text-gray-600">
                   {translate('home_upload_helper')}
                 </p>
               </div>
@@ -755,10 +1167,10 @@ export default function HomePage() {
                   className="hidden"
                   onChange={(e) => handleFiles(e.target.files, 'file_picker')}
                 />
-                <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
+                <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-3">
                   {/* Icon */}
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
-                    <Upload className="w-8 h-8" />
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
+                    <Upload className="w-6 h-6" />
                   </div>
 
                   {/* Dropzone hint */}
@@ -767,7 +1179,7 @@ export default function HomePage() {
                   </p>
 
                   {/* Action buttons */}
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-sm">
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center w-full max-w-sm">
                     {/* Main button - always visible */}
                     <button
                       type="button"
@@ -776,7 +1188,7 @@ export default function HomePage() {
                         handleCtaClick('upload_choose_file');
                         fileInputRef.current?.click();
                       }}
-                      className="px-6 py-3 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+                      className="px-5 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
                     >
                       {translate('home_upload_choose_file')}
                     </button>
@@ -901,184 +1313,12 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Why quizzes */}
-          <section className="space-y-4">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">{translate('home_why_title')}</h2>
-              <p className="text-sm text-gray-600">{translate('home_why_intro')}</p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-2xl border border-orange-100 bg-white shadow-sm p-5 space-y-2">
-                  <p className="text-lg font-semibold text-gray-900">{translate(`home_why_point${i}_title` as const)}</p>
-                  <p className="text-sm text-gray-600">{translate(`home_why_point${i}_desc` as const)}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Preview - 2 Cards Carousel */}
-          <section className="space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">{translate('home_preview_title')}</h2>
-              <p className="text-sm text-gray-600">{translate('home_preview_subtitle')}</p>
-            </div>
-
-            {/* 2 Cards Grid with Navigation */}
-            <div className="relative">
-              {/* Navigation Arrows - Desktop */}
-              <div className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 z-10">
-                <button
-                  onClick={() => handleCarouselNav('prev', previewIndex === 0 ? previewSlides.length - 1 : previewIndex - 1)}
-                  className="w-10 h-10 rounded-full border border-gray-200 bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-orange-300 transition-colors"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-10">
-                <button
-                  onClick={() => handleCarouselNav('next', previewIndex === previewSlides.length - 1 ? 0 : previewIndex + 1)}
-                  className="w-10 h-10 rounded-full border border-gray-200 bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-orange-300 transition-colors"
-                  aria-label="Next"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Cards Grid - 1 on mobile, 2 on desktop */}
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* First Card (visible on mobile and desktop) */}
-                {(() => {
-                  const firstSlide = previewSlides[previewIndex];
-                  const FirstIcon = firstSlide.icon;
-                  return (
-                    <div className="rounded-3xl border border-orange-100 bg-white shadow-lg p-5 space-y-3 flex flex-col">
-                      <div className="flex items-center gap-3">
-                        <FirstIcon className={`${firstSlide.iconSize} text-orange-500`} />
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">
-                            {translate(firstSlide.titleKey)}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            {translate(firstSlide.descKey)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="relative rounded-xl overflow-hidden bg-gray-50/50 border border-orange-100 shadow-sm flex-1">
-                        <div className="flex items-center justify-center p-3">
-                          <Image
-                            src={firstSlide.image}
-                            alt={firstSlide.alt}
-                            width={800}
-                            height={600}
-                            quality={100}
-                            priority
-                            unoptimized
-                            className="max-w-full h-auto object-contain rounded-lg"
-                            style={{ maxHeight: '350px' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Second Card (hidden on mobile, visible on desktop) */}
-                {(() => {
-                  const secondIndex = (previewIndex + 1) % previewSlides.length;
-                  const secondSlide = previewSlides[secondIndex];
-                  const SecondIcon = secondSlide.icon;
-                  return (
-                    <div className="hidden md:flex rounded-3xl border border-orange-100 bg-white shadow-lg p-5 space-y-3 flex-col">
-                      <div className="flex items-center gap-3">
-                        <SecondIcon className={`${secondSlide.iconSize} text-orange-500`} />
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">
-                            {translate(secondSlide.titleKey)}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            {translate(secondSlide.descKey)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="relative rounded-xl overflow-hidden bg-gray-50/50 border border-orange-100 shadow-sm flex-1">
-                        <div className="flex items-center justify-center p-3">
-                          <Image
-                            src={secondSlide.image}
-                            alt={secondSlide.alt}
-                            width={800}
-                            height={600}
-                            quality={100}
-                            unoptimized
-                            className="max-w-full h-auto object-contain rounded-lg"
-                            style={{ maxHeight: '350px' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Navigation Arrows - Mobile (below cards) */}
-              <div className="flex md:hidden items-center justify-center gap-4 mt-4">
-                <button
-                  onClick={() => handleCarouselNav('prev', previewIndex === 0 ? previewSlides.length - 1 : previewIndex - 1)}
-                  className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-orange-300 transition-colors"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button
-                  onClick={() => handleCarouselNav('next', previewIndex === previewSlides.length - 1 ? 0 : previewIndex + 1)}
-                  className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-md flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-orange-300 transition-colors"
-                  aria-label="Next"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Indicator Dots */}
-              <div className="flex items-center justify-center gap-2 mt-4">
-                {previewSlides.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleCarouselNav('dot', index)}
-                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                      index === previewIndex
-                        ? 'bg-orange-500'
-                        : 'bg-gray-300 hover:bg-gray-400'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Subjects coverage */}
-          <section className="space-y-4">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">{translate('home_subjects_title')}</h2>
-              <p className="text-sm text-gray-600">{translate('home_subjects_subtitle')}</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="inline-flex items-center gap-3 rounded-2xl border border-orange-100 bg-white shadow-sm px-4 py-3 text-sm text-gray-800">
-                  <CheckCircle2 className="w-4 h-4 text-orange-600" />
-                  <span>{translate(`home_subjects_item${i}` as const)}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* Testimonials */}
           <HomeTestimonials />
 
           {/* Pricing Section */}
-          <section id="pricing" className="space-y-6">
-            <div className="text-center space-y-2">
+          <section id="pricing" className="space-y-4">
+            <div className="text-center space-y-1">
               <h2 className="text-2xl font-bold text-gray-900">{translate('signup_plan_title')}</h2>
               <p className="text-sm text-gray-600">{translate('signup_plan_subtitle')}</p>
             </div>
@@ -1088,7 +1328,7 @@ export default function HomePage() {
               <div className="inline-flex rounded-xl bg-gray-100 p-1">
                 <button
                   onClick={() => setPricingBilling('monthly')}
-                  className={`py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                  className={`py-1.5 px-3 rounded-lg text-sm font-medium transition-all ${
                     pricingBilling === 'monthly'
                       ? 'bg-white text-gray-900 shadow'
                       : 'text-gray-500 hover:text-gray-700'
@@ -1098,7 +1338,7 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={() => setPricingBilling('annual')}
-                  className={`py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  className={`py-1.5 px-3 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
                     pricingBilling === 'annual'
                       ? 'bg-white text-gray-900 shadow'
                       : 'text-gray-500 hover:text-gray-700'
@@ -1112,36 +1352,40 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
               {/* Free Plan */}
-              <div className="rounded-2xl border-2 border-gray-200 bg-white p-6 shadow-lg hover:border-gray-300 transition-all flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                    <Zap className="w-6 h-6 text-gray-600" />
+              <div className="rounded-2xl border-2 border-gray-200 bg-white p-5 shadow-lg hover:border-gray-300 transition-all flex flex-col">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-gray-600" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">{translate('signup_plan_free_title')}</h3>
-                    <p className="text-sm text-gray-500">{translate('signup_plan_free_desc')}</p>
+                    <h3 className="text-lg font-bold text-gray-900">{translate('signup_plan_free_title')}</h3>
+                    <p className="text-xs text-gray-500">{translate('signup_plan_free_desc')}</p>
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <span className="text-4xl font-bold text-gray-900">0€</span>
-                  <span className="ml-1 text-gray-500">{translate('paywall_price_per_month')}</span>
+                <div className="mb-4">
+                  <span className="text-3xl font-bold text-gray-900">0€</span>
+                  <span className="ml-1 text-sm text-gray-500">{translate('paywall_price_per_month')}</span>
                 </div>
 
-                <ul className="space-y-3 mb-6 flex-grow">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                <ul className="space-y-2 mb-4 flex-grow">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-600">{translate('signup_plan_free_feature_1')}</span>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-600">{translate('signup_plan_free_feature_2')}</span>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-600">{translate('signup_plan_free_feature_3')}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-600">{translate('signup_plan_free_feature_4')}</span>
                   </li>
                 </ul>
 
@@ -1155,63 +1399,63 @@ export default function HomePage() {
                       router.push('/auth/signup');
                     }
                   }}
-                  className="w-full py-3 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all mt-auto"
+                  className="w-full py-2.5 px-4 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-all mt-auto"
                 >
                   {user ? translate('my_courses_button') : translate('signup_plan_free_cta')}
                 </button>
               </div>
 
               {/* Premium Plan */}
-              <div className="relative rounded-2xl border-2 border-orange-500 bg-white p-6 shadow-xl flex flex-col">
+              <div className="relative rounded-2xl border-2 border-orange-500 bg-white p-5 shadow-xl flex flex-col">
                 {/* Recommended Badge */}
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-500 text-white text-sm font-bold rounded-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
                   {translate('signup_plan_premium_badge')}
                 </div>
 
-                <div className="flex items-center gap-3 mb-4 mt-2">
-                  <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-                    <Crown className="w-6 h-6 text-orange-500" />
+                <div className="flex items-center gap-2.5 mb-3 mt-1">
+                  <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                    <Crown className="w-5 h-5 text-orange-500" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">{translate('signup_plan_premium_title')}</h3>
-                    <p className="text-sm text-gray-500">{translate('signup_plan_premium_desc')}</p>
+                    <h3 className="text-lg font-bold text-gray-900">{translate('signup_plan_premium_title')}</h3>
+                    <p className="text-xs text-gray-500">{translate('signup_plan_premium_desc')}</p>
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <span className="text-4xl font-bold text-orange-600">
+                <div className="mb-4">
+                  <span className="text-3xl font-bold text-orange-600">
                     {pricingBilling === 'annual'
                       ? (currentLanguage === 'en' ? '€6.99' : '6,99 €')
                       : (currentLanguage === 'en' ? '€9.99' : '9,99 €')
                     }
                   </span>
-                  <span className="ml-1 text-gray-500">{translate('paywall_price_per_month')}</span>
+                  <span className="ml-1 text-sm text-gray-500">{translate('paywall_price_per_month')}</span>
                   {pricingBilling === 'annual' ? (
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {translate('paywall_billed_annually')} {currentLanguage === 'en' ? '€83.88' : '83,88 €'}
                     </p>
                   ) : (
-                    <p className="text-sm text-green-600 mt-1">
+                    <p className="text-xs text-green-600 mt-0.5">
                       {translate('pricing_cancel_anytime')}
                     </p>
                   )}
                 </div>
 
-                <ul className="space-y-3 mb-6 flex-grow">
-                  <li className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                <ul className="space-y-2 mb-4 flex-grow">
+                  <li className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-700">{translate('signup_plan_premium_feature_1')}</span>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <li className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-700">{translate('signup_plan_premium_feature_2')}</span>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <li className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-700">{translate('signup_plan_premium_feature_3')}</span>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <li className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
                     <span className="text-sm text-gray-700">{translate('signup_plan_premium_feature_4')}</span>
                   </li>
                 </ul>
@@ -1226,9 +1470,9 @@ export default function HomePage() {
                       router.push('/auth/signup');
                     }
                   }}
-                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 mt-auto"
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 mt-auto"
                 >
-                  <Crown className="w-5 h-5" />
+                  <Crown className="w-4 h-4" />
                   {translate('signup_plan_premium_cta')}
                 </button>
               </div>
@@ -1236,19 +1480,46 @@ export default function HomePage() {
           </section>
 
           {/* Final CTA */}
-          <section className="rounded-3xl bg-orange-500 text-white shadow-xl p-8 text-center space-y-3">
-            <h2 className="text-2xl font-bold">{translate('home_final_title')}</h2>
-            <p className="text-sm opacity-90">{translate('home_final_subtitle')}</p>
-            <div className="flex justify-center">
+          <section className="relative overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl p-10 md:p-14 text-center">
+            {/* Cercles décoratifs en arrière-plan */}
+            <div className="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/10 rounded-full translate-x-1/3 translate-y-1/3" />
+            <div className="absolute top-1/2 right-10 w-20 h-20 bg-white/10 rounded-full" />
+
+            {/* Contenu */}
+            <div className="relative z-10">
+              {/* Titre */}
+              <h2 className="text-2xl md:text-4xl font-bold text-white mb-8">
+                {translate('home_final_title')}
+              </h2>
+
+              {/* Bouton CTA */}
               <button
                 onClick={() => {
                   handleCtaClick('final_cta', '#upload');
                   document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="inline-flex items-center justify-center h-12 px-6 rounded-xl bg-white text-orange-600 font-semibold hover:bg-orange-50 shadow-md"
+                className="group bg-white text-orange-500 font-semibold px-8 py-4 rounded-full text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 inline-flex items-center gap-3"
               >
-                {translate('home_final_cta')}
+                <span>{translate('home_final_cta')}</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
+
+              {/* Réassurance */}
+              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 mt-8 text-white/90 text-sm">
+                <span className="flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  {translate('home_final_reassurance_1')}
+                </span>
+                <span className="flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  {translate('home_final_reassurance_2')}
+                </span>
+                <span className="flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  {translate('home_final_reassurance_3')}
+                </span>
+              </div>
             </div>
           </section>
         </div>

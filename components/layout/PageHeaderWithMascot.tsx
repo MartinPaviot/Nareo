@@ -46,7 +46,7 @@ export default function PageHeaderWithMascot({
         ? 'bg-neutral-900/95 border-neutral-800'
         : 'bg-white/95 border-gray-200'
     }`}>
-      <div className={`${maxWidthClass} mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4`}>
+      <div className={`${maxWidthClass} mx-auto px-4 sm:px-6 py-2 flex items-center justify-between gap-4`}>
         {/* Left side: Mascot + Title + Course Drawer Button */}
         <div className="flex items-center gap-3 min-w-0">
           <Image

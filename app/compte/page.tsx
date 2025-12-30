@@ -385,7 +385,7 @@ export default function ComptePage() {
       <div className={`border-b sticky top-0 z-10 backdrop-blur-xl ${
         isDark ? 'bg-neutral-950/80 border-neutral-800' : 'bg-white/80 border-gray-200'
       }`}>
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-between">
           <button
             onClick={() => router.back()}
             className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${

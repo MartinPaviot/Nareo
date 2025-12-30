@@ -43,7 +43,7 @@ export default function ArticleHeader({
     <>
       {/* Navigation Header */}
       <header
-        className={`sticky top-0 z-50 backdrop-blur-sm border-b flex items-center justify-between px-4 py-4 sm:px-6 ${
+        className={`sticky top-0 z-50 backdrop-blur-sm border-b flex items-center justify-between px-4 py-2 sm:px-6 ${
           isDark
             ? 'bg-neutral-900/95 border-neutral-800'
             : 'bg-gradient-to-b from-orange-50 to-white/95 border-orange-100/50'

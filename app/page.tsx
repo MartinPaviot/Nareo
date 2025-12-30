@@ -901,7 +901,7 @@ export default function HomePage() {
                 {translate('home_hero_subtitle')}
               </p>
               {/* CTA Button - Hidden on mobile, shown on desktop */}
-              <div className="hidden lg:flex flex-col items-start pt-2">
+              <div className="hidden lg:flex flex-col items-start pt-2 gap-2">
                 <button
                   onClick={() => {
                     handleCtaClick('hero_primary', '#upload');
@@ -911,21 +911,25 @@ export default function HomePage() {
                 >
                   {translate('home_hero_cta_primary')}
                 </button>
+                <p className="text-sm text-gray-500">{translate('home_hero_cta_subtext')}</p>
               </div>
             </div>
             {/* Right side - 45% width on desktop, preview carousel */}
             <div className="w-full lg:w-[45%] flex flex-col justify-center items-center order-2 lg:order-2 gap-6">
               <HeroPreviewCarousel translate={translate} />
               {/* CTA Button - Shown on mobile only, after carousel */}
-              <button
-                onClick={() => {
-                  handleCtaClick('hero_primary', '#upload');
-                  document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="lg:hidden inline-flex items-center justify-center h-12 px-6 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 shadow-md"
-              >
-                {translate('home_hero_cta_primary')}
-              </button>
+              <div className="lg:hidden flex flex-col items-center gap-2">
+                <button
+                  onClick={() => {
+                    handleCtaClick('hero_primary', '#upload');
+                    document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="inline-flex items-center justify-center h-12 px-6 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 shadow-md"
+                >
+                  {translate('home_hero_cta_primary')}
+                </button>
+                <p className="text-sm text-gray-500 text-center">{translate('home_hero_cta_subtext')}</p>
+              </div>
             </div>
           </section>
 
@@ -952,16 +956,15 @@ export default function HomePage() {
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl p-5 md:rounded-r-none">
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-5">
-                  <span className="text-2xl">😵</span>
+                  <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <BookOpen className="w-4 h-4 text-gray-400" />
+                  </div>
                   <span className="font-semibold text-gray-500">{translate('home_why_left_title')}</span>
                 </div>
 
-                {/* Progress bar */}
+                {/* Efficacy text */}
                 <div className="mb-5">
-                  <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
-                    <div className="h-full bg-red-400 rounded-full" style={{ width: '34%' }}></div>
-                  </div>
-                  <span className="text-sm text-gray-500">{translate('home_why_left_retention')}</span>
+                  <span className="text-sm text-gray-500">{translate('home_why_left_efficacy')}</span>
                 </div>
 
                 {/* Liste */}
@@ -1004,16 +1007,15 @@ export default function HomePage() {
 
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-5 mt-1">
-                  <span className="text-2xl">🧠</span>
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-orange-500/30">
+                    <Zap className="w-4 h-4 text-white fill-white" />
+                  </div>
                   <span className="font-semibold text-gray-900">{translate('home_why_right_title')}</span>
                 </div>
 
-                {/* Progress bar */}
+                {/* Efficacy text */}
                 <div className="mb-5">
-                  <div className="h-3 bg-orange-100 rounded-full overflow-hidden mb-2">
-                    <div className="h-full bg-orange-500 rounded-full" style={{ width: '84%' }}></div>
-                  </div>
-                  <span className="text-sm text-gray-700 font-medium">{translate('home_why_right_retention')}</span>
+                  <span className="text-sm text-orange-600 font-semibold">{translate('home_why_right_efficacy')}</span>
                 </div>
 
                 {/* Liste */}

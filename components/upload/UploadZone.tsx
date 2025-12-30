@@ -258,12 +258,18 @@ export default function UploadZone() {
         : 'bg-white border border-orange-100'
     }`}>
       {/* Header - Title and subtitle with formats */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className={`text-lg font-bold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>{translate('home_upload_title')}</h2>
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className={`text-base font-bold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+            {translate('home_upload_title')}{' '}
+            <span className="relative inline-block">
+              <span className="relative z-10">{translate('home_upload_title_highlight')}</span>
+              <span className="absolute bottom-0 left-0 w-full h-[40%] bg-gradient-to-r from-orange-300 to-amber-300 -z-0 rounded-sm"></span>
+            </span>
+          </h2>
           {renderStateBadge()}
         </div>
-        <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+        <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
           {translate('home_upload_helper')}
         </p>
       </div>
@@ -294,10 +300,10 @@ export default function UploadZone() {
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
-        <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
+        <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-3">
           {/* Icon */}
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
-            <Upload className="w-8 h-8" />
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
+            <Upload className="w-6 h-6" />
           </div>
 
           {/* Dropzone hint */}
@@ -306,7 +312,7 @@ export default function UploadZone() {
           </p>
 
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center w-full max-w-sm">
+          <div className="flex flex-col sm:flex-row gap-2 justify-center w-full max-w-sm">
             {/* Main button - always visible */}
             <button
               type="button"
@@ -314,7 +320,7 @@ export default function UploadZone() {
                 e.preventDefault();
                 fileInputRef.current?.click();
               }}
-              className="px-6 py-3 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+              className="px-5 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
             >
               {translate('home_upload_choose_file')}
             </button>

@@ -23,7 +23,7 @@ export default function FolderSection({ folder }: FolderSectionProps) {
   const { isDark } = useTheme();
   const { translate } = useLanguage();
   const { toggleFolderCollapse, deleteFolder } = useFoldersManagement();
-  const [isCollapsed, setIsCollapsed] = useState(folder.is_collapsed);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
 
   // Droppable for accepting dragged courses

@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { Upload } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -10,12 +9,7 @@ interface UploadCTAProps {
 
 /**
  * Carte CTA upload - zone d'action primaire en haut de page
- *
- * Design v4:
- * - Mascotte agrandie: w-32 h-32 sm:w-40 sm:h-40
- * - Espacement optimisé: gap-4 sm:gap-6
- * - Bouton orange en CTA
- * - Rounded-2xl pour cohérence
+ * Design aligné sur la landing page (dropzone style)
  */
 export default function UploadCTA({ onClick }: UploadCTAProps) {
   const { translate } = useLanguage();
@@ -24,36 +18,40 @@ export default function UploadCTA({ onClick }: UploadCTAProps) {
     <button
       onClick={onClick}
       aria-label={translate('upload_card_aria_label')}
-      className="w-full bg-white rounded-2xl border-2 border-gray-200 hover:border-orange-400 p-2 sm:p-3 transition-all duration-200 hover:shadow-xl shadow-sm group text-left"
+      className="w-full bg-white/80 backdrop-blur rounded-3xl border border-orange-100 shadow-lg p-4 sm:p-6 text-left"
     >
-      <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-        {/* Contenu textuel + CTA */}
-        <div className="flex-1 space-y-1">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-            {translate('upload_card_title')}
-          </h2>
-          <p className="text-sm text-gray-600">
-            {translate('upload_card_subtitle')}
-          </p>
+      {/* Header */}
+      <div className="mb-4">
+        <h2 className="text-base font-bold text-gray-900">
+          <span className="relative inline-block isolate">
+            <span className="relative z-10">{translate('upload_card_title')}</span>
+            <span className="absolute bottom-0 left-0 w-full h-[40%] bg-gradient-to-r from-orange-300 to-amber-300 z-[-1] rounded-sm"></span>
+          </span>
+        </h2>
+        <p className="text-xs text-gray-600">
+          {translate('upload_card_subtitle')}
+        </p>
+      </div>
 
-          {/* Indicateur visuel d'action - style bouton orange */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600 transition-colors shadow-sm">
-            <Upload className="w-4 h-4" />
-            <span className="text-sm">{translate('upload_card_cta')}</span>
+      {/* Dropzone style */}
+      <div className="border-2 border-dashed border-gray-200 bg-gray-50/80 hover:border-orange-300 rounded-2xl transition-all">
+        <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-3">
+          {/* Icon */}
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
+            <Upload className="w-6 h-6" />
+          </div>
+
+          {/* CTA button */}
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition-colors text-sm">
+            {translate('home_upload_choose_file')}
           </div>
         </div>
-
-        {/* Mascotte Drag & Drop - Agrandie */}
-        <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0">
-          <Image
-            src="/chat/Drag_and_Drop.png"
-            alt="Upload mascot"
-            fill
-            className="object-contain group-hover:scale-105 transition-transform duration-200"
-            priority
-          />
-        </div>
       </div>
+
+      {/* Footer text */}
+      <p className="text-xs text-gray-400 mt-3 text-center">
+        {translate('home_upload_limit')}
+      </p>
     </button>
   );
 }

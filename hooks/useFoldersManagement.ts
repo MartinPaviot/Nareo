@@ -35,7 +35,7 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
 
       const data = await response.json();
       await refetch();
-      return data.id;
+      return data.folder?.id || data.id;
     } catch (err) {
       console.error('Error creating folder:', err);
       return null;

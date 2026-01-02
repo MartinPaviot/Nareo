@@ -40,7 +40,7 @@ export default function Footer() {
           <div className={`max-w-5xl mx-auto px-4 py-2 flex items-center justify-center gap-4 text-xs ${
             isDark ? 'text-gray-400' : 'text-gray-400'
           }`}>
-            <span>© 2025 Nareo</span>
+            <span>© 2026 Nareo</span>
             <span className={isDark ? 'text-gray-600' : 'text-gray-200'}>·</span>
             <button
               onClick={() => setShowContactModal(true)}
@@ -86,13 +86,13 @@ export default function Footer() {
             </div>
             <div className="flex gap-3">
               <Link
-                href="/login"
+                href="/auth/signup"
                 className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
               >
                 Créer un compte
               </Link>
               <Link
-                href="/upload"
+                href="/#upload"
                 className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                   isDark
                     ? 'border-gray-600 text-gray-300 hover:bg-gray-800'
@@ -152,7 +152,7 @@ export default function Footer() {
 
           {/* Copyright */}
           <div className="mt-4 text-center">
-            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>© 2025 Nareo</p>
+            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>© 2026 Nareo</p>
           </div>
         </div>
       </footer>

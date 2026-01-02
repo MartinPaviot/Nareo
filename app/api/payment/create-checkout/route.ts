@@ -23,10 +23,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { courseId, plan, successUrl, cancelUrl } = body;
 
-    if (!courseId) {
-      return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
-    }
-
     // Check if user already has an active premium subscription
     const supabase = getServiceSupabase();
     const { data: profile } = await supabase
@@ -56,6 +52,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan or price not configured' }, { status: 400 });
     }
 
+    // Determine success and cancel URLs
+    const defaultSuccessUrl = courseId
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}/learn?payment=success`
+      : `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success`;
+    const defaultCancelUrl = courseId
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}/learn?payment=cancelled`
+      : `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=cancelled`;
+
     // Create Stripe checkout session for subscription
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -66,21 +70,21 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'subscription',
-      success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}/learn?payment=success`,
-      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}/learn?payment=cancelled`,
-      client_reference_id: courseId,
+      success_url: successUrl || defaultSuccessUrl,
+      cancel_url: cancelUrl || defaultCancelUrl,
+      client_reference_id: courseId || auth.user.id,
       customer_email: auth.user.email,
       billing_address_collection: 'required',
       allow_promotion_codes: true,
       metadata: {
         userId: auth.user.id,
-        courseId: courseId,
+        courseId: courseId || '',
         plan: selectedPlan,
       },
       subscription_data: {
         metadata: {
           userId: auth.user.id,
-          courseId: courseId,
+          courseId: courseId || '',
           plan: selectedPlan,
         },
       },

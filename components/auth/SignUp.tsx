@@ -17,7 +17,7 @@ import { getAnonymousContext, clearAnonymousContext } from '@/lib/anonymous-sess
 export default function SignUp() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/';
+  const returnTo = searchParams.get('returnTo') || '/dashboard';
   const stepParam = searchParams.get('step');
   const { translate } = useLanguage();
   const { isDark } = useTheme();
@@ -251,7 +251,7 @@ export default function SignUp() {
       <div className="max-w-md w-full">
         {/* Back Button */}
         <button
-          onClick={() => router.push(returnTo)}
+          onClick={() => router.back()}
           className={cn(
             'flex items-center gap-2 mb-4 transition-colors',
             isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-900'

@@ -1474,13 +1474,35 @@ export default function HomePage() {
                 </ul>
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    const plan = pricingBilling;
                     if (user) {
-                      handleCtaClick('pricing_premium', `/paywall?plan=${pricingBilling}`);
-                      router.push(`/paywall?plan=${pricingBilling}`);
+                      // User is logged in - redirect directly to Stripe checkout
+                      handleCtaClick('pricing_premium_direct_checkout', plan);
+                      try {
+                        const response = await fetch('/api/payment/create-checkout', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ plan }),
+                        });
+                        const data = await response.json();
+                        if (data.url) {
+                          window.location.href = data.url;
+                        } else if (data.alreadySubscribed) {
+                          router.push('/dashboard');
+                        } else {
+                          console.error('Failed to create checkout session:', data.error);
+                          router.push(`/paywall?plan=${plan}`);
+                        }
+                      } catch (error) {
+                        console.error('Error creating checkout:', error);
+                        router.push(`/paywall?plan=${plan}`);
+                      }
                     } else {
-                      handleCtaClick('pricing_premium', '/auth/signup');
-                      router.push('/auth/signup');
+                      // User not logged in - redirect to signup with returnTo paywall
+                      const paywallUrl = `/paywall?plan=${plan}`;
+                      handleCtaClick('pricing_premium', `/auth/signup?returnTo=${encodeURIComponent(paywallUrl)}`);
+                      router.push(`/auth/signup?returnTo=${encodeURIComponent(paywallUrl)}`);
                     }
                   }}
                   className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 mt-auto"

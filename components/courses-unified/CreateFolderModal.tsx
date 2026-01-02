@@ -23,7 +23,7 @@ export default function CreateFolderModal({ isOpen, onClose }: CreateFolderModal
     if (!name.trim()) return;
 
     setIsCreating(true);
-    const folderId = await createFolder(name.trim(), selectedColor, 'folder');
+    const folderId = await createFolder(name.trim(), selectedColor, '📁');
     setIsCreating(false);
 
     if (folderId) {

@@ -15,8 +15,39 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.usenareo.com'),
-  title: 'Nareo - AI-Powered Learning',
-  description: 'Transform your PDFs into interactive learning experiences with Nareo, your AI tutor',
+  title: {
+    default: 'Nareo | Transformez vos cours en quiz interactifs avec l\'IA',
+    template: '%s | Nareo',
+  },
+  description: 'Nareo transforme vos PDF et documents en quiz personnalisés, flashcards et résumés grâce à l\'IA. Révisez 2x plus efficacement avec la méthode du testing effect. Essai gratuit.',
+  keywords: [
+    'révision IA',
+    'quiz automatique',
+    'flashcards IA',
+    'apprentissage actif',
+    'testing effect',
+    'révision efficace',
+    'étudiant',
+    'examens',
+    'mémorisation',
+    'PDF en quiz',
+    'tuteur IA',
+    'Nareo',
+  ],
+  authors: [{ name: 'Nareo' }],
+  creator: 'Nareo',
+  publisher: 'Nareo',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '48x48' },
@@ -31,26 +62,38 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Nareo - AI-Powered Learning',
-    description: 'Transform your PDFs into interactive learning experiences with Nareo, your AI tutor',
+    title: 'Nareo | Transformez vos cours en quiz interactifs avec l\'IA',
+    description: 'Révisez 2x plus efficacement. Nareo convertit vos PDF en quiz personnalisés, flashcards et résumés grâce à l\'intelligence artificielle.',
     url: 'https://www.usenareo.com',
     siteName: 'Nareo',
     images: [
       {
-        url: '/images/favicon-512x512.png',
-        width: 512,
-        height: 512,
-        alt: 'Nareo Logo',
+        url: '/images/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Nareo - Votre tuteur IA pour réviser efficacement',
       },
     ],
     locale: 'fr_FR',
     type: 'website',
   },
   twitter: {
-    card: 'summary',
-    title: 'Nareo - AI-Powered Learning',
-    description: 'Transform your PDFs into interactive learning experiences with Nareo, your AI tutor',
-    images: ['/images/favicon-512x512.png'],
+    card: 'summary_large_image',
+    title: 'Nareo | Transformez vos cours en quiz avec l\'IA',
+    description: 'Révisez 2x plus efficacement. Convertissez vos PDF en quiz, flashcards et résumés personnalisés.',
+    images: ['/images/og-image.png'],
+    creator: '@usenareo',
+  },
+  alternates: {
+    canonical: 'https://www.usenareo.com',
+    languages: {
+      'fr-FR': 'https://www.usenareo.com',
+      'en-US': 'https://www.usenareo.com/en',
+      'de-DE': 'https://www.usenareo.com/de',
+    },
+  },
+  verification: {
+    google: 'votre-code-verification-google',
   },
 };
 

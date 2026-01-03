@@ -61,6 +61,11 @@ export const translations: Record<Language, Translations> = {
     auth_signin_signup_link: 'Sign up',
     auth_signin_error_empty: 'Please enter your email and password',
     auth_signin_error_failed: 'Sign in failed. Please check your credentials.',
+    auth_signin_error_email_not_confirmed: 'Your email address has not been verified.',
+    auth_signin_resend_verification: 'Resend verification email',
+    auth_signin_resend_sending: 'Sending...',
+    auth_signin_resend_success: 'Verification email sent! Check your inbox.',
+    auth_signin_resend_failed: 'Failed to send email. Please try again.',
     
     // Auth - Sign Up
     auth_signup_title: 'Create Account',
@@ -1606,7 +1611,12 @@ export const translations: Record<Language, Translations> = {
     auth_signin_signup_link: "S'inscrire",
     auth_signin_error_empty: 'Veuillez entrer votre e-mail et mot de passe',
     auth_signin_error_failed: 'Échec de la connexion. Veuillez vérifier vos identifiants.',
-    
+    auth_signin_error_email_not_confirmed: 'Votre adresse e-mail n\'a pas été vérifiée.',
+    auth_signin_resend_verification: 'Renvoyer l\'e-mail de vérification',
+    auth_signin_resend_sending: 'Envoi...',
+    auth_signin_resend_success: 'E-mail de vérification envoyé ! Vérifiez votre boîte de réception.',
+    auth_signin_resend_failed: 'Échec de l\'envoi de l\'e-mail. Veuillez réessayer.',
+
     // Auth - Sign Up
     auth_signup_title: 'Créer un compte',
     auth_signup_subtitle: 'Commencez votre parcours d\'apprentissage',
@@ -3154,6 +3164,11 @@ export const translations: Record<Language, Translations> = {
     auth_signin_signup_link: 'Registrieren',
     auth_signin_error_empty: 'Bitte geben Sie Ihre E-Mail und Ihr Passwort ein',
     auth_signin_error_failed: 'Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Anmeldedaten.',
+    auth_signin_error_email_not_confirmed: 'Ihre E-Mail-Adresse wurde nicht bestätigt.',
+    auth_signin_resend_verification: 'Bestätigungs-E-Mail erneut senden',
+    auth_signin_resend_sending: 'Wird gesendet...',
+    auth_signin_resend_success: 'Bestätigungs-E-Mail gesendet! Überprüfen Sie Ihren Posteingang.',
+    auth_signin_resend_failed: 'E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
 
     // Auth - Sign Up
     auth_signup_title: 'Konto erstellen',

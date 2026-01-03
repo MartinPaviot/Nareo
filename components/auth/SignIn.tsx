@@ -6,7 +6,7 @@ import { trackVisitor } from '@/lib/visitors';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Mail, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
@@ -23,10 +23,15 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showEmailNotConfirmed, setShowEmailNotConfirmed] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setShowEmailNotConfirmed(false);
+    setResendSuccess(false);
 
     if (!email || !password) {
       setError(translate('auth_signin_error_empty'));
@@ -72,9 +77,44 @@ export default function SignIn() {
       }
     } catch (err: any) {
       console.error('❌ Sign in error:', err);
-      setError(err.message || translate('auth_signin_error_failed'));
+      // Check if the error is about email not confirmed
+      const errorMessage = err.message?.toLowerCase() || '';
+      if (errorMessage.includes('email not confirmed') || err.code === 'email_not_confirmed') {
+        setError(translate('auth_signin_error_email_not_confirmed'));
+        setShowEmailNotConfirmed(true);
+      } else {
+        setError(err.message || translate('auth_signin_error_failed'));
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) return;
+
+    setResendLoading(true);
+    setError('');
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (resendError) throw resendError;
+
+      setResendSuccess(true);
+      setShowEmailNotConfirmed(false);
+    } catch (err: any) {
+      console.error('❌ Resend verification error:', err);
+      setError(err.message || translate('auth_signin_resend_failed'));
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -253,6 +293,42 @@ export default function SignIn() {
                 }}
               >
                 {error}
+                {/* Resend verification button */}
+                {showEmailNotConfirmed && (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                    className="mt-2 flex items-center gap-2 text-orange-500 hover:text-orange-600 font-medium transition disabled:opacity-50"
+                  >
+                    {resendLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {translate('auth_signin_resend_sending')}
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        {translate('auth_signin_resend_verification')}
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Resend Success Message */}
+            {resendSuccess && (
+              <div
+                className="px-4 py-3 rounded-lg text-sm border flex items-center gap-2"
+                style={{
+                  backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                  borderColor: isDark ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.3)',
+                  color: isDark ? '#4ade80' : '#16a34a'
+                }}
+              >
+                <Mail className="w-4 h-4" />
+                {translate('auth_signin_resend_success')}
               </div>
             )}
 

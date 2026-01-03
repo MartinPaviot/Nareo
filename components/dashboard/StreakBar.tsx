@@ -42,7 +42,7 @@ export default function StreakBar({ currentStreak, longestStreak }: StreakBarPro
         <div className="flex items-center gap-4 sm:gap-5">
           {/* Série actuelle */}
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ff751f' }}>
               <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div>

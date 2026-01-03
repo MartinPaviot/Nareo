@@ -84,7 +84,10 @@ export default function DuplicateCourseModal({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
+            className="flex-1 px-4 py-3 rounded-xl text-white font-semibold transition-colors"
+            style={{ backgroundColor: '#ff751f' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
           >
             {translate('duplicate_course_confirm')}
           </button>

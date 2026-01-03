@@ -16,7 +16,7 @@ interface Particle {
   delay: number;
 }
 
-const COLORS = ['#F97316', '#22C55E', '#3B82F6', '#EAB308', '#EC4899', '#8B5CF6'];
+const COLORS = ['#F97316', '#379f5a', '#3B82F6', '#EAB308', '#EC4899', '#8B5CF6'];
 
 export default function ConfettiEffect({ active, particleCount = 50 }: ConfettiEffectProps) {
   const [particles, setParticles] = useState<Particle[]>([]);

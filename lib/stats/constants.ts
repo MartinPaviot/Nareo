@@ -37,10 +37,10 @@ export const STREAK_MILESTONES: Milestone[] = [
 // Mastery Configuration
 export const MASTERY_CONFIG: Record<MasteryLevel, MasteryConfig> = {
   not_started: { color: '#E5E7EB', label: 'Non commence', minPrecision: 0, minQuestions: 0 },
-  discovery: { color: '#EF4444', label: 'Decouverte', minPrecision: 0, minQuestions: 1 },
+  discovery: { color: '#d91a1c', label: 'Decouverte', minPrecision: 0, minQuestions: 1 },
   learning: { color: '#F97316', label: 'En cours', minPrecision: 50, minQuestions: 10 },
   acquired: { color: '#EAB308', label: 'Acquis', minPrecision: 70, minQuestions: 15 },
-  mastered: { color: '#22C55E', label: 'Maitrise', minPrecision: 90, minQuestions: 20 },
+  mastered: { color: '#379f5a', label: 'Maitrise', minPrecision: 90, minQuestions: 20 },
 };
 
 // Daily Goal Configuration

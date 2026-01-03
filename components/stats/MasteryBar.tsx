@@ -47,7 +47,7 @@ export default function MasteryBar({
         </span>
         <div className="flex items-center gap-2">
           {isInDanger && (
-            <span className="text-xs text-red-500 font-medium">
+            <span className="text-xs font-medium" style={{ color: '#d91a1c' }}>
               {daysUntilDegradation}j
             </span>
           )}

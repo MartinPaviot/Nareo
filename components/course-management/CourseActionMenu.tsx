@@ -138,16 +138,19 @@ export default function CourseActionMenu({
           e.stopPropagation();
           handleAction(onDelete);
         }}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors text-left border-t border-gray-100"
+        className="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left border-t border-gray-100"
+        style={{ backgroundColor: 'transparent' }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(217, 26, 28, 0.1)'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
       >
-        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-          <Trash2 className="w-4 h-4 text-red-600" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(217, 26, 28, 0.1)' }}>
+          <Trash2 className="w-4 h-4" style={{ color: '#d91a1c' }} />
         </div>
         <div>
-          <p className="text-sm font-medium text-red-900">
+          <p className="text-sm font-medium" style={{ color: '#b81618' }}>
             {translate('delete_course_action')}
           </p>
-          <p className="text-xs text-red-600">
+          <p className="text-xs" style={{ color: '#d91a1c' }}>
             {translate('delete_course_action_hint')}
           </p>
         </div>

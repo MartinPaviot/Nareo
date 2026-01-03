@@ -242,9 +242,13 @@ export default function FriendsList({
             </h3>
 
             {addError && (
-              <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
-                isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
-              }`}>
+              <div
+                className="mb-4 p-3 rounded-lg flex items-center gap-2"
+                style={{
+                  backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+                  color: isDark ? '#e94446' : '#d91a1c'
+                }}
+              >
                 <AlertCircle className="w-4 h-4" />
                 {addError}
               </div>
@@ -348,10 +352,16 @@ function FriendCard({
         <button
           onClick={() => onRemove(friendship.id)}
           className={`p-2 rounded-lg transition-colors ${
-            isDark
-              ? 'bg-gray-600 hover:bg-red-600 text-gray-400 hover:text-white'
-              : 'bg-gray-200 hover:bg-red-100 text-gray-500 hover:text-red-600'
+            isDark ? 'bg-gray-600 text-gray-400' : 'bg-gray-200 text-gray-500'
           }`}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = isDark ? '#d91a1c' : 'rgba(217, 26, 28, 0.1)';
+            e.currentTarget.style.color = isDark ? 'white' : '#d91a1c';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = isDark ? '#4b5563' : '#e5e7eb';
+            e.currentTarget.style.color = isDark ? '#9ca3af' : '#6b7280';
+          }}
         >
           <Trash2 className="w-4 h-4" />
         </button>

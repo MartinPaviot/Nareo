@@ -88,12 +88,13 @@ export default function FolderCard({
                   onDeleteFolder(folder.id);
                 }
               }}
-              className={`p-2 rounded-full transition-colors group ${
-                isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-100'
-              }`}
+              className="p-2 rounded-full transition-colors group"
+              style={{ backgroundColor: 'transparent' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               title={translate('delete_folder_action')}
             >
-              <Trash2 className={`w-5 h-5 group-hover:text-red-500 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+              <Trash2 className={`w-5 h-5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} style={{}} />
             </button>
           </div>
         </div>

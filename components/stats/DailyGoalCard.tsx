@@ -40,9 +40,13 @@ export default function DailyGoalCard({
         transition={{ delay: 0.1 }}
         className={`rounded-2xl p-5 border relative overflow-hidden ${
           completed
-            ? isDark ? 'bg-green-900/30 border-green-800' : 'bg-green-50 border-green-200'
+            ? ''
             : isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-100'
         }`}
+        style={completed ? {
+          backgroundColor: isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.1)',
+          borderColor: isDark ? 'rgba(55, 159, 90, 0.5)' : 'rgba(55, 159, 90, 0.3)'
+        } : {}}
       >
         {/* Settings button */}
         <button
@@ -60,7 +64,7 @@ export default function DailyGoalCard({
             progress={progress}
             size={100}
             strokeWidth={8}
-            progressColor={completed ? '#22C55E' : '#F97316'}
+            progressColor={completed ? '#379f5a' : '#F97316'}
             backgroundColor={isDark ? '#262626' : '#E5E7EB'}
           >
             {completed ? (
@@ -69,7 +73,7 @@ export default function DailyGoalCard({
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               >
-                <Check className="w-8 h-8 text-green-500" />
+                <Check className="w-8 h-8" style={{ color: '#379f5a' }} />
               </motion.div>
             ) : (
               <div className="text-center">
@@ -82,7 +86,7 @@ export default function DailyGoalCard({
           {/* Info */}
           <div className="flex-1">
             <h3 className={`text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_daily_goal_title')}</h3>
-            <p className={`text-lg font-semibold ${completed ? 'text-green-600' : isDark ? 'text-white' : 'text-gray-900'}`}>
+            <p className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`} style={completed ? { color: '#379f5a' } : {}}>
               {completed ? translate('stats_daily_goal_completed') : translate('stats_daily_goal_remaining', { count: String(target - current) })}
             </p>
             <div className="mt-2 flex items-center gap-2">
@@ -103,7 +107,7 @@ export default function DailyGoalCard({
               exit={{ opacity: 0 }}
               className="mt-4 text-center"
             >
-              <p className="text-sm text-green-600 font-medium">
+              <p className="text-sm font-medium" style={{ color: '#379f5a' }}>
                 {translate('stats_label_xp_bonus')}
               </p>
             </motion.div>

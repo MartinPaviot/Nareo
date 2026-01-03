@@ -37,21 +37,20 @@ export default function UploadCTA({ onClick }: UploadCTAProps) {
       <div className="border-2 border-dashed border-gray-200 bg-gray-50/80 hover:border-orange-300 rounded-2xl transition-all">
         <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-3">
           {/* Icon */}
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ background: 'linear-gradient(to bottom right, #ff751f, #e5681b)' }}>
             <Upload className="w-6 h-6" />
           </div>
 
           {/* CTA button */}
-          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition-colors text-sm">
+          <div
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-lg font-semibold hover:opacity-90 transition-colors text-sm"
+            style={{ backgroundColor: '#ff751f' }}
+          >
             {translate('home_upload_choose_file')}
           </div>
         </div>
       </div>
 
-      {/* Footer text */}
-      <p className="text-xs text-gray-400 mt-3 text-center">
-        {translate('home_upload_limit')}
-      </p>
     </button>
   );
 }

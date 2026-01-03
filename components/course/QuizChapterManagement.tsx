@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   Loader2,
@@ -421,11 +422,12 @@ export default function QuizChapterManagement({
                   onClick={() => setNewCorrectIndex(idx)}
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                     newCorrectIndex === idx
-                      ? 'border-green-500 bg-green-500'
+                      ? ''
                       : isDark
                       ? 'border-neutral-600 hover:border-neutral-500'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
+                  style={newCorrectIndex === idx ? { borderColor: '#379f5a', backgroundColor: '#379f5a' } : {}}
                 >
                   {newCorrectIndex === idx && <Check className="w-3 h-3 text-white" />}
                 </button>
@@ -463,14 +465,13 @@ export default function QuizChapterManagement({
                 type="button"
                 onClick={() => setNewCorrectIndex(idx)}
                 className={`flex-1 p-3 rounded-xl border-2 font-medium transition-all ${
-                  newCorrectIndex === idx
-                    ? idx === 0
-                      ? 'border-green-500 bg-green-500/10 text-green-600'
-                      : 'border-red-500 bg-red-500/10 text-red-600'
-                    : isDark
-                    ? 'border-neutral-700 text-neutral-300 hover:border-neutral-600'
-                    : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                  newCorrectIndex !== idx
+                    ? isDark
+                      ? 'border-neutral-700 text-neutral-300 hover:border-neutral-600'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                    : ''
                 }`}
+                style={newCorrectIndex === idx ? (idx === 0 ? { borderColor: '#379f5a', backgroundColor: 'rgba(55, 159, 90, 0.1)', color: '#379f5a' } : { borderColor: '#d91a1c', backgroundColor: 'rgba(217, 26, 28, 0.1)', color: '#d91a1c' }) : {}}
               >
                 {label}
               </button>
@@ -531,11 +532,13 @@ export default function QuizChapterManagement({
           {!isDemoId && user && (
             <button
               onClick={() => router.push(`/defi/creer?courseId=${courseId}`)}
-              className={`inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                isDark
-                  ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                  : 'bg-green-100 text-green-700 hover:bg-green-200'
-              }`}
+              className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.15)',
+                color: isDark ? '#5cb978' : '#379f5a'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(55, 159, 90, 0.3)' : 'rgba(55, 159, 90, 0.25)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.15)'}
             >
               <Gamepad2 className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{translate('quiz_launch_challenge')}</span>
@@ -545,12 +548,12 @@ export default function QuizChapterManagement({
           <button
             onClick={() => user ? setShowRegenerateModal(true) : setShowSignupModal(true)}
             disabled={isGenerating}
-            className={`inline-flex items-center gap-1 text-xs sm:text-sm ${
-              isDark ? 'text-orange-400 hover:text-orange-300' : 'text-orange-600 hover:text-orange-700'
+            className={`p-2 rounded-lg transition-colors ${
+              isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/20' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
             }`}
+            title={translate('quiz_regenerate')}
           >
-            <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span>{translate('quiz_regenerate')}</span>
+            <RotateCcw className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -675,9 +678,10 @@ export default function QuizChapterManagement({
                       </span>
                       <button
                         onClick={() => openAddModal(chapter.id)}
-                        className={`inline-flex items-center gap-1 text-xs ${
-                          isDark ? 'text-green-400 hover:text-green-300' : 'text-green-600 hover:text-green-700'
-                        }`}
+                        className="inline-flex items-center gap-1 text-xs transition-colors"
+                        style={{ color: isDark ? '#5cb978' : '#379f5a' }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = isDark ? '#7dd69b' : '#2d8049'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = isDark ? '#5cb978' : '#379f5a'}
                       >
                         <Plus className="w-3 h-3" />
                         {translate('quiz_add_question')}
@@ -730,8 +734,9 @@ export default function QuizChapterManagement({
                                   <button
                                     onClick={() => openDeleteModal(question)}
                                     className={`p-1.5 rounded-lg transition-colors ${
-                                      isDark ? 'hover:bg-neutral-700 text-red-400' : 'hover:bg-gray-100 text-red-500'
+                                      isDark ? 'hover:bg-neutral-700' : 'hover:bg-gray-100'
                                     }`}
+                                    style={{ color: isDark ? '#e94446' : '#d91a1c' }}
                                   >
                                     <Trash2 className="w-3 h-3" />
                                   </button>
@@ -751,8 +756,8 @@ export default function QuizChapterManagement({
       )}
 
       {/* Add Question Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -800,12 +805,13 @@ export default function QuizChapterManagement({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit Question Modal */}
-      {showEditModal && selectedQuestion && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showEditModal && selectedQuestion && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -853,19 +859,21 @@ export default function QuizChapterManagement({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedQuestion && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showDeleteModal && selectedQuestion && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
-              isDark ? 'bg-red-500/20' : 'bg-red-100'
-            }`}>
-              <Trash2 className="w-7 h-7 text-red-500" />
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)' }}
+            >
+              <Trash2 className="w-7 h-7" style={{ color: '#d91a1c' }} />
             </div>
             <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
               {translate('quiz_delete_question_title')}
@@ -889,7 +897,10 @@ export default function QuizChapterManagement({
               <button
                 onClick={handleDeleteQuestion}
                 disabled={deletingQuestion}
-                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#d91a1c' }}
+                onMouseEnter={(e) => !deletingQuestion && (e.currentTarget.style.backgroundColor = '#b81618')}
+                onMouseLeave={(e) => !deletingQuestion && (e.currentTarget.style.backgroundColor = '#d91a1c')}
               >
                 {deletingQuestion ? (
                   <>
@@ -905,12 +916,13 @@ export default function QuizChapterManagement({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Regenerate Modal */}
-      {showRegenerateModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showRegenerateModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-md w-full shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -926,12 +938,13 @@ export default function QuizChapterManagement({
               initialConfig={lastQuizConfig}
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Signup Modal */}
-      {showSignupModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showSignupModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -963,7 +976,8 @@ export default function QuizChapterManagement({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Floating toast notification for regeneration progress */}

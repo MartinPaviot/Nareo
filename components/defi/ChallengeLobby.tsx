@@ -186,9 +186,13 @@ export default function ChallengeLobby({
 
         {/* Error display */}
         {error && (
-          <div className={`mb-4 p-3 rounded-lg ${
-            isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
-          }`}>
+          <div
+            className="mb-4 p-3 rounded-lg"
+            style={{
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+              color: isDark ? '#e94446' : '#d91a1c'
+            }}
+          >
             {error.message}
           </div>
         )}

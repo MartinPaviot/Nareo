@@ -78,11 +78,12 @@ export default function DashboardTabs({
             onClick={() => handleTabChange('courses')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
               activeTab === 'courses'
-                ? 'bg-orange-500 text-white shadow-md'
+                ? 'text-white shadow-md'
                 : isDark
                   ? 'text-neutral-400 hover:text-neutral-200'
                   : 'text-gray-600 hover:text-gray-900'
             }`}
+            style={activeTab === 'courses' ? { backgroundColor: '#ff751f' } : {}}
           >
             <BookOpen className="w-4 h-4" />
             <span>{translate('tab_courses')}</span>
@@ -106,11 +107,12 @@ export default function DashboardTabs({
             onClick={() => handleTabChange('folders')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
               activeTab === 'folders'
-                ? 'bg-orange-500 text-white shadow-md'
+                ? 'text-white shadow-md'
                 : isDark
                   ? 'text-neutral-400 hover:text-neutral-200'
                   : 'text-gray-600 hover:text-gray-900'
             }`}
+            style={activeTab === 'folders' ? { backgroundColor: '#ff751f' } : {}}
           >
             <FolderOpen className="w-4 h-4" />
             <span>{translate('tab_folders')}</span>

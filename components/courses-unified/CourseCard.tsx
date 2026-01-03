@@ -80,7 +80,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
   // Dark mode freshness colors (softer for eyes)
   const getDarkFreshnessColors = (level: string) => {
     switch (level) {
-      case 'fresh': return { bg: '#14532d50', color: '#4ade80' }; // green-900/30, green-400
+      case 'fresh': return { bg: 'rgba(55, 159, 90, 0.3)', color: '#5cb978' }; // custom green
       case 'moderate': return { bg: '#71350750', color: '#facc15' }; // yellow-900/30, yellow-400
       case 'stale': return { bg: '#7c2d1250', color: '#fb923c' }; // orange-900/30, orange-400
       case 'critical': return { bg: '#7f1d1d50', color: '#f87171' }; // red-900/30, red-400
@@ -201,7 +201,10 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
 
       {/* CTA Button */}
       <button
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white font-medium transition-colors"
+        style={{ backgroundColor: '#ff751f' }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
         onClick={(e) => {
           e.stopPropagation();
           onClick();

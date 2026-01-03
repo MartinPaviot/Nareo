@@ -261,11 +261,8 @@ export default function DefiPage() {
           {/* Create challenge */}
           <Link
             href="/defi/creer"
-            className={`group p-5 rounded-xl transition-all hover:scale-[1.02] ${
-              isDark
-                ? 'bg-gradient-to-br from-orange-500 to-orange-600'
-                : 'bg-gradient-to-br from-orange-500 to-orange-600'
-            } text-white`}
+            className="group p-5 rounded-xl transition-all hover:scale-[1.02] text-white"
+            style={{ background: 'linear-gradient(to bottom right, #ff751f, #e5681b)' }}
           >
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-white/20 group-hover:bg-white/30 transition-colors">
@@ -313,7 +310,10 @@ export default function DefiPage() {
               <button
                 onClick={handleJoinWithCode}
                 disabled={!joinCode.trim()}
-                className="px-4 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2.5 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#ff751f' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
               >
                 OK
               </button>
@@ -371,7 +371,10 @@ export default function DefiPage() {
             </p>
             <Link
               href="/defi/creer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-colors"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
             >
               <Plus className="w-4 h-4" />
               {translate('challenge_create_first')}

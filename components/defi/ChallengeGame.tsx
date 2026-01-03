@@ -182,16 +182,21 @@ export default function ChallengeGame({
         <div className="max-w-2xl mx-auto px-6 pb-6">
           {/* Mon résultat - EN PREMIER, très visible */}
           {myResult && (
-            <div className={`mt-4 rounded-2xl p-5 ${
-              myResult.is_correct
-                ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/10 border-2 border-green-500/30'
-                : 'bg-gradient-to-br from-red-500/20 to-red-500/10 border-2 border-red-500/30'
-            }`}>
+            <div
+              className="mt-4 rounded-2xl p-5 border-2"
+              style={{
+                background: myResult.is_correct
+                  ? 'linear-gradient(to bottom right, rgba(55, 159, 90, 0.2), rgba(55, 159, 90, 0.1))'
+                  : 'linear-gradient(to bottom right, rgba(217, 26, 28, 0.2), rgba(217, 26, 28, 0.1))',
+                borderColor: myResult.is_correct ? 'rgba(55, 159, 90, 0.3)' : 'rgba(217, 26, 28, 0.3)'
+              }}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
-                    myResult.is_correct ? 'bg-green-500' : 'bg-red-500'
-                  }`}>
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: myResult.is_correct ? '#379f5a' : '#d91a1c' }}
+                  >
                     {myResult.is_correct ? (
                       <Check className="w-7 h-7 text-white" />
                     ) : (
@@ -199,7 +204,7 @@ export default function ChallengeGame({
                     )}
                   </div>
                   <div>
-                    <p className={`text-xl font-bold ${myResult.is_correct ? 'text-green-500' : 'text-red-500'}`}>
+                    <p className="text-xl font-bold" style={{ color: myResult.is_correct ? '#379f5a' : '#d91a1c' }}>
                       {myResult.is_correct ? translate('challenge_correct_answer') : translate('challenge_wrong_answer')}
                     </p>
                     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -321,7 +326,7 @@ export default function ChallengeGame({
                         </span>
                       )}
                       {/* Petit indicateur correct/incorrect */}
-                      <span className={`text-xs ${result.is_correct ? 'text-green-500' : 'text-red-500'}`}>
+                      <span className="text-xs" style={{ color: result.is_correct ? '#379f5a' : '#d91a1c' }}>
                         {result.is_correct ? '✓' : '✗'}
                       </span>
                     </div>
@@ -376,15 +381,18 @@ export default function ChallengeGame({
             </div>
 
             {/* Timer */}
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-              timeRemaining <= 5
-                ? 'bg-red-500/20 text-red-500'
-                : timeRemaining <= 10
+            <div
+              className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+                timeRemaining <= 10 && timeRemaining > 5
                   ? 'bg-yellow-500/20 text-yellow-500'
-                  : isDark
-                    ? 'bg-gray-700 text-gray-300'
-                    : 'bg-gray-100 text-gray-600'
-            }`}>
+                  : timeRemaining > 10
+                    ? isDark
+                      ? 'bg-gray-700 text-gray-300'
+                      : 'bg-gray-100 text-gray-600'
+                    : ''
+              }`}
+              style={timeRemaining <= 5 ? { backgroundColor: 'rgba(217, 26, 28, 0.2)', color: '#d91a1c' } : {}}
+            >
               <Clock className="w-4 h-4" />
               <span className="font-mono font-bold">{timeRemaining}s</span>
             </div>

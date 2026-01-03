@@ -239,11 +239,14 @@ function JoinChallengeContent() {
           <button
             onClick={handleJoin}
             disabled={loading || !code.trim() || !displayName.trim() || !!error}
-            className={`w-full py-4 rounded-xl font-medium text-lg transition-colors flex items-center justify-center gap-2 ${
-              loading || !code.trim() || !displayName.trim() || !!error
-                ? 'bg-gray-500 cursor-not-allowed'
-                : 'bg-orange-500 hover:bg-orange-600'
-            } text-white`}
+            className="w-full py-4 rounded-xl font-medium text-lg transition-colors flex items-center justify-center gap-2 text-white disabled:bg-gray-500 disabled:cursor-not-allowed"
+            style={{ backgroundColor: loading || !code.trim() || !displayName.trim() || !!error ? undefined : '#ff751f' }}
+            onMouseEnter={(e) => {
+              if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = '#e5681b';
+            }}
+            onMouseLeave={(e) => {
+              if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = '#ff751f';
+            }}
           >
             {loading ? (
               <>

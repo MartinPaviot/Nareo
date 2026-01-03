@@ -168,24 +168,28 @@ export default function ResetPassword() {
 
             {/* Error Message */}
             {error && (
-              <div className={cn(
-                'px-4 py-3 rounded-lg text-sm border',
-                isDark
-                  ? 'bg-red-900/20 border-red-800 text-red-400'
-                  : 'bg-red-50 border-red-200 text-red-700'
-              )}>
+              <div
+                className="px-4 py-3 rounded-lg text-sm border"
+                style={{
+                  backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+                  borderColor: isDark ? 'rgba(217, 26, 28, 0.5)' : 'rgba(217, 26, 28, 0.3)',
+                  color: isDark ? '#e94446' : '#d91a1c'
+                }}
+              >
                 {error}
               </div>
             )}
 
             {/* Success Message */}
             {success && (
-              <div className={cn(
-                'px-4 py-3 rounded-lg text-sm border',
-                isDark
-                  ? 'bg-green-900/20 border-green-800 text-green-400'
-                  : 'bg-green-50 border-green-200 text-green-700'
-              )}>
+              <div
+                className="px-4 py-3 rounded-lg text-sm border"
+                style={{
+                  backgroundColor: isDark ? 'rgba(55, 159, 90, 0.15)' : 'rgba(55, 159, 90, 0.1)',
+                  borderColor: isDark ? 'rgba(55, 159, 90, 0.5)' : 'rgba(55, 159, 90, 0.3)',
+                  color: isDark ? '#5cb978' : '#379f5a'
+                }}
+              >
                 {success}
               </div>
             )}
@@ -194,7 +198,10 @@ export default function ResetPassword() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+              onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
             >
               {loading ? translate('auth_reset_button_loading') : translate('auth_reset_button')}
             </button>

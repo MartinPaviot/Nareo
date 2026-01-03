@@ -37,9 +37,11 @@ export default function DroppableFolder({
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`absolute inset-0 rounded-2xl border-2 border-dashed z-10 pointer-events-none ${
-            isDark ? 'border-orange-500 bg-orange-500/10' : 'border-orange-500 bg-orange-50'
-          }`}
+          className="absolute inset-0 rounded-2xl border-2 border-dashed z-10 pointer-events-none"
+          style={{
+            borderColor: '#ff751f',
+            backgroundColor: isDark ? 'rgba(255, 117, 31, 0.1)' : 'rgb(255, 247, 237)'
+          }}
         >
           <div className="absolute inset-0 flex items-center justify-center">
             <div

@@ -68,9 +68,10 @@ export default function GoalLevelSelector({
                 onClick={() => onSelect(level)}
                 className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                   isSelected
-                    ? 'border-orange-500 bg-orange-50'
+                    ? 'bg-orange-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
+                style={isSelected ? { borderColor: '#ff751f' } : {}}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -83,7 +84,7 @@ export default function GoalLevelSelector({
                     </div>
                   </div>
                   {isSelected && (
-                    <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ff751f' }}>
                       <Check className="w-4 h-4 text-white" />
                     </div>
                   )}

@@ -27,10 +27,10 @@
   --color-accent-soft: #ffedd5; /* orange-100 */
   --color-accent-muted: rgba(249, 115, 22, 0.1);
 
-  --color-success: #22c55e;
-  --color-success-soft: #dcfce7;
-  --color-error: #ef4444;
-  --color-error-soft: #fef2f2;
+  --color-success: #379f5a;
+  --color-success-soft: rgba(55, 159, 90, 0.15);
+  --color-error: #d91a1c;
+  --color-error-soft: rgba(217, 26, 28, 0.1);
 }
 
 /* Dark mode - Warm palette optimized for orange branding
@@ -531,4 +531,25 @@ body {
 
 .animate-marquee {
   animation: marquee 40s linear infinite;
+}
+
+/* ============================================
+   FLASHCARD 3D FLIP STYLES
+   CSS classes for 3D card flip animation
+   ============================================ */
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
 }

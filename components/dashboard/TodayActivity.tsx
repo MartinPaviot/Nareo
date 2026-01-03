@@ -28,15 +28,31 @@ interface StatCardProps {
   iconBgColor: string;
   darkIconBgColor: string;
   isDark: boolean;
+  customStyles?: {
+    bg?: string;
+    iconBg?: string;
+    text?: string;
+  };
 }
 
-function StatCard({ icon, value, label, bgColor, darkBgColor, textColor, darkTextColor, iconBgColor, darkIconBgColor, isDark }: StatCardProps) {
+function StatCard({ icon, value, label, bgColor, darkBgColor, textColor, darkTextColor, iconBgColor, darkIconBgColor, isDark, customStyles }: StatCardProps) {
   return (
-    <div className={`rounded-xl p-3 flex flex-col items-center justify-center gap-1 ${isDark ? darkBgColor : bgColor}`}>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? darkIconBgColor : iconBgColor}`}>
+    <div
+      className={`rounded-xl p-3 flex flex-col items-center justify-center gap-1 ${customStyles ? '' : (isDark ? darkBgColor : bgColor)}`}
+      style={customStyles?.bg ? { backgroundColor: customStyles.bg } : {}}
+    >
+      <div
+        className={`w-8 h-8 rounded-lg flex items-center justify-center ${customStyles ? '' : (isDark ? darkIconBgColor : iconBgColor)}`}
+        style={customStyles?.iconBg ? { backgroundColor: customStyles.iconBg } : {}}
+      >
         {icon}
       </div>
-      <p className={`text-xl font-bold ${isDark ? darkTextColor : textColor}`}>{value}</p>
+      <p
+        className={`text-xl font-bold ${customStyles ? '' : (isDark ? darkTextColor : textColor)}`}
+        style={customStyles?.text ? { color: customStyles.text } : {}}
+      >
+        {value}
+      </p>
       <p className={`text-xs font-medium text-center ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{label}</p>
     </div>
   );
@@ -109,23 +125,31 @@ export default function TodayActivity({
           isDark={isDark}
         />
         <StatCard
-          icon={<Target className={`w-4 h-4 ${isDark ? 'text-green-400' : 'text-green-600'}`} />}
+          icon={<Target className="w-4 h-4" style={{ color: isDark ? '#5cb978' : '#379f5a' }} />}
           value={`${stats.accuracy}%`}
           label={translate('today_accuracy')}
-          bgColor="bg-green-50"
-          darkBgColor="bg-green-950/40"
-          textColor="text-green-700"
-          darkTextColor="text-green-400"
-          iconBgColor="bg-green-100"
-          darkIconBgColor="bg-green-900/50"
+          bgColor=""
+          darkBgColor=""
+          textColor=""
+          darkTextColor=""
+          iconBgColor=""
+          darkIconBgColor=""
           isDark={isDark}
+          customStyles={{
+            bg: isDark ? 'rgba(55, 159, 90, 0.15)' : 'rgba(55, 159, 90, 0.1)',
+            iconBg: isDark ? 'rgba(55, 159, 90, 0.3)' : 'rgba(55, 159, 90, 0.2)',
+            text: isDark ? '#5cb978' : '#379f5a'
+          }}
         />
       </div>
 
       {/* CTA Button */}
       <button
         onClick={handleCTAClick}
-        className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+        className="w-full flex items-center justify-center gap-2 px-5 py-3 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+        style={{ backgroundColor: '#ff751f' }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
       >
         {hasQuizAvailable ? (
           <>

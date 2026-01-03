@@ -118,7 +118,7 @@ export default function UploadLimitModal({ onClose }: UploadLimitModalProps) {
         </button>
 
         {/* Header avec mascotte */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 sm:px-8 py-6 flex items-center gap-4">
+        <div className="px-6 sm:px-8 py-6 flex items-center gap-4" style={{ background: 'linear-gradient(to right, #ff751f, #e5681b)' }}>
           <Image
             src="/chat/Happy.png"
             alt="Nareo"
@@ -201,23 +201,23 @@ export default function UploadLimitModal({ onClose }: UploadLimitModalProps) {
               <div className="bg-gray-50 rounded-2xl border border-gray-200 p-3 space-y-2 flex-1 flex flex-col justify-between">
                 <div className="space-y-2">
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#379f5a' }} />
                     <span className="text-sm text-gray-700">{translate('paywall_access_1')}</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#379f5a' }} />
                     <span className="text-sm text-gray-700">{translate('paywall_access_5')}</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#379f5a' }} />
                     <span className="text-sm text-gray-700">{translate('paywall_access_2')}</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#379f5a' }} />
                     <span className="text-sm text-gray-700">{translate('paywall_access_3')}</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#379f5a' }} />
                     <span className="text-sm text-gray-700">{translate('paywall_access_4')}</span>
                   </div>
                 </div>
@@ -232,19 +232,23 @@ export default function UploadLimitModal({ onClose }: UploadLimitModalProps) {
               onClick={() => setSelectedPlan('annual')}
               className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-200 ${
                 selectedPlan === 'annual'
-                  ? 'border-orange-500 bg-orange-50 shadow-lg shadow-orange-500/10'
+                  ? 'bg-orange-50 shadow-lg'
                   : 'border-gray-200 bg-white hover:border-orange-300'
               }`}
+              style={selectedPlan === 'annual' ? { borderColor: '#ff751f', boxShadow: '0 10px 15px -3px rgba(255, 117, 31, 0.1)' } : {}}
             >
               {/* Badge Économie */}
-              <div className="absolute -top-3 left-4 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
+              <div className="absolute -top-3 left-4 px-3 py-1 text-white text-xs font-bold rounded-full" style={{ backgroundColor: '#379f5a' }}>
                 {translate('paywall_save')} {savingsPercent}
               </div>
 
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedPlan === 'annual' ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
-                }`}>
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedPlan === 'annual' ? '' : 'border-gray-300'
+                  }`}
+                  style={selectedPlan === 'annual' ? { borderColor: '#ff751f', backgroundColor: '#ff751f' } : {}}
+                >
                   {selectedPlan === 'annual' && (
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   )}
@@ -266,14 +270,18 @@ export default function UploadLimitModal({ onClose }: UploadLimitModalProps) {
               onClick={() => setSelectedPlan('monthly')}
               className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-200 ${
                 selectedPlan === 'monthly'
-                  ? 'border-orange-500 bg-orange-50 shadow-lg shadow-orange-500/10'
+                  ? 'bg-orange-50 shadow-lg'
                   : 'border-gray-200 bg-white hover:border-orange-300'
               }`}
+              style={selectedPlan === 'monthly' ? { borderColor: '#ff751f', boxShadow: '0 10px 15px -3px rgba(255, 117, 31, 0.1)' } : {}}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedPlan === 'monthly' ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
-                }`}>
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedPlan === 'monthly' ? '' : 'border-gray-300'
+                  }`}
+                  style={selectedPlan === 'monthly' ? { borderColor: '#ff751f', backgroundColor: '#ff751f' } : {}}
+                >
                   {selectedPlan === 'monthly' && (
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   )}
@@ -296,7 +304,20 @@ export default function UploadLimitModal({ onClose }: UploadLimitModalProps) {
             <button
               onClick={handleCheckout}
               disabled={processingPayment}
-              className="w-full max-w-md mx-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold text-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-60 shadow-lg shadow-orange-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-orange-500/30"
+              className="w-full max-w-md mx-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-white font-bold text-lg disabled:opacity-60 shadow-lg transition-all duration-200"
+              style={{ backgroundColor: '#ff751f', boxShadow: '0 10px 15px -3px rgba(255, 117, 31, 0.25)' }}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.backgroundColor = '#e5681b';
+                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(255, 117, 31, 0.3)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.backgroundColor = '#ff751f';
+                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(255, 117, 31, 0.25)';
+                }
+              }}
             >
               {processingPayment ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -310,11 +331,11 @@ export default function UploadLimitModal({ onClose }: UploadLimitModalProps) {
           {/* Pastilles de réassurance */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <CheckCircle2 className="w-4 h-4" style={{ color: '#379f5a' }} />
               {translate('paywall_sub_monthly')}
             </span>
             <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
-              <ShieldCheck className="w-4 h-4 text-green-500" />
+              <ShieldCheck className="w-4 h-4" style={{ color: '#379f5a' }} />
               {translate('paywall_sub_cancel')}
             </span>
           </div>

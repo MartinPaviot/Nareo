@@ -87,7 +87,10 @@ export default function Footer() {
             <div className="flex gap-3">
               <Link
                 href="/auth/signup"
-                className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors"
+                style={{ backgroundColor: '#ff751f' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
               >
                 Créer un compte
               </Link>

@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import Image from 'next/image';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ChapterScoreBadgeProps {
   scorePts: number;
@@ -13,25 +14,30 @@ type ScoreLevel = 'low' | 'medium' | 'high';
 
 interface LevelConfig {
   mascotSrc: string;
-  textColor: string;
+  color: string;
+  darkColor: string;
 }
 
 const LEVEL_CONFIGS: Record<ScoreLevel, LevelConfig> = {
   low: {
     mascotSrc: '/chat/Disappointed.png',
-    textColor: 'text-red-600 dark:text-red-400',
+    color: '#d91a1c',
+    darkColor: '#e94446',
   },
   medium: {
     mascotSrc: '/chat/Drag_and_Drop.png',
-    textColor: 'text-orange-600 dark:text-orange-400',
+    color: '#ea580c',
+    darkColor: '#fb923c',
   },
   high: {
     mascotSrc: '/chat/Happy.png',
-    textColor: 'text-emerald-600 dark:text-emerald-400',
+    color: '#379f5a',
+    darkColor: '#5cb978',
   },
 };
 
 export default function ChapterScoreBadge({ scorePts, maxPts, compact = false }: ChapterScoreBadgeProps) {
+  const { isDark } = useTheme();
   const { config } = useMemo(() => {
     const pct = maxPts > 0 ? (scorePts / maxPts) * 100 : 0;
     let lvl: ScoreLevel;
@@ -49,10 +55,12 @@ export default function ChapterScoreBadge({ scorePts, maxPts, compact = false }:
     };
   }, [scorePts, maxPts]);
 
+  const textColor = isDark ? config.darkColor : config.color;
+
   // Compact mode for mobile - just the score text
   if (compact) {
     return (
-      <span className={`text-xs font-bold ${config.textColor}`}>
+      <span className="text-xs font-bold" style={{ color: textColor }}>
         {scorePts}/{maxPts} pts
       </span>
     );
@@ -68,7 +76,7 @@ export default function ChapterScoreBadge({ scorePts, maxPts, compact = false }:
         height={48}
         className="object-contain"
       />
-      <span className={`text-sm font-bold ${config.textColor}`}>
+      <span className="text-sm font-bold" style={{ color: textColor }}>
         {scorePts}/{maxPts} pts
       </span>
     </div>

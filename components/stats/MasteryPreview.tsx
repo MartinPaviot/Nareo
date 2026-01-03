@@ -88,15 +88,19 @@ export default function MasteryPreview({ limit = 3 }: MasteryPreviewProps) {
 
       {/* Warning for chapters in danger */}
       {chaptersInDanger.length > 0 && (
-        <div className={`mb-4 p-3 border rounded-xl flex items-start gap-2 ${
-          isDark ? 'bg-red-900/30 border-red-800' : 'bg-red-50 border-red-100'
-        }`}>
-          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+        <div
+          className="mb-4 p-3 border rounded-xl flex items-start gap-2"
+          style={{
+            backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+            borderColor: isDark ? 'rgba(217, 26, 28, 0.4)' : 'rgba(217, 26, 28, 0.2)'
+          }}
+        >
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#d91a1c' }} />
           <div>
-            <p className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+            <p className="text-sm font-medium" style={{ color: isDark ? '#e94446' : '#d91a1c' }}>
               {translate('stats_mastery_chapters_danger', { count: String(chaptersInDanger.length) })}
             </p>
-            <p className={`text-xs ${isDark ? 'text-red-500' : 'text-red-600'}`}>
+            <p className="text-xs" style={{ color: isDark ? '#e94446' : '#c41618' }}>
               {translate('stats_mastery_chapters_danger_hint')}
             </p>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Crown, Menu, X, Moon, Sun } from 'lucide-react';
+import { BookOpen, GraduationCap, Menu, X, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage, type Language } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -69,9 +69,12 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
         {user && !isPremium && (
           <button
             onClick={() => router.push('/paywall')}
-            className="flex items-center gap-1.5 h-10 px-4 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="flex items-center gap-1.5 h-10 px-4 rounded-full text-white transition-all duration-200 shadow-sm hover:shadow-md"
+            style={{ backgroundColor: '#ff751f' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
           >
-            <Crown className="w-4 h-4" />
+            <GraduationCap className="w-4 h-4" />
             <span className="text-sm font-medium">
               {translate('upgrade_button')}
             </span>
@@ -116,9 +119,12 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
                     setMobileMenuOpen(false);
                     router.push('/paywall');
                   }}
-                  className="flex items-center justify-center gap-2 h-11 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold hover:from-orange-600 hover:to-orange-700 transition-colors"
+                  className="flex items-center justify-center gap-2 h-11 px-4 rounded-xl text-white text-sm font-semibold transition-colors"
+                  style={{ backgroundColor: '#ff751f' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
                 >
-                  <Crown className="w-4 h-4" />
+                  <GraduationCap className="w-4 h-4" />
                   {translate('upgrade_button')}
                 </button>
               )}
@@ -179,7 +185,10 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
                       setMobileMenuOpen(false);
                       router.push('/auth/signup');
                     }}
-                    className="flex items-center justify-center h-11 px-4 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600"
+                    className="flex items-center justify-center h-11 px-4 rounded-xl text-white text-sm font-semibold transition-colors"
+                    style={{ backgroundColor: '#ff751f' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
                   >
                     {translate('auth_signup_button')}
                   </button>
@@ -208,7 +217,10 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
               </button>
               <button
                 onClick={() => router.push('/auth/signup')}
-                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                className="flex-1 px-4 py-3 text-white rounded-xl font-semibold transition-colors"
+                style={{ backgroundColor: '#ff751f' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
               >
                 {translate('auth_signup_button')}
               </button>

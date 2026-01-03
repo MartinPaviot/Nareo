@@ -70,6 +70,8 @@ export default function CGUPage() {
             <li>{translate('cgu_article3_1_feature3')}</li>
             <li>{translate('cgu_article3_1_feature4')}</li>
             <li>{translate('cgu_article3_1_feature5')}</li>
+            <li>{translate('cgu_article3_1_feature6')}</li>
+            <li>{translate('cgu_article3_1_feature7')}</li>
           </ul>
 
           <h3 className="text-lg font-medium text-gray-900 mt-6 mb-3">{translate('cgu_article3_2_title')}</h3>
@@ -81,6 +83,7 @@ export default function CGUPage() {
             <li>{translate('cgu_article3_2_free_3')}</li>
             <li>{translate('cgu_article3_2_free_4')}</li>
             <li>{translate('cgu_article3_2_free_5')}</li>
+            <li>{translate('cgu_article3_2_free_6')}</li>
           </ul>
 
           <p className="text-gray-700 font-medium mb-2">{translate('cgu_article3_2_premium_title')}</p>
@@ -90,6 +93,7 @@ export default function CGUPage() {
             <li>{translate('cgu_article3_2_premium_3')}</li>
             <li>{translate('cgu_article3_2_premium_4')}</li>
             <li>{translate('cgu_article3_2_premium_5')}</li>
+            <li>{translate('cgu_article3_2_premium_6')}</li>
           </ul>
 
           <h2 className="text-xl font-semibold text-gray-900 mt-8 mb-4">{translate('cgu_article4_title')}</h2>

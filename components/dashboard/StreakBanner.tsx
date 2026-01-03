@@ -66,7 +66,7 @@ export default function StreakBanner({
       <div className="flex-1 flex items-center justify-between sm:flex-wrap sm:gap-y-2">
         {/* Current Streak */}
         <div className="flex items-center gap-1 sm:gap-2.5">
-          <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-orange-500 flex items-center justify-center">
+          <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ff751f' }}>
             <Flame className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-white" />
           </div>
           <div>
@@ -139,7 +139,7 @@ export default function StreakBanner({
           className="w-14 h-14 sm:w-28 sm:h-28 object-contain drop-shadow-lg"
         />
         {mood === 'happy' && currentStreak >= 3 && (
-          <div className="absolute top-0 right-0 sm:top-2 sm:right-2 w-4 h-4 sm:w-6 sm:h-6 bg-orange-500 rounded-full flex items-center justify-center animate-bounce">
+          <div className="absolute top-0 right-0 sm:top-2 sm:right-2 w-4 h-4 sm:w-6 sm:h-6 rounded-full flex items-center justify-center animate-bounce" style={{ backgroundColor: '#ff751f' }}>
             <Flame className="w-2.5 h-2.5 sm:w-4 sm:h-4 text-white" />
           </div>
         )}

@@ -368,15 +368,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
       element.style.backgroundColor = '#ffffff';
       element.style.color = '#374151';
 
-      // Add title to the PDF content
-      const titleElement = document.createElement('h1');
-      titleElement.textContent = `✦ ${translate('aplus_note_title')} ${translate('aplus_note_for')} ${parsedNote.title}`;
-      titleElement.style.fontSize = '24px';
-      titleElement.style.fontWeight = 'bold';
-      titleElement.style.marginBottom = '16px';
-      titleElement.style.color = '#111827';
-      element.insertBefore(titleElement, element.firstChild);
-
       const opt = {
         margin: [15, 15, 15, 15] as [number, number, number, number],
         filename: `${courseTitle.replace(/[^a-z0-9]/gi, '_')}_Study_Sheet.pdf`,
@@ -443,9 +434,14 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
     return (
       <>
         {error && (
-          <div className={`rounded-xl p-3 mb-4 text-sm ${
-            isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
-          }`}>
+          <div
+            className="rounded-xl p-3 mb-4 text-sm border"
+            style={{
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+              borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)',
+              color: isDark ? '#e94446' : '#d91a1c'
+            }}
+          >
             <span>{error}</span>
           </div>
         )}
@@ -583,91 +579,54 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus }: A
         </div>
       )}
 
-      <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
-        isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-      }`}>
-
-      {/* Header */}
-      <div className={`border-b p-4 sm:p-6 ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
-        {/* Title */}
-        <h1 className={`text-lg sm:text-2xl font-bold mb-3 sm:mb-4 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-          ✦ {translate('aplus_note_title')} {translate('aplus_note_for')} {parsedNote.title}
-        </h1>
-
-        {/* Action buttons - wrap on mobile */}
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-          <button
-            onClick={handleCopyWithAuth}
-            disabled={generating}
-            className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {copied ? (
-              <Check className="w-4 h-4 text-green-500" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-            <span className="hidden xs:inline">{translate('copy')}</span>
-          </button>
-          <button
-            onClick={handleDownloadWithAuth}
-            disabled={downloading || generating}
-            className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {downloading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
-            <span className="hidden xs:inline">{translate('download')}</span>
-          </button>
-          <button
-            onClick={handleEditWithAuth}
-            disabled={isEditing || generating}
-            className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Pencil className="w-4 h-4" />
-            <span className="hidden xs:inline">{translate('edit')}</span>
-          </button>
-          <button
-            onClick={handleShowPersonnalisation}
-            disabled={generating || isEditing}
-            className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/20' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
-            }`}
-          >
-            {generating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RotateCcw className="w-4 h-4" />
-            )}
-            <span className="hidden xs:inline">{translate('regenerate')}</span>
-          </button>
-        </div>
-
-        {/* Topics */}
-        {parsedNote.topics.length > 0 && (
-          <div className="flex items-center gap-2 mt-2">
-            <div className="flex flex-wrap gap-1.5">
-              {parsedNote.topics.map((topic, idx) => (
-                <span
-                  key={idx}
-                  className="px-2.5 py-1 bg-orange-500 text-white text-xs font-medium rounded-full"
-                >
-                  {topic}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Action bar - above the content */}
+      <div className="flex items-center justify-end gap-1 mb-4">
+        <button
+          onClick={handleCopyWithAuth}
+          disabled={generating}
+          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+          title={translate('copy')}
+        >
+          {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+        </button>
+        <button
+          onClick={handleDownloadWithAuth}
+          disabled={downloading || generating}
+          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+          title={translate('download')}
+        >
+          {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+        </button>
+        <button
+          onClick={handleEditWithAuth}
+          disabled={isEditing || generating}
+          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+          title={translate('edit')}
+        >
+          <Pencil className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleShowPersonnalisation}
+          disabled={generating || isEditing}
+          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/20' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
+          }`}
+          title={translate('regenerate')}
+        >
+          {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RotateCcw className="w-5 h-5" />}
+        </button>
       </div>
 
       {/* Note content */}
+      <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+        isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+      }`}>
       <div className="p-4 sm:p-6 md:p-8">
         {isEditing ? (
           <div className="space-y-3 sm:space-y-4">

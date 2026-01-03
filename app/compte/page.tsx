@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   CheckCircle2,
-  Crown,
+  GraduationCap,
   Loader2,
   Mail,
   Trash2,
@@ -497,7 +497,7 @@ export default function ComptePage() {
               }`}>
                 {profile?.isPremium ? (
                   <>
-                    <Crown className="w-3.5 h-3.5" />
+                    <GraduationCap className="w-3.5 h-3.5" />
                     Premium
                   </>
                 ) : (
@@ -586,7 +586,10 @@ export default function ComptePage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+              onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -614,9 +617,12 @@ export default function ComptePage() {
             {!profile?.isPremium && (
               <Link
                 href="/paywall"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold transition-all"
+                style={{ backgroundColor: '#ff751f' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
               >
-                <Crown className="w-3.5 h-3.5" />
+                <GraduationCap className="w-3.5 h-3.5" />
                 {translate('account_upgrade')}
               </Link>
             )}

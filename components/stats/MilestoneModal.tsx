@@ -113,7 +113,10 @@ export default function MilestoneModal({ reward, onClose }: MilestoneModalProps)
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7 }}
               onClick={onClose}
-              className="mt-6 w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors"
+              className="mt-6 w-full py-3 text-white font-semibold rounded-xl transition-colors"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
             >
               Continuer
             </motion.button>

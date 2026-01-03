@@ -302,7 +302,7 @@ export default function UploadZone() {
         />
         <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-3">
           {/* Icon */}
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ background: 'linear-gradient(to bottom right, #ff751f, #e5681b)' }}>
             <Upload className="w-6 h-6" />
           </div>
 
@@ -320,7 +320,10 @@ export default function UploadZone() {
                 e.preventDefault();
                 fileInputRef.current?.click();
               }}
-              className="px-5 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+              className="px-5 py-2.5 rounded-lg text-white text-sm font-semibold transition-colors"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
             >
               {translate('home_upload_choose_file')}
             </button>
@@ -358,10 +361,6 @@ export default function UploadZone() {
         </div>
       </label>
 
-      {/* Small footer text */}
-      <p className={`text-xs mt-3 text-center ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
-        {translate('home_upload_limit')}
-      </p>
 
       {files.length > 0 && (
         <div className="mt-4">
@@ -414,7 +413,10 @@ export default function UploadZone() {
         <button
           onClick={handleStart}
           disabled={isProcessing || !files.length}
-          className="flex-1 inline-flex items-center justify-center gap-2 h-[60px] sm:h-12 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex-1 inline-flex items-center justify-center gap-2 h-[60px] sm:h-12 rounded-xl text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          style={{ backgroundColor: '#ff751f' }}
+          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
         >
           {isProcessing ? (
             <>
@@ -438,11 +440,14 @@ export default function UploadZone() {
       </div>
 
       {error && (
-        <div className={`mt-4 rounded-xl border p-3 text-sm ${
-          isDark
-            ? 'border-red-800/50 bg-red-950/30 text-red-400'
-            : 'border-red-200 bg-red-50 text-red-700'
-        }`}>
+        <div
+          className="mt-4 rounded-xl border p-3 text-sm"
+          style={{
+            borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)',
+            backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+            color: isDark ? '#e94446' : '#d91a1c'
+          }}
+        >
           <p className="font-semibold mb-1">{translate('upload_error_state')}</p>
           <p>{error || translate('upload_error_state_help')}</p>
         </div>

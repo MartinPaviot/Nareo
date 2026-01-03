@@ -38,8 +38,8 @@ export default function DeleteCourseDialog({
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'rgba(217, 26, 28, 0.1)' }}>
+              <AlertTriangle className="w-6 h-6" style={{ color: '#d91a1c' }} />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">
@@ -58,11 +58,17 @@ export default function DeleteCourseDialog({
         </div>
 
         {/* Warning Message */}
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-          <p className="text-sm text-red-800">
+        <div
+          className="rounded-2xl p-4 border"
+          style={{
+            backgroundColor: 'rgba(217, 26, 28, 0.1)',
+            borderColor: 'rgba(217, 26, 28, 0.3)'
+          }}
+        >
+          <p className="text-sm" style={{ color: '#d91a1c' }}>
             {translate('delete_course_warning')}
           </p>
-          <p className="text-sm text-red-700 mt-2 font-medium">
+          <p className="text-sm mt-2 font-medium" style={{ color: '#b81618' }}>
             "{courseTitle}"
           </p>
         </div>
@@ -79,7 +85,10 @@ export default function DeleteCourseDialog({
           <button
             onClick={handleDelete}
             disabled={isLoading}
-            className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-3 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{ backgroundColor: '#d91a1c' }}
+            onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = '#b81618')}
+            onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = '#d91a1c')}
           >
             {isLoading ? (
               <>

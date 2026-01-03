@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle2, Crown, Sparkles, Zap, Loader2 } from 'lucide-react';
+import { CheckCircle2, GraduationCap, Sparkles, Zap, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -86,6 +86,8 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
     translate('signup_plan_free_feature_1'),
     translate('signup_plan_free_feature_2'),
     translate('signup_plan_free_feature_3'),
+    translate('signup_plan_free_feature_4'),
+    translate('signup_plan_free_feature_5'),
   ];
 
   const premiumFeatures = [
@@ -93,6 +95,7 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
     translate('signup_plan_premium_feature_2'),
     translate('signup_plan_premium_feature_3'),
     translate('signup_plan_premium_feature_4'),
+    translate('signup_plan_premium_feature_5'),
   ];
 
   return (
@@ -169,11 +172,11 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
 
           {/* Premium Plan */}
           <div className={cn(
-            'relative rounded-2xl border-2 border-orange-500 p-6 shadow-xl',
+            'relative rounded-2xl border-2 p-6 shadow-xl',
             isDark ? 'bg-neutral-800' : 'bg-white'
-          )}>
+          )} style={{ borderColor: '#ff751f' }}>
             {/* Popular Badge */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-orange-500 text-white text-sm font-bold rounded-full">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-sm font-bold rounded-full" style={{ backgroundColor: '#ff751f' }}>
               {translate('signup_plan_premium_badge')}
             </div>
 
@@ -182,7 +185,7 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
                 'w-12 h-12 rounded-full flex items-center justify-center',
                 isDark ? 'bg-orange-900/30' : 'bg-orange-100'
               )}>
-                <Crown className="w-6 h-6 text-orange-500" />
+                <GraduationCap className="w-6 h-6" style={{ color: '#ff751f' }} />
               </div>
               <div>
                 <h2 className={cn('text-xl font-bold', isDark ? 'text-gray-100' : 'text-gray-900')}>{translate('signup_plan_premium_title')}</h2>
@@ -221,7 +224,7 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
                 )}
               >
                 {translate('paywall_plan_annual')}
-                <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full">
+                <span className="text-xs text-white px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#379f5a' }}>
                   -30%
                 </span>
               </button>
@@ -251,12 +254,15 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
             <button
               onClick={handleSelectPremium}
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-xl text-white font-semibold transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              style={{ backgroundColor: '#ff751f', boxShadow: '0 10px 15px -3px rgba(255, 117, 31, 0.25)' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+              onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <Crown className="w-5 h-5" />
+                <GraduationCap className="w-5 h-5" />
               )}
               {translate('signup_plan_premium_cta')}
             </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MoreHorizontal, FolderInput, FolderMinus } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -20,6 +20,32 @@ export default function CourseActionsMenu({
   const { isDark } = useTheme();
   const { folders, moveCourse } = useCoursesOrganized();
   const [showMenu, setShowMenu] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (showMenu) {
+      closeTimeoutRef.current = setTimeout(() => {
+        setShowMenu(false);
+      }, 300); // Small delay to prevent accidental closes
+    }
+  };
 
   const handleMoveTo = async (folderId: string | null) => {
     await moveCourse(courseId, folderId);
@@ -30,7 +56,13 @@ export default function CourseActionsMenu({
   const hasFolders = availableFolders.length > 0 || currentFolderId;
 
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div
+      ref={containerRef}
+      className="relative"
+      onClick={(e) => e.stopPropagation()}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Menu button */}
       <button
         onClick={() => setShowMenu(!showMenu)}
@@ -47,11 +79,6 @@ export default function CourseActionsMenu({
       <AnimatePresence>
         {showMenu && (
           <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowMenu(false)}
-            />
 
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: -10 }}

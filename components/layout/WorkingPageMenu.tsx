@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Menu, X, Moon, Sun, BookOpen, LogOut, LogIn, UserPlus, Globe, User, Crown, Gamepad2, Users, Trophy } from 'lucide-react';
+import { Menu, X, Moon, Sun, BookOpen, LogOut, LogIn, UserPlus, Globe, User, GraduationCap, Gamepad2, Users, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage, type Language } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -110,7 +110,7 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
           onClick={() => router.push('/paywall')}
           className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
         >
-          <Crown className="w-4 h-4 flex-shrink-0" />
+          <GraduationCap className="w-4 h-4 flex-shrink-0" />
           <span className="hidden sm:inline">{translate('upgrade_button')}</span>
         </button>
       )}
@@ -331,11 +331,13 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
                 {/* Sign Out */}
                 <button
                   onClick={handleSignOut}
-                  className={`flex items-center gap-2 h-9 px-3 rounded-lg text-xs font-medium transition-colors ${
-                    isDark
-                      ? 'text-red-400 hover:bg-red-500/10'
-                      : 'text-red-600 hover:bg-red-50'
-                  }`}
+                  className="flex items-center gap-2 h-9 px-3 rounded-lg text-xs font-medium transition-colors"
+                  style={{
+                    color: isDark ? '#e94446' : '#d91a1c',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.1)' : 'rgba(217, 26, 28, 0.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   {translate('signout_button')}

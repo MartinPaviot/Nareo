@@ -158,7 +158,10 @@ export default function CreateFolderModal({ isOpen, onClose }: CreateFolderModal
                 <button
                   onClick={handleCreate}
                   disabled={!name.trim() || isCreating}
-                  className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 rounded-xl text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  style={{ backgroundColor: '#ff751f' }}
+                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+                  onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
                 >
                   {isCreating ? 'Création...' : 'Créer'}
                 </button>

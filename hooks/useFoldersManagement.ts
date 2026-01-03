@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCoursesOrganized } from './useCoursesOrganized';
+import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 
 interface UseFoldersManagementReturn {
   createFolder: (name: string, color?: string, icon?: string) => Promise<string | null>;
@@ -13,7 +13,7 @@ interface UseFoldersManagementReturn {
 
 export function useFoldersManagement(): UseFoldersManagementReturn {
   const { user } = useAuth();
-  const { refetch } = useCoursesOrganized();
+  const { triggerRefresh } = useCoursesRefresh();
 
   const createFolder = useCallback(async (
     name: string,
@@ -34,13 +34,13 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
       }
 
       const data = await response.json();
-      await refetch();
+      triggerRefresh();
       return data.folder?.id || data.id;
     } catch (err) {
       console.error('Error creating folder:', err);
       return null;
     }
-  }, [user, refetch]);
+  }, [user, triggerRefresh]);
 
   const deleteFolder = useCallback(async (
     folderId: string,
@@ -59,13 +59,13 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
         throw new Error('Failed to delete folder');
       }
 
-      await refetch();
+      triggerRefresh();
       return true;
     } catch (err) {
       console.error('Error deleting folder:', err);
       return false;
     }
-  }, [user, refetch]);
+  }, [user, triggerRefresh]);
 
   const updateFolder = useCallback(async (
     folderId: string,
@@ -84,13 +84,13 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
         throw new Error('Failed to update folder');
       }
 
-      await refetch();
+      triggerRefresh();
       return true;
     } catch (err) {
       console.error('Error updating folder:', err);
       return false;
     }
-  }, [user, refetch]);
+  }, [user, triggerRefresh]);
 
   const toggleFolderCollapse = useCallback(async (folderId: string): Promise<boolean> => {
     if (!user) return false;
@@ -104,13 +104,13 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
         throw new Error('Failed to toggle folder collapse');
       }
 
-      await refetch();
+      triggerRefresh();
       return true;
     } catch (err) {
       console.error('Error toggling folder collapse:', err);
       return false;
     }
-  }, [user, refetch]);
+  }, [user, triggerRefresh]);
 
   return {
     createFolder,

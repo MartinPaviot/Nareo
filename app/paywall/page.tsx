@@ -228,29 +228,33 @@ export default function PaywallPage() {
                 onClick={() => setSelectedPlan('annual')}
                 className={`relative w-full p-4 rounded-xl border-2 text-left transition-all ${
                   selectedPlan === 'annual'
-                    ? 'border-orange-500 bg-orange-50'
+                    ? 'bg-orange-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
+                style={selectedPlan === 'annual' ? { borderColor: '#ff751f' } : {}}
               >
-                <span className="absolute -top-2.5 left-4 px-2 py-0.5 bg-orange-500 text-white text-xs font-medium rounded">
+                <span className="absolute -top-2.5 left-4 px-2 py-0.5 text-white text-xs font-medium rounded" style={{ backgroundColor: '#ff751f' }}>
                   {translate('paywall_recommended')}
                 </span>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      selectedPlan === 'annual' ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
-                    }`}>
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        selectedPlan === 'annual' ? '' : 'border-gray-300'
+                      }`}
+                      style={selectedPlan === 'annual' ? { borderColor: '#ff751f', backgroundColor: '#ff751f' } : {}}
+                    >
                       {selectedPlan === 'annual' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900">{translate('paywall_plan_annual')}</span>
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">-{savingsPercent}</span>
+                        <span className="px-2 py-0.5 text-xs font-medium rounded" style={{ backgroundColor: 'rgba(55, 159, 90, 0.15)', color: '#379f5a' }}>-{savingsPercent}</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs">
                         <span className="text-gray-400 line-through">{originalAnnualTotal()}</span>
                         <span className="text-gray-700 font-medium">{annualTotal()}</span>
-                        <span className="text-green-600">— {translate('paywall_you_save')} {savingsAmount()}</span>
+                        <span style={{ color: '#379f5a' }}>— {translate('paywall_you_save')} {savingsAmount()}</span>
                       </div>
                     </div>
                   </div>
@@ -266,15 +270,19 @@ export default function PaywallPage() {
                 onClick={() => setSelectedPlan('monthly')}
                 className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                   selectedPlan === 'monthly'
-                    ? 'border-orange-500 bg-orange-50'
+                    ? 'bg-orange-50'
                     : 'border-gray-200 hover:border-gray-300 opacity-75'
                 }`}
+                style={selectedPlan === 'monthly' ? { borderColor: '#ff751f' } : {}}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      selectedPlan === 'monthly' ? 'border-orange-500 bg-orange-500' : 'border-gray-300'
-                    }`}>
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        selectedPlan === 'monthly' ? '' : 'border-gray-300'
+                      }`}
+                      style={selectedPlan === 'monthly' ? { borderColor: '#ff751f', backgroundColor: '#ff751f' } : {}}
+                    >
                       {selectedPlan === 'monthly' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                     </div>
                     <div>
@@ -311,7 +319,10 @@ export default function PaywallPage() {
             <button
               onClick={handleCheckout}
               disabled={processingPayment || !acceptedCGV}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+              onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
             >
               {processingPayment ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

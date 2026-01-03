@@ -109,7 +109,7 @@ export default function RenameCourseDialog({
           />
           <div className="flex justify-between items-center">
             {error ? (
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm" style={{ color: '#d91a1c' }}>{error}</p>
             ) : (
               <p className="text-sm text-gray-500">{translate('rename_course_hint')}</p>
             )}

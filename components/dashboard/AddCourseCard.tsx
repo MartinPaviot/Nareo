@@ -65,12 +65,22 @@ export default function AddCourseCard({ onUploadClick }: AddCourseCardProps) {
         </div>
 
         {/* Upload Icon */}
-        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center group-hover:bg-orange-500 transition-colors ${
-          isDark ? 'bg-orange-900/50' : 'bg-orange-100'
-        }`}>
+        <div
+          className={`upload-icon-container flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+            isDark ? 'bg-orange-900/50' : 'bg-orange-100'
+          }`}
+        >
           <Upload className={`w-5 h-5 group-hover:text-white transition-colors ${
             isDark ? 'text-orange-400' : 'text-orange-600'
           }`} />
+          <style jsx>{`
+            .upload-icon-container {
+              transition: background-color 0.2s;
+            }
+            :global(.group:hover) .upload-icon-container {
+              background-color: #ff751f;
+            }
+          `}</style>
         </div>
       </button>
     </div>

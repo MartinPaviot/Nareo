@@ -25,7 +25,7 @@ interface StatCardProps {
   isDark?: boolean;
 }
 
-function StatCard({ icon: Icon, label, value, subValue, valueColor = 'text-gray-900', isDark = false }: StatCardProps) {
+function StatCard({ icon: Icon, label, value, subValue, valueColor, isDark = false }: StatCardProps) {
   return (
     <div className={`rounded-xl p-4 border shadow-sm text-center ${
       isDark
@@ -36,7 +36,7 @@ function StatCard({ icon: Icon, label, value, subValue, valueColor = 'text-gray-
         <Icon className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
         <span className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{label}</span>
       </div>
-      <p className={`text-xl font-bold ${isDark && valueColor === 'text-gray-900' ? 'text-white' : valueColor}`}>{value}</p>
+      <p className={`text-xl font-bold ${!valueColor ? (isDark ? 'text-white' : 'text-gray-900') : ''}`} style={valueColor ? { color: valueColor } : {}}>{value}</p>
       {subValue && <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{subValue}</p>}
     </div>
   );
@@ -124,7 +124,10 @@ export default function StatsModule() {
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 px-6 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+        className="w-full text-white py-4 px-6 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+        style={{ backgroundColor: '#ff751f' }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
         onClick={handleStartSession}
       >
         {todayActivity?.questions_answered && todayActivity.questions_answered > 0
@@ -147,7 +150,7 @@ export default function StatsModule() {
           label={translate('stats_label_precision')}
           value={`${precision}%`}
           subValue={translate('stats_label_today')}
-          valueColor={precision >= 70 ? 'text-green-600' : precision >= 50 ? 'text-yellow-600' : 'text-red-500'}
+          valueColor={precision >= 70 ? '#379f5a' : precision >= 50 ? '#ca8a04' : '#ef4444'}
           isDark={isDark}
         />
         <XPDisplay totalXP={stats?.total_xp || 0} compact />

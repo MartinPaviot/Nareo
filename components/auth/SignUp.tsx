@@ -282,15 +282,18 @@ export default function SignUp() {
           {/* Email Verification Success Message */}
           {emailVerificationSent ? (
             <div className="space-y-4">
-              <div className={cn(
-                'border-2 rounded-xl p-6 text-center',
-                isDark ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'
-              )}>
-                <div className={cn(
-                  'mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4',
-                  isDark ? 'bg-green-900/30' : 'bg-green-100'
-                )}>
-                  <svg className={cn('w-8 h-8', isDark ? 'text-green-400' : 'text-green-600')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div
+                className="border-2 rounded-xl p-6 text-center"
+                style={{
+                  backgroundColor: isDark ? 'rgba(55, 159, 90, 0.15)' : 'rgba(55, 159, 90, 0.1)',
+                  borderColor: isDark ? 'rgba(55, 159, 90, 0.5)' : 'rgba(55, 159, 90, 0.3)'
+                }}
+              >
+                <div
+                  className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                  style={{ backgroundColor: isDark ? 'rgba(55, 159, 90, 0.25)' : 'rgba(55, 159, 90, 0.2)' }}
+                >
+                  <svg className="w-8 h-8" style={{ color: isDark ? '#5cb978' : '#379f5a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
@@ -312,15 +315,18 @@ export default function SignUp() {
                 </p>
 
                 {resendSuccess ? (
-                  <div className={cn(
-                    'p-4 border rounded-xl',
-                    isDark ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'
-                  )}>
-                    <div className={cn('flex items-center justify-center gap-2', isDark ? 'text-green-400' : 'text-green-700')}>
+                  <div
+                    className="p-4 border rounded-xl"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(55, 159, 90, 0.15)' : 'rgba(55, 159, 90, 0.1)',
+                      borderColor: isDark ? 'rgba(55, 159, 90, 0.5)' : 'rgba(55, 159, 90, 0.3)'
+                    }}
+                  >
+                    <div className="flex items-center justify-center gap-2" style={{ color: isDark ? '#5cb978' : '#379f5a' }}>
                       <Mail className="w-5 h-5" />
                       <p className="font-medium">{translate('auth_error_email_sent')}</p>
                     </div>
-                    <p className={cn('text-sm mt-2 text-center', isDark ? 'text-green-400' : 'text-green-600')}>
+                    <p className="text-sm mt-2 text-center" style={{ color: isDark ? '#5cb978' : '#379f5a' }}>
                       {translate('auth_error_check_inbox')}
                     </p>
                   </div>
@@ -339,12 +345,15 @@ export default function SignUp() {
                       )}
                     />
                     {resendError && (
-                      <p className={cn('text-sm', isDark ? 'text-red-400' : 'text-red-600')}>{resendError}</p>
+                      <p className="text-sm" style={{ color: isDark ? '#e94446' : '#d91a1c' }}>{resendError}</p>
                     )}
                     <button
                       onClick={handleResendEmail}
                       disabled={resending}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl hover:bg-orange-600 transition disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 text-white font-semibold rounded-xl transition disabled:opacity-50"
+                      style={{ backgroundColor: '#ff751f' }}
+                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
                     >
                       {resending ? (
                         <>
@@ -554,7 +563,7 @@ export default function SignUp() {
                   <Link href="/confidentialite" className="text-orange-500 hover:text-orange-600 underline" target="_blank" onClick={(e) => e.stopPropagation()}>
                     {translate('auth_signup_privacy_link')}
                   </Link>
-                  <span className="text-red-500">*</span>
+                  <span style={{ color: '#d91a1c' }}>*</span>
                 </span>
               </label>
 
@@ -581,12 +590,14 @@ export default function SignUp() {
 
             {/* Error Message */}
             {error && (
-              <div className={cn(
-                'px-4 py-3 rounded-lg text-sm border',
-                isDark
-                  ? 'bg-red-900/20 border-red-800 text-red-400'
-                  : 'bg-red-50 border-red-200 text-red-700'
-              )}>
+              <div
+                className="px-4 py-3 rounded-lg text-sm border"
+                style={{
+                  backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+                  borderColor: isDark ? 'rgba(217, 26, 28, 0.5)' : 'rgba(217, 26, 28, 0.3)',
+                  color: isDark ? '#e94446' : '#d91a1c'
+                }}
+              >
                 {error}
               </div>
             )}
@@ -595,7 +606,10 @@ export default function SignUp() {
             <button
               type="submit"
               disabled={loading || googleLoading || !acceptedCGU}
-              className="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+              onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
             >
               {loading ? translate('auth_signup_button_loading') : translate('auth_signup_button')}
             </button>

@@ -19,7 +19,7 @@ export function getFreshnessConfig(daysSinceStudy: number | null) {
 }
 
 export function formatDaysSince(days: number | null): string {
-  if (days === null) return 'Jamais revise';
+  if (days === null) return 'Jamais révisé';
   if (days === 0) return 'Aujourd\'hui';
   if (days === 1) return 'Hier';
   if (days < 7) return `Il y a ${days} jours`;
@@ -66,9 +66,9 @@ export function getTotalCoursesCount(folders: Folder[], uncategorized: Course[])
 }
 
 export function getMasteryLabel(percentage: number): string {
-  if (percentage === 0) return 'Non commence';
-  if (percentage < 30) return 'Debutant';
+  if (percentage === 0) return 'Non commencé';
+  if (percentage < 30) return 'Débutant';
   if (percentage < 60) return 'En cours';
-  if (percentage < 85) return 'Avance';
-  return 'Maitrise';
+  if (percentage < 85) return 'Avancé';
+  return 'Maîtrisé';
 }

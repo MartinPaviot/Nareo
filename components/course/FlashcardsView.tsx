@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Sparkles, ThumbsUp, ThumbsDown, Star, UserPlus, HelpCircle, Plus, X, Trash2, Pencil, Maximize2, Minimize2, Lock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -535,9 +536,14 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
     return (
       <>
         {error && (
-          <div className={`rounded-xl p-3 mb-4 text-sm ${
-            isDark ? 'bg-red-500/20 border border-red-500/30 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
-          }`}>
+          <div
+            className="rounded-xl p-3 mb-4 text-sm border"
+            style={{
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+              borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)',
+              color: isDark ? '#e94446' : '#d91a1c'
+            }}
+          >
             {error}
           </div>
         )}
@@ -594,10 +600,10 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
   // Show flashcard carousel
   const currentCard = flashcards[currentIndex];
 
-  // Mode plein écran
-  if (isFullscreen) {
-    return (
-      <div className={`fixed inset-0 z-50 flex flex-col ${isDark ? 'bg-neutral-950' : 'bg-gray-50'}`}>
+  // Mode plein écran - utilise createPortal pour s'assurer qu'il est au-dessus de tout
+  if (isFullscreen && typeof document !== 'undefined') {
+    const fullscreenContent = (
+      <div className={`fixed inset-0 flex flex-col ${isDark ? 'bg-neutral-950' : 'bg-gray-50'}`} style={{ zIndex: 9999 }}>
         {/* Header plein écran */}
         <div className={`flex items-center justify-between px-4 sm:px-8 py-4 border-b ${
           isDark ? 'border-neutral-800' : 'border-gray-200'
@@ -630,12 +636,14 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8 overflow-hidden">
           <div
             onClick={handleFlip}
-            className="relative w-full max-w-3xl h-full max-h-[60vh] cursor-pointer perspective-1000"
+            className="relative w-full max-w-3xl cursor-pointer"
+            style={{
+              perspective: '1000px',
+              height: 'min(60vh, 500px)',
+            }}
           >
             <div
-              className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${
-                isFlipped ? 'rotate-y-180' : ''
-              }`}
+              className="relative w-full h-full transition-transform duration-500"
               style={{
                 transformStyle: 'preserve-3d',
                 transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -643,7 +651,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             >
               {/* Front - Question */}
               <div
-                className={`absolute inset-0 rounded-3xl border-2 shadow-2xl p-6 sm:p-10 md:p-12 flex flex-col items-center justify-center backface-hidden transition-colors ${
+                className={`absolute top-0 left-0 w-full h-full rounded-3xl border-2 shadow-2xl p-6 sm:p-10 md:p-12 flex flex-col items-center justify-center transition-colors ${
                   isDark ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
                 }`}
                 style={{ backfaceVisibility: 'hidden' }}
@@ -663,7 +671,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
 
               {/* Back - Answer */}
               <div
-                className={`absolute inset-0 rounded-3xl border-2 shadow-2xl p-6 sm:p-10 md:p-12 flex flex-col items-center justify-center overflow-y-auto transition-colors ${
+                className={`absolute top-0 left-0 w-full h-full rounded-3xl border-2 shadow-2xl p-6 sm:p-10 md:p-12 flex flex-col items-center justify-center overflow-y-auto transition-colors ${
                   isDark ? 'bg-orange-500/10 border-orange-500/40' : 'bg-orange-50 border-orange-300'
                 }`}
                 style={{
@@ -706,8 +714,15 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                     hasAnswered
                       ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : isDark ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                      : ''
                   }`}
+                  style={!hasAnswered ? {
+                    backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)',
+                    color: isDark ? '#e94446' : '#d91a1c',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)'
+                  } : {}}
                 >
                   <ThumbsDown className="w-4 h-4" />
                   <span>{translate('flashcards_didnt_know')}</span>
@@ -721,8 +736,15 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                     hasAnswered
                       ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : isDark ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30' : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                      : ''
                   }`}
+                  style={!hasAnswered ? {
+                    backgroundColor: isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.1)',
+                    color: isDark ? '#5cb978' : '#379f5a',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: isDark ? 'rgba(55, 159, 90, 0.3)' : 'rgba(55, 159, 90, 0.3)'
+                  } : {}}
                 >
                   <ThumbsUp className="w-4 h-4" />
                   <span>{translate('flashcards_knew_it')}</span>
@@ -762,6 +784,8 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
         </div>
       </div>
     );
+
+    return createPortal(fullscreenContent, document.body);
   }
 
   return (
@@ -780,49 +804,49 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
           )}
           <button
             onClick={() => user ? setShowAddModal(true) : setShowSignupModal(true)}
-            className={`p-1.5 rounded-md transition-colors ${
-              isDark ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10' : 'text-green-600 hover:text-green-700 hover:bg-green-50'
+            className={`p-2 rounded-lg transition-colors ${
+              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
             title={translate('flashcards_add') || 'Ajouter'}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-5 h-5" />
           </button>
           <button
             onClick={() => user ? openEditModal() : setShowSignupModal(true)}
-            className={`p-1.5 rounded-md transition-colors ${
-              isDark ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10' : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+            className={`p-2 rounded-lg transition-colors ${
+              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
             title="Modifier"
           >
-            <Pencil className="w-4 h-4" />
+            <Pencil className="w-5 h-5" />
           </button>
           <button
             onClick={() => user ? setShowDeleteModal(true) : setShowSignupModal(true)}
-            className={`p-1.5 rounded-md transition-colors ${
-              isDark ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' : 'text-red-500 hover:text-red-600 hover:bg-red-50'
+            className={`p-2 rounded-lg transition-colors ${
+              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
             title={translate('flashcards_delete') || 'Supprimer'}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-5 h-5" />
           </button>
           <button
             onClick={() => user ? setShowRegenerateModal(true) : setShowSignupModal(true)}
             disabled={generating}
-            className={`p-1.5 rounded-md transition-colors ${
-              isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/10' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
+            className={`p-2 rounded-lg transition-colors ${
+              isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/20' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
             }`}
             title={translate('flashcards_regenerate') || 'Régénérer'}
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-5 h-5" />
           </button>
           <button
             onClick={() => setIsFullscreen(true)}
-            className={`p-1.5 rounded-md transition-colors ${
-              isDark ? 'text-purple-400 hover:text-purple-300 hover:bg-purple-500/10' : 'text-purple-600 hover:text-purple-700 hover:bg-purple-50'
+            className={`p-2 rounded-lg transition-colors ${
+              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
             }`}
             title={translate('flashcards_fullscreen') || 'Plein écran (F)'}
           >
-            <Maximize2 className="w-4 h-4" />
+            <Maximize2 className="w-5 h-5" />
           </button>
           <KeyboardHelpTooltip isDark={isDark} />
         </div>
@@ -899,8 +923,15 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-sm sm:text-base transition-all ${
               hasAnswered
                 ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : isDark ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                : ''
             }`}
+            style={!hasAnswered ? {
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)',
+              color: isDark ? '#e94446' : '#d91a1c',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)'
+            } : {}}
           >
             <ThumbsDown className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden xs:inline">{translate('flashcards_didnt_know')}</span>
@@ -915,8 +946,15 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
             className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-sm sm:text-base transition-all ${
               hasAnswered
                 ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : isDark ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30' : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                : ''
             }`}
+            style={!hasAnswered ? {
+              backgroundColor: isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.1)',
+              color: isDark ? '#5cb978' : '#379f5a',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor: isDark ? 'rgba(55, 159, 90, 0.3)' : 'rgba(55, 159, 90, 0.3)'
+            } : {}}
           >
             <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden xs:inline">{translate('flashcards_knew_it')}</span>
@@ -969,8 +1007,8 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
       </div>
 
       {/* Signup Modal */}
-      {showSignupModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showSignupModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -1002,12 +1040,13 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add Flashcard Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-lg w-full p-6 shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -1097,19 +1136,21 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showDeleteModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
-              isDark ? 'bg-red-500/20' : 'bg-red-100'
-            }`}>
-              <Trash2 className="w-7 h-7 text-red-500" />
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)' }}
+            >
+              <Trash2 className="w-7 h-7" style={{ color: '#d91a1c' }} />
             </div>
             <h3 className={`text-xl font-bold mb-2 text-center ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
               {translate('flashcards_delete_title') || 'Supprimer cette flashcard ?'}
@@ -1130,7 +1171,10 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               <button
                 onClick={handleDeleteCard}
                 disabled={deletingCard}
-                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#d91a1c' }}
+                onMouseEnter={(e) => !deletingCard && (e.currentTarget.style.backgroundColor = '#b81618')}
+                onMouseLeave={(e) => !deletingCard && (e.currentTarget.style.backgroundColor = '#d91a1c')}
               >
                 {deletingCard ? (
                   <>
@@ -1146,12 +1190,13 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit Flashcard Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showEditModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-lg w-full p-6 shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -1239,12 +1284,13 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Regenerate Modal with Personalization */}
-      {showRegenerateModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showRegenerateModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-md w-full shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -1257,12 +1303,13 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               isGenerating={generating}
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Card Limit Modal for Anonymous Users */}
-      {showCardLimitModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      {showCardLimitModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
@@ -1294,7 +1341,8 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Toast de chargement pendant la régénération */}

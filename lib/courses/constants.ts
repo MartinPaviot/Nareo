@@ -3,11 +3,11 @@ import { FolderIcon, FolderColor, FreshnessLevel, FreshnessConfig } from './type
 export const FOLDER_COLORS: FolderColor[] = [
   { id: 'orange', color: '#F97316', label: 'Orange' },
   { id: 'blue', color: '#3B82F6', label: 'Bleu' },
-  { id: 'green', color: '#22C55E', label: 'Vert' },
+  { id: 'green', color: '#379f5a', label: 'Vert' },
   { id: 'purple', color: '#8B5CF6', label: 'Violet' },
   { id: 'pink', color: '#EC4899', label: 'Rose' },
   { id: 'yellow', color: '#EAB308', label: 'Jaune' },
-  { id: 'red', color: '#EF4444', label: 'Rouge' },
+  { id: 'red', color: '#d91a1c', label: 'Rouge' },
   { id: 'teal', color: '#14B8A6', label: 'Turquoise' },
 ];
 
@@ -29,8 +29,8 @@ export const FOLDER_ICONS: FolderIcon[] = [
 export const FRESHNESS_CONFIG: Record<FreshnessLevel, FreshnessConfig> = {
   fresh: {
     maxDays: 2,
-    color: '#22C55E',
-    bgColor: '#DCFCE7',
+    color: '#379f5a',
+    bgColor: 'rgba(55, 159, 90, 0.15)',
     label: 'Recent',
     icon: 'CheckCircle',
   },
@@ -50,18 +50,18 @@ export const FRESHNESS_CONFIG: Record<FreshnessLevel, FreshnessConfig> = {
   },
   critical: {
     maxDays: Infinity,
-    color: '#EF4444',
-    bgColor: '#FEE2E2',
+    color: '#d91a1c',
+    bgColor: 'rgba(217, 26, 28, 0.1)',
     label: 'Urgent',
     icon: 'AlertCircle',
   },
 };
 
 export const MASTERY_THRESHOLDS = {
-  low: { max: 30, color: '#EF4444' },
+  low: { max: 30, color: '#d91a1c' },
   medium: { max: 60, color: '#F97316' },
   good: { max: 85, color: '#EAB308' },
-  excellent: { max: 100, color: '#22C55E' },
+  excellent: { max: 100, color: '#379f5a' },
 };
 
 export const EMPTY_STATES = {
@@ -92,7 +92,7 @@ export const SMART_CTA_CONFIG = {
   },
   start_chapter: {
     icon: 'Play',
-    color: '#22C55E',
+    color: '#379f5a',
     priority: 2,
   },
   continue_chapter: {

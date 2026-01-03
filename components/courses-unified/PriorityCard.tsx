@@ -81,7 +81,7 @@ export default function PriorityCard({ item }: PriorityCardProps) {
           <span className={`text-sm font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
             Réviser
           </span>
-          <div className="p-2 bg-orange-500 rounded-full">
+          <div className="p-2 rounded-full" style={{ backgroundColor: '#ff751f' }}>
             <ArrowRight className="w-4 h-4 text-white" />
           </div>
         </div>

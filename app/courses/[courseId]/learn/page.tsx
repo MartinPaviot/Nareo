@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, Loader2, Lock, Play, RotateCcw, BookOpen, Layers, FileText, Sparkles, RefreshCw } from 'lucide-react';
+import { AlertCircle, Loader2, BookOpen, Layers, FileText, RefreshCw } from 'lucide-react';
 import GenerationLoadingScreen from '@/components/course/GenerationLoadingScreen';
 import Image from 'next/image';
-import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
-import CourseDrawer from '@/components/layout/CourseDrawer';
+import LearnPageHeader from '@/components/layout/LearnPageHeader';
+import { CourseSidebar } from '@/components/Sidebar';
 import ChapterScoreBadge from '@/components/course/ChapterScoreBadge';
 import PaywallModal from '@/components/course/PaywallModal';
 import FlashcardsView from '@/components/course/FlashcardsView';
@@ -20,6 +20,8 @@ import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 import { trackEvent } from '@/lib/posthog';
 import { loadDemoCourse } from '@/lib/demoCourse';
 import { useCourseChapters } from '@/hooks/useCourseChapters';
+import { useSidebarNavigation } from '@/hooks/useSidebarNavigation';
+import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
 import { QuizConfig } from '@/types/quiz-personnalisation';
 
 interface Chapter {
@@ -57,8 +59,21 @@ export default function CourseLearnPage() {
 
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
-  const [showCourseDrawer, setShowCourseDrawer] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+
+  // Sidebar navigation state
+  const sidebar = useSidebarNavigation();
+  const { folders } = useCoursesOrganized();
+
+  // Find the folder containing the current course (for breadcrumb)
+  const currentCourseFolder = useMemo(() => {
+    for (const folder of folders) {
+      if (folder.courses.some((c) => c.id === courseId)) {
+        return { id: folder.id, name: folder.name };
+      }
+    }
+    return null;
+  }, [folders, courseId]);
   const [quizGenerationError, setQuizGenerationError] = useState<string | null>(null);
   const [quizGenerationProgress, setQuizGenerationProgress] = useState(0);
   const [quizGenerationMessage, setQuizGenerationMessage] = useState('');
@@ -476,6 +491,14 @@ export default function CourseLearnPage() {
     return translate('course_detail_tagline');
   }, [course?.status, translate]);
 
+  // Handle folder click from breadcrumb - open sidebar to that folder's courses
+  // This must be declared before early returns to follow Rules of Hooks
+  const handleBreadcrumbFolderClick = useCallback(() => {
+    if (currentCourseFolder) {
+      sidebar.openToFolder(currentCourseFolder.id, currentCourseFolder.name);
+    }
+  }, [currentCourseFolder, sidebar]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
@@ -510,22 +533,37 @@ export default function CourseLearnPage() {
         ? 'bg-neutral-900'
         : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
     }`}>
-      <PageHeaderWithMascot
-        title={course.title}
-        subtitle={isDemoId ? 'Demo' : translate('learn_course_subtitle')}
-        maxWidth="4xl"
-        showDarkModeToggle
-        onOpenCourseDrawer={!isDemoId && user ? () => setShowCourseDrawer(true) : undefined}
-      />
+      {/* Sidebar navigation */}
+      {!isDemoId && user && (
+        <CourseSidebar
+          isOpen={sidebar.isOpen}
+          level={sidebar.level}
+          selectedFolderId={sidebar.selectedFolderId}
+          selectedFolderName={sidebar.selectedFolderName}
+          currentCourseId={courseId}
+          onClose={sidebar.closeSidebar}
+          onOpen={sidebar.openSidebar}
+          onGoToFolderLevel={sidebar.goToFolderLevel}
+          onGoToCourseLevel={sidebar.goToCourseLevel}
+        />
+      )}
 
-      {/* Course navigation drawer */}
-      <CourseDrawer
-        isOpen={showCourseDrawer}
-        onClose={() => setShowCourseDrawer(false)}
-        currentCourseId={courseId}
-      />
+      {/* Content wrapper - shifts right based on sidebar state */}
+      <div
+        className={`transition-transform duration-300 ease-out ${!isDemoId && user ? 'ml-[72px]' : ''}`}
+        style={{
+          transform: !isDemoId && user && sidebar.isOpen ? 'translateX(208px)' : 'translateX(0)',
+        }}
+      >
+        <LearnPageHeader
+          courseName={course.title}
+          folderName={currentCourseFolder?.name || null}
+          folderId={currentCourseFolder?.id || null}
+          onFolderClick={handleBreadcrumbFolderClick}
+          maxWidth="4xl"
+        />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
         {/* Tabs - Study Sheet / Quiz / Flashcards (logical learning order) */}
         <div className={`flex gap-2 rounded-2xl border shadow-sm p-2 transition-colors ${
           isDark
@@ -644,7 +682,10 @@ export default function CourseLearnPage() {
                     <button
                       onClick={handleRetryProcessing}
                       disabled={isRetrying}
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-60 transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-semibold disabled:opacity-60 transition-colors"
+                      style={{ backgroundColor: '#ff751f' }}
+                      onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+                      onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
                     >
                       {isRetrying ? (
                         <>
@@ -723,6 +764,7 @@ export default function CourseLearnPage() {
         )}
 
       </main>
+      </div>
 
       {showSignupModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
@@ -746,7 +788,10 @@ export default function CourseLearnPage() {
               </button>
               <button
                 onClick={() => router.push('/auth/signup')}
-                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+                className="flex-1 px-4 py-3 text-white rounded-xl font-semibold transition-colors"
+                style={{ backgroundColor: '#ff751f' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
               >
                 {translate('auth_signup_button')}
               </button>

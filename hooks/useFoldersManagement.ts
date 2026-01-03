@@ -104,13 +104,14 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
         throw new Error('Failed to toggle folder collapse');
       }
 
-      triggerRefresh();
+      // Don't trigger refresh here - the local state is already updated in FolderSection
+      // Calling triggerRefresh would cause the entire courses list to reload and reset expand states
       return true;
     } catch (err) {
       console.error('Error toggling folder collapse:', err);
       return false;
     }
-  }, [user, triggerRefresh]);
+  }, [user]);
 
   return {
     createFolder,

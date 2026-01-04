@@ -58,13 +58,44 @@ function createSSEStream() {
     }
   };
 
+  // Send individual question as it's generated
+  const sendQuestion = (data: {
+    chapterId: string;
+    chapterTitle: string;
+    question: {
+      id: string;
+      type: string;
+      questionText: string;
+      options: string[] | null;
+      correctOptionIndex: number | null;
+      answerText: string | null;
+      explanation: string | null;
+      questionNumber: number;
+    };
+    questionsGenerated: number;
+    progress: number;
+  }) => {
+    if (controller) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+        type: 'question',
+        data: {
+          chapterId: data.chapterId,
+          chapterTitle: data.chapterTitle,
+          question: data.question,
+        },
+        questionsGenerated: data.questionsGenerated,
+        progress: data.progress,
+      })}\n\n`));
+    }
+  };
+
   const close = () => {
     if (controller) {
       controller.close();
     }
   };
 
-  return { stream, sendProgress, close };
+  return { stream, sendProgress, sendQuestion, close };
 }
 
 export async function POST(
@@ -225,7 +256,7 @@ export async function POST(
     const modelLanguage = toModelLanguageCode(course.content_language || 'en');
 
     // Create SSE stream
-    const { stream, sendProgress, close } = createSSEStream();
+    const { stream, sendProgress, sendQuestion, close } = createSSEStream();
 
     // Start generation in background (async, don't await)
     (async () => {
@@ -431,6 +462,25 @@ export async function POST(
 
                   if (!questionInsertError) {
                     totalQuestionsGenerated++;
+
+                    // Send the question via SSE so frontend can display it immediately
+                    const questionProgress = baseProgress + Math.floor((idx / questions.length) * 5);
+                    sendQuestion({
+                      chapterId: chapter.id,
+                      chapterTitle: chapter.title,
+                      question: {
+                        id: questionId,
+                        type: questionType === 'true_false' ? 'vrai_faux' : questionType === 'fill_blank' ? 'texte_trous' : 'QCM',
+                        questionText: questionData.question_text,
+                        options: Array.isArray(questionData.options) ? questionData.options : null,
+                        correctOptionIndex: questionData.correct_option_index,
+                        answerText: questionData.answer_text,
+                        explanation: questionData.explanation,
+                        questionNumber: questionData.question_number,
+                      },
+                      questionsGenerated: totalQuestionsGenerated,
+                      progress: questionProgress,
+                    });
                   }
 
                   for (const conceptId of targetConceptIds) {

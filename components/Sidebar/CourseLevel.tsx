@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Plus, Inbox } from 'lucide-react';
+import { ArrowLeft, Upload, Inbox } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import CourseItem from './CourseItem';
@@ -94,19 +94,18 @@ export default function CourseLevel({
         )}
       </div>
 
-      {/* Footer - Add course button (optional) */}
+      {/* Footer - Upload course button (optional) */}
       {onAddCourse && (
         <div className={`px-4 py-3 border-t ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
           <button
             onClick={onAddCourse}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              isDark
-                ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-orange-400'
-                : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-600'
-            }`}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-colors"
+            style={{ backgroundColor: '#ff751f' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
           >
-            <Plus className="w-4 h-4" />
-            {translate('sidebar_add_course') || 'Ajouter un cours'}
+            <Upload className="w-4 h-4" />
+            {translate('sidebar_upload_course') || 'Déposer un cours'}
           </button>
         </div>
       )}

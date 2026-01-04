@@ -409,9 +409,14 @@ export default function ComptePage() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {/* Alerts */}
         {(error || avatarError) && (
-          <div className={`rounded-xl p-4 text-sm flex items-center gap-3 ${
-            isDark ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
-          }`}>
+          <div
+            className="rounded-xl p-4 text-sm flex items-center gap-3 border"
+            style={{
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.1)' : '#fff6f3',
+              borderColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.2)',
+              color: isDark ? '#f87171' : '#b91c1c'
+            }}
+          >
             <Shield className="w-5 h-5 flex-shrink-0" />
             {error || avatarError}
           </div>
@@ -471,9 +476,10 @@ export default function ComptePage() {
                 {profile?.avatar_url && !uploadingAvatar && (
                   <button
                     onClick={handleAvatarDelete}
-                    className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md ${
-                      isDark ? 'bg-red-500 hover:bg-red-600' : 'bg-red-500 hover:bg-red-600'
-                    }`}
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                    style={{ backgroundColor: '#d91a1c' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b81618'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#d91a1c'}
                   >
                     <X className="w-3 h-3 text-white" />
                   </button>
@@ -784,22 +790,32 @@ export default function ComptePage() {
                   {!showCancelConfirm ? (
                     <button
                       onClick={() => setShowCancelConfirm(true)}
-                      className={`text-sm ${isDark ? 'text-neutral-500 hover:text-red-400' : 'text-gray-500 hover:text-red-600'} transition-colors`}
+                      className="text-sm transition-colors"
+                      style={{ color: isDark ? '#737373' : '#6b7280' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#d91a1c'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = isDark ? '#737373' : '#6b7280'}
                     >
                       {translate('account_cancel_subscription')}
                     </button>
                   ) : (
-                    <div className={`rounded-lg p-4 space-y-3 ${
-                      isDark ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-100'
-                    }`}>
-                      <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                    <div
+                      className="rounded-lg p-4 space-y-3 border"
+                      style={{
+                        backgroundColor: isDark ? 'rgba(217, 26, 28, 0.1)' : '#fff6f3',
+                        borderColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#ffeae5'
+                      }}
+                    >
+                      <p className="text-sm" style={{ color: isDark ? '#f87171' : '#b91c1c' }}>
                         {translate('account_cancel_confirm')}
                       </p>
                       <div className="flex gap-2">
                         <button
                           onClick={handleCancelSubscription}
                           disabled={canceling}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition-all"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm font-medium disabled:opacity-60 transition-all"
+                          style={{ backgroundColor: '#d91a1c' }}
+                          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#b81618')}
+                          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#d91a1c')}
                         >
                           {canceling && <Loader2 className="w-3 h-3 animate-spin" />}
                           {translate('account_cancel_yes')}
@@ -835,15 +851,21 @@ export default function ComptePage() {
         </section>
 
         {/* Danger Zone Section */}
-        <section className={`rounded-2xl border overflow-hidden ${
-          isDark ? 'bg-neutral-900 border-red-500/20' : 'bg-white border-red-100'
-        }`}>
-          <div className={`px-6 py-4 border-b ${
-            isDark ? 'border-red-500/20' : 'border-red-100'
-          }`}>
-            <h2 className={`font-semibold flex items-center gap-2 ${
-              isDark ? 'text-red-400' : 'text-red-700'
-            }`}>
+        <section
+          className="rounded-2xl border overflow-hidden"
+          style={{
+            backgroundColor: isDark ? '#171717' : 'white',
+            borderColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#ffeae5'
+          }}
+        >
+          <div
+            className="px-6 py-4 border-b"
+            style={{ borderColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#ffeae5' }}
+          >
+            <h2
+              className="font-semibold flex items-center gap-2"
+              style={{ color: isDark ? '#f87171' : '#b91c1c' }}
+            >
               <Shield className="w-4 h-4" />
               {translate('account_danger_zone')}
             </h2>
@@ -862,11 +884,13 @@ export default function ComptePage() {
               {!showDeleteConfirm && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    isDark
-                      ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                      : 'bg-red-50 text-red-600 hover:bg-red-100'
-                  }`}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    backgroundColor: isDark ? 'rgba(217, 26, 28, 0.1)' : '#fff6f3',
+                    color: isDark ? '#f87171' : '#d91a1c'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.1)' : '#fff6f3'}
                 >
                   {translate('account_delete')}
                 </button>
@@ -877,14 +901,17 @@ export default function ComptePage() {
               <div className={`mt-4 pt-4 border-t space-y-3 ${
                 isDark ? 'border-neutral-800' : 'border-gray-100'
               }`}>
-                <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                <p className="text-sm" style={{ color: isDark ? '#f87171' : '#b91c1c' }}>
                   {translate('account_delete_confirm')}
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={handleDeleteAccount}
                     disabled={deleting}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition-all"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm font-medium disabled:opacity-60 transition-all"
+                    style={{ backgroundColor: '#d91a1c' }}
+                    onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#b81618')}
+                    onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#d91a1c')}
                   >
                     {deleting ? (
                       <Loader2 className="w-3 h-3 animate-spin" />

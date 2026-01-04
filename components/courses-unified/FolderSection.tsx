@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, MoreHorizontal, Pencil, Trash2, Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, MoreHorizontal, Pencil, Trash2, Upload, Check, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
@@ -13,6 +13,7 @@ import { useFoldersManagement } from '@/hooks/useFoldersManagement';
 import CourseCard from './CourseCard';
 import DraggableCourseCard from './DraggableCourseCard';
 import FolderEmptyState from './FolderEmptyState';
+import DeleteFolderDialog from '@/components/course-management/DeleteFolderDialog';
 
 interface FolderSectionProps {
   folder: Folder;
@@ -22,9 +23,20 @@ export default function FolderSection({ folder }: FolderSectionProps) {
   const router = useRouter();
   const { isDark } = useTheme();
   const { translate } = useLanguage();
-  const { toggleFolderCollapse, deleteFolder } = useFoldersManagement();
+  const { toggleFolderCollapse, updateFolder } = useFoldersManagement();
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newName, setNewName] = useState(folder.name);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [isRenaming]);
 
   // Droppable for accepting dragged courses
   const { isOver, setNodeRef } = useDroppable({
@@ -41,11 +53,35 @@ export default function FolderSection({ folder }: FolderSectionProps) {
     await toggleFolderCollapse(folder.id);
   };
 
-  const handleDelete = async () => {
-    if (confirm(translate('folder_delete_confirm'))) {
-      await deleteFolder(folder.id, 'uncategorize');
-    }
+  const handleDelete = () => {
+    setShowDeleteDialog(true);
     setShowMenu(false);
+  };
+
+  const handleStartRename = () => {
+    setNewName(folder.name);
+    setIsRenaming(true);
+    setShowMenu(false);
+  };
+
+  const handleCancelRename = () => {
+    setIsRenaming(false);
+    setNewName(folder.name);
+  };
+
+  const handleConfirmRename = async () => {
+    if (newName.trim() && newName.trim() !== folder.name) {
+      await updateFolder(folder.id, { name: newName.trim() });
+    }
+    setIsRenaming(false);
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleConfirmRename();
+    } else if (e.key === 'Escape') {
+      handleCancelRename();
+    }
   };
 
   // Get folder icon emoji or use default
@@ -85,9 +121,38 @@ export default function FolderSection({ folder }: FolderSectionProps) {
           </div>
 
           {/* Folder name */}
-          <span className={`font-medium ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-            {folder.name}
-          </span>
+          {isRenaming ? (
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <input
+                ref={renameInputRef}
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={handleRenameKeyDown}
+                className={`px-2 py-1 rounded-lg border text-sm font-medium ${
+                  isDark
+                    ? 'bg-neutral-800 border-neutral-600 text-white focus:border-orange-500'
+                    : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
+                } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+              />
+              <button
+                onClick={handleConfirmRename}
+                className="p-1 rounded-lg bg-green-500/20 text-green-500 hover:bg-green-500/30"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleCancelRename}
+                className={`p-1 rounded-lg ${isDark ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}
+              >
+                <X className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
+              </button>
+            </div>
+          ) : (
+            <span className={`font-medium ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+              {folder.name}
+            </span>
+          )}
 
           {/* Course count badge */}
           <span className={`text-sm px-2 py-0.5 rounded-full ${
@@ -100,7 +165,11 @@ export default function FolderSection({ folder }: FolderSectionProps) {
         </div>
 
         {/* Actions menu */}
-        <div className="relative" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="relative"
+          onClick={(e) => e.stopPropagation()}
+          onMouseLeave={() => setShowMenu(false)}
+        >
           <button
             onClick={() => setShowMenu(!showMenu)}
             className={`p-2 rounded-lg transition-colors ${
@@ -124,10 +193,7 @@ export default function FolderSection({ folder }: FolderSectionProps) {
                 }`}
               >
                 <button
-                  onClick={() => {
-                    // TODO: Open rename modal
-                    setShowMenu(false);
-                  }}
+                  onClick={handleStartRename}
                   className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm ${
                     isDark
                       ? 'hover:bg-neutral-800 text-neutral-200'
@@ -139,9 +205,10 @@ export default function FolderSection({ folder }: FolderSectionProps) {
                 </button>
                 <button
                   onClick={handleDelete}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-red-500 ${
+                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm ${
                     isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'
                   }`}
+                  style={{ color: '#d91a1c' }}
                 >
                   <Trash2 className="w-4 h-4" />
                   {translate('folder_delete')}
@@ -181,6 +248,15 @@ export default function FolderSection({ folder }: FolderSectionProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Folder Dialog */}
+      <DeleteFolderDialog
+        folderId={folder.id}
+        folderName={folder.name}
+        courseCount={folder.course_count}
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+      />
     </section>
   );
 }

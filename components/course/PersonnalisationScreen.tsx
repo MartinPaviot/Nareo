@@ -49,7 +49,7 @@ const MATIERES = [
   { value: 'histoire-geo', labelKey: 'subject_history_geo', icon: Globe, iconColor: 'text-blue-600' },
   { value: 'langues', labelKey: 'subject_languages', icon: Languages, iconColor: 'text-rose-600' },
   { value: 'informatique', labelKey: 'subject_computer_science', icon: Code, iconColor: 'text-cyan-600' },
-  { value: 'medecine', labelKey: 'subject_medicine', icon: Stethoscope, iconColor: 'text-red-600' },
+  { value: 'medecine', labelKey: 'subject_medicine', icon: Stethoscope, iconColor: 'text-rose-600' },
   { value: 'autre', labelKey: 'subject_other', icon: HelpCircle, iconColor: 'text-slate-500' },
 ] as const;
 
@@ -122,7 +122,7 @@ export default function PersonnalisationScreen({
             isDark ? 'text-neutral-100' : 'text-gray-900'
           }`}
         >
-          {translate('study_sheet_title')}
+          {initialConfig ? translate('study_sheet_title_regenerate') : translate('study_sheet_title')}
         </h3>
         <p
           className={`text-sm mt-1 ${

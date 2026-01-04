@@ -59,10 +59,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const translate = (key: string, fallbackOrParams?: string | Record<string, string | number>, params?: Record<string, string | number>): string => {
     // Determine fallback and params based on argument types
-    const fallback = typeof fallbackOrParams === 'string' ? fallbackOrParams : key;
+    const fallback = typeof fallbackOrParams === 'string' ? fallbackOrParams : undefined;
     const actualParams = typeof fallbackOrParams === 'object' ? fallbackOrParams : params;
 
-    let translation = translations[currentLanguage][key] || translations['en'][key] || fallback;
+    let translation = translations[currentLanguage]?.[key] || translations['en']?.[key];
+
+    // If no translation found, use fallback or empty string (never show raw keys)
+    if (!translation) {
+      translation = fallback || '';
+    }
 
     // Replace parameters in translation if provided
     if (actualParams) {

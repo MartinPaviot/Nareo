@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
-import type { BlogArticle } from '@/types/blog';
+import { getArticleBySlug } from '@/lib/blog-data';
 
 export async function GET(
   request: NextRequest,
@@ -16,16 +15,9 @@ export async function GET(
       );
     }
 
-    const supabase = await createSupabaseServerClient();
+    const article = getArticleBySlug(slug);
 
-    const { data: article, error } = await supabase
-      .from('blog_articles')
-      .select('*')
-      .eq('slug', slug)
-      .eq('published', true)
-      .single();
-
-    if (error || !article) {
+    if (!article || !article.published) {
       return NextResponse.json(
         { error: 'Article not found' },
         { status: 404 }
@@ -34,7 +26,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      article: article as BlogArticle,
+      article,
     });
   } catch (error) {
     console.error('Error fetching blog article:', error);

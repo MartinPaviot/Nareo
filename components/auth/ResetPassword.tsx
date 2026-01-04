@@ -171,7 +171,7 @@ export default function ResetPassword() {
               <div
                 className="px-4 py-3 rounded-lg text-sm border"
                 style={{
-                  backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+                  backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
                   borderColor: isDark ? 'rgba(217, 26, 28, 0.5)' : 'rgba(217, 26, 28, 0.3)',
                   color: isDark ? '#e94446' : '#d91a1c'
                 }}

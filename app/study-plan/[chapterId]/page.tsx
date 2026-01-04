@@ -176,7 +176,7 @@ function StudyPlanPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'bg-red-100 text-red-700 border-red-200';
+        return 'bg-[#d91a1c]/10 text-[#b91c1c] border-[#d91a1c]/20';
       case 'medium':
         return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'low':
@@ -207,7 +207,7 @@ function StudyPlanPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="w-12 h-12 mx-auto mb-4" style={{ color: '#d91a1c' }} />
           <p className="text-gray-600">{error || 'Chapter not found'}</p>
           <button
             onClick={() => router.push('/dashboard')}
@@ -267,9 +267,15 @@ function StudyPlanPage() {
             </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700">{error}</p>
+              <div
+                className="mb-6 p-4 rounded-lg flex items-start gap-3 border"
+                style={{
+                  backgroundColor: '#fff6f3',
+                  borderColor: 'rgba(217, 26, 28, 0.2)'
+                }}
+              >
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#d91a1c' }} />
+                <p className="text-sm" style={{ color: '#b91c1c' }}>{error}</p>
               </div>
             )}
 
@@ -414,17 +420,23 @@ function StudyPlanPage() {
                 </div>
 
                 {/* Critical Gaps */}
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div
+                  className="p-4 rounded-lg border"
+                  style={{
+                    backgroundColor: '#fff6f3',
+                    borderColor: 'rgba(217, 26, 28, 0.2)'
+                  }}
+                >
                   <div className="flex items-center gap-2 mb-3">
-                    <AlertCircle className="w-5 h-5 text-red-600" />
-                    <h3 className="font-semibold text-red-900">
+                    <AlertCircle className="w-5 h-5" style={{ color: '#d91a1c' }} />
+                    <h3 className="font-semibold" style={{ color: '#991b1b' }}>
                       {translate('study_plan_critical_gaps')}
                     </h3>
                   </div>
                   <ul className="space-y-2">
                     {studyPlan.diagnostic.criticalGaps.map((gap, idx) => (
-                      <li key={idx} className="text-sm text-red-800 flex items-start gap-2">
-                        <span className="text-red-600 mt-1">•</span>
+                      <li key={idx} className="text-sm flex items-start gap-2" style={{ color: '#991b1b' }}>
+                        <span className="mt-1" style={{ color: '#d91a1c' }}>•</span>
                         <span>{gap}</span>
                       </li>
                     ))}

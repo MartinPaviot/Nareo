@@ -2,10 +2,53 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Folder } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFoldersManagement } from '@/hooks/useFoldersManagement';
 import { FOLDER_COLORS } from '@/lib/courses/constants';
+
+// Subject icons organized by category
+const FOLDER_ICONS = [
+  // General
+  { emoji: '📁', label: 'Dossier' },
+  { emoji: '📚', label: 'Livres' },
+  { emoji: '📖', label: 'Lecture' },
+  // Sciences
+  { emoji: '🔬', label: 'Sciences' },
+  { emoji: '🧪', label: 'Chimie' },
+  { emoji: '⚗️', label: 'Laboratoire' },
+  { emoji: '🧬', label: 'Biologie' },
+  { emoji: '🔭', label: 'Astronomie' },
+  // Math & Physics
+  { emoji: '📐', label: 'Géométrie' },
+  { emoji: '🔢', label: 'Maths' },
+  { emoji: '➗', label: 'Calcul' },
+  { emoji: '⚡', label: 'Physique' },
+  // Languages & Literature
+  { emoji: '🌍', label: 'Géographie' },
+  { emoji: '🗣️', label: 'Langues' },
+  { emoji: '✍️', label: 'Écriture' },
+  { emoji: '📝', label: 'Notes' },
+  // Arts & Music
+  { emoji: '🎨', label: 'Art' },
+  { emoji: '🎵', label: 'Musique' },
+  { emoji: '🎭', label: 'Théâtre' },
+  // Tech & Business
+  { emoji: '💻', label: 'Informatique' },
+  { emoji: '📊', label: 'Économie' },
+  { emoji: '💼', label: 'Business' },
+  { emoji: '⚖️', label: 'Droit' },
+  // History & Philosophy
+  { emoji: '🏛️', label: 'Histoire' },
+  { emoji: '🧠', label: 'Philosophie' },
+  // Health & Sports
+  { emoji: '🏥', label: 'Médecine' },
+  { emoji: '⚽', label: 'Sport' },
+  // Other
+  { emoji: '🎓', label: 'Diplôme' },
+  { emoji: '💡', label: 'Idées' },
+  { emoji: '🌱', label: 'Environnement' },
+];
 
 interface CreateFolderModalProps {
   isOpen: boolean;
@@ -17,20 +60,37 @@ export default function CreateFolderModal({ isOpen, onClose }: CreateFolderModal
   const { createFolder } = useFoldersManagement();
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState(FOLDER_COLORS[0].color);
+  const [selectedIcon, setSelectedIcon] = useState('📁');
   const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
 
+    setError(null);
     setIsCreating(true);
-    const folderId = await createFolder(name.trim(), selectedColor, '📁');
+    const result = await createFolder(name.trim(), selectedColor, selectedIcon);
     setIsCreating(false);
 
-    if (folderId) {
+    if (result.success) {
       setName('');
       setSelectedColor(FOLDER_COLORS[0].color);
+      setSelectedIcon('📁');
+      setError(null);
       onClose();
+    } else {
+      // Traduire les erreurs courantes
+      if (result.error?.includes('already exists')) {
+        setError('Un dossier avec ce nom existe déjà');
+      } else {
+        setError(result.error || 'Une erreur est survenue');
+      }
     }
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    if (error) setError(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -87,10 +147,10 @@ export default function CreateFolderModal({ isOpen, onClose }: CreateFolderModal
                 {/* Folder preview */}
                 <div className="flex justify-center py-4">
                   <div
-                    className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl"
                     style={{ backgroundColor: `${selectedColor}20` }}
                   >
-                    <Folder className="w-10 h-10" style={{ color: selectedColor }} />
+                    {selectedIcon}
                   </div>
                 </div>
 
@@ -104,16 +164,66 @@ export default function CreateFolderModal({ isOpen, onClose }: CreateFolderModal
                   <input
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={handleNameChange}
                     onKeyDown={handleKeyDown}
                     placeholder="Ex: Économie, Maths..."
                     autoFocus
                     className={`w-full px-4 py-2.5 rounded-xl border transition-colors ${
+                      error
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                        : isDark
+                          ? 'border-neutral-700 focus:border-orange-500'
+                          : 'border-gray-200 focus:border-orange-500'
+                    } ${
                       isDark
-                        ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:border-orange-500'
-                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-orange-500'
-                    } focus:outline-none focus:ring-2 focus:ring-orange-500/20`}
+                        ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-500'
+                        : 'bg-white text-gray-900 placeholder-gray-400'
+                    } focus:outline-none focus:ring-2 ${!error && 'focus:ring-orange-500/20'}`}
                   />
+                  {/* Error message */}
+                  <AnimatePresence>
+                    {error && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        className="mt-2 text-sm text-red-500"
+                      >
+                        {error}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Icon picker */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${
+                    isDark ? 'text-neutral-300' : 'text-gray-700'
+                  }`}>
+                    Icône
+                  </label>
+                  <div className={`max-h-32 overflow-y-auto rounded-xl p-2 ${
+                    isDark ? 'bg-neutral-800' : 'bg-gray-50'
+                  }`}>
+                    <div className="grid grid-cols-10 gap-1">
+                      {FOLDER_ICONS.map((icon) => (
+                        <button
+                          key={icon.emoji}
+                          onClick={() => setSelectedIcon(icon.emoji)}
+                          title={icon.label}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg transition-all ${
+                            selectedIcon === icon.emoji
+                              ? 'bg-orange-500/20 ring-2 ring-orange-500 scale-110'
+                              : isDark
+                                ? 'hover:bg-neutral-700'
+                                : 'hover:bg-gray-200'
+                          }`}
+                        >
+                          {icon.emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Color picker */}

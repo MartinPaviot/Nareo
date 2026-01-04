@@ -153,7 +153,7 @@ export default function QualityAuditPage() {
     if (score >= 80) return 'text-green-600 bg-green-100';
     if (score >= 60) return 'text-blue-600 bg-blue-100';
     if (score >= 40) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
+    return 'text-[#d91a1c] bg-[#d91a1c]/10';
   };
 
   const getScoreIcon = (score: number) => {
@@ -161,7 +161,7 @@ export default function QualityAuditPage() {
     if (score >= 80) return <CheckCircle className="w-4 h-4 text-green-600" />;
     if (score >= 60) return <CheckCircle className="w-4 h-4 text-blue-600" />;
     if (score >= 40) return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
-    return <XCircle className="w-4 h-4 text-red-600" />;
+    return <XCircle className="w-4 h-4" style={{ color: '#d91a1c' }} />;
   };
 
   const getScoreDisplay = (score: number) => {
@@ -223,7 +223,14 @@ export default function QualityAuditPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div
+            className="px-4 py-3 rounded-lg mb-6 border"
+            style={{
+              backgroundColor: '#fff6f3',
+              borderColor: 'rgba(217, 26, 28, 0.2)',
+              color: '#b91c1c'
+            }}
+          >
             {error}
           </div>
         )}
@@ -349,7 +356,10 @@ export default function QualityAuditPage() {
                             {Math.round(course.sourceTextLength / 1000)}k chars
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs">
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs"
+                            style={{ backgroundColor: '#fff6f3', color: '#b91c1c' }}
+                          >
                             <XCircle className="w-3 h-3" />
                             No source
                           </span>
@@ -390,7 +400,16 @@ export default function QualityAuditPage() {
                               e.preventDefault();
                               setDeleteModal({ open: true, course });
                             }}
-                            className="inline-flex items-center gap-1 text-red-500 hover:text-red-700 font-medium text-sm p-1 rounded hover:bg-red-50 transition"
+                            className="inline-flex items-center gap-1 font-medium text-sm p-1 rounded transition"
+                            style={{ color: '#d91a1c' }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = '#b81618';
+                              e.currentTarget.style.backgroundColor = '#fff6f3';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = '#d91a1c';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
                             title="Supprimer ce cours"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -422,7 +441,7 @@ export default function QualityAuditPage() {
               <span className="text-sm text-gray-600">Fair - Review recommended</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">0-39%</span>
+              <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: '#fff6f3', color: '#b91c1c' }}>0-39%</span>
               <span className="text-sm text-gray-600">Poor - Regeneration needed</span>
             </div>
           </div>
@@ -444,13 +463,16 @@ export default function QualityAuditPage() {
             </div>
 
             <div className="mb-6">
-              <div className="flex items-center gap-3 p-4 bg-red-50 rounded-xl mb-4">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
+              <div
+                className="flex items-center gap-3 p-4 rounded-xl mb-4"
+                style={{ backgroundColor: '#fff6f3' }}
+              >
+                <div className="p-2 rounded-lg" style={{ backgroundColor: '#fff6f3' }}>
+                  <AlertTriangle className="w-6 h-6" style={{ color: '#d91a1c' }} />
                 </div>
                 <div>
-                  <p className="font-medium text-red-800">Action irréversible</p>
-                  <p className="text-sm text-red-600">Cette action ne peut pas être annulée.</p>
+                  <p className="font-medium" style={{ color: '#991b1b' }}>Action irréversible</p>
+                  <p className="text-sm" style={{ color: '#d91a1c' }}>Cette action ne peut pas être annulée.</p>
                 </div>
               </div>
 
@@ -479,7 +501,10 @@ export default function QualityAuditPage() {
               <button
                 onClick={handleDeleteCourse}
                 disabled={deleting}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 text-white rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#d91a1c' }}
+                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#b81618')}
+                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#d91a1c')}
               >
                 {deleting ? (
                   <>

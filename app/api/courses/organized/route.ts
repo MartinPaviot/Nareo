@@ -108,6 +108,7 @@ export async function GET() {
         icon: folder.icon || 'folder',
         is_collapsed: folder.is_collapsed || false,
         display_order: folder.display_order || folder.position || 0,
+        created_at: folder.created_at,
         courses: folderCoursesData,
         course_count: folderCoursesData.length,
       };

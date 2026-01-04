@@ -192,7 +192,7 @@ function HeroPreviewCarousel({ translate }: { translate: (key: string) => string
                       ? 'border-gray-200 hover:border-orange-200 hover:bg-orange-50/30'
                       : ''
                   }`}
-                  style={selectedAnswer === index ? (answer.correct ? { borderColor: '#379f5a', backgroundColor: 'rgba(55, 159, 90, 0.1)' } : { borderColor: 'rgba(217, 26, 28, 0.3)', backgroundColor: 'rgba(217, 26, 28, 0.1)' }) : {}}
+                  style={selectedAnswer === index ? (answer.correct ? { borderColor: '#379f5a', backgroundColor: 'rgba(55, 159, 90, 0.1)' } : { borderColor: 'rgba(217, 26, 28, 0.3)', backgroundColor: '#fff6f3' }) : {}}
                 >
                   <span className={`flex-shrink-0 text-[10px] font-bold ${selectedAnswer !== index ? 'text-orange-500' : ''}`} style={selectedAnswer === index ? (answer.correct ? { color: '#379f5a' } : { color: '#d91a1c' }) : {}}>
                     {answer.letter}.
@@ -288,7 +288,7 @@ function HeroPreviewCarousel({ translate }: { translate: (key: string) => string
               </div>
               {/* Rating buttons */}
               <div className="flex items-center justify-center gap-3 pb-2">
-                <button className="flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium bg-white" style={{ borderColor: 'rgba(217, 26, 28, 0.3)', color: '#d91a1c' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(217, 26, 28, 0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}>
+                <button className="flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium bg-white" style={{ borderColor: 'rgba(217, 26, 28, 0.3)', color: '#d91a1c' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fff6f3'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}>
                   <X className="w-4 h-4" /> {translate('home_hero_flashcard_no')}
                 </button>
                 <button className="flex items-center gap-1.5 px-4 py-2 rounded-full border text-sm font-medium bg-white" style={{ borderColor: 'rgba(55, 159, 90, 0.3)', color: '#379f5a' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(55, 159, 90, 0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}>
@@ -1324,9 +1324,8 @@ export default function HomePage() {
               </div>
 
               {error && (
-                <div className="mt-4 rounded-xl border p-3 text-sm" style={{ borderColor: 'rgba(217, 26, 28, 0.3)', backgroundColor: 'rgba(217, 26, 28, 0.1)', color: '#d91a1c' }}>
-                  <p className="font-semibold mb-1">{translate('upload_error_state')}</p>
-                  <p>{error || translate('upload_error_state_help')}</p>
+                <div className="mt-4 rounded-xl border p-3 text-sm" style={{ borderColor: 'rgba(217, 26, 28, 0.3)', backgroundColor: '#fff6f3', color: '#d91a1c' }}>
+                  <p>{error}</p>
                 </div>
               )}
 

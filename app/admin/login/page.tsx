@@ -145,7 +145,14 @@ export default function AdminLoginPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
+              <div
+                className="px-4 py-3 rounded-lg text-sm border"
+                style={{
+                  backgroundColor: 'rgba(217, 26, 28, 0.2)',
+                  borderColor: 'rgba(217, 26, 28, 0.5)',
+                  color: '#f87171'
+                }}
+              >
                 {error}
               </div>
             )}

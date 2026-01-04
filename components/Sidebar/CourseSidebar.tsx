@@ -37,6 +37,7 @@ interface CourseSidebarProps {
   onOpen: () => void;
   onGoToFolderLevel: () => void;
   onGoToCourseLevel: (folderId: string, folderName: string) => void;
+  disabled?: boolean;
 }
 
 export default function CourseSidebar({
@@ -49,6 +50,7 @@ export default function CourseSidebar({
   onOpen,
   onGoToFolderLevel,
   onGoToCourseLevel,
+  disabled = false,
 }: CourseSidebarProps) {
   const router = useRouter();
   const { isDark } = useTheme();
@@ -60,6 +62,7 @@ export default function CourseSidebar({
   const [showContactModal, setShowContactModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Find which folder contains the current course (for highlighting)
@@ -115,7 +118,14 @@ export default function CourseSidebar({
   }, [refetch]);
 
   const handleUploadClick = useCallback(() => {
-    // Directly open file picker
+    // Directly open file picker (no folder assignment)
+    setUploadTargetFolderId(null);
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleUploadToFolder = useCallback((folderId: string) => {
+    // Open file picker for uploading to a specific folder
+    setUploadTargetFolderId(folderId);
     fileInputRef.current?.click();
   }, []);
 
@@ -137,6 +147,9 @@ export default function CourseSidebar({
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (uploadTargetFolderId) {
+        formData.append('folderId', uploadTargetFolderId);
+      }
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -167,22 +180,27 @@ export default function CourseSidebar({
       );
     } finally {
       setIsUploading(false);
+      setUploadTargetFolderId(null);
       // Reset input so the same file can be selected again
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
-  }, [user, translate, onClose, router]);
+  }, [user, translate, onClose, router, uploadTargetFolderId]);
 
   return (
     <>
       {/* Toggle button with mascot - only visible when sidebar is closed */}
       {!isOpen && (
-        <div className={`hidden md:flex fixed top-0 left-0 h-[65px] z-40 flex items-center gap-3 px-4 border-b ${
-          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-        }`}>
+        <div
+          className={`hidden md:flex fixed top-0 left-0 h-[65px] z-40 flex items-center gap-3 px-4 border-b ${
+            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+          }`}
+          style={{ pointerEvents: disabled ? 'none' : 'auto', opacity: disabled ? 0.5 : 1 }}
+        >
           <button
             onClick={onOpen}
+            disabled={disabled}
             className={`p-2 rounded-lg transition-colors ${
               isDark
                 ? 'hover:bg-neutral-800 text-neutral-400 hover:text-orange-400'
@@ -210,6 +228,8 @@ export default function CourseSidebar({
         style={{
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
           visibility: isOpen ? 'visible' : 'hidden',
+          pointerEvents: disabled ? 'none' : 'auto',
+          opacity: disabled ? 0.5 : 1,
         }}
       >
           {/* Header */}
@@ -258,6 +278,7 @@ export default function CourseSidebar({
                     onBack={onGoToFolderLevel}
                     onCourseClick={handleCourseClick}
                     onMoveCourse={moveCourse}
+                    onAddCourse={selectedFolderId ? () => handleUploadToFolder(selectedFolderId) : undefined}
                   />
                 </motion.div>
               )}
@@ -288,6 +309,10 @@ export default function CourseSidebar({
               className={`md:hidden fixed top-0 left-0 h-full w-[280px] z-50 shadow-2xl flex flex-col ${
                 isDark ? 'bg-neutral-900' : 'bg-white'
               }`}
+              style={{
+                pointerEvents: disabled ? 'none' : 'auto',
+                opacity: disabled ? 0.5 : 1,
+              }}
             >
               {/* Header */}
               <SidebarHeader onClose={onClose} />
@@ -335,6 +360,7 @@ export default function CourseSidebar({
                         onBack={onGoToFolderLevel}
                         onCourseClick={handleCourseClick}
                         onMoveCourse={moveCourse}
+                        onAddCourse={selectedFolderId ? () => handleUploadToFolder(selectedFolderId) : undefined}
                       />
                     </motion.div>
                   )}
@@ -386,15 +412,21 @@ export default function CourseSidebar({
 
       {/* Upload error toast */}
       {uploadError && (
-        <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] max-w-sm rounded-xl border p-4 shadow-lg ${
-          isDark
-            ? 'bg-red-950/90 border-red-800/50 text-red-400'
-            : 'bg-red-50 border-red-200 text-red-700'
-        }`}>
+        <div
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] max-w-sm rounded-xl border p-4 shadow-lg"
+          style={{
+            backgroundColor: isDark ? 'rgba(127, 29, 29, 0.9)' : '#fff6f3',
+            borderColor: isDark ? 'rgba(217, 26, 28, 0.5)' : 'rgba(217, 26, 28, 0.2)',
+            color: isDark ? '#f87171' : '#b91c1c'
+          }}
+        >
           <p className="text-sm">{uploadError}</p>
           <button
             onClick={() => setUploadError(null)}
-            className={`mt-2 text-xs font-medium ${isDark ? 'text-red-300 hover:text-red-200' : 'text-red-600 hover:text-red-800'}`}
+            className="mt-2 text-xs font-medium transition-colors"
+            style={{ color: isDark ? '#fca5a5' : '#d91a1c' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = isDark ? '#fecaca' : '#b81618'}
+            onMouseLeave={(e) => e.currentTarget.style.color = isDark ? '#fca5a5' : '#d91a1c'}
           >
             {translate('dismiss') || 'Fermer'}
           </button>

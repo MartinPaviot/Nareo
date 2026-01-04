@@ -27,6 +27,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import ChapterScoreBadge from './ChapterScoreBadge';
 import QuizPersonnalisationScreen from './QuizPersonnalisationScreen';
+import ProgressiveQuizView, { StreamingQuestion } from './ProgressiveQuizView';
+import GenerationProgress from './GenerationProgress';
+import CreateChallengeModal from '@/components/defi/CreateChallengeModal';
 import { QuizConfig, DEFAULT_QUIZ_CONFIG } from '@/types/quiz-personnalisation';
 
 // Question type translation keys
@@ -91,6 +94,10 @@ interface QuizChapterManagementProps {
   isGenerating?: boolean;
   generationProgress?: number; // Progress percentage (0-100)
   generationMessage?: string; // Current step message
+  /** Questions received from streaming during generation */
+  streamingQuestions?: StreamingQuestion[];
+  /** Whether to show the interactive quiz view during generation */
+  enableProgressiveQuiz?: boolean;
   hasFullAccess?: boolean;
   isDemoId?: boolean;
   refetch: () => void;
@@ -107,6 +114,8 @@ export default function QuizChapterManagement({
   isGenerating = false,
   generationProgress = 0,
   generationMessage = '',
+  streamingQuestions = [],
+  enableProgressiveQuiz = false,
   hasFullAccess = false,
   isDemoId = false,
   refetch,
@@ -127,6 +136,7 @@ export default function QuizChapterManagement({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [showChallengeModal, setShowChallengeModal] = useState(false);
 
   // Form states
   const [selectedChapterId, setSelectedChapterId] = useState<string>('');
@@ -471,7 +481,7 @@ export default function QuizChapterManagement({
                       : 'border-gray-200 text-gray-700 hover:border-gray-300'
                     : ''
                 }`}
-                style={newCorrectIndex === idx ? (idx === 0 ? { borderColor: '#379f5a', backgroundColor: 'rgba(55, 159, 90, 0.1)', color: '#379f5a' } : { borderColor: '#d91a1c', backgroundColor: 'rgba(217, 26, 28, 0.1)', color: '#d91a1c' }) : {}}
+                style={newCorrectIndex === idx ? (idx === 0 ? { borderColor: '#379f5a', backgroundColor: 'rgba(55, 159, 90, 0.1)', color: '#379f5a' } : { borderColor: '#d91a1c', backgroundColor: '#fff6f3', color: '#d91a1c' }) : {}}
               >
                 {label}
               </button>
@@ -520,6 +530,50 @@ export default function QuizChapterManagement({
     </div>
   );
 
+  // Show progressive quiz view during generation if enabled
+  if (enableProgressiveQuiz && isGenerating && streamingQuestions.length > 0) {
+    return (
+      <div className="space-y-4">
+        <ProgressiveQuizView
+          questions={streamingQuestions}
+          isGenerating={isGenerating}
+          progress={generationProgress}
+          questionsGenerated={streamingQuestions.length}
+          progressMessage={generationMessage}
+          courseId={courseId}
+          onComplete={(score, answers) => {
+            console.log('[QuizChapterManagement] Progressive quiz completed:', { score, answersCount: answers.length });
+            refetch();
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Show generation progress without questions (waiting for first question)
+  if (enableProgressiveQuiz && isGenerating && streamingQuestions.length === 0) {
+    return (
+      <div className={`rounded-2xl border shadow-sm p-6 ${
+        isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+      }`}>
+        <GenerationProgress
+          type="quiz"
+          progress={generationProgress}
+          message={generationMessage}
+        />
+        <div className="text-center mt-6">
+          <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-4" />
+          <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+            {translate('gen_streaming_in_progress')}
+          </p>
+          <p className={`text-xs mt-2 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
+            {translate('gen_play_while_generating')}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Action bar */}
@@ -531,18 +585,15 @@ export default function QuizChapterManagement({
           {/* Launch Challenge button */}
           {!isDemoId && user && (
             <button
-              onClick={() => router.push(`/defi/creer?courseId=${courseId}`)}
-              className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors"
-              style={{
-                backgroundColor: isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.15)',
-                color: isDark ? '#5cb978' : '#379f5a'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(55, 159, 90, 0.3)' : 'rgba(55, 159, 90, 0.25)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.15)'}
+              onClick={() => setShowChallengeModal(true)}
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-white text-xs sm:text-sm font-medium transition-colors"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
             >
-              <Gamepad2 className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">{translate('quiz_launch_challenge')}</span>
-              <span className="sm:hidden">{translate('challenge_title')}</span>
+              <Gamepad2 className="w-4 h-4" />
+              <span className="hidden sm:inline">{translate('challenge_create', 'Créer un défi')}</span>
+              <span className="sm:hidden">{translate('challenge_title', 'Défi')}</span>
             </button>
           )}
           <button
@@ -871,7 +922,7 @@ export default function QuizChapterManagement({
           }`}>
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)' }}
+              style={{ backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3' }}
             >
               <Trash2 className="w-7 h-7" style={{ color: '#d91a1c' }} />
             </div>
@@ -978,6 +1029,14 @@ export default function QuizChapterManagement({
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Challenge Modal */}
+      {showChallengeModal && (
+        <CreateChallengeModal
+          onClose={() => setShowChallengeModal(false)}
+          preselectedCourseId={courseId}
+        />
       )}
 
       {/* Floating toast notification for regeneration progress */}

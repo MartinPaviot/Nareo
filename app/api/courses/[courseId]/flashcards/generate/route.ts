@@ -15,6 +15,63 @@ import {
   getFlashcardUserPrompt,
 } from '@/lib/prompts/flashcard-prompt';
 
+// Create SSE stream for progress updates and flashcard streaming
+function createSSEStream() {
+  const encoder = new TextEncoder();
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+    },
+  });
+
+  const sendProgress = (data: {
+    type: string;
+    message?: string;
+    progress?: number;
+    cardsGenerated?: number;
+    totalCards?: number;
+  }) => {
+    if (controller) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+    }
+  };
+
+  const sendFlashcard = (data: {
+    id: string;
+    type: string;
+    front: string;
+    back: string;
+    cardsGenerated: number;
+    totalCards: number;
+    progress: number;
+  }) => {
+    if (controller) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+        type: 'flashcard',
+        data: {
+          id: data.id,
+          type: data.type,
+          front: data.front,
+          back: data.back,
+        },
+        cardsGenerated: data.cardsGenerated,
+        totalCards: data.totalCards,
+        progress: data.progress,
+      })}\n\n`));
+    }
+  };
+
+  const close = () => {
+    if (controller) {
+      controller.close();
+    }
+  };
+
+  return { stream, sendProgress, sendFlashcard, close };
+}
+
 // Helper to extract guestSessionId from cookies
 function getGuestSessionIdFromRequest(request: NextRequest): string | null {
   const cookies = request.cookies;
@@ -196,103 +253,156 @@ export async function POST(
     // Générer le prompt utilisateur selon le niveau
     const userPrompt = getFlashcardUserPrompt(config.niveau, course.title, truncatedText);
 
-    console.log(`[flashcards/generate] Generating Anki-quality flashcards (niveau: ${config.niveau})`);
+    console.log(`[flashcards/generate] Generating Anki-quality flashcards with SSE streaming (niveau: ${config.niveau})`);
 
-    // Generate flashcards using GPT-4o with new Anki prompt
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `${FLASHCARD_SYSTEM_PROMPT}\n\n${languageInstruction}`,
-        },
-        {
-          role: 'user',
-          content: userPrompt,
-        },
-      ],
-      temperature: 0.4,
-      max_tokens: 6000,
-      response_format: { type: 'json_object' },
-    });
+    // Create SSE stream
+    const { stream, sendProgress, sendFlashcard, close } = createSSEStream();
 
-    const content = response.choices[0].message.content;
-    let flashcards: Flashcard[] = [];
+    // Start async generation process
+    (async () => {
+      try {
+        // Send initial progress
+        sendProgress({
+          type: 'progress',
+          message: 'Analyzing document...',
+          progress: 10,
+        });
 
-    try {
-      const parsed = JSON.parse(content || '{}');
-      const rawFlashcards = Array.isArray(parsed) ? parsed : parsed.flashcards || [];
+        // Generate flashcards using GPT-4o with new Anki prompt
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `${FLASHCARD_SYSTEM_PROMPT}\n\n${languageInstruction}`,
+            },
+            {
+              role: 'user',
+              content: userPrompt,
+            },
+          ],
+          temperature: 0.4,
+          max_tokens: 6000,
+          response_format: { type: 'json_object' },
+        });
 
-      // Valider et nettoyer les flashcards
-      flashcards = validateAndCleanFlashcards(rawFlashcards);
-    } catch (parseError) {
-      console.error('Error parsing flashcards:', parseError);
-      return NextResponse.json({ error: 'Failed to parse generated flashcards' }, { status: 500 });
-    }
+        sendProgress({
+          type: 'progress',
+          message: 'Processing flashcards...',
+          progress: 50,
+        });
 
-    if (flashcards.length === 0) {
-      return NextResponse.json({ error: 'No valid flashcards generated' }, { status: 500 });
-    }
+        const content = response.choices[0].message.content;
+        let flashcards: Flashcard[] = [];
 
-    // Log distribution des types
-    const typeCount = flashcards.reduce((acc, fc) => {
-      acc[fc.type] = (acc[fc.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    console.log(`[flashcards/generate] Card distribution:`, typeCount);
+        try {
+          const parsed = JSON.parse(content || '{}');
+          const rawFlashcards = Array.isArray(parsed) ? parsed : parsed.flashcards || [];
+          flashcards = validateAndCleanFlashcards(rawFlashcards);
+        } catch (parseError) {
+          console.error('Error parsing flashcards:', parseError);
+          sendProgress({ type: 'error', message: 'Failed to parse generated flashcards' });
+          close();
+          return;
+        }
 
-    // Delete existing flashcards for this course (regeneration)
-    // Use admin client to bypass RLS for guest users
-    await admin
-      .from('flashcards')
-      .delete()
-      .eq('course_id', courseId);
+        if (flashcards.length === 0) {
+          sendProgress({ type: 'error', message: 'No valid flashcards generated' });
+          close();
+          return;
+        }
 
-    // Convertir en format DB et insérer
-    const flashcardRows = flashcards.map((fc) => {
-      const dbData = convertToDBFormat(fc);
-      return {
-        course_id: courseId,
-        chapter_id: null, // Course-level flashcards
-        type: dbData.type,
-        front: dbData.front,
-        back: dbData.back,
-      };
-    });
+        // Log distribution des types
+        const typeCount = flashcards.reduce((acc, fc) => {
+          acc[fc.type] = (acc[fc.type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        console.log(`[flashcards/generate] Card distribution:`, typeCount);
 
-    const { data: insertedFlashcards, error: insertError } = await admin
-      .from('flashcards')
-      .insert(flashcardRows)
-      .select('id, type, front, back');
+        // Delete existing flashcards for this course (regeneration)
+        await admin
+          .from('flashcards')
+          .delete()
+          .eq('course_id', courseId);
 
-    if (insertError) {
-      console.error('Error saving flashcards:', insertError);
-      return NextResponse.json({ error: 'Failed to save flashcards' }, { status: 500 });
-    }
+        sendProgress({
+          type: 'progress',
+          message: 'Saving flashcards...',
+          progress: 60,
+        });
 
-    // Update course flashcards_status (use admin client to bypass RLS for guest users)
-    await admin
-      .from('courses')
-      .update({ flashcards_status: 'ready' })
-      .eq('id', courseId);
+        // Insert flashcards one by one and stream each to the client
+        const totalCards = flashcards.length;
+        let cardsInserted = 0;
 
-    console.log(`[flashcards/generate] Generated ${insertedFlashcards?.length || 0} Anki-quality flashcards`);
+        for (const fc of flashcards) {
+          const dbData = convertToDBFormat(fc);
+          const flashcardRow = {
+            course_id: courseId,
+            chapter_id: null,
+            type: dbData.type,
+            front: dbData.front,
+            back: dbData.back,
+          };
 
-    // Return flashcards with IDs and default progress
-    const flashcardsWithProgress = (insertedFlashcards || []).map(fc => ({
-      id: fc.id,
-      type: fc.type,
-      front: fc.front,
-      back: fc.back,
-      mastery: 'new',
-      correctCount: 0,
-      incorrectCount: 0,
-    }));
+          const { data: insertedCard, error: insertError } = await admin
+            .from('flashcards')
+            .insert(flashcardRow)
+            .select('id, type, front, back')
+            .single();
 
-    return NextResponse.json({
-      flashcards: flashcardsWithProgress,
-      niveau: config.niveau,
-      distribution: typeCount,
+          if (!insertError && insertedCard) {
+            cardsInserted++;
+            const cardProgress = 60 + Math.floor((cardsInserted / totalCards) * 35);
+
+            // Send the flashcard to the client
+            sendFlashcard({
+              id: insertedCard.id,
+              type: insertedCard.type,
+              front: insertedCard.front,
+              back: insertedCard.back,
+              cardsGenerated: cardsInserted,
+              totalCards: totalCards,
+              progress: cardProgress,
+            });
+          }
+        }
+
+        // Update course flashcards_status
+        await admin
+          .from('courses')
+          .update({ flashcards_status: 'ready' })
+          .eq('id', courseId);
+
+        console.log(`[flashcards/generate] Generated ${cardsInserted} Anki-quality flashcards with streaming`);
+
+        // Send completion
+        sendProgress({
+          type: 'complete',
+          message: 'Flashcards generated successfully',
+          progress: 100,
+          cardsGenerated: cardsInserted,
+          totalCards: totalCards,
+        });
+        close();
+
+      } catch (error) {
+        console.error('Error generating flashcards:', error);
+        sendProgress({
+          type: 'error',
+          message: error instanceof Error ? error.message : 'Failed to generate flashcards',
+        });
+        close();
+      }
+    })();
+
+    // Return streaming response immediately
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     });
   } catch (error) {
     console.error('Error generating flashcards:', error);

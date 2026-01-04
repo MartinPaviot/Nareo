@@ -5,6 +5,13 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
+import { Highlight } from '@tiptap/extension-highlight';
+import { Underline } from '@tiptap/extension-underline';
+import { TextColor } from './extensions/TextColor';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { markdownToHtml, htmlToMarkdown } from '@/lib/editor-utils';
@@ -54,6 +61,20 @@ export default function RevisionSheetEditor({
           displayMode: false,
         },
       }),
+      Highlight.configure({
+        multicolor: true,
+      }),
+      Underline,
+      TextColor,
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'editor-table',
+        },
+      }),
+      TableRow,
+      TableCell,
+      TableHeader,
     ],
     content: markdownToHtml(initialContent),
     editorProps: {

@@ -89,17 +89,27 @@ export default function VoiceInput({ onTranscript, disabled = false }: VoiceInpu
       onClick={handleClick}
       disabled={disabled || isProcessing}
       className={cn(
-        'relative p-3 rounded-full transition-all',
-        isRecording 
-          ? 'bg-red-500 hover:bg-red-600 text-white' 
-          : 'bg-orange-500 hover:bg-orange-600 text-white',
+        'relative p-3 rounded-full transition-all text-white',
         (disabled || isProcessing) && 'opacity-50 cursor-not-allowed'
       )}
+      style={{
+        backgroundColor: isRecording ? '#d91a1c' : '#f97316'
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled && !isProcessing) {
+          e.currentTarget.style.backgroundColor = isRecording ? '#b81618' : '#ea580c';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled && !isProcessing) {
+          e.currentTarget.style.backgroundColor = isRecording ? '#d91a1c' : '#f97316';
+        }
+      }}
       title={isRecording ? 'Stop recording' : 'Start voice input'}
     >
       {/* Pulse ring when recording */}
       {isRecording && (
-        <span className="absolute inset-0 rounded-full bg-red-400 animate-pulse-ring"></span>
+        <span className="absolute inset-0 rounded-full animate-pulse-ring" style={{ backgroundColor: '#f87171' }}></span>
       )}
       
       {isProcessing ? (

@@ -245,7 +245,7 @@ export default function FriendsList({
               <div
                 className="mb-4 p-3 rounded-lg flex items-center gap-2"
                 style={{
-                  backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+                  backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
                   color: isDark ? '#e94446' : '#d91a1c'
                 }}
               >
@@ -355,7 +355,7 @@ function FriendCard({
             isDark ? 'bg-gray-600 text-gray-400' : 'bg-gray-200 text-gray-500'
           }`}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = isDark ? '#d91a1c' : 'rgba(217, 26, 28, 0.1)';
+            e.currentTarget.style.backgroundColor = isDark ? '#d91a1c' : '#fff6f3';
             e.currentTarget.style.color = isDark ? 'white' : '#d91a1c';
           }}
           onMouseLeave={(e) => {

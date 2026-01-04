@@ -1,27 +1,29 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 
+interface CreateFolderResult {
+  success: boolean;
+  folderId?: string;
+  error?: string;
+}
+
 interface UseFoldersManagementReturn {
-  createFolder: (name: string, color?: string, icon?: string) => Promise<string | null>;
+  createFolder: (name: string, color?: string, icon?: string) => Promise<CreateFolderResult>;
   deleteFolder: (folderId: string, moveCourses?: 'delete' | 'uncategorize') => Promise<boolean>;
   updateFolder: (folderId: string, updates: { name?: string; color?: string; icon?: string }) => Promise<boolean>;
   toggleFolderCollapse: (folderId: string) => Promise<boolean>;
 }
 
 export function useFoldersManagement(): UseFoldersManagementReturn {
-  const { user } = useAuth();
   const { triggerRefresh } = useCoursesRefresh();
 
   const createFolder = useCallback(async (
     name: string,
     color: string = '#F97316',
     icon: string = 'folder'
-  ): Promise<string | null> => {
-    if (!user) return null;
-
+  ): Promise<CreateFolderResult> => {
     try {
       const response = await fetch('/api/folders', {
         method: 'POST',
@@ -29,25 +31,24 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
         body: JSON.stringify({ name, color, icon }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to create folder');
+        return { success: false, error: data.error || 'Failed to create folder' };
       }
 
-      const data = await response.json();
       triggerRefresh();
-      return data.folder?.id || data.id;
+      return { success: true, folderId: data.folder?.id || data.id };
     } catch (err) {
       console.error('Error creating folder:', err);
-      return null;
+      return { success: false, error: 'Une erreur est survenue' };
     }
-  }, [user, triggerRefresh]);
+  }, [triggerRefresh]);
 
   const deleteFolder = useCallback(async (
     folderId: string,
     moveCourses: 'delete' | 'uncategorize' = 'uncategorize'
   ): Promise<boolean> => {
-    if (!user) return false;
-
     try {
       const response = await fetch(`/api/folders/${folderId}`, {
         method: 'DELETE',
@@ -56,7 +57,8 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete folder');
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete folder');
       }
 
       triggerRefresh();
@@ -65,14 +67,12 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
       console.error('Error deleting folder:', err);
       return false;
     }
-  }, [user, triggerRefresh]);
+  }, [triggerRefresh]);
 
   const updateFolder = useCallback(async (
     folderId: string,
     updates: { name?: string; color?: string; icon?: string }
   ): Promise<boolean> => {
-    if (!user) return false;
-
     try {
       const response = await fetch(`/api/folders/${folderId}`, {
         method: 'PATCH',
@@ -81,7 +81,8 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update folder');
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update folder');
       }
 
       triggerRefresh();
@@ -90,11 +91,9 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
       console.error('Error updating folder:', err);
       return false;
     }
-  }, [user, triggerRefresh]);
+  }, [triggerRefresh]);
 
   const toggleFolderCollapse = useCallback(async (folderId: string): Promise<boolean> => {
-    if (!user) return false;
-
     try {
       const response = await fetch(`/api/folders/${folderId}/toggle-collapse`, {
         method: 'POST',
@@ -111,7 +110,7 @@ export function useFoldersManagement(): UseFoldersManagementReturn {
       console.error('Error toggling folder collapse:', err);
       return false;
     }
-  }, [user]);
+  }, []);
 
   return {
     createFolder,

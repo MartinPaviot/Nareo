@@ -13,6 +13,7 @@ import FlashcardsView from '@/components/course/FlashcardsView';
 import APlusNoteView from '@/components/course/APlusNoteView';
 import QuizPersonnalisationScreen from '@/components/course/QuizPersonnalisationScreen';
 import QuizChapterManagement from '@/components/course/QuizChapterManagement';
+import { StreamingQuestion } from '@/components/course/ProgressiveQuizView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -60,6 +61,7 @@ export default function CourseLearnPage() {
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [isChildModalOpen, setIsChildModalOpen] = useState(false);
 
   // Sidebar navigation state
   const sidebar = useSidebarNavigation();
@@ -77,6 +79,7 @@ export default function CourseLearnPage() {
   const [quizGenerationError, setQuizGenerationError] = useState<string | null>(null);
   const [quizGenerationProgress, setQuizGenerationProgress] = useState(0);
   const [quizGenerationMessage, setQuizGenerationMessage] = useState('');
+  const [streamingQuestions, setStreamingQuestions] = useState<StreamingQuestion[]>([]);
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
@@ -138,6 +141,7 @@ export default function CourseLearnPage() {
     setQuizGenerationError(null);
     setQuizGenerationProgress(0);
     setQuizGenerationMessage('Démarrage...');
+    setStreamingQuestions([]); // Reset streaming questions
 
     try {
       const requestBody = { config };
@@ -187,10 +191,25 @@ export default function CourseLearnPage() {
               if (data.type === 'progress') {
                 setQuizGenerationProgress(data.progress || 0);
                 setQuizGenerationMessage(data.message || '');
-                // Refetch periodically to update UI with new questions
-                if (data.chapterIndex && data.chapterIndex !== data.totalChapters) {
-                  refetch();
+              } else if (data.type === 'question') {
+                // Add streaming question for progressive quiz view
+                const questionData = data.data?.question;
+                if (questionData) {
+                  const newQuestion: StreamingQuestion = {
+                    id: questionData.id,
+                    chapterId: data.data.chapterId,
+                    chapterTitle: data.data.chapterTitle || '',
+                    type: questionData.type,
+                    questionText: questionData.questionText,
+                    options: questionData.options,
+                    correctOptionIndex: questionData.correctOptionIndex,
+                    answerText: questionData.answerText,
+                    explanation: questionData.explanation,
+                    questionNumber: data.questionsGenerated || streamingQuestions.length + 1,
+                  };
+                  setStreamingQuestions(prev => [...prev, newQuestion]);
                 }
+                setQuizGenerationProgress(data.progress || 0);
               } else if (data.type === 'complete') {
                 setQuizGenerationProgress(100);
                 setQuizGenerationMessage('Quiz généré avec succès !');
@@ -520,7 +539,7 @@ export default function CourseLearnPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="w-12 h-12 mx-auto mb-4" style={{ color: '#d91a1c' }} />
           <p className="text-gray-600">{error || translate('course_detail_error')}</p>
         </div>
       </div>
@@ -545,6 +564,7 @@ export default function CourseLearnPage() {
           onOpen={sidebar.openSidebar}
           onGoToFolderLevel={sidebar.goToFolderLevel}
           onGoToCourseLevel={sidebar.goToCourseLevel}
+          disabled={isChildModalOpen || showSignupModal || showPaywallModal}
         />
       )}
 
@@ -613,13 +633,18 @@ export default function CourseLearnPage() {
 
         {/* Failed status banner - only show if course upload failed completely */}
         {!isDemoId && course?.status === 'failed' && (
-          <div className={`rounded-2xl border p-4 text-sm flex items-start gap-3 ${
-            isDark ? 'border-red-500/30 bg-red-500/20 text-red-300' : 'border-red-200 bg-red-50 text-red-800'
-          }`}>
-            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div
+            className="rounded-2xl border p-4 text-sm flex items-start gap-3"
+            style={{
+              borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.2)',
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3',
+              color: isDark ? '#f87171' : '#991b1b'
+            }}
+          >
+            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#d91a1c' }} />
             <div className="flex-1">
               <p className="font-semibold">{translate('upload_processing_failed')}</p>
-              <p className={`text-xs mt-1 ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+              <p className="text-xs mt-1" style={{ color: isDark ? '#f87171' : '#b91c1c' }}>
                 {translate('upload_processing_failed_desc')}
               </p>
             </div>
@@ -666,16 +691,20 @@ export default function CourseLearnPage() {
                       <div>Dernière MAJ: il y a {jobStatus.last_update_seconds}s</div>
                     )}
                     {jobStatus.error_message && (
-                      <div className="text-red-500 mt-1">Erreur: {jobStatus.error_message}</div>
+                      <div className="mt-1" style={{ color: '#d91a1c' }}>Erreur: {jobStatus.error_message}</div>
                     )}
                   </div>
                 )}
                 {isStuck && (
                   <div className="mt-6">
                     {retryError && (
-                      <div className={`mb-4 p-3 rounded-xl text-sm ${
-                        isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600'
-                      }`}>
+                      <div
+                        className="mb-4 p-3 rounded-xl text-sm"
+                        style={{
+                          backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3',
+                          color: isDark ? '#f87171' : '#d91a1c'
+                        }}
+                      >
                         {retryError}
                       </div>
                     )}
@@ -708,9 +737,13 @@ export default function CourseLearnPage() {
             {!isDemoId && course?.status === 'ready' && course?.quiz_status !== 'ready' && course?.quiz_status !== 'generating' && course?.quiz_status !== 'partial' && (
               <>
                 {quizGenerationError && (
-                  <div className={`mb-4 p-3 rounded-xl text-sm ${
-                    isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600'
-                  }`}>
+                  <div
+                    className="mb-4 p-3 rounded-xl text-sm"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3',
+                      color: isDark ? '#f87171' : '#d91a1c'
+                    }}
+                  >
                     {quizGenerationError}
                   </div>
                 )}
@@ -721,13 +754,8 @@ export default function CourseLearnPage() {
               </>
             )}
 
-            {/* Quiz generating - show progress with mascot rotation */}
-            {!isDemoId && course?.quiz_status === 'generating' && (
-              <GenerationLoadingScreen type="quiz" />
-            )}
-
-            {/* Chapters list - show when quiz is ready OR partial */}
-            {(isDemoId || course?.quiz_status === 'ready' || course?.quiz_status === 'partial') && (
+            {/* Chapters list OR Progressive Quiz during generation */}
+            {(isDemoId || course?.quiz_status === 'ready' || course?.quiz_status === 'partial' || isGeneratingQuiz) && (
               <QuizChapterManagement
                 courseId={courseId}
                 courseTitle={course.title}
@@ -739,6 +767,8 @@ export default function CourseLearnPage() {
                 isGenerating={isGeneratingQuiz}
                 generationProgress={quizGenerationProgress}
                 generationMessage={quizGenerationMessage}
+                streamingQuestions={streamingQuestions}
+                enableProgressiveQuiz={true}
                 hasFullAccess={hasFullAccess}
                 isDemoId={isDemoId}
                 refetch={refetch}
@@ -752,6 +782,7 @@ export default function CourseLearnPage() {
             courseId={courseId}
             courseTitle={course.title}
             courseStatus={course.status}
+            onModalStateChange={setIsChildModalOpen}
           />
         )}
 
@@ -760,6 +791,7 @@ export default function CourseLearnPage() {
             courseId={courseId}
             courseTitle={course.title}
             courseStatus={course.status}
+            onModalStateChange={setIsChildModalOpen}
           />
         )}
 
@@ -767,7 +799,7 @@ export default function CourseLearnPage() {
       </div>
 
       {showSignupModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[60]">
           <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
             isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>

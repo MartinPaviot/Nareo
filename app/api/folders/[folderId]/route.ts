@@ -58,6 +58,7 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createSupabaseServerClient();
+    const { folderId } = await params;
 
     const {
       data: { user },
@@ -68,28 +69,18 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { folderId } = await params;
+    // First delete folder_courses entries to avoid FK constraint issues
+    await supabase
+      .from('folder_courses')
+      .delete()
+      .eq('folder_id', folderId);
 
-    // Verify the folder belongs to the user
-    const { data: folder, error: folderError } = await supabase
-      .from('folders')
-      .select('id, user_id')
-      .eq('id', folderId)
-      .single();
-
-    if (folderError || !folder) {
-      return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
-    }
-
-    if (folder.user_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Delete the folder (cascade delete will remove folder_courses entries)
+    // Delete the folder (with user_id check for security)
     const { error: deleteError } = await supabase
       .from('folders')
       .delete()
-      .eq('id', folderId);
+      .eq('id', folderId)
+      .eq('user_id', user.id);
 
     if (deleteError) {
       console.error('Error deleting folder:', deleteError);

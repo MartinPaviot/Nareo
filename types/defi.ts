@@ -14,14 +14,11 @@ export type FriendshipStatus = 'pending' | 'accepted' | 'blocked';
 // ============================================
 
 export const TIME_OPTIONS = [
-  { value: 10, label: '10 secondes', description: 'Très rapide' },
-  { value: 15, label: '15 secondes', description: 'Rapide' },
-  { value: 20, label: '20 secondes', description: 'Normal' },
-  { value: 30, label: '30 secondes', description: 'Confortable' },
-  { value: 45, label: '45 secondes', description: 'Détendu' },
+  { value: 10, label: '10 secondes', description: 'Rapide' },
+  { value: 15, label: '15 secondes', description: 'Normal' },
 ] as const;
 
-export const DEFAULT_TIME_PER_QUESTION = 20;
+export const DEFAULT_TIME_PER_QUESTION = 10;
 
 // ============================================
 // Interfaces Database
@@ -389,7 +386,7 @@ export function getCorrectAnswerString(question: QuestionData): string {
 // ============================================
 
 export const MAX_PLAYERS_PER_CHALLENGE = 10;
-export const MIN_PLAYERS_TO_START = 2;
+export const MIN_PLAYERS_TO_START = 1;
 export const LOBBY_EXPIRY_MINUTES = 30;
 export const CHALLENGE_CODE_LENGTH = 9; // XXXX-XXXX
 

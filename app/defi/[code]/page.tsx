@@ -121,9 +121,7 @@ export default function ChallengePage({ params }: PageProps) {
         isDark ? 'bg-gray-900' : 'bg-gray-50'
       }`}>
         <div className="text-center">
-          <AlertCircle className={`w-12 h-12 mx-auto mb-4 ${
-            isDark ? 'text-red-400' : 'text-red-500'
-          }`} />
+          <AlertCircle className="w-12 h-12 mx-auto mb-4" style={{ color: '#d91a1c' }} />
           <h1 className={`text-xl font-bold mb-2 ${
             isDark ? 'text-white' : 'text-gray-900'
           }`}>

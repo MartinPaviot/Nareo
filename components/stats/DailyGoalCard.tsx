@@ -20,8 +20,8 @@ interface DailyGoalCardProps {
 
 export default function DailyGoalCard({
   current,
-  target,
-  completed,
+  target: _target,
+  completed: _completedFromApi,
   goalLevel,
   onGoalLevelChange,
 }: DailyGoalCardProps) {
@@ -29,8 +29,12 @@ export default function DailyGoalCard({
   const { isDark } = useTheme();
   const [showSettings, setShowSettings] = useState(false);
 
-  const progress = Math.min(100, Math.round((current / target) * 100));
   const config = DAILY_GOAL_CONFIG[goalLevel];
+  // Use the fixed target from config to ensure immediate update when level changes
+  const target = config.base;
+  // Recalculate completed status client-side to handle edge cases
+  const completed = current >= target;
+  const progress = Math.min(100, Math.round((current / target) * 100));
 
   return (
     <>

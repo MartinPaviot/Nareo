@@ -45,10 +45,14 @@ export default function EnhancedCourseCard({ course, hideStatusBadge = false }: 
   const getStatusBadge = () => {
     if (isFailed) {
       return (
-        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
-          isDark ? 'bg-red-950/50 text-red-400' : 'bg-red-100 text-red-700'
-        }`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+        <div
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold"
+          style={{
+            backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
+            color: isDark ? '#f87171' : '#b91c1c'
+          }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#d91a1c' }}></span>
           {translate('course_status_failed')}
         </div>
       );

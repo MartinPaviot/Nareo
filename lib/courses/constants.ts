@@ -51,7 +51,7 @@ export const FRESHNESS_CONFIG: Record<FreshnessLevel, FreshnessConfig> = {
   critical: {
     maxDays: Infinity,
     color: '#d91a1c',
-    bgColor: 'rgba(217, 26, 28, 0.1)',
+    bgColor: '#fff6f3',
     label: 'Urgent',
     icon: 'AlertCircle',
   },

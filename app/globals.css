@@ -30,7 +30,7 @@
   --color-success: #379f5a;
   --color-success-soft: rgba(55, 159, 90, 0.15);
   --color-error: #d91a1c;
-  --color-error-soft: rgba(217, 26, 28, 0.1);
+  --color-error-soft: #fff6f3;
 }
 
 /* Dark mode - Warm palette optimized for orange branding

@@ -98,7 +98,10 @@ export default function CourseOverviewCard({ chapter, progress, onClick, onDelet
       {onDelete && (
         <button
           onClick={handleDeleteClick}
-          className="absolute top-4 right-4 z-10 p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100"
+          className="absolute top-4 right-4 z-10 p-2 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          style={{ backgroundColor: '#fff6f3', color: '#d91a1c' }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fff6f3'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff6f3'}
           title={translate('dashboard_course_delete')}
         >
           <Trash2 className="w-4 h-4" />

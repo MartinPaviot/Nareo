@@ -53,7 +53,7 @@ export default function MasteryBar({
           )}
           <span
             className={`text-xs font-medium px-2 py-0.5 rounded-full`}
-            style={{ backgroundColor: config.color + '20', color: config.color }}
+            style={{ backgroundColor: masteryLevel === 'discovery' ? '#fff6f3' : config.color + '20', color: config.color }}
           >
             {translate(MASTERY_LEVEL_KEYS[masteryLevel])}
           </span>

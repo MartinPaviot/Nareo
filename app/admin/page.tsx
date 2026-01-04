@@ -159,7 +159,16 @@ export default function AdminDashboard() {
           </div>
           <button
             onClick={handleLogoutAdmin}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+            className="flex items-center gap-2 px-4 py-2 text-gray-600 rounded-lg transition"
+            style={{ }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#d91a1c';
+              e.currentTarget.style.backgroundColor = '#fff6f3';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '#4b5563';
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
           >
             <LogOut className="w-4 h-4" />
             Logout Admin
@@ -168,7 +177,14 @@ export default function AdminDashboard() {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div
+            className="px-4 py-3 rounded-lg mb-6 border"
+            style={{
+              backgroundColor: '#fff6f3',
+              borderColor: 'rgba(217, 26, 28, 0.2)',
+              color: '#b91c1c'
+            }}
+          >
             {error}
           </div>
         )}

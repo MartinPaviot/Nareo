@@ -137,9 +137,13 @@ function JoinChallengeContent() {
 
         {/* Error */}
         {error && (
-          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
-            isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
-          }`}>
+          <div
+            className="mb-6 p-4 rounded-xl flex items-center gap-3"
+            style={{
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
+              color: isDark ? '#f87171' : '#d91a1c'
+            }}
+          >
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             {error}
           </div>

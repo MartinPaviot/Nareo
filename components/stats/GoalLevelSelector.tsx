@@ -94,9 +94,6 @@ export default function GoalLevelSelector({
           })}
         </div>
 
-        <p className="mt-4 text-xs text-gray-400 text-center">
-          {translate('stats_daily_goal_selector_auto')}
-        </p>
       </motion.div>
     </motion.div>
   );

@@ -36,7 +36,7 @@ export function getDifficultyColor(difficulty: 'easy' | 'medium' | 'hard'): stri
     case 'medium':
       return 'text-yellow-600 bg-yellow-50';
     case 'hard':
-      return 'text-red-600 bg-red-50';
+      return 'text-[#d91a1c] bg-[#d91a1c]/5';
   }
 }
 

@@ -90,7 +90,7 @@ export default function FolderCard({
               }}
               className="p-2 rounded-full transition-colors group"
               style={{ backgroundColor: 'transparent' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               title={translate('delete_folder_action')}
             >

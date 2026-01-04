@@ -91,7 +91,7 @@ export default function MasteryPreview({ limit = 3 }: MasteryPreviewProps) {
         <div
           className="mb-4 p-3 border rounded-xl flex items-start gap-2"
           style={{
-            backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+            backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
             borderColor: isDark ? 'rgba(217, 26, 28, 0.4)' : 'rgba(217, 26, 28, 0.2)'
           }}
         >

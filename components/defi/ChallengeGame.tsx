@@ -187,7 +187,7 @@ export default function ChallengeGame({
               style={{
                 background: myResult.is_correct
                   ? 'linear-gradient(to bottom right, rgba(55, 159, 90, 0.2), rgba(55, 159, 90, 0.1))'
-                  : 'linear-gradient(to bottom right, rgba(217, 26, 28, 0.2), rgba(217, 26, 28, 0.1))',
+                  : 'linear-gradient(to bottom right, #ffeae5, #fff6f3)',
                 borderColor: myResult.is_correct ? 'rgba(55, 159, 90, 0.3)' : 'rgba(217, 26, 28, 0.3)'
               }}
             >
@@ -391,7 +391,7 @@ export default function ChallengeGame({
                       : 'bg-gray-100 text-gray-600'
                     : ''
               }`}
-              style={timeRemaining <= 5 ? { backgroundColor: 'rgba(217, 26, 28, 0.2)', color: '#d91a1c' } : {}}
+              style={timeRemaining <= 5 ? { backgroundColor: '#fff6f3', color: '#d91a1c' } : {}}
             >
               <Clock className="w-4 h-4" />
               <span className="font-mono font-bold">{timeRemaining}s</span>

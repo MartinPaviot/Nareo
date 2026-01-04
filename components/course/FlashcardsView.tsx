@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Sparkles, ThumbsUp, ThumbsDown, Star, UserPlus, HelpCircle, Plus, X, Trash2, Pencil, Maximize2, Minimize2, Lock } from 'lucide-react';
@@ -10,6 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 import GenerationLoadingScreen from './GenerationLoadingScreen';
 import FlashcardPersonnalisationScreen from './FlashcardPersonnalisationScreen';
+import ProgressiveFlashcardsView, { StreamingFlashcard } from './ProgressiveFlashcardsView';
 import { FlashcardConfig } from '@/types/flashcard-config';
 
 // Mapping des types de cartes vers des labels lisibles
@@ -95,12 +96,13 @@ interface FlashcardsViewProps {
   courseId: string;
   courseTitle: string;
   courseStatus?: string; // 'pending' | 'processing' | 'ready' | 'failed'
+  onModalStateChange?: (isOpen: boolean) => void;
 }
 
 // Number of flashcards accessible without an account
 const GUEST_FLASHCARD_LIMIT = 5;
 
-export default function FlashcardsView({ courseId, courseTitle, courseStatus }: FlashcardsViewProps) {
+export default function FlashcardsView({ courseId, courseTitle, courseStatus, onModalStateChange }: FlashcardsViewProps) {
   const router = useRouter();
   const { translate } = useLanguage();
   const { user } = useAuth();
@@ -129,6 +131,14 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
   const [editCardBack, setEditCardBack] = useState('');
   const [editingCard, setEditingCard] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Streaming state for progressive loading
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
+  const [cardsGenerated, setCardsGenerated] = useState(0);
+  const [totalCards, setTotalCards] = useState<number | undefined>(undefined);
+  const [streamingFlashcards, setStreamingFlashcards] = useState<StreamingFlashcard[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Check if current card index is beyond guest limit
   const isCardLocked = !user && currentIndex >= GUEST_FLASHCARD_LIMIT;
@@ -167,6 +177,20 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
     fetchFlashcards();
   }, [courseId]);
 
+  // Block body scroll and notify parent when modal is open
+  useEffect(() => {
+    const isModalOpen = showSignupModal || showCardLimitModal || showAddModal || showDeleteModal || showRegenerateModal || showEditModal;
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    onModalStateChange?.(isModalOpen);
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showSignupModal, showCardLimitModal, showAddModal, showDeleteModal, showRegenerateModal, showEditModal, onModalStateChange]);
+
   // Initial generation is allowed for anonymous users
   // Regeneration requires an account
   const handleGenerate = async (config?: FlashcardConfig, isRegeneration: boolean = false) => {
@@ -176,8 +200,18 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
       return;
     }
 
+    // Reset streaming state
     setGenerating(true);
     setError(null);
+    setGenerationProgress(0);
+    setProgressMessage('');
+    setCardsGenerated(0);
+    setTotalCards(undefined);
+    setStreamingFlashcards([]);
+
+    // Create abort controller for SSE
+    abortControllerRef.current = new AbortController();
+
     try {
       const response = await fetch(`/api/courses/${courseId}/flashcards/generate`, {
         method: 'POST',
@@ -185,15 +219,103 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(config || {}),
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate flashcards');
+        const errorText = await response.text();
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.error || 'Failed to generate flashcards');
+        } catch {
+          throw new Error('Failed to generate flashcards');
+        }
       }
 
-      const data = await response.json();
-      setFlashcards(data.flashcards);
+      // Handle SSE streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'progress') {
+                setProgressMessage(data.message || '');
+                setGenerationProgress(data.progress || 0);
+                if (data.cardsGenerated !== undefined) {
+                  setCardsGenerated(data.cardsGenerated);
+                }
+                if (data.totalCards !== undefined) {
+                  setTotalCards(data.totalCards);
+                }
+              } else if (data.type === 'flashcard') {
+                // Add the flashcard to streaming list for progressive display
+                if (data.flashcard) {
+                  const streamingCard: StreamingFlashcard = {
+                    id: data.flashcard.id || `temp-${Date.now()}-${Math.random()}`,
+                    type: data.flashcard.type || 'basic',
+                    front: data.flashcard.front || data.flashcard.concept || '',
+                    back: data.flashcard.back || data.flashcard.definition || '',
+                  };
+                  setStreamingFlashcards(prev => [...prev, streamingCard]);
+                }
+                // Update progress counters
+                setCardsGenerated(data.cardsGenerated || 0);
+                setTotalCards(data.totalCards);
+                setGenerationProgress(data.progress || 0);
+              } else if (data.type === 'complete') {
+                setGenerationProgress(100);
+                setCardsGenerated(data.cardsGenerated || 0);
+                setTotalCards(data.totalCards);
+              } else if (data.type === 'error') {
+                throw new Error(data.message || 'Generation failed');
+              }
+            } catch (parseError) {
+              // Ignore parse errors for incomplete data
+              if (parseError instanceof Error && parseError.message !== 'Generation failed') {
+                console.warn('Error parsing SSE data:', parseError);
+              } else {
+                throw parseError;
+              }
+            }
+          }
+        }
+      }
+
+      // Generation complete - fetch final flashcards from server to ensure consistency
+      const flashcardsResponse = await fetch(`/api/courses/${courseId}/flashcards`);
+      if (flashcardsResponse.ok) {
+        const flashcardsData = await flashcardsResponse.json();
+        if (flashcardsData.flashcards && flashcardsData.flashcards.length > 0) {
+          const normalizedFlashcards = flashcardsData.flashcards.map((fc: Flashcard & { concept?: string; definition?: string }) => ({
+            id: fc.id,
+            type: fc.type || 'definition',
+            front: fc.front || fc.concept || '',
+            back: fc.back || fc.definition || '',
+            mastery: fc.mastery || 'new',
+            correctCount: fc.correctCount || 0,
+            incorrectCount: fc.incorrectCount || 0,
+            chapterId: fc.chapterId,
+          }));
+          setFlashcards(normalizedFlashcards);
+        }
+      }
+
       setCurrentIndex(0);
       setIsFlipped(false);
       setHasAnswered(false);
@@ -201,9 +323,14 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
       // Trigger global refresh to update course cards
       triggerRefresh();
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        // Generation was cancelled
+        return;
+      }
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setGenerating(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -539,7 +666,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
           <div
             className="rounded-xl p-3 mb-4 text-sm border"
             style={{
-              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
               borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)',
               color: isDark ? '#e94446' : '#d91a1c'
             }}
@@ -549,7 +676,30 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
         )}
 
         {generating ? (
-          <GenerationLoadingScreen type="flashcards" />
+          streamingFlashcards.length > 0 ? (
+            // Show progressive view once cards start arriving
+            <ProgressiveFlashcardsView
+              flashcards={streamingFlashcards}
+              isGenerating={generating}
+              progress={generationProgress}
+              cardsGenerated={cardsGenerated}
+              totalCards={totalCards}
+              progressMessage={progressMessage}
+              courseId={courseId}
+              onComplete={() => {
+                // Refresh will happen automatically when generation completes
+              }}
+            />
+          ) : (
+            // Show loading screen while waiting for first card
+            <GenerationLoadingScreen
+              type="flashcards"
+              progress={generationProgress}
+              progressMessage={progressMessage}
+              itemsGenerated={cardsGenerated}
+              totalItems={totalCards}
+            />
+          )
         ) : (
           <FlashcardPersonnalisationScreen
             onGenerate={handleGenerate}
@@ -559,7 +709,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
 
         {/* Signup Modal */}
         {showSignupModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[60]">
             <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
               isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
             }`}>
@@ -717,7 +867,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
                       : ''
                   }`}
                   style={!hasAnswered ? {
-                    backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)',
+                    backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3',
                     color: isDark ? '#e94446' : '#d91a1c',
                     borderWidth: '1px',
                     borderStyle: 'solid',
@@ -926,7 +1076,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
                 : ''
             }`}
             style={!hasAnswered ? {
-              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)',
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3',
               color: isDark ? '#e94446' : '#d91a1c',
               borderWidth: '1px',
               borderStyle: 'solid',
@@ -1148,7 +1298,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
           }`}>
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : 'rgba(217, 26, 28, 0.1)' }}
+              style={{ backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3' }}
             >
               <Trash2 className="w-7 h-7" style={{ color: '#d91a1c' }} />
             </div>
@@ -1354,9 +1504,16 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus }: 
               : 'bg-white border-gray-200 text-gray-900'
           }`}>
             <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-            <span className="text-sm font-medium">
-              {translate('flashcards_regenerating') || 'Régénération des flashcards...'}
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">
+                {translate('flashcards_regenerating') || 'Régénération des flashcards...'}
+              </span>
+              {cardsGenerated > 0 && (
+                <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                  {cardsGenerated}{totalCards ? ` / ${totalCards}` : ''} {translate('flashcards_cards_generated') || 'cartes générées'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}

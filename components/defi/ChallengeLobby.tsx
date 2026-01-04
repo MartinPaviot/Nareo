@@ -189,7 +189,7 @@ export default function ChallengeLobby({
           <div
             className="mb-4 p-3 rounded-lg"
             style={{
-              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
               color: isDark ? '#e94446' : '#d91a1c'
             }}
           >

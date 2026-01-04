@@ -1,7 +1,7 @@
 'use client';
 
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Calendar, Flame, Target, Trophy } from 'lucide-react';
+import { Calendar, Flame, Crosshair, Trophy } from 'lucide-react';
 
 interface DailyRitualCardProps {
   currentStreak: number;
@@ -74,7 +74,7 @@ export default function DailyRitualCard({
       {/* Today's Stats */}
       <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
         <div className="flex items-center gap-2 mb-3">
-          <Target className="w-5 h-5" />
+          <Crosshair className="w-5 h-5" />
           <span className="font-semibold">{translate('daily_ritual_today')}</span>
         </div>
 

@@ -44,10 +44,11 @@ export const MASTERY_CONFIG: Record<MasteryLevel, MasteryConfig> = {
 };
 
 // Daily Goal Configuration
+// Fixed values: tranquille=8, standard=15, intensif=35 questions/day
 export const DAILY_GOAL_CONFIG: Record<DailyGoalLevel, DailyGoalConfig> = {
-  tranquille: { min: 5, max: 10, base: 8, label: 'Tranquille', emoji: '🐢', timeEstimate: '~5 min' },
-  standard: { min: 10, max: 25, base: 15, label: 'Standard', emoji: '🎯', timeEstimate: '~15 min' },
-  intensif: { min: 25, max: 50, base: 35, label: 'Intensif', emoji: '🚀', timeEstimate: '~30 min' },
+  tranquille: { min: 8, max: 8, base: 8, label: 'Tranquille', emoji: '🐢', timeEstimate: '~5 min' },
+  standard: { min: 15, max: 15, base: 15, label: 'Standard', emoji: '⚡', timeEstimate: '~15 min' },
+  intensif: { min: 35, max: 35, base: 35, label: 'Intensif', emoji: '🚀', timeEstimate: '~30 min' },
 };
 
 // XP Rewards per action

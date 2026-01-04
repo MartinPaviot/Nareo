@@ -1,118 +1,66 @@
--- Migration: Create blog_articles table for Nareo blog
--- This stores blog articles with multilingual content (FR, EN, DE)
+import type { BlogArticle } from '@/types/blog';
 
--- Create the blog_articles table
-CREATE TABLE IF NOT EXISTS blog_articles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug TEXT UNIQUE NOT NULL,
-
-    -- Multilingual titles
-    title_fr TEXT NOT NULL,
-    title_en TEXT NOT NULL,
-    title_de TEXT NOT NULL,
-
-    -- Multilingual excerpts (short descriptions for cards)
-    excerpt_fr TEXT NOT NULL,
-    excerpt_en TEXT NOT NULL,
-    excerpt_de TEXT NOT NULL,
-
-    -- Multilingual content (full markdown)
-    content_fr TEXT NOT NULL,
-    content_en TEXT NOT NULL,
-    content_de TEXT NOT NULL,
-
-    -- Metadata
-    category TEXT NOT NULL,
-    read_time INTEGER NOT NULL,
-    image_url TEXT,
-    published BOOLEAN DEFAULT false,
-    featured BOOLEAN DEFAULT false,
-    author TEXT DEFAULT 'L''équipe Nareo',
-
-    -- Timestamps
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Create index for faster slug lookups
-CREATE INDEX IF NOT EXISTS idx_blog_articles_slug ON blog_articles(slug);
-CREATE INDEX IF NOT EXISTS idx_blog_articles_published ON blog_articles(published);
-
--- Add comment for documentation
-COMMENT ON TABLE blog_articles IS 'Stores blog articles with multilingual content for the Nareo blog';
-
--- Insert Article 1: Active Recall
-INSERT INTO blog_articles (
-    slug,
-    title_fr, title_en, title_de,
-    excerpt_fr, excerpt_en, excerpt_de,
-    content_fr, content_en, content_de,
-    category, read_time, published, featured, author
-) VALUES (
-    'active-recall-methode-revision-efficace',
-
-    -- Titles
-    'Active Recall : La méthode de révision la plus efficace',
-    'Active Recall: The Most Effective Study Method',
-    'Active Recall: Die effektivste Lernmethode',
-
-    -- Excerpts
-    'Découvrez pourquoi se tester activement est beaucoup plus efficace que relire ses cours, et comment l''appliquer concrètement.',
-    'Discover why actively testing yourself is much more effective than re-reading your notes, and how to apply it in practice.',
-    'Entdecke, warum aktives Selbsttesten viel effektiver ist als das Wiederlesen deiner Notizen, und wie du es praktisch anwenden kannst.',
-
-    -- Content FR
-    '*Tu passes des heures à relire tes cours, tu surligne, tu recopies... et pourtant, le jour de l''exam, c''est le trou noir ? T''inquiète, on est tous passés par là. La bonne nouvelle : il existe une méthode scientifiquement prouvée pour changer ça.*
+export const blogArticles: BlogArticle[] = [
+  {
+    id: '1',
+    slug: 'active-recall-methode-revision-efficace',
+    title_fr: 'Active Recall : La méthode de révision la plus efficace',
+    title_en: 'Active Recall: The Most Effective Study Method',
+    title_de: 'Active Recall: Die effektivste Lernmethode',
+    excerpt_fr: "Découvrez pourquoi se tester activement est beaucoup plus efficace que relire ses cours, et comment l'appliquer concrètement.",
+    excerpt_en: 'Discover why actively testing yourself is much more effective than re-reading your notes, and how to apply it in practice.',
+    excerpt_de: 'Entdecke, warum aktives Selbsttesten viel effektiver ist als das Wiederlesen deiner Notizen, und wie du es praktisch anwenden kannst.',
+    content_fr: `*Tu passes des heures à relire tes cours, tu surligne, tu recopies... et pourtant, le jour de l'exam, c'est le trou noir ? T'inquiète, on est tous passés par là. La bonne nouvelle : il existe une méthode scientifiquement prouvée pour changer ça.*
 
 ---
 
-## Acte 1 : Pourquoi relire ne sert (presque) à rien
+## Pourquoi relire ne sert (presque) à rien
 
 ### Le piège de la "fluence"
 
-Soyons honnêtes : relire ses cours, c''est confortable. On se pose, on parcourt les pages, et on se dit "OK, ça me dit quelque chose, je connais".
+Soyons honnêtes : relire ses cours, c'est confortable. On se pose, on parcourt les pages, et on se dit "OK, ça me dit quelque chose, je connais".
 
-**Spoiler alert : c''est une illusion.**
+**Spoiler alert : c'est une illusion.**
 
-Les chercheurs appellent ça la **"fluence illusoire"**. Quand tu relis un texte, ton cerveau le reconnaît et te fait croire que tu le maîtrises. Mais reconnaître ≠ connaître. C''est comme si tu regardais 50 fois la même vidéo de cuisine sans jamais toucher une casserole, et que tu te disais "tranquille, je suis un chef".
+Les chercheurs appellent ça la **"fluence illusoire"**. Quand tu relis un texte, ton cerveau le reconnaît et te fait croire que tu le maîtrises. Mais reconnaître ≠ connaître. C'est comme si tu regardais 50 fois la même vidéo de cuisine sans jamais toucher une casserole, et que tu te disais "tranquille, je suis un chef".
 
 ### Ce que dit la science
 
-Une étude de Karpicke et Roediger (2008) à l''Université de Washington a comparé deux groupes d''étudiants :
+Une étude de Karpicke et Roediger (2008) à l'Université de Washington a comparé deux groupes d'étudiants :
 - **Groupe A** : relecture répétée du cours
 - **Groupe B** : une seule lecture + tests réguliers
 
-Résultat ? Une semaine plus tard, le groupe B retenait **50% de plus** que le groupe A. Et ce n''est pas un cas isolé : des centaines d''études confirment ce résultat.
+Résultat ? Une semaine plus tard, le groupe B retenait **50% de plus** que le groupe A. Et ce n'est pas un cas isolé : des centaines d'études confirment ce résultat.
 
-> **Le principe** : Ton cerveau retient mieux ce qu''il doit *récupérer* activement que ce qu''il *reçoit* passivement.
+> **Le principe** : Ton cerveau retient mieux ce qu'il doit *récupérer* activement que ce qu'il *reçoit* passivement.
 
 ---
 
-## Acte 2 : L''Active Recall, comment ça marche ?
+## L'Active Recall, comment ça marche ?
 
 ### Le concept en 30 secondes
 
-L''**Active Recall** (ou "rappel actif" pour les puristes), c''est simple : au lieu de relire l''information, tu te **forces à la retrouver** dans ta mémoire.
+L'**Active Recall** (ou "rappel actif" pour les puristes), c'est simple : au lieu de relire l'information, tu te **forces à la retrouver** dans ta mémoire.
 
 Concrètement :
 1. Tu lis/apprends quelque chose
 2. Tu fermes ton cours
-3. Tu te poses des questions et tu essaies d''y répondre **sans regarder**
+3. Tu te poses des questions et tu essaies d'y répondre **sans regarder**
 4. Tu vérifies ensuite
 
-C''est inconfortable ? **Normal.** C''est justement cet effort qui renforce les connexions neuronales.
+C'est inconfortable ? **Normal.** C'est justement cet effort qui renforce les connexions neuronales.
 
-### Pourquoi c''est si puissant ?
+### Pourquoi c'est si puissant ?
 
 Quand tu te forces à récupérer une info :
 
-1. **Tu renforces le chemin neuronal** → Plus tu empruntes un chemin, plus il devient facile d''accès
+1. **Tu renforces le chemin neuronal** → Plus tu empruntes un chemin, plus il devient facile d'accès
 2. **Tu identifies tes vraies lacunes** → Impossible de te mentir quand tu es face à une question
-3. **Tu simules l''examen** → Tu t''entraînes dans les conditions réelles
+3. **Tu simules l'examen** → Tu t'entraînes dans les conditions réelles
 
 > **Fun fact** : Les neurologues appellent ça le "testing effect" ou "effet de test". Chaque fois que tu récupères une info, tu la re-stockes avec une trace mnésique plus forte.
 
-### Les 4 techniques d''Active Recall à connaître
+### Les 4 techniques d'Active Recall à connaître
 
 **1. Les flashcards (le classique)**
 - Recto : question
@@ -121,20 +69,20 @@ Quand tu te forces à récupérer une info :
 
 **2. La feuille blanche (brutal mais efficace)**
 - Tu prends une feuille vide
-- Tu essaies d''écrire tout ce que tu sais sur un chapitre
+- Tu essaies d'écrire tout ce que tu sais sur un chapitre
 - Sans tricher. Vraiment.
 
 **3. Les questions de cours**
 - À la fin de chaque session, écris 5-10 questions sur ce que tu viens de voir
 - Le lendemain, réponds-y sans regarder le cours
 
-**4. Enseigner à quelqu''un (ou à ton mur)**
-- Explique le concept à voix haute comme si tu l''enseignais
+**4. Enseigner à quelqu'un (ou à ton mur)**
+- Explique le concept à voix haute comme si tu l'enseignais
 - Les trous dans ton explication = les trous dans ta compréhension
 
 ---
 
-## Acte 3 : Comment l''appliquer dès aujourd''hui
+## Comment l'appliquer dès aujourd'hui
 
 ### Ta nouvelle routine de révision
 
@@ -145,20 +93,20 @@ Oublie le mode "lecture passive pendant 3h". Voici un framework qui marche :
 - **2 minutes** : Ferme tout et récite/écris ce que tu as retenu
 - **1 minute** : Vérifie et note ce que tu as oublié
 
-Répète ce cycle pour chaque notion. C''est plus fatigant ? Oui. C''est 10x plus efficace ? Aussi oui.
+Répète ce cycle pour chaque notion. C'est plus fatigant ? Oui. C'est 10x plus efficace ? Aussi oui.
 
 ### Les erreurs à éviter
 
-- **Regarder la réponse trop vite** → Donne-toi vraiment le temps de chercher, même si c''est inconfortable
-- **Se dire "je le savais"** → Si tu ne l''as pas formulé AVANT de voir la réponse, tu ne le savais pas
-- **Faire de l''Active Recall une seule fois** → L''efficacité vient de la répétition
+- **Regarder la réponse trop vite** → Donne-toi vraiment le temps de chercher, même si c'est inconfortable
+- **Se dire "je le savais"** → Si tu ne l'as pas formulé AVANT de voir la réponse, tu ne le savais pas
+- **Faire de l'Active Recall une seule fois** → L'efficacité vient de la répétition
 - **Négliger les erreurs** → Tes erreurs sont tes meilleures amies : ce sont elles qui te montrent quoi retravailler
 
-### Combiner avec d''autres techniques
+### Combiner avec d'autres techniques
 
-L''Active Recall est encore plus puissant quand tu le combines avec :
+L'Active Recall est encore plus puissant quand tu le combines avec :
 - **La répétition espacée** : Quand te re-tester ?
-- **Le Pomodoro** : Pour structurer tes sessions d''Active Recall
+- **Le Pomodoro** : Pour structurer tes sessions d'Active Recall
 - **Les mind maps** : Pour te tester sur les liens entre concepts
 
 ---
@@ -172,30 +120,28 @@ L''Active Recall est encore plus puissant quand tu le combines avec :
 | "Je connais ce cours" | "Je peux réciter ce cours" |
 | Réviser passivement 4h | Réviser activement 1h30 |
 
-L''Active Recall, c''est pas magique – c''est scientifique. Et comme toute méthode, elle demande un peu de discipline au début. Mais une fois que tu auras vu la différence sur tes notes, tu ne pourras plus t''en passer.
+L'Active Recall, c'est pas magique – c'est scientifique. Et comme toute méthode, elle demande un peu de discipline au début. Mais une fois que tu auras vu la différence sur tes notes, tu ne pourras plus t'en passer.
 
 ---
 
-## Passe à l''action avec Nareo
+## Passe à l'action avec Nareo
 
-Tu veux appliquer l''Active Recall sans te prendre la tête ? **Nareo transforme automatiquement tes cours PDF en flashcards et quiz** optimisés pour l''Active Recall.
+Tu veux appliquer l'Active Recall sans te prendre la tête ? **Nareo transforme automatiquement tes cours PDF en flashcards et quiz** optimisés pour l'Active Recall.
 
-Plus besoin de créer tes questions toi-même – importe ton cours, et commence à te tester en 30 secondes.',
-
-    -- Content EN
-    '*You spend hours re-reading your notes, highlighting, copying... and yet, on exam day, your mind goes blank? Don''t worry, we''ve all been there. The good news: there''s a scientifically proven method to change that.*
+Plus besoin de créer tes questions toi-même – importe ton cours, et commence à te tester en 30 secondes.`,
+    content_en: `*You spend hours re-reading your notes, highlighting, copying... and yet, on exam day, your mind goes blank? Don't worry, we've all been there. The good news: there's a scientifically proven method to change that.*
 
 ---
 
-## Act 1: Why Re-reading Is (Almost) Useless
+## Why Re-reading Is (Almost) Useless
 
 ### The "Fluency" Trap
 
-Let''s be honest: re-reading your notes is comfortable. You sit down, go through the pages, and think "OK, this looks familiar, I know this."
+Let's be honest: re-reading your notes is comfortable. You sit down, go through the pages, and think "OK, this looks familiar, I know this."
 
-**Spoiler alert: it''s an illusion.**
+**Spoiler alert: it's an illusion.**
 
-Researchers call this **"illusion of fluency."** When you re-read a text, your brain recognizes it and makes you believe you''ve mastered it. But recognizing ≠ knowing. It''s like watching the same cooking video 50 times without ever touching a pan, and thinking "I''m totally a chef."
+Researchers call this **"illusion of fluency."** When you re-read a text, your brain recognizes it and makes you believe you've mastered it. But recognizing ≠ knowing. It's like watching the same cooking video 50 times without ever touching a pan, and thinking "I'm totally a chef."
 
 ### What Science Says
 
@@ -203,13 +149,13 @@ A study by Karpicke and Roediger (2008) at Washington University compared two gr
 - **Group A**: repeated re-reading of the material
 - **Group B**: one reading + regular self-testing
 
-The result? One week later, Group B retained **50% more** than Group A. And this isn''t an isolated case: hundreds of studies confirm this finding.
+The result? One week later, Group B retained **50% more** than Group A. And this isn't an isolated case: hundreds of studies confirm this finding.
 
 > **The principle**: Your brain remembers better what it has to *retrieve* actively than what it *receives* passively.
 
 ---
 
-## Act 2: How Does Active Recall Work?
+## How Does Active Recall Work?
 
 ### The Concept in 30 Seconds
 
@@ -221,7 +167,7 @@ In practice:
 3. You ask yourself questions and try to answer **without looking**
 4. Then you verify
 
-Is it uncomfortable? **Normal.** It''s precisely this effort that strengthens neural connections.
+Is it uncomfortable? **Normal.** It's precisely this effort that strengthens neural connections.
 
 ### Why Is It So Powerful?
 
@@ -255,11 +201,11 @@ When you force yourself to retrieve information:
 
 ---
 
-## Act 3: How to Apply It Today
+## How to Apply It Today
 
 ### Your New Study Routine
 
-Forget "passive reading for 3 hours." Here''s a framework that works:
+Forget "passive reading for 3 hours." Here's a framework that works:
 
 **The 3-2-1 method:**
 - **3 minutes**: Read/review a concept
@@ -270,8 +216,8 @@ Repeat this cycle for each concept. Is it more tiring? Yes. Is it 10x more effec
 
 ### Mistakes to Avoid
 
-- **Looking at the answer too quickly** → Give yourself time to search, even if it''s uncomfortable
-- **Telling yourself "I knew that"** → If you didn''t formulate it BEFORE seeing the answer, you didn''t know it
+- **Looking at the answer too quickly** → Give yourself time to search, even if it's uncomfortable
+- **Telling yourself "I knew that"** → If you didn't formulate it BEFORE seeing the answer, you didn't know it
 - **Doing Active Recall only once** → Effectiveness comes from repetition
 - **Ignoring mistakes** → Your mistakes are your best friends: they show you what to work on
 
@@ -286,14 +232,14 @@ Active Recall is even more powerful when combined with:
 
 ## In Summary
 
-| What doesn''t work | What works |
+| What doesn't work | What works |
 |------------------------|------------------|
 | Re-reading 10 times | Read once + test yourself 9 times |
 | Highlighting everywhere | Writing questions |
 | "I know this course" | "I can recite this course" |
 | Passive studying for 4h | Active studying for 1h30 |
 
-Active Recall isn''t magic – it''s scientific. And like any method, it requires some discipline at first. But once you see the difference in your grades, you won''t be able to do without it.
+Active Recall isn't magic – it's scientific. And like any method, it requires some discipline at first. But once you see the difference in your grades, you won't be able to do without it.
 
 ---
 
@@ -301,14 +247,12 @@ Active Recall isn''t magic – it''s scientific. And like any method, it require
 
 Want to apply Active Recall without the hassle? **Nareo automatically transforms your PDF courses into flashcards and quizzes** optimized for Active Recall.
 
-No need to create your own questions – import your course and start testing yourself in 30 seconds.',
-
-    -- Content DE
-    '*Du verbringst Stunden damit, deine Notizen zu lesen, zu markieren, abzuschreiben... und trotzdem ist am Prüfungstag alles wie ausgelöscht? Keine Sorge, das kennen wir alle. Die gute Nachricht: Es gibt eine wissenschaftlich bewiesene Methode, das zu ändern.*
+No need to create your own questions – import your course and start testing yourself in 30 seconds.`,
+    content_de: `*Du verbringst Stunden damit, deine Notizen zu lesen, zu markieren, abzuschreiben... und trotzdem ist am Prüfungstag alles wie ausgelöscht? Keine Sorge, das kennen wir alle. Die gute Nachricht: Es gibt eine wissenschaftlich bewiesene Methode, das zu ändern.*
 
 ---
 
-## Akt 1: Warum Wiederlesen (fast) nutzlos ist
+## Warum Wiederlesen (fast) nutzlos ist
 
 ### Die "Flüssigkeits"-Falle
 
@@ -330,7 +274,7 @@ Das Ergebnis? Eine Woche später behielt Gruppe B **50% mehr** als Gruppe A. Und
 
 ---
 
-## Akt 2: Wie funktioniert Active Recall?
+## Wie funktioniert Active Recall?
 
 ### Das Konzept in 30 Sekunden
 
@@ -376,7 +320,7 @@ Wenn du dich zwingst, Informationen abzurufen:
 
 ---
 
-## Akt 3: Wie du es heute anwenden kannst
+## Wie du es heute anwenden kannst
 
 ### Deine neue Lernroutine
 
@@ -422,47 +366,36 @@ Active Recall ist keine Magie – es ist Wissenschaft. Und wie jede Methode erfo
 
 Willst du Active Recall ohne Aufwand anwenden? **Nareo verwandelt automatisch deine PDF-Kurse in Karteikarten und Quiz**, die für Active Recall optimiert sind.
 
-Keine Notwendigkeit, eigene Fragen zu erstellen – importiere deinen Kurs und beginne in 30 Sekunden mit dem Testen.',
-
-    'Méthode',
-    5,
-    true,
-    true,
-    'L''équipe Nareo'
-);
-
--- Insert Article 2: Répétition Espacée
-INSERT INTO blog_articles (
-    slug,
-    title_fr, title_en, title_de,
-    excerpt_fr, excerpt_en, excerpt_de,
-    content_fr, content_en, content_de,
-    category, read_time, published, featured, author
-) VALUES (
-    'repetition-espacee-memoriser-long-terme',
-
-    -- Titles
-    'Répétition espacée : Mémoriser sur le long terme',
-    'Spaced Repetition: Memorize for the Long Term',
-    'Verteiltes Lernen: Langfristig merken',
-
-    -- Excerpts
-    'Apprenez à utiliser l''effet d''espacement pour optimiser votre mémoire et retenir vos cours durablement.',
-    'Learn how to use the spacing effect to optimize your memory and retain your courses durably.',
-    'Lerne, wie du den Spacing-Effekt nutzt, um dein Gedächtnis zu optimieren und deine Kurse dauerhaft zu behalten.',
-
-    -- Content FR
-    '*On a tous vécu ce moment : tu révises à fond la veille, tu gères l''exam... et deux semaines plus tard, tu as tout oublié. Comme si ton cerveau avait un bouton "supprimer" automatique. Bonne nouvelle : ce n''est pas une fatalité. La répétition espacée va changer ta façon de mémoriser.*
+Keine Notwendigkeit, eigene Fragen zu erstellen – importiere deinen Kurs und beginne in 30 Sekunden mit dem Testen.`,
+    category: 'Méthode',
+    read_time: 5,
+    image_url: '/images/pexels-nietjuhart-796602.jpg',
+    published: true,
+    featured: true,
+    author: "L'équipe Nareo",
+    created_at: '2025-12-24T10:00:00Z',
+    updated_at: '2025-12-24T10:00:00Z',
+  },
+  {
+    id: '2',
+    slug: 'repetition-espacee-memoriser-long-terme',
+    title_fr: 'Répétition espacée : Mémoriser sur le long terme',
+    title_en: 'Spaced Repetition: Memorize for the Long Term',
+    title_de: 'Verteiltes Lernen: Langfristig merken',
+    excerpt_fr: "Apprenez à utiliser l'effet d'espacement pour optimiser votre mémoire et retenir vos cours durablement.",
+    excerpt_en: 'Learn how to use the spacing effect to optimize your memory and retain your courses durably.',
+    excerpt_de: 'Lerne, wie du den Spacing-Effekt nutzt, um dein Gedächtnis zu optimieren und deine Kurse dauerhaft zu behalten.',
+    content_fr: `*On a tous vécu ce moment : tu révises à fond la veille, tu gères l'exam... et deux semaines plus tard, tu as tout oublié. Comme si ton cerveau avait un bouton "supprimer" automatique. Bonne nouvelle : ce n'est pas une fatalité. La répétition espacée va changer ta façon de mémoriser.*
 
 ---
 
-## Acte 1 : La courbe de l''oubli (et pourquoi ton cerveau te trahit)
+## La courbe de l'oubli (et pourquoi ton cerveau te trahit)
 
 ### Hermann Ebbinghaus, le goat de la mémoire
 
-En 1885, un psychologue allemand nommé Hermann Ebbinghaus a fait une découverte qui allait révolutionner notre compréhension de la mémoire. Il s''est infligé des mois d''apprentissage de syllabes sans sens (genre "DAX", "BUP", "ZOL") pour comprendre comment on oublie.
+En 1885, un psychologue allemand nommé Hermann Ebbinghaus a fait une découverte qui allait révolutionner notre compréhension de la mémoire. Il s'est infligé des mois d'apprentissage de syllabes sans sens (genre "DAX", "BUP", "ZOL") pour comprendre comment on oublie.
 
-Son constat ? **La courbe de l''oubli.**
+Son constat ? **La courbe de l'oubli.**
 
 ### Ce que ça veut dire pour toi
 
@@ -472,60 +405,60 @@ Après avoir appris quelque chose :
 - **1 semaine plus tard** : ~20%
 - **1 mois plus tard** : ~10%
 
-Oui, c''est déprimant. Mais attends la suite.
+Oui, c'est déprimant. Mais attends la suite.
 
 ### La révélation : chaque révision "reset" la courbe
 
-Ebbinghaus a aussi découvert que **chaque fois que tu révises**, la courbe d''oubli s''aplatit. En gros :
+Ebbinghaus a aussi découvert que **chaque fois que tu révises**, la courbe d'oubli s'aplatit. En gros :
 
 - 1ère révision → tu retiens plus longtemps
 - 2ème révision → encore plus longtemps
 - 3ème révision → ça commence à rentrer pour de bon
 
-> **Le principe clé** : Ce n''est pas le temps total de révision qui compte, c''est **quand** tu révises.
+> **Le principe clé** : Ce n'est pas le temps total de révision qui compte, c'est **quand** tu révises.
 
-Réviser 4h d''affilée la veille = ton cerveau oublie presque tout.
+Réviser 4h d'affilée la veille = ton cerveau oublie presque tout.
 Réviser 4x 1h espacées sur 2 semaines = mémorisation durable.
 
 ---
 
-## Acte 2 : La répétition espacée, mode d''emploi
+## La répétition espacée, mode d'emploi
 
 ### Le concept en clair
 
-La **répétition espacée** (ou "spaced repetition" pour les bilingues), c''est une technique qui consiste à **réviser juste avant d''oublier**.
+La **répétition espacée** (ou "spaced repetition" pour les bilingues), c'est une technique qui consiste à **réviser juste avant d'oublier**.
 
-L''idée : au lieu de réviser au hasard ou en mode bourrage de crâne, tu espaces tes révisions de manière optimale :
-- Première révision : 1 jour après l''apprentissage
+L'idée : au lieu de réviser au hasard ou en mode bourrage de crâne, tu espaces tes révisions de manière optimale :
+- Première révision : 1 jour après l'apprentissage
 - Deuxième révision : 3 jours après
 - Troisième révision : 1 semaine après
 - Quatrième révision : 2 semaines après
 - Cinquième révision : 1 mois après
 - ... et ainsi de suite, en espaçant de plus en plus
 
-### Pourquoi c''est contre-intuitif (mais génial)
+### Pourquoi c'est contre-intuitif (mais génial)
 
-Notre instinct nous dit : "Je galère sur ce concept → je dois le réviser encore et encore aujourd''hui."
+Notre instinct nous dit : "Je galère sur ce concept → je dois le réviser encore et encore aujourd'hui."
 
-La science dit : "Tu galères sur ce concept → révise-le aujourd''hui, puis laisse ton cerveau travailler, et reviens-y dans quelques jours."
+La science dit : "Tu galères sur ce concept → révise-le aujourd'hui, puis laisse ton cerveau travailler, et reviens-y dans quelques jours."
 
-C''est ce qu''on appelle le **"desirable difficulty"** (difficulté souhaitable). L''effort de se rappeler quelque chose qu''on a presque oublié **renforce** la mémoire bien plus qu''une révision facile.
+C'est ce qu'on appelle le **"desirable difficulty"** (difficulté souhaitable). L'effort de se rappeler quelque chose qu'on a presque oublié **renforce** la mémoire bien plus qu'une révision facile.
 
-> **Analogie** : C''est comme la muscu. Pour progresser, tu dois laisser tes muscles récupérer entre les séances. Réviser en continu, c''est comme faire des biceps 24h/24 – tu vas juste te blesser (ou dans notre cas, rien retenir).
+> **Analogie** : C'est comme la muscu. Pour progresser, tu dois laisser tes muscles récupérer entre les séances. Réviser en continu, c'est comme faire des biceps 24h/24 – tu vas juste te blesser (ou dans notre cas, rien retenir).
 
-### L''algorithme magique : SM-2
+### L'algorithme magique : SM-2
 
-Dans les années 80, un étudiant polonais nommé Piotr Wozniak a créé **SuperMemo** et l''algorithme SM-2, qui calcule automatiquement quand tu dois réviser chaque information.
+Dans les années 80, un étudiant polonais nommé Piotr Wozniak a créé **SuperMemo** et l'algorithme SM-2, qui calcule automatiquement quand tu dois réviser chaque information.
 
 Le principe simplifié :
 - Si tu te souviens bien → on espace plus
 - Si tu galères → on rapproche la prochaine révision
 
-C''est cet algorithme (ou ses variantes) qui fait tourner des apps comme Anki, et... Nareo.
+C'est cet algorithme (ou ses variantes) qui fait tourner des apps comme Anki, et... Nareo.
 
 ---
 
-## Acte 3 : Mettre en place ta stratégie de répétition espacée
+## Mettre en place ta stratégie de répétition espacée
 
 ### Méthode 1 : Le système manuel (old school)
 
@@ -544,56 +477,27 @@ Tu peux faire de la répétition espacée avec du papier et un calendrier :
 - **Boîte 4** : Toutes les 2 semaines
 - **Boîte 5** : Une fois par mois
 
-Si tu réponds correctement → la carte monte d''une boîte.
+Si tu réponds correctement → la carte monte d'une boîte.
 Si tu te trompes → elle redescend en boîte 1.
 
 ### Méthode 2 : Le système automatisé (smart)
 
-Soyons honnêtes : gérer des boîtes et un calendrier, c''est chiant. Et en période d''exams, on a autre chose à faire.
+Soyons honnêtes : gérer des boîtes et un calendrier, c'est chiant. Et en période d'exams, on a autre chose à faire.
 
-C''est là que les outils numériques brillent. Ils :
+C'est là que les outils numériques brillent. Ils :
 - Calculent automatiquement quand réviser chaque carte
-- S''adaptent à ta performance (tu galères = plus de révisions)
-- Te rappellent ce que tu dois réviser aujourd''hui
+- S'adaptent à ta performance (tu galères = plus de révisions)
+- Te rappellent ce que tu dois réviser aujourd'hui
 - Suivent ta progression
-
-### Le planning idéal pour un partiel
-
-Imaginons que tu as un exam dans 3 semaines. Voici comment structurer ta répétition espacée :
-
-**Semaine 1 : Acquisition**
-- Jour 1-2 : Apprends le chapitre 1, crée tes flashcards
-- Jour 3 : Première révision du chapitre 1 + apprentissage chapitre 2
-- Jour 4-5 : Continue l''acquisition + révisions quotidiennes de ce qui est déjà appris
-
-**Semaine 2 : Consolidation**
-- L''algo (ou ton système de boîtes) te dit quoi réviser chaque jour
-- Tu continues à ajouter du nouveau contenu
-- Les cartes "maîtrisées" passent en révision moins fréquente
-
-**Semaine 3 : Renforcement**
-- Focus sur les cartes difficiles (celles qui restent en boîte 1-2)
-- Révisions espacées des cartes maîtrisées
-- Derniers jours : révision globale légère, pas de bourrage de crâne
-
-> **Point crucial** : La répétition espacée marche si tu commences TÔT. Si tu découvres ton cours 2 jours avant l''exam, c''est trop tard pour l''espacement. La méthode brille sur 2-4 semaines minimum.
-
-### Les erreurs classiques à éviter
-
-- **Commencer trop tard** : La répétition espacée a besoin de temps. Commence dès que possible.
-- **Créer trop de cartes d''un coup** : Tu vas te retrouver submergé. 20-30 nouvelles cartes par jour max.
-- **Des cartes trop complexes** : Une carte = une info. Pas un paragraphe entier.
-- **Sauter des jours de révision** : L''algorithme perd en efficacité. Mieux vaut 10 min par jour que 1h tous les 3 jours.
-- **Ignorer les cartes difficiles** : C''est justement celles-là qui ont besoin d''attention. Pas de "je verrai plus tard".
 
 ---
 
 ## La science derrière tout ça
 
-Pour les sceptiques (et c''est bien d''être sceptique), voici ce que disent les études :
+Pour les sceptiques (et c'est bien d'être sceptique), voici ce que disent les études :
 
 **Méta-analyse de Cepeda et al. (2006)** sur 254 études :
-> L''espacement des révisions améliore la rétention de **10 à 30%** par rapport à la révision massée.
+> L'espacement des révisions améliore la rétention de **10 à 30%** par rapport à la révision massée.
 
 **Étude de Kornell (2009)** :
 > 90% des étudiants pensent que la révision massée est plus efficace. En réalité, la répétition espacée donne de meilleurs résultats dans **100% des cas testés**.
@@ -610,35 +514,33 @@ Pour les sceptiques (et c''est bien d''être sceptique), voici ce que disent les
 | Effort à court terme | Intense | Modéré mais régulier |
 | Rétention à 1 semaine | ~30% | ~70% |
 | Rétention à 1 mois | ~10% | ~50% |
-| Stress avant l''exam | Maximum | Réduit |
+| Stress avant l'exam | Maximum | Réduit |
 | Temps total nécessaire | Plus (à cause des re-révisions) | Moins (plus efficace) |
 
 ---
 
 ## En résumé : ta checklist
 
-- Commence tes révisions **au moins 2-3 semaines** avant l''exam
+- Commence tes révisions **au moins 2-3 semaines** avant l'exam
 - Crée des flashcards au fur et à mesure (pas tout à la fin)
-- Révise **un peu chaque jour** plutôt que beaucoup d''un coup
-- Utilise un outil qui calcule l''espacement pour toi
+- Révise **un peu chaque jour** plutôt que beaucoup d'un coup
+- Utilise un outil qui calcule l'espacement pour toi
 - Fais confiance au process même si ça semble "trop facile" certains jours
 
 ---
 
-## Passe à l''action avec Nareo
+## Passe à l'action avec Nareo
 
-La répétition espacée, c''est génial. Mais créer des centaines de flashcards à la main, c''est une corvée.
+La répétition espacée, c'est génial. Mais créer des centaines de flashcards à la main, c'est une corvée.
 
-**Nareo génère automatiquement des flashcards optimisées depuis tes PDF**, avec un algorithme de répétition espacée intégré. Tu importes ton cours, et l''app te dit exactement quoi réviser chaque jour.
+**Nareo génère automatiquement des flashcards optimisées depuis tes PDF**, avec un algorithme de répétition espacée intégré. Tu importes ton cours, et l'app te dit exactement quoi réviser chaque jour.
 
-Plus d''excuse pour ne pas commencer tôt.',
-
-    -- Content EN
-    '*We''ve all been there: you study intensely the night before, ace the exam... and two weeks later, you''ve forgotten everything. As if your brain had an automatic "delete" button. Good news: this isn''t inevitable. Spaced repetition will change how you memorize.*
+Plus d'excuse pour ne pas commencer tôt.`,
+    content_en: `*We've all been there: you study intensely the night before, ace the exam... and two weeks later, you've forgotten everything. As if your brain had an automatic "delete" button. Good news: this isn't inevitable. Spaced repetition will change how you memorize.*
 
 ---
 
-## Act 1: The Forgetting Curve (and Why Your Brain Betrays You)
+## The Forgetting Curve (and Why Your Brain Betrays You)
 
 ### Hermann Ebbinghaus, the GOAT of Memory
 
@@ -649,12 +551,12 @@ His finding? **The forgetting curve.**
 ### What This Means for You
 
 After learning something:
-- **20 minutes later**: you''ve already forgotten ~40%
+- **20 minutes later**: you've already forgotten ~40%
 - **1 day later**: you retain ~35%
 - **1 week later**: ~20%
 - **1 month later**: ~10%
 
-Yes, it''s depressing. But wait for what''s next.
+Yes, it's depressing. But wait for what's next.
 
 ### The Revelation: Each Review "Resets" the Curve
 
@@ -664,14 +566,14 @@ Ebbinghaus also discovered that **each time you review**, the forgetting curve f
 - 2nd review → even longer
 - 3rd review → it starts to stick for good
 
-> **The key principle**: It''s not the total study time that counts, it''s **when** you study.
+> **The key principle**: It's not the total study time that counts, it's **when** you study.
 
 Studying 4 hours straight the night before = your brain forgets almost everything.
 Studying 4x 1 hour spread over 2 weeks = durable memorization.
 
 ---
 
-## Act 2: Spaced Repetition, How It Works
+## Spaced Repetition, How It Works
 
 ### The Concept Explained
 
@@ -685,15 +587,15 @@ The idea: instead of reviewing randomly or cramming, you space your reviews opti
 - Fifth review: 1 month later
 - ... and so on, spacing more and more
 
-### Why It''s Counter-Intuitive (But Brilliant)
+### Why It's Counter-Intuitive (But Brilliant)
 
-Our instinct tells us: "I''m struggling with this concept → I need to review it over and over today."
+Our instinct tells us: "I'm struggling with this concept → I need to review it over and over today."
 
-Science says: "You''re struggling with this concept → review it today, then let your brain work, and come back to it in a few days."
+Science says: "You're struggling with this concept → review it today, then let your brain work, and come back to it in a few days."
 
-This is called **"desirable difficulty."** The effort of remembering something you''ve almost forgotten **strengthens** memory much more than an easy review.
+This is called **"desirable difficulty."** The effort of remembering something you've almost forgotten **strengthens** memory much more than an easy review.
 
-> **Analogy**: It''s like weight training. To progress, you need to let your muscles recover between sessions. Studying continuously is like doing bicep curls 24/7 – you''ll just hurt yourself (or in our case, retain nothing).
+> **Analogy**: It's like weight training. To progress, you need to let your muscles recover between sessions. Studying continuously is like doing bicep curls 24/7 – you'll just hurt yourself (or in our case, retain nothing).
 
 ### The Magic Algorithm: SM-2
 
@@ -707,7 +609,7 @@ This algorithm (or its variants) powers apps like Anki, and... Nareo.
 
 ---
 
-## Act 3: Setting Up Your Spaced Repetition Strategy
+## Setting Up Your Spaced Repetition Strategy
 
 ### Method 1: The Manual System (Old School)
 
@@ -731,7 +633,7 @@ If you get it wrong → it goes back to box 1.
 
 ### Method 2: The Automated System (Smart)
 
-Let''s be honest: managing boxes and a calendar is tedious. And during exam periods, we have other things to do.
+Let's be honest: managing boxes and a calendar is tedious. And during exam periods, we have other things to do.
 
 This is where digital tools shine. They:
 - Automatically calculate when to review each card
@@ -739,40 +641,11 @@ This is where digital tools shine. They:
 - Remind you what to review today
 - Track your progress
 
-### The Ideal Schedule for an Exam
-
-Imagine you have an exam in 3 weeks. Here''s how to structure your spaced repetition:
-
-**Week 1: Acquisition**
-- Days 1-2: Learn chapter 1, create your flashcards
-- Day 3: First review of chapter 1 + learning chapter 2
-- Days 4-5: Continue acquisition + daily reviews of what''s already learned
-
-**Week 2: Consolidation**
-- The algorithm (or your box system) tells you what to review each day
-- You continue adding new content
-- "Mastered" cards move to less frequent review
-
-**Week 3: Reinforcement**
-- Focus on difficult cards (those staying in boxes 1-2)
-- Spaced reviews of mastered cards
-- Last days: light global review, no cramming
-
-> **Crucial point**: Spaced repetition works if you start EARLY. If you discover your course 2 days before the exam, it''s too late for spacing. The method shines over 2-4 weeks minimum.
-
-### Classic Mistakes to Avoid
-
-- **Starting too late**: Spaced repetition needs time. Start as soon as possible.
-- **Creating too many cards at once**: You''ll get overwhelmed. 20-30 new cards per day max.
-- **Cards that are too complex**: One card = one piece of info. Not a whole paragraph.
-- **Skipping review days**: The algorithm loses efficiency. Better 10 min per day than 1h every 3 days.
-- **Ignoring difficult cards**: Those are exactly the ones that need attention. No "I''ll see later."
-
 ---
 
 ## The Science Behind It All
 
-For the skeptics (and it''s good to be skeptical), here''s what studies say:
+For the skeptics (and it's good to be skeptical), here's what studies say:
 
 **Meta-analysis by Cepeda et al. (2006)** on 254 studies:
 > Spacing reviews improves retention by **10 to 30%** compared to massed practice.
@@ -813,14 +686,12 @@ Spaced repetition is great. But creating hundreds of flashcards by hand is a cho
 
 **Nareo automatically generates optimized flashcards from your PDFs**, with a built-in spaced repetition algorithm. You import your course, and the app tells you exactly what to review each day.
 
-No more excuses for not starting early.',
-
-    -- Content DE
-    '*Wir kennen das alle: Du lernst intensiv am Abend vorher, bestehst die Prüfung... und zwei Wochen später hast du alles vergessen. Als hätte dein Gehirn einen automatischen "Löschen"-Knopf. Gute Nachricht: Das ist nicht unvermeidlich. Verteiltes Lernen wird verändern, wie du dir Dinge merkst.*
+No more excuses for not starting early.`,
+    content_de: `*Wir kennen das alle: Du lernst intensiv am Abend vorher, bestehst die Prüfung... und zwei Wochen später hast du alles vergessen. Als hätte dein Gehirn einen automatischen "Löschen"-Knopf. Gute Nachricht: Das ist nicht unvermeidlich. Verteiltes Lernen wird verändern, wie du dir Dinge merkst.*
 
 ---
 
-## Akt 1: Die Vergessenskurve (und warum dein Gehirn dich verrät)
+## Die Vergessenskurve (und warum dein Gehirn dich verrät)
 
 ### Hermann Ebbinghaus, der GOAT des Gedächtnisses
 
@@ -853,7 +724,7 @@ Ebbinghaus entdeckte auch, dass **jedes Mal, wenn du wiederholst**, die Vergesse
 
 ---
 
-## Akt 2: Verteiltes Lernen, wie es funktioniert
+## Verteiltes Lernen, wie es funktioniert
 
 ### Das Konzept erklärt
 
@@ -889,7 +760,7 @@ Dieser Algorithmus (oder seine Varianten) treibt Apps wie Anki an, und... Nareo.
 
 ---
 
-## Akt 3: Deine Strategie für verteiltes Lernen aufsetzen
+## Deine Strategie für verteiltes Lernen aufsetzen
 
 ### Methode 1: Das manuelle System (Old School)
 
@@ -920,35 +791,6 @@ Hier glänzen digitale Tools. Sie:
 - Passen sich deiner Leistung an (Schwierigkeiten = mehr Wiederholungen)
 - Erinnern dich, was du heute wiederholen sollst
 - Verfolgen deinen Fortschritt
-
-### Der ideale Zeitplan für eine Prüfung
-
-Stell dir vor, du hast in 3 Wochen eine Prüfung. So strukturierst du dein verteiltes Lernen:
-
-**Woche 1: Aneignung**
-- Tag 1-2: Lerne Kapitel 1, erstelle deine Karteikarten
-- Tag 3: Erste Wiederholung von Kapitel 1 + Lernen von Kapitel 2
-- Tag 4-5: Weiter mit Aneignung + tägliche Wiederholungen des bereits Gelernten
-
-**Woche 2: Festigung**
-- Der Algorithmus (oder dein Box-System) sagt dir, was du jeden Tag wiederholen sollst
-- Du fügst weiter neuen Inhalt hinzu
-- "Gemeisterte" Karten werden seltener wiederholt
-
-**Woche 3: Verstärkung**
-- Fokus auf schwierige Karten (die in Box 1-2 bleiben)
-- Verteilte Wiederholungen der gemeisterten Karten
-- Letzte Tage: leichte Gesamtwiederholung, kein Pauken
-
-> **Entscheidender Punkt**: Verteiltes Lernen funktioniert, wenn du FRÜH anfängst. Wenn du deinen Kurs 2 Tage vor der Prüfung entdeckst, ist es zu spät für Verteilung. Die Methode glänzt über mindestens 2-4 Wochen.
-
-### Klassische Fehler, die du vermeiden solltest
-
-- **Zu spät anfangen**: Verteiltes Lernen braucht Zeit. Fang so früh wie möglich an.
-- **Zu viele Karten auf einmal erstellen**: Du wirst überfordert sein. 20-30 neue Karten pro Tag max.
-- **Zu komplexe Karten**: Eine Karte = eine Information. Nicht ein ganzer Absatz.
-- **Wiederholungstage auslassen**: Der Algorithmus verliert an Effizienz. Besser 10 min pro Tag als 1h alle 3 Tage.
-- **Schwierige Karten ignorieren**: Genau die brauchen Aufmerksamkeit. Kein "Ich schaue später."
 
 ---
 
@@ -995,74 +837,63 @@ Verteiltes Lernen ist großartig. Aber Hunderte von Karteikarten von Hand zu ers
 
 **Nareo generiert automatisch optimierte Karteikarten aus deinen PDFs**, mit integriertem Algorithmus für verteiltes Lernen. Du importierst deinen Kurs, und die App sagt dir genau, was du jeden Tag wiederholen sollst.
 
-Keine Ausreden mehr, nicht früh anzufangen.',
-
-    'Méthode',
-    7,
-    true,
-    true,
-    'L''équipe Nareo'
-);
-
--- Insert Article 3: Technique Pomodoro
-INSERT INTO blog_articles (
-    slug,
-    title_fr, title_en, title_de,
-    excerpt_fr, excerpt_en, excerpt_de,
-    content_fr, content_en, content_de,
-    category, read_time, published, featured, author
-) VALUES (
-    'technique-pomodoro-rester-concentre',
-
-    -- Titles
-    'La technique Pomodoro : Rester concentré',
-    'The Pomodoro Technique: Stay Focused',
-    'Die Pomodoro-Technik: Konzentriert bleiben',
-
-    -- Excerpts
-    'Une méthode simple pour maintenir votre concentration et éviter le burnout pendant vos sessions de révision.',
-    'A simple method to maintain your concentration and avoid burnout during your study sessions.',
-    'Eine einfache Methode, um deine Konzentration aufrechtzuerhalten und Burnout beim Lernen zu vermeiden.',
-
-    -- Content FR
-    '*Tu t''assois pour réviser avec les meilleures intentions du monde. 5 minutes plus tard, tu es sur ton tel. 10 minutes après, tu "vérifies juste un truc" sur YouTube. Résultat : 3h de "révisions" pour 45 minutes de travail effectif. On connaît tous ce scénario. La technique Pomodoro est là pour briser ce cycle.*
+Keine Ausreden mehr, nicht früh anzufangen.`,
+    category: 'Méthode',
+    read_time: 7,
+    image_url: '/images/pexels-karola-g-7681318.jpg',
+    published: true,
+    featured: true,
+    author: "L'équipe Nareo",
+    created_at: '2025-12-24T10:00:00Z',
+    updated_at: '2025-12-24T10:00:00Z',
+  },
+  {
+    id: '3',
+    slug: 'technique-pomodoro-rester-concentre',
+    title_fr: 'La technique Pomodoro : Rester concentré',
+    title_en: 'The Pomodoro Technique: Stay Focused',
+    title_de: 'Die Pomodoro-Technik: Konzentriert bleiben',
+    excerpt_fr: 'Une méthode simple pour maintenir votre concentration et éviter le burnout pendant vos sessions de révision.',
+    excerpt_en: 'A simple method to maintain your concentration and avoid burnout during your study sessions.',
+    excerpt_de: 'Eine einfache Methode, um deine Konzentration aufrechtzuerhalten und Burnout beim Lernen zu vermeiden.',
+    content_fr: `*Tu t'assois pour réviser avec les meilleures intentions du monde. 5 minutes plus tard, tu es sur ton tel. 10 minutes après, tu "vérifies juste un truc" sur YouTube. Résultat : 3h de "révisions" pour 45 minutes de travail effectif. On connaît tous ce scénario. La technique Pomodoro est là pour briser ce cycle.*
 
 ---
 
-## Acte 1 : Une tomate qui a changé la productivité mondiale
+## Une tomate qui a changé la productivité mondiale
 
-### L''origine improbable
+### L'origine improbable
 
-On est à la fin des années 80. Francesco Cirillo, étudiant italien, galère à se concentrer. Comme nous tous. Sauf qu''au lieu de se résigner, il attrape un minuteur de cuisine en forme de **tomate** (pomodoro en italien) et se lance un défi : travailler sans interruption pendant que le minuteur tourne.
+On est à la fin des années 80. Francesco Cirillo, étudiant italien, galère à se concentrer. Comme nous tous. Sauf qu'au lieu de se résigner, il attrape un minuteur de cuisine en forme de **tomate** (pomodoro en italien) et se lance un défi : travailler sans interruption pendant que le minuteur tourne.
 
-Ce petit hack est devenu l''une des techniques de productivité les plus utilisées au monde.
+Ce petit hack est devenu l'une des techniques de productivité les plus utilisées au monde.
 
-> **Le principe** : Ton cerveau n''est pas fait pour se concentrer pendant des heures. Mais il peut tout défoncer pendant 25 minutes.
+> **Le principe** : Ton cerveau n'est pas fait pour se concentrer pendant des heures. Mais il peut tout défoncer pendant 25 minutes.
 
-### Pourquoi on n''arrive pas à se concentrer
+### Pourquoi on n'arrive pas à se concentrer
 
 Avant de parler solution, comprenons le problème.
 
-**1. L''attention a une durée de vie limitée**
+**1. L'attention a une durée de vie limitée**
 Les études en neurosciences montrent que notre capacité de concentration optimale dure entre 20 et 45 minutes. Après, le cerveau commence à décrocher, que tu le veuilles ou non.
 
 **2. La "résistance au démarrage"**
-Plus une tâche semble longue et floue ("réviser tout le cours"), plus on procrastine. Notre cerveau fuit l''effort incertain.
+Plus une tâche semble longue et floue ("réviser tout le cours"), plus on procrastine. Notre cerveau fuit l'effort incertain.
 
 **3. Les interruptions cassent tout**
 Chaque notification, chaque "je regarde juste 2 secondes mon téléphone" coûte en moyenne **23 minutes** pour retrouver sa concentration (étude de Gloria Mark, UC Irvine).
 
 ---
 
-## Acte 2 : La méthode Pomodoro étape par étape
+## La méthode Pomodoro étape par étape
 
 ### Le framework de base
 
-C''est d''une simplicité déconcertante :
+C'est d'une simplicité déconcertante :
 
 1. **Choisis une tâche** précise (pas "réviser", mais "faire les flashcards du chapitre 3")
 2. **Mets un timer de 25 minutes**
-3. **Travaille sans interruption** jusqu''à ce qu''il sonne
+3. **Travaille sans interruption** jusqu'à ce qu'il sonne
 4. **Prends une pause de 5 minutes** (vraie pause : pas ton téléphone)
 5. **Répète**
 6. **Après 4 pomodoros**, prends une pause longue de 15-30 minutes
@@ -1071,32 +902,32 @@ Un "pomodoro" = 25 minutes de travail + 5 minutes de pause = 30 minutes.
 
 ### Pourquoi 25 minutes ?
 
-Ce n''est pas un chiffre magique, mais il a des avantages :
+Ce n'est pas un chiffre magique, mais il a des avantages :
 
-- **Assez court** pour que ton cerveau accepte de s''y mettre ("c''est que 25 min, je peux le faire")
+- **Assez court** pour que ton cerveau accepte de s'y mettre ("c'est que 25 min, je peux le faire")
 - **Assez long** pour avancer significativement
-- **Correspond à la durée d''attention optimale** selon la recherche
+- **Correspond à la durée d'attention optimale** selon la recherche
 - **Facile à planifier** : 2 pomodoros = 1h, 4 = 2h
 
-> **Astuce** : Si 25 min te semble trop court ou trop long, adapte ! Certains préfèrent 50/10. L''important c''est le principe travail/pause.
+> **Astuce** : Si 25 min te semble trop court ou trop long, adapte ! Certains préfèrent 50/10. L'important c'est le principe travail/pause.
 
-### Les règles d''or (non négociables)
+### Les règles d'or (non négociables)
 
 **Règle 1 : Le pomodoro est indivisible**
-Une fois lancé, tu ne t''arrêtes pas. Si quelqu''un t''interrompt, tu notes et tu gères après. Si une pensée parasite arrive ("faut que je réponde à ce message"), tu la notes sur un papier et tu continues.
+Une fois lancé, tu ne t'arrêtes pas. Si quelqu'un t'interrompt, tu notes et tu gères après. Si une pensée parasite arrive ("faut que je réponde à ce message"), tu la notes sur un papier et tu continues.
 
-**Règle 2 : Si tu t''interromps, tu recommences**
+**Règle 2 : Si tu t'interromps, tu recommences**
 Dur, mais nécessaire. Tu as regardé ton téléphone ? Le pomodoro est invalidé. Cela crée une vraie incitation à protéger ta concentration.
 
 **Règle 3 : Les pauses sont obligatoires**
-Pas de "je suis lancé, je continue". Ton cerveau a besoin de ces pauses pour consolider ce qu''il vient d''apprendre. Skip la pause = moins d''efficacité sur le prochain pomodoro.
+Pas de "je suis lancé, je continue". Ton cerveau a besoin de ces pauses pour consolider ce qu'il vient d'apprendre. Skip la pause = moins d'efficacité sur le prochain pomodoro.
 
 **Règle 4 : Définis ta tâche AVANT de lancer le timer**
-"Réviser" n''est pas une tâche. "Répondre aux 20 questions du chapitre 5" est une tâche.
+"Réviser" n'est pas une tâche. "Répondre aux 20 questions du chapitre 5" est une tâche.
 
 ---
 
-## Acte 3 : Optimiser ta pratique du Pomodoro
+## Optimiser ta pratique du Pomodoro
 
 ### Le setup parfait
 
@@ -1114,11 +945,11 @@ Avant de lancer ton premier pomodoro :
 
 ### Que faire pendant les pauses ?
 
-Les 5 minutes de pause, c''est sacré. Mais attention à ce que tu en fais :
+Les 5 minutes de pause, c'est sacré. Mais attention à ce que tu en fais :
 
 **Bonnes pauses :**
-- Se lever, s''étirer
-- Aller aux toilettes, boire de l''eau
+- Se lever, s'étirer
+- Aller aux toilettes, boire de l'eau
 - Regarder par la fenêtre
 - Respirer profondément
 - Marcher un peu
@@ -1131,7 +962,7 @@ Les 5 minutes de pause, c''est sacré. Mais attention à ce que tu en fais :
 
 > **Astuce** : Programme un timer pour ta pause aussi. Ça évite le "juste encore 2 minutes" qui tue ta session.
 
-### Combiner Pomodoro avec d''autres techniques
+### Combiner Pomodoro avec d'autres techniques
 
 Le Pomodoro est un **framework de temps**. Tu peux le remplir avec ce que tu veux :
 
@@ -1148,22 +979,6 @@ Le Pomodoro est un **framework de temps**. Tu peux le remplir avec ce que tu veu
 - Pomodoro 1 : Faire un quiz Nareo sur le chapitre
 - Pomodoro 2 : Réviser les questions ratées
 
-### Tracker ta progression
-
-L''un des super-pouvoirs du Pomodoro : tu peux **mesurer** ton travail.
-
-Au lieu de "j''ai révisé cet après-midi", tu peux dire "j''ai fait 6 pomodoros sur le droit des contrats".
-
-Tiens un log simple :
-```
-Lundi 16/12
-- Chapitre 3 macro : 3 pomodoros
-- Flashcards droit : 2 pomodoros
-Total : 5 pomodoros (2h30 de travail effectif)
-```
-
-En une semaine, tu sais exactement combien de temps réel tu as passé sur chaque matière. Plus de "je travaille beaucoup mais ça ne marche pas" – les chiffres ne mentent pas.
-
 ---
 
 ## Pomodoro en chiffres
@@ -1173,7 +988,7 @@ En une semaine, tu sais exactement combien de temps réel tu as passé sur chaqu
 | Session de 3h | ~1h de travail effectif | ~2h15 de travail effectif |
 | Interruptions | 15-20 par heure | 0-2 par pomodoro |
 | Fatigue mentale | Épuisé après 2h | Endurant sur 4-5h |
-| Sentiment d''accomplissement | "J''ai rien fait" | "J''ai fait 6 pomodoros" |
+| Sentiment d'accomplissement | "J'ai rien fait" | "J'ai fait 6 pomodoros" |
 
 ---
 
@@ -1185,17 +1000,17 @@ Soyons honnêtes, la technique a ses limites :
 Si tu écris un mémoire et que tu es "dans le flow", couper à 25 min peut être contre-productif. Adapte : passe à des pomodoros de 50 min.
 
 **Travail collaboratif**
-Difficile de dire à ton groupe "attendez, mon pomodoro n''est pas fini".
+Difficile de dire à ton groupe "attendez, mon pomodoro n'est pas fini".
 
-**Si tu n''as pas de tâche définie**
+**Si tu n'as pas de tâche définie**
 Le Pomodoro structure le temps, pas le contenu. Si tu ne sais pas quoi réviser, commence par là.
 
 **En mode "urgence totale"**
-À 2h du mat'' avant un exam, tu n''as plus le luxe des pauses. (Mais si tu en es là, on a un problème plus profond)
+À 2h du mat' avant un exam, tu n'as plus le luxe des pauses. (Mais si tu en es là, on a un problème plus profond)
 
 ---
 
-## Ta checklist pour commencer aujourd''hui
+## Ta checklist pour commencer aujourd'hui
 
 - Télécharge un timer Pomodoro (ou utilise celui de ton téléphone)
 - Liste 3 tâches précises pour ta prochaine session
@@ -1207,30 +1022,28 @@ Le premier pomodoro est le plus dur. Après, ça devient une habitude.
 
 ---
 
-## Passe à l''action avec Nareo
+## Passe à l'action avec Nareo
 
 Tu veux remplir tes pomodoros avec du contenu efficace ? **Nareo génère des quiz et flashcards depuis tes PDF** – parfait pour des sessions de révision structurées.
 
-Un pomodoro = un quiz complet sur un chapitre. Simple, mesurable, efficace.',
-
-    -- Content EN
-    '*You sit down to study with the best intentions. 5 minutes later, you''re on your phone. 10 minutes after that, you''re "just checking something" on YouTube. Result: 3 hours of "studying" for 45 minutes of actual work. We all know this scenario. The Pomodoro technique is here to break this cycle.*
+Un pomodoro = un quiz complet sur un chapitre. Simple, mesurable, efficace.`,
+    content_en: `*You sit down to study with the best intentions. 5 minutes later, you're on your phone. 10 minutes after that, you're "just checking something" on YouTube. Result: 3 hours of "studying" for 45 minutes of actual work. We all know this scenario. The Pomodoro technique is here to break this cycle.*
 
 ---
 
-## Act 1: A Tomato That Changed Global Productivity
+## A Tomato That Changed Global Productivity
 
 ### The Unlikely Origin
 
-It''s the late 80s. Francesco Cirillo, an Italian student, struggles to concentrate. Like all of us. Except instead of giving up, he grabs a kitchen timer shaped like a **tomato** (pomodoro in Italian) and sets himself a challenge: work without interruption while the timer runs.
+It's the late 80s. Francesco Cirillo, an Italian student, struggles to concentrate. Like all of us. Except instead of giving up, he grabs a kitchen timer shaped like a **tomato** (pomodoro in Italian) and sets himself a challenge: work without interruption while the timer runs.
 
 This little hack became one of the most widely used productivity techniques in the world.
 
-> **The principle**: Your brain isn''t made to concentrate for hours. But it can crush it for 25 minutes.
+> **The principle**: Your brain isn't made to concentrate for hours. But it can crush it for 25 minutes.
 
-### Why We Can''t Concentrate
+### Why We Can't Concentrate
 
-Before talking solutions, let''s understand the problem.
+Before talking solutions, let's understand the problem.
 
 **1. Attention has a limited lifespan**
 Neuroscience studies show that our optimal concentration capacity lasts between 20 and 45 minutes. After that, the brain starts to disengage, whether you want it to or not.
@@ -1239,15 +1052,15 @@ Neuroscience studies show that our optimal concentration capacity lasts between 
 The longer and vaguer a task seems ("review the whole course"), the more we procrastinate. Our brain flees uncertain effort.
 
 **3. Interruptions break everything**
-Each notification, each "I''ll just check my phone for 2 seconds" costs an average of **23 minutes** to regain concentration (Gloria Mark study, UC Irvine).
+Each notification, each "I'll just check my phone for 2 seconds" costs an average of **23 minutes** to regain concentration (Gloria Mark study, UC Irvine).
 
 ---
 
-## Act 2: The Pomodoro Method Step by Step
+## The Pomodoro Method Step by Step
 
 ### The Basic Framework
 
-It''s disarmingly simple:
+It's disarmingly simple:
 
 1. **Choose a specific task** (not "study", but "make flashcards for chapter 3")
 2. **Set a 25-minute timer**
@@ -1260,9 +1073,9 @@ One "pomodoro" = 25 minutes of work + 5 minutes of break = 30 minutes.
 
 ### Why 25 Minutes?
 
-It''s not a magic number, but it has advantages:
+It's not a magic number, but it has advantages:
 
-- **Short enough** for your brain to accept getting started ("it''s only 25 min, I can do it")
+- **Short enough** for your brain to accept getting started ("it's only 25 min, I can do it")
 - **Long enough** to make significant progress
 - **Matches the optimal attention span** according to research
 - **Easy to plan**: 2 pomodoros = 1h, 4 = 2h
@@ -1272,20 +1085,20 @@ It''s not a magic number, but it has advantages:
 ### The Golden Rules (Non-Negotiable)
 
 **Rule 1: The pomodoro is indivisible**
-Once started, you don''t stop. If someone interrupts you, note it and handle it after. If a parasitic thought arrives ("I need to reply to that message"), write it on paper and continue.
+Once started, you don't stop. If someone interrupts you, note it and handle it after. If a parasitic thought arrives ("I need to reply to that message"), write it on paper and continue.
 
 **Rule 2: If you interrupt yourself, you start over**
 Harsh, but necessary. You looked at your phone? The pomodoro is invalidated. This creates a real incentive to protect your concentration.
 
 **Rule 3: Breaks are mandatory**
-No "I''m on a roll, I''ll continue." Your brain needs these breaks to consolidate what it just learned. Skip the break = less efficiency on the next pomodoro.
+No "I'm on a roll, I'll continue." Your brain needs these breaks to consolidate what it just learned. Skip the break = less efficiency on the next pomodoro.
 
 **Rule 4: Define your task BEFORE starting the timer**
 "Studying" is not a task. "Answering the 20 questions in chapter 5" is a task.
 
 ---
 
-## Act 3: Optimizing Your Pomodoro Practice
+## Optimizing Your Pomodoro Practice
 
 ### The Perfect Setup
 
@@ -1337,22 +1150,6 @@ Pomodoro is a **time framework**. You can fill it with whatever you want:
 - Pomodoro 1: Take a Nareo quiz on the chapter
 - Pomodoro 2: Review missed questions
 
-### Tracking Your Progress
-
-One of Pomodoro''s superpowers: you can **measure** your work.
-
-Instead of "I studied this afternoon," you can say "I did 6 pomodoros on contract law."
-
-Keep a simple log:
-```
-Monday 12/16
-- Chapter 3 macro: 3 pomodoros
-- Law flashcards: 2 pomodoros
-Total: 5 pomodoros (2h30 of actual work)
-```
-
-In a week, you know exactly how much real time you spent on each subject. No more "I work a lot but it doesn''t work" – numbers don''t lie.
-
 ---
 
 ## Pomodoro in Numbers
@@ -1368,25 +1165,25 @@ In a week, you know exactly how much real time you spent on each subject. No mor
 
 ## When Pomodoro Does NOT Work
 
-Let''s be honest, the technique has its limits:
+Let's be honest, the technique has its limits:
 
 **Deep creative tasks**
-If you''re writing a thesis and you''re "in the flow," cutting at 25 min can be counterproductive. Adapt: switch to 50 min pomodoros.
+If you're writing a thesis and you're "in the flow," cutting at 25 min can be counterproductive. Adapt: switch to 50 min pomodoros.
 
 **Collaborative work**
-Hard to tell your group "wait, my pomodoro isn''t finished."
+Hard to tell your group "wait, my pomodoro isn't finished."
 
-**If you don''t have a defined task**
-Pomodoro structures time, not content. If you don''t know what to review, start there.
+**If you don't have a defined task**
+Pomodoro structures time, not content. If you don't know what to review, start there.
 
 **In "total emergency" mode**
-At 2am before an exam, you no longer have the luxury of breaks. (But if you''re there, we have a deeper problem)
+At 2am before an exam, you no longer have the luxury of breaks. (But if you're there, we have a deeper problem)
 
 ---
 
 ## Your Checklist to Start Today
 
-- Download a Pomodoro timer (or use your phone''s)
+- Download a Pomodoro timer (or use your phone's)
 - List 3 specific tasks for your next session
 - Prepare your environment (phone away, notifications off)
 - Do **just 1 pomodoro** to test
@@ -1400,14 +1197,12 @@ The first pomodoro is the hardest. After that, it becomes a habit.
 
 Want to fill your pomodoros with effective content? **Nareo generates quizzes and flashcards from your PDFs** – perfect for structured study sessions.
 
-One pomodoro = one complete quiz on a chapter. Simple, measurable, effective.',
-
-    -- Content DE
-    '*Du setzt dich hin, um zu lernen, mit den besten Absichten. 5 Minuten später bist du am Handy. 10 Minuten danach "checkst du nur kurz was" auf YouTube. Ergebnis: 3 Stunden "Lernen" für 45 Minuten tatsächliche Arbeit. Wir kennen alle dieses Szenario. Die Pomodoro-Technik ist da, um diesen Kreislauf zu durchbrechen.*
+One pomodoro = one complete quiz on a chapter. Simple, measurable, effective.`,
+    content_de: `*Du setzt dich hin, um zu lernen, mit den besten Absichten. 5 Minuten später bist du am Handy. 10 Minuten danach "checkst du nur kurz was" auf YouTube. Ergebnis: 3 Stunden "Lernen" für 45 Minuten tatsächliche Arbeit. Wir kennen alle dieses Szenario. Die Pomodoro-Technik ist da, um diesen Kreislauf zu durchbrechen.*
 
 ---
 
-## Akt 1: Eine Tomate, die die globale Produktivität veränderte
+## Eine Tomate, die die globale Produktivität veränderte
 
 ### Der unwahrscheinliche Ursprung
 
@@ -1432,7 +1227,7 @@ Jede Benachrichtigung, jedes "Ich schaue nur 2 Sekunden aufs Handy" kostet durch
 
 ---
 
-## Akt 2: Die Pomodoro-Methode Schritt für Schritt
+## Die Pomodoro-Methode Schritt für Schritt
 
 ### Das Grundgerüst
 
@@ -1474,7 +1269,7 @@ Kein "Ich bin drin, ich mache weiter." Dein Gehirn braucht diese Pausen, um das 
 
 ---
 
-## Akt 3: Deine Pomodoro-Praxis optimieren
+## Deine Pomodoro-Praxis optimieren
 
 ### Das perfekte Setup
 
@@ -1526,22 +1321,6 @@ Pomodoro ist ein **Zeitrahmen**. Du kannst ihn mit allem füllen:
 - Pomodoro 1: Ein Nareo-Quiz zum Kapitel machen
 - Pomodoro 2: Verfehlte Fragen wiederholen
 
-### Deinen Fortschritt tracken
-
-Eine der Superkräfte von Pomodoro: Du kannst deine Arbeit **messen**.
-
-Statt "Ich habe heute Nachmittag gelernt" kannst du sagen "Ich habe 6 Pomodoros zu Vertragsrecht gemacht."
-
-Führe ein einfaches Log:
-```
-Montag 16.12.
-- Kapitel 3 Makro: 3 Pomodoros
-- Jura-Karteikarten: 2 Pomodoros
-Gesamt: 5 Pomodoros (2h30 tatsächliche Arbeit)
-```
-
-In einer Woche weißt du genau, wie viel reale Zeit du für jedes Fach aufgewendet hast. Kein "Ich arbeite viel, aber es funktioniert nicht" mehr – Zahlen lügen nicht.
-
 ---
 
 ## Pomodoro in Zahlen
@@ -1589,11 +1368,22 @@ Der erste Pomodoro ist der schwerste. Danach wird es zur Gewohnheit.
 
 Willst du deine Pomodoros mit effektivem Inhalt füllen? **Nareo generiert Quiz und Karteikarten aus deinen PDFs** – perfekt für strukturierte Lernsessions.
 
-Ein Pomodoro = ein komplettes Quiz zu einem Kapitel. Einfach, messbar, effektiv.',
+Ein Pomodoro = ein komplettes Quiz zu einem Kapitel. Einfach, messbar, effektiv.`,
+    category: 'Productivité',
+    read_time: 4,
+    image_url: '/images/pexels-energepic-com-27411-313690.jpg',
+    published: true,
+    featured: false,
+    author: "L'équipe Nareo",
+    created_at: '2025-12-24T10:00:00Z',
+    updated_at: '2025-12-24T10:00:00Z',
+  },
+];
 
-    'Productivité',
-    4,
-    true,
-    false,
-    'L''équipe Nareo'
-);
+export function getArticleBySlug(slug: string): BlogArticle | undefined {
+  return blogArticles.find((article) => article.slug === slug);
+}
+
+export function getPublishedArticles(): BlogArticle[] {
+  return blogArticles.filter((article) => article.published);
+}

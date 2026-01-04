@@ -11,9 +11,12 @@ export interface Folder {
   icon: string;
   is_collapsed: boolean;
   display_order: number;
+  created_at: string;
   courses: Course[];
   course_count: number;
 }
+
+export type FolderSortOption = 'recent' | 'oldest' | 'alphabetical' | 'alphabetical_desc';
 
 export interface Course {
   id: string;

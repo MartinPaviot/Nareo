@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { BookOpen, HelpCircle, Zap, Target, Play, ArrowRight } from 'lucide-react';
+import { BookOpen, HelpCircle, Zap, Crosshair, Play, ArrowRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -125,7 +125,7 @@ export default function TodayActivity({
           isDark={isDark}
         />
         <StatCard
-          icon={<Target className="w-4 h-4" style={{ color: isDark ? '#5cb978' : '#379f5a' }} />}
+          icon={<Crosshair className="w-4 h-4" style={{ color: isDark ? '#5cb978' : '#379f5a' }} />}
           value={`${stats.accuracy}%`}
           label={translate('today_accuracy')}
           bgColor=""

@@ -190,7 +190,7 @@ export default function SessionRecap({ params }: { params: Promise<{ sessionId: 
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         concept.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
                         concept.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
+                        'bg-[#d91a1c]/10 text-[#991b1b]'
                       }`}>
                         {concept.difficulty === 'easy' ? '📘' : concept.difficulty === 'medium' ? '📗' : '📕'}
                         {' '}{concept.difficulty}
@@ -206,7 +206,7 @@ export default function SessionRecap({ params }: { params: Promise<{ sessionId: 
                             className={`h-2 rounded-full ${
                               concept.score >= 80 ? 'bg-green-500' :
                               concept.score >= 60 ? 'bg-yellow-500' :
-                              'bg-red-500'
+                              'bg-[#d91a1c]'
                             }`}
                             style={{ width: `${concept.score}%` }}
                           />

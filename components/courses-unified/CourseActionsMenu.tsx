@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MoreHorizontal, FolderInput, FolderMinus } from 'lucide-react';
+import { MoreHorizontal, FolderInput, FolderMinus, Trash2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
+import { useLanguage } from '@/contexts/LanguageContext';
+import DeleteCourseDialog from '@/components/course-management/DeleteCourseDialog';
 
 interface CourseActionsMenuProps {
   courseId: string;
@@ -18,8 +20,10 @@ export default function CourseActionsMenu({
   currentFolderId,
 }: CourseActionsMenuProps) {
   const { isDark } = useTheme();
-  const { folders, moveCourse } = useCoursesOrganized();
+  const { translate } = useLanguage();
+  const { folders, moveCourse, refetch } = useCoursesOrganized();
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -152,10 +156,39 @@ export default function CourseActionsMenu({
                   Aucun dossier disponible
                 </div>
               ) : null}
+
+              {/* Divider before delete */}
+              <div className={`h-px ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`} />
+
+              {/* Delete option */}
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  setShowDeleteDialog(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-colors"
+                style={{ color: '#d91a1c' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.1)' : '#fff6f3'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="font-medium">{translate('delete_course_button') || 'Supprimer'}</span>
+              </button>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+
+      {/* Delete confirmation dialog */}
+      <DeleteCourseDialog
+        courseId={courseId}
+        courseTitle={courseName}
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onDeleted={() => {
+          refetch();
+        }}
+      />
     </div>
   );
 }

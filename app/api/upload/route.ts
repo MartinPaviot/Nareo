@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
 
     const userId = auth?.user.id || null;
     const guestSessionId = formData.get('guestSessionId') as string | null;
+    const folderId = formData.get('folderId') as string | null;
     const supabase = await createSupabaseServerClient();
 
     // Check upload limits for authenticated users
@@ -137,6 +138,22 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.error(`[upload] Processing failed for job ${jobId}:`, err);
         // Don't throw - the course is created, just processing failed
+      }
+    }
+
+    // Assign course to folder if specified
+    if (folderId && userId) {
+      const { error: folderError } = await supabase
+        .from('courses')
+        .update({ folder_id: folderId })
+        .eq('id', courseId)
+        .eq('user_id', userId);
+
+      if (folderError) {
+        console.error(`[upload] Failed to assign course ${courseId} to folder ${folderId}:`, folderError);
+        // Don't throw - the course is created, just folder assignment failed
+      } else {
+        console.log(`[upload] Course ${courseId} assigned to folder ${folderId}`);
       }
     }
 

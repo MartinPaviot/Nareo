@@ -7,6 +7,7 @@ import { ArrowLeft, Calendar, Clock, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import TopBarActions from '@/components/layout/TopBarActions';
+import NewsletterModal from '@/components/blog/NewsletterModal';
 import type { BlogArticle } from '@/types/blog';
 import { getLocalizedTitle, getLocalizedExcerpt } from '@/types/blog';
 
@@ -17,6 +18,7 @@ export default function BlogPage() {
 
   const [articles, setArticles] = useState<BlogArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showNewsletterModal, setShowNewsletterModal] = useState(false);
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -225,7 +227,7 @@ export default function BlogPage() {
               {translate('blog_newsletter_description') || 'Recevez nos derniers conseils de révision directement dans votre boîte mail.'}
             </p>
             <button
-              onClick={() => router.push('/auth/signup')}
+              onClick={() => setShowNewsletterModal(true)}
               className="inline-flex items-center justify-center h-10 px-6 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
             >
               {translate('blog_newsletter_cta') || "S'inscrire gratuitement"}
@@ -233,6 +235,12 @@ export default function BlogPage() {
           </section>
         </div>
       </main>
+
+      {/* Newsletter Modal */}
+      <NewsletterModal
+        isOpen={showNewsletterModal}
+        onClose={() => setShowNewsletterModal(false)}
+      />
     </div>
   );
 }

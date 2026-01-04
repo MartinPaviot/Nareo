@@ -113,7 +113,7 @@ export default function CourseAuditDetailPage() {
     if (score >= 80) return 'text-green-600 bg-green-100 border-green-200';
     if (score >= 60) return 'text-blue-600 bg-blue-100 border-blue-200';
     if (score >= 40) return 'text-yellow-600 bg-yellow-100 border-yellow-200';
-    return 'text-red-600 bg-red-100 border-red-200';
+    return 'text-[#d91a1c] bg-[#d91a1c]/10 border-[#d91a1c]/20';
   };
 
   const getScoreBadge = (score: number) => {
@@ -161,7 +161,14 @@ export default function CourseAuditDetailPage() {
             <ArrowLeft className="w-4 h-4" />
             Back to Quality Audit
           </Link>
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div
+            className="px-4 py-3 rounded-lg border"
+            style={{
+              backgroundColor: '#fff6f3',
+              borderColor: 'rgba(217, 26, 28, 0.2)',
+              color: '#b91c1c'
+            }}
+          >
             {error}
           </div>
         </div>
@@ -247,7 +254,7 @@ export default function CourseAuditDetailPage() {
                 <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
                   {audit.summary.fairQuestions} Fair
                 </span>
-                <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
+                <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: '#fff6f3', color: '#b91c1c' }}>
                   {audit.summary.poorQuestions} Poor
                 </span>
                 {audit.summary.ambiguousQuestions > 0 && (
@@ -320,7 +327,14 @@ export default function CourseAuditDetailPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div
+            className="px-4 py-3 rounded-lg mb-6 border"
+            style={{
+              backgroundColor: '#fff6f3',
+              borderColor: 'rgba(217, 26, 28, 0.2)',
+              color: '#b91c1c'
+            }}
+          >
             {error}
           </div>
         )}
@@ -352,7 +366,7 @@ export default function CourseAuditDetailPage() {
                     {getScoreDisplay(chapter.relevanceScore)}
                   </span>
                   {chapter.issues.length > 0 && (
-                    <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs">
+                    <span className="px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#fff6f3', color: '#b91c1c' }}>
                       {chapter.issues.length} issues
                     </span>
                   )}
@@ -369,9 +383,15 @@ export default function CourseAuditDetailPage() {
                 <div className="px-6 pb-6 border-t border-gray-100">
                   {/* Chapter Issues */}
                   {chapter.issues.length > 0 && (
-                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <h4 className="font-medium text-red-800 mb-2">Issues</h4>
-                      <ul className="list-disc list-inside text-sm text-red-700">
+                    <div
+                      className="mt-4 p-3 rounded-lg border"
+                      style={{
+                        backgroundColor: '#fff6f3',
+                        borderColor: 'rgba(217, 26, 28, 0.2)'
+                      }}
+                    >
+                      <h4 className="font-medium mb-2" style={{ color: '#991b1b' }}>Issues</h4>
+                      <ul className="list-disc list-inside text-sm" style={{ color: '#b91c1c' }}>
                         {chapter.issues.map((issue, idx) => (
                           <li key={idx}>{issue}</li>
                         ))}
@@ -386,7 +406,7 @@ export default function CourseAuditDetailPage() {
                       {chapter.titleFoundInSource ? (
                         <span className="text-green-600">Yes</span>
                       ) : (
-                        <span className="text-red-600">No</span>
+                        <span style={{ color: '#d91a1c' }}>No</span>
                       )}
                     </div>
                     <div>
@@ -475,7 +495,7 @@ export default function CourseAuditDetailPage() {
                                       Yes ({question.sourceMatch.confidence}% confidence)
                                     </span>
                                   ) : (
-                                    <span className="text-red-600">Not found</span>
+                                    <span style={{ color: '#d91a1c' }}>Not found</span>
                                   )}
                                 </div>
 

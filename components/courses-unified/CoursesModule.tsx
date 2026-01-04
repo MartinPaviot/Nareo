@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Search, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Search, X, Target, Users, ArrowUpDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -19,7 +19,7 @@ import { useCourseSearch } from '@/hooks/useCourseSearch';
 import { usePriorityItems } from '@/hooks/usePriorityItems';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Course } from '@/lib/courses/types';
+import { Course, Folder, FolderSortOption } from '@/lib/courses/types';
 import PrioritySection from './PrioritySection';
 import FolderSection from './FolderSection';
 import UncategorizedSection from './UncategorizedSection';
@@ -27,6 +27,8 @@ import SearchResults from './SearchResults';
 import CreateFolderModal from './CreateFolderModal';
 import CoursesModuleSkeleton from './CoursesModuleSkeleton';
 import DragOverlayCard from './DragOverlayCard';
+import CreateChallengeModal from '../defi/CreateChallengeModal';
+import JoinChallengeModal from '../defi/JoinChallengeModal';
 
 export default function CoursesModule() {
   const { isDark } = useTheme();
@@ -36,6 +38,30 @@ export default function CoursesModule() {
   const { searchQuery, setSearchQuery, searchResults, isSearching, clearSearch } = useCourseSearch();
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [activeCourse, setActiveCourse] = useState<Course | null>(null);
+  const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
+  const [showJoinChallengeModal, setShowJoinChallengeModal] = useState(false);
+  const [folderSort, setFolderSort] = useState<FolderSortOption>('recent');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+
+  // Sort folders based on selected option
+  const sortedFolders = useMemo(() => {
+    if (!folders.length) return folders;
+
+    return [...folders].sort((a, b) => {
+      switch (folderSort) {
+        case 'recent':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'alphabetical':
+          return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+        case 'alphabetical_desc':
+          return b.name.localeCompare(a.name, 'fr', { sensitivity: 'base' });
+        default:
+          return 0;
+      }
+    });
+  }, [folders, folderSort]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -105,20 +131,111 @@ export default function CoursesModule() {
           )}
         </div>
 
-        {/* Create folder button */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setIsCreateFolderOpen(true)}
-          className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors ${
-            isDark
-              ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700'
-              : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'
-          }`}
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">{translate('courses_create_folder')}</span>
-        </motion.button>
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          {/* Challenge buttons */}
+          <button
+            onClick={() => setShowCreateChallengeModal(true)}
+            className="shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-white"
+            style={{ backgroundColor: '#ff751f' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
+          >
+            <Target className="w-4 h-4" />
+            <span className="hidden sm:inline">{translate('challenge_create', 'Créer un défi')}</span>
+          </button>
+
+          <button
+            onClick={() => setShowJoinChallengeModal(true)}
+            className={`shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
+              isDark
+                ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
+                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">{translate('challenge_join', 'Rejoindre')}</span>
+          </button>
+
+          {/* Sort folders button */}
+          <div
+            className="relative"
+            onMouseLeave={() => setShowSortMenu(false)}
+          >
+            <button
+              onClick={() => setShowSortMenu(!showSortMenu)}
+              className={`shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
+                isDark
+                  ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <ArrowUpDown className="w-4 h-4" />
+              <span className="hidden sm:inline">{translate('courses_sort_folders')}</span>
+            </button>
+
+            {/* Sort dropdown */}
+            <AnimatePresence>
+              {showSortMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                  transition={{ duration: 0.15 }}
+                  className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-lg border z-20 overflow-hidden ${
+                    isDark
+                      ? 'bg-neutral-900 border-neutral-800'
+                      : 'bg-white border-gray-200'
+                  }`}
+                >
+                  {([
+                    { value: 'recent', label: translate('courses_sort_recent') },
+                    { value: 'oldest', label: translate('courses_sort_oldest') },
+                    { value: 'alphabetical', label: translate('courses_sort_alphabetical') },
+                    { value: 'alphabetical_desc', label: translate('courses_sort_alphabetical_desc') },
+                  ] as { value: FolderSortOption; label: string }[]).map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setFolderSort(option.value);
+                        setShowSortMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
+                        folderSort === option.value
+                          ? isDark
+                            ? 'bg-orange-500/10 text-orange-400'
+                            : 'bg-orange-50 text-orange-600'
+                          : isDark
+                            ? 'text-neutral-300 hover:bg-neutral-800'
+                            : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {folderSort === option.value && (
+                        <Check className="w-4 h-4" />
+                      )}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Create folder button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setIsCreateFolderOpen(true)}
+            className={`shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              isDark
+                ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700'
+                : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">{translate('courses_create_folder')}</span>
+          </motion.button>
+        </div>
       </div>
 
       {/* Conditional display: search or normal view */}
@@ -156,7 +273,7 @@ export default function CoursesModule() {
               )}
 
               {/* Collapsible folders */}
-              {folders.map((folder) => (
+              {sortedFolders.map((folder) => (
                 <FolderSection key={folder.id} folder={folder} />
               ))}
 
@@ -182,6 +299,14 @@ export default function CoursesModule() {
         isOpen={isCreateFolderOpen}
         onClose={() => setIsCreateFolderOpen(false)}
       />
+
+      {/* Challenge modals */}
+      {showCreateChallengeModal && (
+        <CreateChallengeModal onClose={() => setShowCreateChallengeModal(false)} />
+      )}
+      {showJoinChallengeModal && (
+        <JoinChallengeModal onClose={() => setShowJoinChallengeModal(false)} />
+      )}
     </div>
   );
 }

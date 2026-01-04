@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { authenticateRequest } from '@/lib/api-auth';
-import { DEFAULT_TIME_PER_QUESTION, TIME_OPTIONS } from '@/types/defi';
+import { DEFAULT_TIME_PER_QUESTION } from '@/types/defi';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,9 +15,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { courseId, chapterId, timePerQuestion: inputTime } = body;
 
-    // Validate time per question
-    const validTimes = TIME_OPTIONS.map(opt => opt.value);
-    const timePerQuestion = validTimes.includes(inputTime) ? inputTime : DEFAULT_TIME_PER_QUESTION;
+    // Validate time per question (allow custom times between 5-120 seconds)
+    const MIN_TIME = 5;
+    const MAX_TIME = 120;
+    const timePerQuestion = (typeof inputTime === 'number' && inputTime >= MIN_TIME && inputTime <= MAX_TIME)
+      ? inputTime
+      : DEFAULT_TIME_PER_QUESTION;
 
     // Verify course/chapter exists and user has access
     if (courseId) {

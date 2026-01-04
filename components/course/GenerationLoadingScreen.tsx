@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import GenerationProgress from './GenerationProgress';
 
 // Mascot images available in /public/chat/
 const MASCOT_IMAGES = [
@@ -44,6 +44,10 @@ interface GenerationLoadingScreenProps {
   progressMessage?: string;
   /** Show as a compact inline version (no card wrapper) */
   compact?: boolean;
+  /** Number of items generated so far */
+  itemsGenerated?: number;
+  /** Total items to generate (if known) */
+  totalItems?: number;
 }
 
 export default function GenerationLoadingScreen({
@@ -52,6 +56,8 @@ export default function GenerationLoadingScreen({
   progress,
   progressMessage,
   compact = false,
+  itemsGenerated,
+  totalItems,
 }: GenerationLoadingScreenProps) {
   const { translate } = useLanguage();
   const { isDark } = useTheme();
@@ -155,19 +161,16 @@ export default function GenerationLoadingScreen({
         {description}
       </p>
 
-      {/* Progress bar (if progress is provided) */}
-      {typeof progress === 'number' && (
-        <div className="w-full max-w-xs mx-auto mb-4">
-          <div className={`flex justify-between text-xs mb-1.5 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-            <span>{progressMessage || translate('loading')}</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <div className={`w-full rounded-full h-2 overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-200'}`}>
-            <div
-              className="bg-orange-500 h-2 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+      {/* Generation progress with Claude-like animation */}
+      {type !== 'extraction' && (
+        <div className="w-full max-w-sm mx-auto mb-4">
+          <GenerationProgress
+            type={type as 'quiz' | 'flashcards' | 'note'}
+            progress={progress || 0}
+            message={progressMessage}
+            itemsGenerated={itemsGenerated}
+            totalItems={totalItems}
+          />
         </div>
       )}
 

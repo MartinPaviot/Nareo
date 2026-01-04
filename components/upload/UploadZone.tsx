@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
-  Sparkles,
   Upload,
   X,
 } from 'lucide-react';
@@ -300,7 +299,7 @@ export default function UploadZone() {
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
-        <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-3">
+        <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-3">
           {/* Icon */}
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ background: 'linear-gradient(to bottom right, #ff751f, #e5681b)' }}>
             <Upload className="w-6 h-6" />
@@ -408,36 +407,6 @@ export default function UploadZone() {
           </div>
         </div>
       )}
-
-      <div className="mt-6 flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={handleStart}
-          disabled={isProcessing || !files.length}
-          className="flex-1 inline-flex items-center justify-center gap-2 h-[60px] sm:h-12 rounded-xl text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          style={{ backgroundColor: '#ff751f' }}
-          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
-          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              {translate('upload_processing_title')}
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              {files.length ? translate('home_upload_cta_selected') : translate('home_hero_cta_primary')}
-            </>
-          )}
-        </button>
-        <div className={`flex-1 sm:flex-none sm:w-48 h-[60px] sm:h-12 inline-flex items-center justify-center rounded-xl border text-sm ${
-          isDark
-            ? 'border-neutral-700 text-neutral-300 bg-neutral-800'
-            : 'border-gray-200 text-gray-700 bg-white'
-        }`}>
-          {files.length ? translate('upload_after_state_title') : translate('upload_action_waiting')}
-        </div>
-      </div>
 
       {error && (
         <div

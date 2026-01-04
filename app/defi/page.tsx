@@ -16,6 +16,7 @@ import {
   Crown,
   Play,
   Eye,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -23,6 +24,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { ChallengeListItem, UserChallengeStats } from '@/types/defi';
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 import PageHeaderWithMascot from '@/components/layout/PageHeaderWithMascot';
+import CreateChallengeModal from '@/components/defi/CreateChallengeModal';
+import JoinChallengeModal from '@/components/defi/JoinChallengeModal';
 
 // Helper pour formater la date relative
 function formatRelativeTime(dateString: string, translate: (key: string, params?: Record<string, string | number>) => string): string {
@@ -51,7 +54,13 @@ export default function DefiPage() {
   const [recentChallenges, setRecentChallenges] = useState<ChallengeListItem[]>([]);
   const [stats, setStats] = useState<UserChallengeStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [joinCode, setJoinCode] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+
+  const handleDeleteChallenge = (id: string) => {
+    setActiveChallenges((prev) => prev.filter((c) => c.id !== id));
+    setRecentChallenges((prev) => prev.filter((c) => c.id !== id));
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -188,12 +197,6 @@ export default function DefiPage() {
     }
   };
 
-  const handleJoinWithCode = () => {
-    if (joinCode.trim()) {
-      router.push(`/defi/rejoindre?code=${joinCode.trim().toUpperCase()}`);
-    }
-  };
-
   if (authLoading || loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${
@@ -208,12 +211,15 @@ export default function DefiPage() {
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <PageHeaderWithMascot
         title={translate('challenge_mode')}
-        subtitle={translate('challenge_subtitle')}
         maxWidth="4xl"
         showDarkModeToggle
       />
 
       <div className="max-w-4xl mx-auto p-6">
+        {/* Titre de la page */}
+        <h1 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          {translate('challenge_subtitle')}
+        </h1>
 
         {/* Stats rapides - seulement si l'utilisateur a joué */}
         {stats && stats.total_played > 0 && (
@@ -259,9 +265,9 @@ export default function DefiPage() {
         {/* Actions principales - Cards équilibrées */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {/* Create challenge */}
-          <Link
-            href="/defi/creer"
-            className="group p-5 rounded-xl transition-all hover:scale-[1.02] text-white"
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="group p-5 rounded-xl transition-all hover:scale-[1.02] text-white text-left"
             style={{ background: 'linear-gradient(to bottom right, #ff751f, #e5681b)' }}
           >
             <div className="flex items-center gap-4">
@@ -276,15 +282,18 @@ export default function DefiPage() {
               </div>
               <ArrowRight className="w-5 h-5 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </div>
-          </Link>
+          </button>
 
           {/* Join with code */}
-          <div className={`p-5 rounded-xl ${isDark ? 'bg-gray-800' : 'bg-white shadow-sm'}`}>
-            <div className="flex items-center gap-4 mb-3">
+          <button
+            onClick={() => setShowJoinModal(true)}
+            className={`p-5 rounded-xl text-left transition-all hover:scale-[1.02] ${isDark ? 'bg-gray-800 hover:bg-gray-750' : 'bg-white shadow-sm hover:shadow-md'}`}
+          >
+            <div className="flex items-center gap-4">
               <div className={`p-3 rounded-xl ${isDark ? 'bg-gray-700' : 'bg-orange-50'}`}>
                 <Users className="w-6 h-6 text-orange-500" />
               </div>
-              <div>
+              <div className="flex-1">
                 <h2 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {translate('challenge_join')}
                 </h2>
@@ -292,33 +301,9 @@ export default function DefiPage() {
                   {translate('challenge_with_code')}
                 </p>
               </div>
+              <ArrowRight className={`w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === 'Enter' && handleJoinWithCode()}
-                placeholder="CODE"
-                maxLength={9}
-                className={`flex-1 px-4 py-2.5 rounded-lg font-mono text-center text-lg tracking-widest uppercase ${
-                  isDark
-                    ? 'bg-gray-700 text-white placeholder-gray-500 border border-gray-600'
-                    : 'bg-gray-50 text-gray-900 placeholder-gray-300 border border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent`}
-              />
-              <button
-                onClick={handleJoinWithCode}
-                disabled={!joinCode.trim()}
-                className="px-4 py-2.5 rounded-lg text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#ff751f' }}
-                onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
-                onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
-              >
-                OK
-              </button>
-            </div>
-          </div>
+          </button>
         </div>
 
         {/* Active challenges */}
@@ -332,7 +317,7 @@ export default function DefiPage() {
             </h2>
             <div className="space-y-2">
               {activeChallenges.map((challenge) => (
-                <ChallengeCard key={challenge.id} challenge={challenge} isDark={isDark} />
+                <ChallengeCard key={challenge.id} challenge={challenge} isDark={isDark} onDelete={handleDeleteChallenge} />
               ))}
             </div>
           </div>
@@ -349,7 +334,7 @@ export default function DefiPage() {
             </h2>
             <div className="space-y-2">
               {recentChallenges.map((challenge) => (
-                <ChallengeCard key={challenge.id} challenge={challenge} isDark={isDark} />
+                <ChallengeCard key={challenge.id} challenge={challenge} isDark={isDark} onDelete={handleDeleteChallenge} />
               ))}
             </div>
           </div>
@@ -369,8 +354,8 @@ export default function DefiPage() {
             <p className={`text-sm mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
               {translate('challenge_create_invite')}
             </p>
-            <Link
-              href="/defi/creer"
+            <button
+              onClick={() => setShowCreateModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium transition-colors"
               style={{ backgroundColor: '#ff751f' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
@@ -378,10 +363,18 @@ export default function DefiPage() {
             >
               <Plus className="w-4 h-4" />
               {translate('challenge_create_first')}
-            </Link>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      {showCreateModal && (
+        <CreateChallengeModal onClose={() => setShowCreateModal(false)} />
+      )}
+      {showJoinModal && (
+        <JoinChallengeModal onClose={() => setShowJoinModal(false)} />
+      )}
     </div>
   );
 }
@@ -389,15 +382,49 @@ export default function DefiPage() {
 function ChallengeCard({
   challenge,
   isDark,
+  onDelete,
 }: {
   challenge: ChallengeListItem;
   isDark: boolean;
+  onDelete?: (id: string) => void;
 }) {
   const router = useRouter();
   const { translate } = useLanguage();
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const isFinished = challenge.status === 'finished';
   const isWinner = challenge.my_rank === 1;
   const isActive = challenge.status === 'lobby' || challenge.status === 'playing';
+  const canDelete = challenge.status !== 'playing';
+
+  const openDeleteModal = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/defi/delete?id=${challenge.id}`, { method: 'DELETE' });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        console.log('[defi] Challenge deleted successfully:', challenge.id);
+        if (onDelete) {
+          onDelete(challenge.id);
+        }
+      } else {
+        console.error('[defi] Failed to delete challenge:', data.error || 'Unknown error');
+        alert(data.error || 'Erreur lors de la suppression');
+      }
+    } catch (err) {
+      console.error('[defi] Error deleting challenge:', err);
+      alert('Erreur lors de la suppression du défi');
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
 
   // Icône selon le statut/résultat
   const getIcon = () => {
@@ -425,83 +452,170 @@ function ChallengeCard({
   };
 
   return (
-    <button
-      onClick={() => router.push(`/defi/${challenge.code}`)}
-      className={`w-full p-4 rounded-xl text-left transition-all hover:scale-[1.005] ${
-        isDark
-          ? 'bg-gray-800 hover:bg-gray-750'
-          : 'bg-white hover:bg-gray-50 shadow-sm'
-      } ${isFinished && isWinner ? (isDark ? 'ring-1 ring-yellow-500/30' : 'ring-1 ring-yellow-400/50') : ''}`}
-    >
-      <div className="flex items-center gap-4">
-        {/* Icon */}
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${getIconBg()}`}>
-          {getIcon()}
-        </div>
+    <>
+      <div
+        onClick={() => router.push(`/defi/${challenge.code}`)}
+        className={`w-full p-4 rounded-xl text-left transition-all hover:scale-[1.005] cursor-pointer ${
+          isDark
+            ? 'bg-gray-800 hover:bg-gray-750'
+            : 'bg-white hover:bg-gray-50 shadow-sm'
+        } ${isFinished && isWinner ? (isDark ? 'ring-1 ring-yellow-500/30' : 'ring-1 ring-yellow-400/50') : ''}`}
+      >
+        <div className="flex items-center gap-4">
+          {/* Icon */}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${getIconBg()}`}>
+            {getIcon()}
+          </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {challenge.chapter_title || challenge.course_title || 'Quiz'}
-            </span>
-            {isActive && (
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                challenge.status === 'lobby'
-                  ? 'bg-green-500/20 text-green-500'
-                  : 'bg-yellow-500/20 text-yellow-600'
-              }`}>
-                {challenge.status === 'lobby' ? translate('challenge_waiting') : translate('challenge_playing')}
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {challenge.chapter_title || challenge.course_title || 'Quiz'}
               </span>
-            )}
-          </div>
-          <div className={`flex items-center gap-2 text-sm mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            <span className="font-mono text-xs">{challenge.code}</span>
-            <span>•</span>
-            <span>{challenge.player_count} {challenge.player_count > 1 ? translate('challenge_players_plural') : translate('challenge_players')}</span>
-            {isFinished && (
-              <>
-                <span>•</span>
-                <span>{formatRelativeTime(challenge.created_at, translate)}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Right side - Result or action */}
-        <div className="flex-shrink-0 text-right">
-          {isFinished ? (
-            <div>
-              {challenge.my_rank !== undefined && (
-                <p className={`font-bold ${
-                  isWinner
-                    ? 'text-yellow-500'
-                    : challenge.my_rank === 2
-                      ? isDark ? 'text-gray-300' : 'text-gray-600'
-                      : challenge.my_rank === 3
-                        ? 'text-amber-600'
-                        : isDark ? 'text-gray-500' : 'text-gray-400'
+              {isActive && (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  challenge.status === 'lobby'
+                    ? 'bg-green-500/20 text-green-500'
+                    : 'bg-yellow-500/20 text-yellow-600'
                 }`}>
-                  {isWinner ? '🏆 1er' : `${challenge.my_rank}${challenge.my_rank === 2 ? 'nd' : 'ème'}`}
-                </p>
-              )}
-              {challenge.my_score !== undefined && (
-                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {challenge.my_score} pts
-                </p>
+                  {challenge.status === 'lobby' ? translate('challenge_waiting') : translate('challenge_playing')}
+                </span>
               )}
             </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              {challenge.status === 'playing' ? (
-                <Eye className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
-              ) : (
-                <ArrowRight className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+            <div className={`flex items-center gap-2 text-sm mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <span className="font-mono text-xs">{challenge.code}</span>
+              <span>•</span>
+              <span>{challenge.player_count} {challenge.player_count > 1 ? translate('challenge_players_plural') : translate('challenge_players')}</span>
+              {isFinished && (
+                <>
+                  <span>•</span>
+                  <span>{formatRelativeTime(challenge.created_at, translate)}</span>
+                </>
               )}
             </div>
-          )}
+          </div>
+
+          {/* Right side - Result, action, or delete */}
+          <div className="flex-shrink-0 flex items-center gap-2">
+            {isFinished ? (
+              <div className="text-right">
+                {challenge.my_rank !== undefined && (
+                  <p className={`font-bold ${
+                    isWinner
+                      ? 'text-yellow-500'
+                      : challenge.my_rank === 2
+                        ? isDark ? 'text-gray-300' : 'text-gray-600'
+                        : challenge.my_rank === 3
+                          ? 'text-amber-600'
+                          : isDark ? 'text-gray-500' : 'text-gray-400'
+                  }`}>
+                    {isWinner ? '🏆 1er' : `${challenge.my_rank}${challenge.my_rank === 2 ? 'nd' : 'ème'}`}
+                  </p>
+                )}
+                {challenge.my_score !== undefined && (
+                  <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {challenge.my_score} pts
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                {challenge.status === 'playing' ? (
+                  <Eye className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                ) : (
+                  <ArrowRight className={`w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                )}
+              </div>
+            )}
+
+            {/* Delete button */}
+            {canDelete && onDelete && (
+              <button
+                onClick={openDeleteModal}
+                disabled={deleting}
+                className="p-2 rounded-lg transition-colors disabled:opacity-50"
+                style={{ color: '#9ca3af' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3';
+                  e.currentTarget.style.color = '#d91a1c';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#9ca3af';
+                }}
+                title={translate('delete', 'Supprimer')}
+              >
+                {deleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </button>
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowDeleteModal(false)}
+          />
+          <div
+            className={`relative w-full max-w-sm rounded-2xl shadow-xl p-6 ${
+              isDark ? 'bg-neutral-900' : 'bg-white'
+            }`}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+                style={{ backgroundColor: '#fff6f3' }}
+              >
+                <Trash2 className="w-6 h-6" style={{ color: '#d91a1c' }} />
+              </div>
+              <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {translate('challenge_delete_title', 'Supprimer ce défi ?')}
+              </h3>
+              <p className={`text-sm mb-6 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                {translate('challenge_delete_desc', 'Cette action est irréversible.')}
+              </p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-medium transition-colors ${
+                    isDark
+                      ? 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  } disabled:opacity-50`}
+                >
+                  {translate('cancel', 'Annuler')}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ backgroundColor: '#d91a1c' }}
+                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#b81618')}
+                  onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#d91a1c')}
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {translate('deleting', 'Suppression...')}
+                    </>
+                  ) : (
+                    translate('delete', 'Supprimer')
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -250,7 +250,7 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
     <div className={`rounded-xl border-2 p-4 ${
       isCorrect
         ? isDark ? 'bg-green-500/15 border-green-500/40' : 'bg-green-50 border-green-200'
-        : isDark ? 'bg-red-500/15 border-red-500/40' : 'bg-red-50 border-red-200'
+        : isDark ? 'bg-[#d91a1c]/15 border-[#d91a1c]/40' : 'bg-[#d91a1c]/5 border-[#d91a1c]/20'
     }`}>
       {/* Badge result */}
       <div className="flex items-center justify-between mb-3">
@@ -258,12 +258,12 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
           {isCorrect ? (
             <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
           ) : (
-            <XCircle className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+            <XCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#d91a1c' }} />
           )}
           <span className={`font-semibold text-sm ${
             isCorrect
               ? isDark ? 'text-green-400' : 'text-green-800'
-              : isDark ? 'text-red-400' : 'text-red-800'
+              : isDark ? 'text-[#f87171]' : 'text-[#991b1b]'
           }`}>
             {isCorrect ? translate('quiz_feedback_correct') : 'Incorrect'}
           </span>
@@ -1037,8 +1037,8 @@ export default function ChapterQuizPage() {
                     textClasses = 'text-white font-medium';
                   } else if (isSelectedAndWrong) {
                     buttonClasses += isDark
-                      ? 'border-red-500 bg-red-500/90 '
-                      : 'border-red-500 bg-red-500 ';
+                      ? 'border-[#d91a1c] bg-[#d91a1c]/90 '
+                      : 'border-[#d91a1c] bg-[#d91a1c] ';
                     labelClasses += 'text-white ';
                     textClasses = 'text-white';
                   } else {

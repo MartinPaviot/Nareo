@@ -71,29 +71,28 @@ export async function GET(
           .single()
       : { data: null };
 
-    // Check if this is one of the user's free monthly courses (owner + within monthly limit)
-    // Free users get 3 courses per month with full access
-    const FREE_MONTHLY_LIMIT = 3;
-    let isFreeMonthlyCourse = false;
-    if (userId && course.user_id === userId && !isPremium) {
-      const courseCreatedAt = new Date(course.created_at);
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Access rules:
+    // - Guests (no account): Chapter 1 only (for demo/testing)
+    // - Logged-in users viewing their OWN course: Full access to all chapters
+    // - Premium users: Unlimited access
+    // Note: There are no public courses - users only see their own courses
 
-      // Check if course was created this month
-      if (courseCreatedAt >= firstDayOfMonth) {
-        // Count how many courses user uploaded this month before this one
-        const { count: coursesBeforeThis } = await supabase
-          .from('courses')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .gte('created_at', firstDayOfMonth.toISOString())
-          .lt('created_at', course.created_at);
+    // Check if user owns this course
+    const isOwnerOfCourse = !!userId && course.user_id === userId;
 
-        // Courses within the free monthly limit get full access
-        isFreeMonthlyCourse = (coursesBeforeThis || 0) < FREE_MONTHLY_LIMIT;
-      }
-    }
+    // Debug logging
+    console.log('[chapters] Access check:', {
+      userId,
+      courseUserId: course.user_id,
+      isOwnerOfCourse,
+      isPremium,
+      isAdmin,
+    });
+
+    // For logged-in users who own the course, they get full access
+    // The monthly limit (3 courses/month) is enforced at UPLOAD time, not at viewing time
+    // Once a course is uploaded, the owner always has full access to it
+    const isFreeMonthlyCourse = isOwnerOfCourse;
 
     // User has full access if premium OR has paid access OR it's their free monthly course
     const accessTier = (isPremium || isFreeMonthlyCourse) ? 'paid' : (accessData?.access_tier || null);

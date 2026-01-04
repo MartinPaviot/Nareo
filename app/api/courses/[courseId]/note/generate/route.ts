@@ -72,13 +72,25 @@ function createProgressStream() {
     }
   };
 
+  const sendChunk = (content: string, section?: string, sectionIndex?: number, totalSections?: number) => {
+    if (controller && content) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+        type: 'chunk',
+        content,
+        section,
+        sectionIndex,
+        totalSections,
+      })}\n\n`));
+    }
+  };
+
   const close = () => {
     if (controller) {
       controller.close();
     }
   };
 
-  return { stream, sendProgress, close };
+  return { stream, sendProgress, sendChunk, close };
 }
 
 // Helper to get language name from code
@@ -199,7 +211,7 @@ function findSectionText(
 }
 
 /**
- * Transcribe a single section (Pass 2)
+ * Transcribe a single section (Pass 2) - Non-streaming version
  */
 async function transcribeSection(
   sectionText: string,
@@ -244,6 +256,115 @@ async function transcribeSection(
     });
 
     return response.choices[0].message.content || '';
+  });
+}
+
+/**
+ * Transcribe a single section with streaming - sends chunks as they arrive
+ */
+async function transcribeSectionStreaming(
+  sectionText: string,
+  sectionTitle: string,
+  language: string,
+  contentTypes: ContentTypes,
+  metadataToIgnore: string[],
+  config: PersonnalisationConfig,
+  imageContext: string = '',
+  sendChunk: (content: string, section?: string, sectionIndex?: number, totalSections?: number) => void,
+  sectionIndex: number,
+  totalSections: number
+): Promise<string> {
+  const languageName = getLanguageName(language);
+
+  const formulaReminder = contentTypes.formulas.length > 0
+    ? '\n\nATTENTION : Cette section contient des formules. Utilise OBLIGATOIREMENT $$ pour les formules centrées et $ pour les formules en ligne.'
+    : '';
+
+  const transcriptionPrompt = getTranscriptionPrompt(
+    config,
+    contentTypes,
+    metadataToIgnore,
+    languageName,
+    formulaReminder,
+    imageContext
+  );
+
+  let fullContent = '';
+
+  // Use streaming with retry for rate limit handling
+  return withRetry(async () => {
+    const stream = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: transcriptionPrompt,
+        },
+        {
+          role: 'user',
+          content: `Section : ${sectionTitle}\n\n${sectionText}`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 4000,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        fullContent += content;
+        // Send each chunk to the client
+        sendChunk(content, sectionTitle, sectionIndex, totalSections);
+      }
+    }
+
+    return fullContent;
+  });
+}
+
+/**
+ * Single-pass generation with streaming
+ */
+async function singlePassGenerationStreaming(
+  sourceText: string,
+  language: string,
+  config: PersonnalisationConfig,
+  imageContext: string = '',
+  sendChunk: (content: string) => void
+): Promise<string> {
+  const languageName = getLanguageName(language);
+  const singlePassPrompt = getSinglePassPrompt(config, languageName, imageContext);
+
+  let fullContent = '';
+
+  return withRetry(async () => {
+    const stream = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: singlePassPrompt,
+        },
+        {
+          role: 'user',
+          content: `Retranscris ce cours intégralement dans un format structuré :\n\n${sourceText}`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 16000,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        fullContent += content;
+        sendChunk(content);
+      }
+    }
+
+    return fullContent;
   });
 }
 
@@ -519,7 +640,7 @@ export async function POST(
   const sourceText = course.source_text;
 
   // Create streaming response for progress updates
-  const { stream, sendProgress, close } = createProgressStream();
+  const { stream, sendProgress, sendChunk, close } = createProgressStream();
 
   // Start async generation process
   (async () => {
@@ -537,7 +658,7 @@ export async function POST(
 
       // Decision: Use multi-pass for documents > 15k chars
       if (sourceText.length > 15000) {
-        console.log('[A+ Note] Using MULTI-PASS generation (document > 15k chars)');
+        console.log('[A+ Note] Using MULTI-PASS generation with STREAMING (document > 15k chars)');
 
         // Pass 1: Extract structure
         sendProgress({ type: 'progress', message: 'Analyzing document structure...', progress: 15 });
@@ -545,42 +666,54 @@ export async function POST(
         const structure = await extractStructure(sourceText, language, config);
         console.log(`[A+ Note] Found ${structure.sections.length} sections`);
 
-        // Pass 2: Transcribe each section (with image context)
+        // Pass 2: Transcribe each section with streaming
         const sectionCount = structure.sections.length;
         const metadataToIgnore = structure.metadata_to_ignore || [];
         sendProgress({ type: 'progress', message: `Transcribing ${sectionCount} sections...`, progress: 20 });
 
+        // Send initial title as chunk
+        const titleChunk = `# ${structure.title || course.title}\n\n`;
+        sendChunk(titleChunk);
+
         const transcribedSections: string[] = [];
-        for (let i = 0; i < structure.sections.length; i += MAX_CONCURRENT_CHUNKS) {
-          const batch = structure.sections.slice(i, i + MAX_CONCURRENT_CHUNKS);
-          const progressPercent = 20 + Math.floor((i / structure.sections.length) * 45);
+
+        // Process sections sequentially for streaming (one at a time for smooth UX)
+        for (let i = 0; i < structure.sections.length; i++) {
+          const section = structure.sections[i];
+          const progressPercent = 20 + Math.floor(((i + 1) / structure.sections.length) * 45);
+
           sendProgress({
             type: 'progress',
-            message: `Transcribing section ${Math.min(i + MAX_CONCURRENT_CHUNKS, sectionCount)}/${sectionCount}...`,
+            message: `Transcribing section ${i + 1}/${sectionCount}...`,
             progress: progressPercent,
           });
 
-          const batchPromises = batch.map(async (section, batchIndex) => {
-            const globalIndex = i + batchIndex;
-            const sectionText = findSectionText(sourceText, section, structure.sections, globalIndex);
-            console.log(`[A+ Note] Transcribing section ${globalIndex + 1}/${sectionCount}: ${section.title}`);
-            return transcribeSection(
-              sectionText,
-              section.title,
-              language,
-              section.contentTypes || { definitions: [], formulas: [], numerical_examples: [], graphs_or_visuals: [], exercises: [] },
-              metadataToIgnore,
-              config,
-              imageContext
-            );
-          });
+          const sectionSourceText = findSectionText(sourceText, section, structure.sections, i);
+          console.log(`[A+ Note] Streaming section ${i + 1}/${sectionCount}: ${section.title}`);
 
-          const batchResults = await Promise.all(batchPromises);
-          transcribedSections.push(...batchResults);
+          // Add separator between sections
+          if (i > 0) {
+            sendChunk('\n\n---\n\n');
+          }
+
+          const sectionContent = await transcribeSectionStreaming(
+            sectionSourceText,
+            section.title,
+            language,
+            section.contentTypes || { definitions: [], formulas: [], numerical_examples: [], graphs_or_visuals: [], exercises: [] },
+            metadataToIgnore,
+            config,
+            imageContext,
+            sendChunk,
+            i + 1,
+            sectionCount
+          );
+
+          transcribedSections.push(sectionContent);
         }
 
-        // Assemble content
-        let mainContent = `# ${structure.title || course.title}\n\n${transcribedSections.join('\n\n---\n\n')}`;
+        // Assemble content for post-processing
+        let mainContent = titleChunk + transcribedSections.join('\n\n---\n\n');
 
         // Pass 3: Verify completeness
         sendProgress({ type: 'progress', message: 'Verifying completeness...', progress: 70 });
@@ -591,7 +724,9 @@ export async function POST(
         // Append missing content if any
         if (verification.missing_content && verification.missing_content.trim().length > 0) {
           console.log('[A+ Note] Adding missing content...');
-          mainContent += `\n\n---\n\n## Contenu complémentaire\n\n${verification.missing_content}`;
+          const missingChunk = `\n\n---\n\n## Contenu complémentaire\n\n${verification.missing_content}`;
+          sendChunk(missingChunk);
+          mainContent += missingChunk;
         }
 
         // Glossaire généré UNIQUEMENT si l'option est cochée dans les récaps
@@ -599,15 +734,17 @@ export async function POST(
           sendProgress({ type: 'progress', message: 'Generating glossary...', progress: 80 });
           console.log('[A+ Note] Generating glossary (user requested)...');
           const glossary = await generateGlossary(mainContent, language, config);
-          noteContent = `${mainContent}\n\n---\n\n${glossary}`;
+          const glossaryChunk = `\n\n---\n\n${glossary}`;
+          sendChunk(glossaryChunk);
+          noteContent = mainContent + glossaryChunk;
         } else {
           noteContent = mainContent;
         }
 
       } else {
-        console.log('[A+ Note] Using SINGLE-PASS generation (document <= 15k chars)');
+        console.log('[A+ Note] Using SINGLE-PASS generation with STREAMING (document <= 15k chars)');
         sendProgress({ type: 'progress', message: 'Generating note...', progress: 30 });
-        noteContent = await singlePassGeneration(sourceText, language, config, imageContext);
+        noteContent = await singlePassGenerationStreaming(sourceText, language, config, imageContext, sendChunk);
       }
 
       if (!noteContent) {

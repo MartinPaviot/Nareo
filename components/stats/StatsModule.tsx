@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowRight, BookOpen, Target, Trophy } from 'lucide-react';
+import { BookOpen, Crosshair, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useUserStats } from '@/hooks/useUserStats';
 import { useDailyActivity } from '@/hooks/useDailyActivity';
@@ -87,11 +87,6 @@ export default function StatsModule() {
     ? getPrecision(todayActivity.questions_correct || 0, todayActivity.questions_answered)
     : 0;
 
-  const handleStartSession = () => {
-    // Scroll to the courses section on the dashboard
-    document.getElementById('courses-section')?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
     <div className="space-y-4">
       {/* Milestone Modal */}
@@ -120,23 +115,7 @@ export default function StatsModule() {
         />
       </div>
 
-      {/* Row 2: CTA */}
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="w-full text-white py-4 px-6 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-        style={{ backgroundColor: '#ff751f' }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
-        onClick={handleStartSession}
-      >
-        {todayActivity?.questions_answered && todayActivity.questions_answered > 0
-          ? translate('stats_cta_continue')
-          : translate('stats_cta_start')}
-        <ArrowRight className="w-5 h-5" />
-      </motion.button>
-
-      {/* Row 3: Stats secondaires */}
+      {/* Row 2: Stats secondaires */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           icon={BookOpen}
@@ -146,7 +125,7 @@ export default function StatsModule() {
           isDark={isDark}
         />
         <StatCard
-          icon={Target}
+          icon={Crosshair}
           label={translate('stats_label_precision')}
           value={`${precision}%`}
           subValue={translate('stats_label_today')}

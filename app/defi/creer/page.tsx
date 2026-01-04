@@ -24,6 +24,7 @@ const MAX_CUSTOM_TIME = 120;
 interface Course {
   id: string;
   title: string;
+  quiz_status: string | null;
   chapters: { id: string; title: string }[];
 }
 
@@ -70,10 +71,11 @@ export default function CreateChallengePage() {
         .select(`
           id,
           title,
+          quiz_status,
           chapters(id, title, order_index)
         `)
         .eq('user_id', user?.id)
-        .eq('quiz_status', 'ready')
+        .in('quiz_status', ['ready', 'partial'])
         .order('created_at', { ascending: false });
 
       if (coursesData) {
@@ -81,6 +83,7 @@ export default function CreateChallengePage() {
           coursesData.map((c: any) => ({
             id: c.id,
             title: c.title,
+            quiz_status: c.quiz_status || null,
             chapters: (c.chapters || [])
               .sort((a: any, b: any) => a.order_index - b.order_index)
               .map((ch: any) => ({ id: ch.id, title: ch.title })),
@@ -189,9 +192,13 @@ export default function CreateChallengePage() {
 
         {/* Error */}
         {error && (
-          <div className={`mb-6 p-4 rounded-xl ${
-            isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
-          }`}>
+          <div
+            className="mb-6 p-4 rounded-xl"
+            style={{
+              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
+              color: isDark ? '#f87171' : '#d91a1c'
+            }}
+          >
             {error}
           </div>
         )}

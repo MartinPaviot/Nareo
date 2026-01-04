@@ -82,7 +82,6 @@ export const metadata: Metadata = {
     title: 'Nareo | Transformez vos cours en quiz avec l\'IA',
     description: 'Révisez 2x plus efficacement. Convertissez vos PDF en quiz, flashcards et résumés personnalisés.',
     images: ['/images/og-image.png'],
-    creator: '@usenareo',
   },
   alternates: {
     canonical: 'https://www.usenareo.com',
@@ -91,9 +90,6 @@ export const metadata: Metadata = {
       'en-US': 'https://www.usenareo.com/en',
       'de-DE': 'https://www.usenareo.com/de',
     },
-  },
-  verification: {
-    google: 'votre-code-verification-google',
   },
 };
 

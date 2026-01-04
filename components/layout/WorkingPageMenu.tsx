@@ -336,7 +336,7 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
                     color: isDark ? '#e94446' : '#d91a1c',
                     backgroundColor: 'transparent'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.1)' : 'rgba(217, 26, 28, 0.1)'}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(217, 26, 28, 0.1)' : '#fff6f3'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <LogOut className="w-3.5 h-3.5" />

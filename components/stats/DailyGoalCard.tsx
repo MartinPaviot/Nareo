@@ -87,7 +87,11 @@ export default function DailyGoalCard({
           <div className="flex-1">
             <h3 className={`text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_daily_goal_title')}</h3>
             <p className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`} style={completed ? { color: '#379f5a' } : {}}>
-              {completed ? translate('stats_daily_goal_completed') : translate('stats_daily_goal_remaining', { count: String(target - current) })}
+              {completed
+                ? (current > target
+                    ? translate('stats_daily_goal_extra', { count: String(current - target) })
+                    : translate('stats_daily_goal_completed'))
+                : translate('stats_daily_goal_remaining', { count: String(target - current) })}
             </p>
             <div className="mt-2 flex items-center gap-2">
               <span className="text-lg">{config.emoji}</span>

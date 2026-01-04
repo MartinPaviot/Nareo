@@ -99,7 +99,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light">
       <head />
       <body className={inter.className}>
         <Suspense fallback={null}>

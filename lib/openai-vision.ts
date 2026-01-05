@@ -1754,8 +1754,14 @@ export async function generateMixedQuiz(
   let preExtractedFacts: VerifiableFact[] = options?.facts || [];
   if (preExtractedFacts.length === 0) {
     console.log('📚 Pre-extracting verifiable facts for mixed quiz...');
-    preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
-    console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+    try {
+      preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
+      console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+    } catch (factError: any) {
+      console.error(`❌ Failed to extract facts for "${chapterMetadata.title}":`, factError.message);
+      // Continue without facts - questions will still be generated but without semantic validation
+      preExtractedFacts = [];
+    }
   }
 
   const allQuestions: any[] = [];
@@ -1776,31 +1782,37 @@ export async function generateMixedQuiz(
 
     let questions: any[] = [];
 
-    switch (type) {
-      case 'qcm':
-        questions = await generateConceptChapterQuestions(
-          chapterMetadata,
-          chapterText,
-          language,
-          sharedOptions
-        );
-        break;
-      case 'vrai_faux':
-        questions = await generateTrueFalseQuestions(
-          chapterMetadata,
-          chapterText,
-          language,
-          sharedOptions
-        );
-        break;
-      case 'texte_trous':
-        questions = await generateFillBlankQuestions(
-          chapterMetadata,
-          chapterText,
-          language,
-          sharedOptions
-        );
-        break;
+    try {
+      switch (type) {
+        case 'qcm':
+          questions = await generateConceptChapterQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+        case 'vrai_faux':
+          questions = await generateTrueFalseQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+        case 'texte_trous':
+          questions = await generateFillBlankQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+      }
+      console.log(`✅ Generated ${questions.length} ${type} questions for "${chapterMetadata.title}"`);
+    } catch (typeError: any) {
+      console.error(`❌ Failed to generate ${type} questions for "${chapterMetadata.title}":`, typeError.message);
+      // Continue with other types instead of failing completely
     }
 
     allQuestions.push(...questions);

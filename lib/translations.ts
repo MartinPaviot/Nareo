@@ -392,7 +392,7 @@ export const translations: Record<Language, Translations> = {
     signup_to_continue_title: 'Create an account to continue',
     signup_to_continue_description: 'Sign up for free to unlock all Nareo features and save your progress.',
     flashcards_limit_title: 'Unlock all flashcards',
-    flashcards_limit_description: 'Create a free account to access all {{count}} remaining flashcards and boost your revision!',
+    flashcards_limit_description: 'Create a free account to access all {count} remaining flashcards and boost your revision!',
 
     // Study Sheet (formerly A+ Note)
     aplus_note_title: 'Study Sheet',
@@ -1421,7 +1421,7 @@ export const translations: Record<Language, Translations> = {
 
     // Flashcard Personalization
     flashcards_personalization_title: 'Generate your flashcards',
-    flashcards_personalization_subtitle: 'Anki quality revision cards',
+    flashcards_personalization_subtitle: 'Smart revision cards',
     flashcards_card_count_label: 'Number of cards',
     flashcards_card_count_select: 'Select',
     flashcards_level_essential: 'Essential',
@@ -1549,8 +1549,18 @@ export const translations: Record<Language, Translations> = {
     quiz_chapters_count: '{count} chapter(s) - {questions} questions',
     quiz_no_chapters: 'No chapters available.',
     quiz_chapter_questions: 'Chapter questions',
+    quiz_add_chapter: 'Add chapter',
+    quiz_add_chapter_title: 'New chapter',
+    quiz_chapter_title_label: 'Chapter title',
+    quiz_chapter_title_placeholder: 'Ex: Fundamentals',
+    quiz_creating: 'Creating...',
     quiz_add_question: 'Add',
     quiz_no_questions: 'No questions in this chapter',
+    quiz_no_questions_title: 'No questions available',
+    quiz_no_questions_desc: 'This chapter does not have any questions yet. Please regenerate the quiz or wait.',
+    quiz_start_now: 'Start now',
+    quiz_questions_ready: 'ready',
+    quiz_start_now_hint: 'Other questions will arrive while you play',
     quiz_restart: 'Restart',
     quiz_start: 'Start',
     quiz_add_question_title: 'Add a question',
@@ -1987,7 +1997,7 @@ export const translations: Record<Language, Translations> = {
     signup_to_continue_title: 'Crée un compte pour continuer',
     signup_to_continue_description: 'Inscris-toi gratuitement pour débloquer toutes les fonctionnalités de Nareo et sauvegarder ta progression.',
     flashcards_limit_title: 'Débloque toutes les flashcards',
-    flashcards_limit_description: 'Crée un compte gratuit pour accéder aux {{count}} flashcards restantes et booster tes révisions !',
+    flashcards_limit_description: 'Crée un compte gratuit pour accéder aux {count} flashcards restantes et booster tes révisions !',
 
     // Study Sheet (formerly A+ Note)
     aplus_note_title: 'Fiche de révision',
@@ -2341,7 +2351,7 @@ export const translations: Record<Language, Translations> = {
     course_detail_intro: 'Rejoue chaque chapitre en quiz qui couvre presque tous les concepts.',
     course_detail_tagline: 'Révise intelligemment. Teste tes connaissances chapitre par chapitre et identifie instantanément ce que tu dois renforcer.',
     course_detail_back_to_courses: 'Retour aux cours',
-    course_detail_lock_two: 'Crée un compte pour débloquer tout le cours, les flashcards et ta A+ Note.',
+    course_detail_lock_two: 'Crée un compte pour débloquer tout le cours, les flashcards et ta fiche de révision.',
     course_detail_lock_three: 'Débloque tout le cours pour accéder à tous les chapitres.',
     course_detail_locked_paywall: 'Inscris-toi pour tout débloquer',
     course_detail_signup_dashboard_title: 'Accéder à tes cours',
@@ -2442,7 +2452,7 @@ export const translations: Record<Language, Translations> = {
     results_signup_modal_title: 'Félicitations !',
     results_signup_modal_subtitle: 'Tu viens de terminer ton premier quiz !',
     results_signup_modal_cta: 'Inscris-toi gratuitement',
-    results_signup_modal_benefit: 'Crée un compte gratuit pour débloquer tous les chapitres, les flashcards et ta A+ Note !',
+    results_signup_modal_benefit: 'Crée un compte pour débloquer tous les chapitres, les flashcards et ta fiche de révision !',
 
     // Pedagogical Feedback Block
     results_feedback_title_low: 'Ne te décourage pas !',
@@ -3019,7 +3029,7 @@ export const translations: Record<Language, Translations> = {
 
     // Flashcard Personalization
     flashcards_personalization_title: 'Génère tes flashcards',
-    flashcards_personalization_subtitle: 'Cartes de révision qualité Anki',
+    flashcards_personalization_subtitle: 'Cartes de révision intelligentes',
     flashcards_card_count_label: 'Nombre de cartes',
     flashcards_card_count_select: 'Sélectionner',
     flashcards_level_essential: 'Essentiel',
@@ -3147,8 +3157,18 @@ export const translations: Record<Language, Translations> = {
     quiz_chapters_count: '{count} chapitre(s) - {questions} questions',
     quiz_no_chapters: 'Aucun chapitre disponible.',
     quiz_chapter_questions: 'Questions du chapitre',
+    quiz_add_chapter: 'Ajouter un chapitre',
+    quiz_add_chapter_title: 'Nouveau chapitre',
+    quiz_chapter_title_label: 'Titre du chapitre',
+    quiz_chapter_title_placeholder: 'Ex: Les fondamentaux',
+    quiz_creating: 'Création...',
     quiz_add_question: 'Ajouter',
     quiz_no_questions: 'Aucune question dans ce chapitre',
+    quiz_no_questions_title: 'Aucune question disponible',
+    quiz_no_questions_desc: 'Ce chapitre ne contient pas encore de questions. Veuillez régénérer le quiz ou patienter.',
+    quiz_start_now: 'Commencer maintenant',
+    quiz_questions_ready: 'prêtes',
+    quiz_start_now_hint: 'Les autres questions arriveront pendant que vous jouez',
     quiz_restart: 'Recommencer',
     quiz_start: 'Commencer',
     quiz_add_question_title: 'Ajouter une question',
@@ -3585,7 +3605,7 @@ export const translations: Record<Language, Translations> = {
     signup_to_continue_title: 'Erstelle ein Konto, um fortzufahren',
     signup_to_continue_description: 'Melde dich kostenlos an, um alle Nareo-Funktionen freizuschalten und deinen Fortschritt zu speichern.',
     flashcards_limit_title: 'Alle Karteikarten freischalten',
-    flashcards_limit_description: 'Erstelle ein kostenloses Konto, um auf alle {{count}} verbleibenden Karteikarten zuzugreifen und dein Lernen zu verbessern!',
+    flashcards_limit_description: 'Erstelle ein kostenloses Konto, um auf alle {count} verbleibenden Karteikarten zuzugreifen und dein Lernen zu verbessern!',
 
     // Study Sheet (formerly A+ Note)
     aplus_note_title: 'Lernblatt',
@@ -4617,7 +4637,7 @@ export const translations: Record<Language, Translations> = {
 
     // Flashcard Personalization
     flashcards_personalization_title: 'Erstelle deine Lernkarten',
-    flashcards_personalization_subtitle: 'Anki-qualität Lernkarten',
+    flashcards_personalization_subtitle: 'Intelligente Lernkarten',
     flashcards_card_count_label: 'Anzahl der Karten',
     flashcards_card_count_select: 'Auswählen',
     flashcards_level_essential: 'Wesentlich',
@@ -4745,8 +4765,18 @@ export const translations: Record<Language, Translations> = {
     quiz_chapters_count: '{count} Kapitel - {questions} Fragen',
     quiz_no_chapters: 'Keine Kapitel verfügbar.',
     quiz_chapter_questions: 'Kapitelfragen',
+    quiz_add_chapter: 'Kapitel hinzufügen',
+    quiz_add_chapter_title: 'Neues Kapitel',
+    quiz_chapter_title_label: 'Kapiteltitel',
+    quiz_chapter_title_placeholder: 'Z.B.: Grundlagen',
+    quiz_creating: 'Erstellen...',
     quiz_add_question: 'Hinzufügen',
     quiz_no_questions: 'Keine Fragen in diesem Kapitel',
+    quiz_no_questions_title: 'Keine Fragen verfügbar',
+    quiz_no_questions_desc: 'Dieses Kapitel enthält noch keine Fragen. Bitte generieren Sie das Quiz neu oder warten Sie.',
+    quiz_start_now: 'Jetzt starten',
+    quiz_questions_ready: 'bereit',
+    quiz_start_now_hint: 'Weitere Fragen werden während des Spielens geladen',
     quiz_restart: 'Neu starten',
     quiz_start: 'Starten',
     quiz_add_question_title: 'Frage hinzufügen',

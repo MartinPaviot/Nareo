@@ -5,6 +5,95 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 // Admin emails that always have premium access
 const ADMIN_EMAILS = ['contact@usenareo.com'];
 
+// POST: Create a new quiz chapter manually
+export async function POST(
+  request: NextRequest,
+  context: { params: { courseId: string } } | { params: Promise<{ courseId: string }> }
+) {
+  try {
+    const resolvedParams = "then" in context.params ? await context.params : context.params;
+    const auth = await authenticateRequest(request);
+
+    if (!auth) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const supabase = await createSupabaseServerClient();
+    const userId = auth.user.id;
+    const courseId = resolvedParams.courseId;
+
+    // Verify course ownership
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('id', courseId)
+      .eq('user_id', userId)
+      .single();
+
+    if (courseError || !course) {
+      return NextResponse.json({ error: 'Course not found or access denied' }, { status: 404 });
+    }
+
+    const body = await request.json();
+    const { title } = body;
+
+    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      return NextResponse.json({ error: 'Chapter title is required' }, { status: 400 });
+    }
+
+    // Get current max order_index for this course
+    const { data: existingChapters } = await supabase
+      .from('chapters')
+      .select('order_index')
+      .eq('course_id', courseId)
+      .order('order_index', { ascending: false })
+      .limit(1);
+
+    const maxOrderIndex = existingChapters?.[0]?.order_index ?? -1;
+    const newOrderIndex = maxOrderIndex + 1;
+
+    // Create the new chapter
+    const { data: newChapter, error: insertError } = await supabase
+      .from('chapters')
+      .insert({
+        course_id: courseId,
+        title: title.trim(),
+        order_index: newOrderIndex,
+        status: 'ready', // Manual chapters start as ready (no content to process)
+        summary: null,
+        difficulty: null,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error creating chapter:', insertError);
+      return NextResponse.json({ error: 'Failed to create chapter' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      chapter: {
+        id: newChapter.id,
+        title: newChapter.title,
+        order_index: newChapter.order_index,
+        question_count: 0,
+        has_access: true,
+        completed: false,
+        in_progress: false,
+        score: null,
+        status: 'ready',
+      },
+    });
+  } catch (error) {
+    console.error('Error creating chapter:', error);
+    return NextResponse.json(
+      { error: 'Failed to create chapter' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: { courseId: string } } | { params: Promise<{ courseId: string }> }
@@ -43,6 +132,21 @@ export async function GET(
       .order('order_index', { ascending: true });
 
     if (chaptersError) throw chaptersError;
+
+    // Auto-fix chapters stuck in 'processing' state for more than 10 minutes
+    const TEN_MINUTES_AGO = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const stuckChapters = (chapters || []).filter(
+      ch => ch.status === 'processing' && ch.updated_at && ch.updated_at < TEN_MINUTES_AGO
+    );
+    if (stuckChapters.length > 0) {
+      console.log(`[chapters] Found ${stuckChapters.length} stuck chapters, resetting to 'ready'`);
+      for (const ch of stuckChapters) {
+        await supabase
+          .from('chapters')
+          .update({ status: 'ready' })
+          .eq('id', ch.id);
+      }
+    }
 
     // Get user's subscription tier from profile
     const { data: profileData } = userId
@@ -146,9 +250,15 @@ export async function GET(
           in_progress: !!attempt && !attempt.completed_at,
           score: attempt?.score ?? null,
           content_language: course.content_language || course.language || 'en',
-          // Map 'pending_quiz' to 'ready' for frontend display since chapter content is ready
-          // The quiz just hasn't been generated yet
-          status: chapter.status === 'pending_quiz' ? 'ready' : (chapter.status || 'ready'),
+          // Map status for frontend display:
+          // - 'pending_quiz' -> 'ready' (chapter content is ready, quiz just hasn't been generated yet)
+          // - 'processing' -> 'ready' if chapter has questions (generation completed but status wasn't updated)
+          // - 'processing' without questions -> keep as 'processing' (still generating)
+          status: chapter.status === 'pending_quiz'
+            ? 'ready'
+            : (chapter.status === 'processing' && (questionCount || 0) > 0)
+              ? 'ready'
+              : (chapter.status || 'ready'),
         };
       })
     );

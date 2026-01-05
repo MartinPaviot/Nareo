@@ -733,8 +733,8 @@ export default function CourseLearnPage() {
               </div>
             )}
 
-            {/* Quiz not generated yet - show personnalisation screen */}
-            {!isDemoId && course?.status === 'ready' && course?.quiz_status !== 'ready' && course?.quiz_status !== 'generating' && course?.quiz_status !== 'partial' && (
+            {/* Quiz not generated yet - show personnalisation screen (hide once generation starts) */}
+            {!isDemoId && course?.status === 'ready' && !isGeneratingQuiz && course?.quiz_status !== 'ready' && course?.quiz_status !== 'generating' && course?.quiz_status !== 'partial' && (
               <>
                 {quizGenerationError && (
                   <div

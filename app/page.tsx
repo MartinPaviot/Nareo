@@ -776,31 +776,6 @@ export default function HomePage() {
 
         {/* Desktop Navigation */}
         <div className="hidden sm:flex items-center gap-2">
-          {!user && (
-            <>
-              <button
-                onClick={() => {
-                  handleCtaClick('header_signin', '/auth/signin');
-                  router.push('/auth/signin');
-                }}
-                className="inline-flex items-center justify-center h-9 px-4 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                {translate('auth_signin_button')}
-              </button>
-              <button
-                onClick={() => {
-                  handleCtaClick('header_signup', '/auth/signup');
-                  router.push('/auth/signup');
-                }}
-                className="inline-flex items-center justify-center h-9 px-4 rounded-full text-white text-sm font-semibold transition-colors"
-                style={{ backgroundColor: '#ff751f' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
-              >
-                {translate('auth_signup_button')}
-              </button>
-            </>
-          )}
           <TopBarActions />
         </div>
 
@@ -1330,10 +1305,10 @@ export default function HomePage() {
               )}
 
               {isProcessing && (
-                <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 p-3 text-sm text-orange-800">
-                  <p className="font-semibold">{translate('upload_processing_title')}</p>
-                  <p className="text-xs text-orange-700 mt-1">
-                    {translate('upload_processing_subtitle')}
+                <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 p-4 text-sm text-orange-800">
+                  <p className="font-semibold flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {translate('upload_processing_title')}
                   </p>
                 </div>
               )}

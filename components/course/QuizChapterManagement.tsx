@@ -28,7 +28,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import ChapterScoreBadge from './ChapterScoreBadge';
 import QuizPersonnalisationScreen from './QuizPersonnalisationScreen';
 import ProgressiveQuizView, { StreamingQuestion } from './ProgressiveQuizView';
-import GenerationProgress from './GenerationProgress';
 import CreateChallengeModal from '@/components/defi/CreateChallengeModal';
 import { QuizConfig, DEFAULT_QUIZ_CONFIG } from '@/types/quiz-personnalisation';
 
@@ -137,6 +136,10 @@ export default function QuizChapterManagement({
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [showAddChapterModal, setShowAddChapterModal] = useState(false);
+
+  // Progressive quiz state - allows playing during generation
+  const [isPlayingProgressiveQuiz, setIsPlayingProgressiveQuiz] = useState(false);
 
   // Form states
   const [selectedChapterId, setSelectedChapterId] = useState<string>('');
@@ -152,6 +155,10 @@ export default function QuizChapterManagement({
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(false);
   const [deletingQuestion, setDeletingQuestion] = useState(false);
+  const [addingChapter, setAddingChapter] = useState(false);
+
+  // New chapter form
+  const [newChapterTitle, setNewChapterTitle] = useState('');
 
   // Config mémoire pour régénération - utilise la config sauvegardée si disponible
   const [lastQuizConfig, setLastQuizConfig] = useState<QuizConfig>(
@@ -359,6 +366,34 @@ export default function QuizChapterManagement({
     }
   };
 
+  // Add new chapter
+  const handleAddChapter = async () => {
+    if (!newChapterTitle.trim()) return;
+
+    setAddingChapter(true);
+    try {
+      const response = await fetch(`/api/courses/${courseId}/chapters`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newChapterTitle.trim() }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create chapter');
+      }
+
+      // Refresh data
+      await refetch();
+      setShowAddChapterModal(false);
+      setNewChapterTitle('');
+    } catch (err) {
+      console.error('Error creating chapter:', err);
+    } finally {
+      setAddingChapter(false);
+    }
+  };
+
   // Render question form based on type
   const renderQuestionForm = () => (
     <div className="space-y-4">
@@ -530,49 +565,14 @@ export default function QuizChapterManagement({
     </div>
   );
 
-  // Show progressive quiz view during generation if enabled
-  if (enableProgressiveQuiz && isGenerating && streamingQuestions.length > 0) {
-    return (
-      <div className="space-y-4">
-        <ProgressiveQuizView
-          questions={streamingQuestions}
-          isGenerating={isGenerating}
-          progress={generationProgress}
-          questionsGenerated={streamingQuestions.length}
-          progressMessage={generationMessage}
-          courseId={courseId}
-          onComplete={(score, answers) => {
-            console.log('[QuizChapterManagement] Progressive quiz completed:', { score, answersCount: answers.length });
-            refetch();
-          }}
-        />
-      </div>
-    );
-  }
-
-  // Show generation progress without questions (waiting for first question)
-  if (enableProgressiveQuiz && isGenerating && streamingQuestions.length === 0) {
-    return (
-      <div className={`rounded-2xl border shadow-sm p-6 ${
-        isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-      }`}>
-        <GenerationProgress
-          type="quiz"
-          progress={generationProgress}
-          message={generationMessage}
-        />
-        <div className="text-center mt-6">
-          <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-4" />
-          <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-            {translate('gen_streaming_in_progress')}
-          </p>
-          <p className={`text-xs mt-2 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
-            {translate('gen_play_while_generating')}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Group streaming questions by chapter for display during generation
+  const streamingQuestionsByChapter = streamingQuestions.reduce((acc, q) => {
+    if (!acc[q.chapterId]) {
+      acc[q.chapterId] = { title: q.chapterTitle, questions: [] };
+    }
+    acc[q.chapterId].questions.push(q);
+    return acc;
+  }, {} as Record<string, { title: string; questions: StreamingQuestion[] }>);
 
   return (
     <div className="space-y-4">
@@ -581,7 +581,7 @@ export default function QuizChapterManagement({
         <span className={isDark ? 'text-neutral-400' : 'text-gray-600'}>
           {translate('quiz_chapters_count', { count: chapters.length.toString(), questions: chapters.reduce((sum, c) => sum + c.question_count, 0).toString() })}
         </span>
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1">
           {/* Launch Challenge button */}
           {!isDemoId && user && (
             <button
@@ -594,6 +594,19 @@ export default function QuizChapterManagement({
               <Gamepad2 className="w-4 h-4" />
               <span className="hidden sm:inline">{translate('challenge_create', 'Créer un défi')}</span>
               <span className="sm:hidden">{translate('challenge_title', 'Défi')}</span>
+            </button>
+          )}
+          {/* Add chapter button */}
+          {!isDemoId && (
+            <button
+              onClick={() => user ? setShowAddChapterModal(true) : setShowSignupModal(true)}
+              disabled={isGenerating}
+              className={`p-2 rounded-lg transition-colors ${
+                isDark ? 'text-neutral-400 hover:text-neutral-300 hover:bg-neutral-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+              title={translate('quiz_add_chapter', 'Ajouter un chapitre')}
+            >
+              <Plus className="w-5 h-5" />
             </button>
           )}
           <button
@@ -609,21 +622,110 @@ export default function QuizChapterManagement({
         </div>
       </div>
 
+      {/* Generation progress banner OR Progressive Quiz during generation */}
+      {isGenerating && !isPlayingProgressiveQuiz && (
+        <div className={`rounded-2xl border shadow-sm p-4 ${
+          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+              isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+            }`}>
+              <Loader2 className="w-5 h-5 text-orange-500 animate-spin" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+                {translate('quiz_generating_title', 'Génération du quiz en cours...')}
+              </p>
+              <p className={`text-xs truncate mb-2 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                {generationMessage || translate('quiz_please_wait', 'Veuillez patienter...')}
+              </p>
+              <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+                <div
+                  className="bg-orange-500 h-1.5 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${generationProgress}%` }}
+                />
+              </div>
+            </div>
+            <div className={`text-right flex-shrink-0 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+              <p className="text-lg font-bold text-orange-500">{streamingQuestions.length}</p>
+              <p className="text-xs">{translate('quiz_questions_generated', 'questions')}</p>
+            </div>
+          </div>
+          {/* Start now button - appears when at least 1 question is available */}
+          {streamingQuestions.length > 0 && enableProgressiveQuiz && (
+            <div className={`mt-4 pt-4 border-t border-dashed ${isDark ? 'border-neutral-700' : 'border-gray-200'}`}>
+              <button
+                onClick={() => setIsPlayingProgressiveQuiz(true)}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                {translate('quiz_start_now', 'Commencer maintenant')}
+                <span className={`text-xs px-2 py-0.5 rounded-full bg-white/20`}>
+                  {streamingQuestions.length} {translate('quiz_questions_ready', 'prêtes')}
+                </span>
+              </button>
+              <p className={`text-xs text-center mt-2 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
+                {translate('quiz_start_now_hint', 'Les autres questions arriveront pendant que vous jouez')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Progressive Quiz View - shown when user chooses to play during generation */}
+      {isGenerating && isPlayingProgressiveQuiz && streamingQuestions.length > 0 && (
+        <div className="space-y-4">
+          {/* Back button to return to generation view */}
+          <button
+            onClick={() => setIsPlayingProgressiveQuiz(false)}
+            className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${
+              isDark ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            ← {translate('back', 'Retour')}
+          </button>
+          <ProgressiveQuizView
+            questions={streamingQuestions}
+            isGenerating={isGenerating}
+            progress={generationProgress}
+            questionsGenerated={streamingQuestions.length}
+            totalQuestions={undefined}
+            progressMessage={generationMessage}
+            onComplete={(score, answers) => {
+              console.log('Progressive quiz completed:', { score, answers });
+              setIsPlayingProgressiveQuiz(false);
+              // Refetch to update chapter data
+              refetch();
+            }}
+            courseId={courseId}
+          />
+        </div>
+      )}
+
       {/* Chapters list */}
-      {chapters.length === 0 ? (
+      {chapters.length === 0 && !isGenerating ? (
         <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
           isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
         }`}>
           <AlertCircle className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-neutral-600' : 'text-gray-400'}`} />
           <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('quiz_no_chapters')}</p>
         </div>
-      ) : (
+      ) : chapters.length > 0 ? (
         <div className={`rounded-2xl border shadow-sm divide-y transition-colors ${
           isDark ? 'bg-neutral-900 border-neutral-800 divide-neutral-800' : 'bg-white border-gray-200 divide-gray-100'
         }`}>
           {chapters.map((chapter, index) => {
             const isLocked = index > 0 && (!user || !hasFullAccess) && !isDemoId;
-            const isChapterReady = chapter.status === 'ready' || chapter.question_count > 0;
+            // During generation, consider chapter ready if it has streaming questions
+            const streamingChapterData = streamingQuestionsByChapter[chapter.id];
+            const streamingCount = streamingChapterData?.questions.length || 0;
+            const totalQuestionCount = chapter.question_count + streamingCount;
+            // Chapter is "ready" (not loading) if:
+            // - status is 'ready' OR
+            // - it has questions (either from DB or streaming) OR
+            // - generation is NOT in progress (even with 0 questions, show as ready with disabled button)
+            const isChapterReady = chapter.status === 'ready' || chapter.question_count > 0 || streamingCount > 0 || !isGenerating;
             const isExpanded = expandedChapter === chapter.id;
             const chapterQuestions = getChapterQuestions(chapter.id);
 
@@ -657,9 +759,17 @@ export default function QuizChapterManagement({
                       </div>
                       <div className={`flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs ${isDark ? 'text-neutral-500' : 'text-gray-600'}`}>
                         <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${
-                          isDark ? 'bg-neutral-800' : 'bg-gray-100'
+                          streamingCount > 0
+                            ? isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
+                            : isDark ? 'bg-neutral-800' : 'bg-gray-100'
                         }`}>
-                          {chapter.question_count} questions
+                          {streamingCount > 0 && (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          )}
+                          {totalQuestionCount} questions
+                          {streamingCount > 0 && (
+                            <span className="text-orange-500">+</span>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -693,17 +803,24 @@ export default function QuizChapterManagement({
                       {/* Play button */}
                       <button
                         onClick={() => onChapterClick(chapter, index)}
-                        disabled={!isChapterReady}
+                        disabled={!isChapterReady || totalQuestionCount === 0}
                         className={`inline-flex items-center justify-center gap-1.5 w-[120px] sm:w-[140px] px-3 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
-                          !isChapterReady
+                          !isChapterReady || totalQuestionCount === 0
                             ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : isLocked
                             ? isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-orange-500/20 hover:text-orange-400' : 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
                             : 'bg-orange-500 text-white hover:bg-orange-600'
                         }`}
+                        title={totalQuestionCount === 0 ? translate('quiz_no_questions') : undefined}
                       >
                         {!isChapterReady ? (
                           <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                        ) : totalQuestionCount === 0 ? (
+                          <>
+                            <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">0 questions</span>
+                            <span className="sm:hidden">0</span>
+                          </>
                         ) : chapter.completed ? (
                           <>
                             <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -804,7 +921,7 @@ export default function QuizChapterManagement({
             );
           })}
         </div>
-      )}
+      ) : null}
 
       {/* Add Question Modal */}
       {showAddModal && createPortal(
@@ -1039,36 +1156,81 @@ export default function QuizChapterManagement({
         />
       )}
 
-      {/* Floating toast notification for regeneration progress */}
-      {isGenerating && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
-          <div className={`rounded-2xl shadow-2xl border p-4 w-80 ${
-            isDark ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+      {/* Add Chapter Modal */}
+      {showAddChapterModal && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+          <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
           }`}>
-            <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                isDark ? 'bg-orange-500/20' : 'bg-orange-100'
-              }`}>
-                <Loader2 className="w-5 h-5 text-orange-500 animate-spin" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-                  {translate('quiz_regenerating', 'Génération du quiz...')}
-                </p>
-                <p className={`text-xs truncate mb-2 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                  {generationMessage || translate('quiz_please_wait', 'Veuillez patienter...')}
-                </p>
-                <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                  <div
-                    className="bg-orange-500 h-1.5 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${generationProgress}%` }}
-                  />
-                </div>
-                <p className={`text-xs mt-1 text-right ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{generationProgress}%</p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-xl font-bold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+                {translate('quiz_add_chapter_title', 'Nouveau chapitre')}
+              </h3>
+              <button
+                onClick={() => { setShowAddChapterModal(false); setNewChapterTitle(''); }}
+                className={`p-2 rounded-full transition-colors ${
+                  isDark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+                  {translate('quiz_chapter_title_label', 'Titre du chapitre')}
+                </label>
+                <input
+                  type="text"
+                  value={newChapterTitle}
+                  onChange={(e) => setNewChapterTitle(e.target.value)}
+                  placeholder={translate('quiz_chapter_title_placeholder', 'Ex: Les fondamentaux')}
+                  className={`w-full p-3 rounded-xl border-2 focus:border-orange-500 focus:outline-none transition-colors ${
+                    isDark
+                      ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500'
+                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                  }`}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newChapterTitle.trim()) {
+                      handleAddChapter();
+                    }
+                  }}
+                />
               </div>
             </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setShowAddChapterModal(false); setNewChapterTitle(''); }}
+                className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-colors ${
+                  isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {translate('cancel')}
+              </button>
+              <button
+                onClick={handleAddChapter}
+                disabled={addingChapter || !newChapterTitle.trim()}
+                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                {addingChapter ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {translate('quiz_creating', 'Création...')}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    {translate('quiz_add_chapter', 'Ajouter un chapitre')}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

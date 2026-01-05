@@ -146,16 +146,23 @@ function TypewriterText({
       }}
     >
       {displayedText}
-      {isTyping && (
+      {isTyping && displayedText.length > 0 && (
         <span
-          className="inline-block w-0.5 h-4 ml-0.5 animate-pulse"
-          style={{ backgroundColor: '#f97316' }}
+          className="inline-block w-[2px] h-[1em] ml-0.5 animate-blink"
+          style={{ backgroundColor: '#f97316', verticalAlign: 'text-bottom' }}
         />
       )}
       <style jsx>{`
         @keyframes shimmer {
           0% { background-position: 100% 0; }
           100% { background-position: -100% 0; }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        .animate-blink {
+          animation: blink 1s ease-in-out infinite;
         }
       `}</style>
     </span>

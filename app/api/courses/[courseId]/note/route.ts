@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/api-auth';
+
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
 
 export async function GET(
   request: NextRequest,
@@ -9,21 +16,43 @@ export async function GET(
   try {
     const { courseId } = await params;
 
-    // Authenticate user
+    // Try to authenticate user (optional for guest users)
     const auth = await authenticateRequest(request);
-    if (!auth) {
+    const guestSessionId = getGuestSessionIdFromRequest(request);
+
+    // Must have either authentication or guest session
+    if (!auth && !guestSessionId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
+    const admin = getServiceSupabase();
 
-    // Get course with note and config
-    const { data: course, error } = await supabase
-      .from('courses')
-      .select('id, aplus_note, note_config')
-      .eq('id', courseId)
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
+    let course;
+    let error;
+
+    if (auth) {
+      // Authenticated user: must own the course
+      const result = await supabase
+        .from('courses')
+        .select('id, aplus_note, note_config')
+        .eq('id', courseId)
+        .eq('user_id', auth.user.id)
+        .maybeSingle();
+      course = result.data;
+      error = result.error;
+    } else {
+      // Guest user: course must have no user_id and matching guest_session_id
+      const result = await admin
+        .from('courses')
+        .select('id, aplus_note, note_config')
+        .eq('id', courseId)
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId)
+        .maybeSingle();
+      course = result.data;
+      error = result.error;
+    }
 
     if (error) {
       console.error('Error fetching course:', error);
@@ -54,9 +83,12 @@ export async function PUT(
   try {
     const { courseId } = await params;
 
-    // Authenticate user
+    // Try to authenticate user (optional for guest users)
     const auth = await authenticateRequest(request);
-    if (!auth) {
+    const guestSessionId = getGuestSessionIdFromRequest(request);
+
+    // Must have either authentication or guest session
+    if (!auth && !guestSessionId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -68,14 +100,33 @@ export async function PUT(
     }
 
     const supabase = await createSupabaseServerClient();
+    const admin = getServiceSupabase();
 
-    // Verify course belongs to user
-    const { data: course, error: fetchError } = await supabase
-      .from('courses')
-      .select('id')
-      .eq('id', courseId)
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
+    let course;
+    let fetchError;
+
+    if (auth) {
+      // Authenticated user: must own the course
+      const result = await supabase
+        .from('courses')
+        .select('id')
+        .eq('id', courseId)
+        .eq('user_id', auth.user.id)
+        .maybeSingle();
+      course = result.data;
+      fetchError = result.error;
+    } else {
+      // Guest user: course must have no user_id and matching guest_session_id
+      const result = await admin
+        .from('courses')
+        .select('id')
+        .eq('id', courseId)
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId)
+        .maybeSingle();
+      course = result.data;
+      fetchError = result.error;
+    }
 
     if (fetchError) {
       console.error('Error fetching course:', fetchError);
@@ -86,8 +137,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    // Update the note
-    const { error: updateError } = await supabase
+    // Update the note (use admin client to bypass RLS for guest users)
+    const { error: updateError } = await admin
       .from('courses')
       .update({ aplus_note: content })
       .eq('id', courseId);

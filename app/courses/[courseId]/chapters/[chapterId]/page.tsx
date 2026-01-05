@@ -950,12 +950,32 @@ export default function ChapterQuizPage() {
     );
   }
 
-  if (!currentQuestion) {
+  if (!currentQuestion || questions.length === 0) {
     return (
-      <div className={`min-h-screen flex items-center justify-center transition-colors ${
+      <div className={`min-h-screen flex items-center justify-center p-4 transition-colors ${
         isDark ? 'bg-neutral-900' : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
       }`}>
-        <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('learn_error_question')}</p>
+        <div className={`rounded-2xl border shadow-sm p-8 max-w-md w-full text-center ${
+          isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+        }`}>
+          <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
+            isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+          }`}>
+            <HelpCircle className={`w-8 h-8 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
+          </div>
+          <h2 className={`text-xl font-bold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+            {translate('quiz_no_questions_title') || 'Aucune question disponible'}
+          </h2>
+          <p className={`text-sm mb-6 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+            {translate('quiz_no_questions_desc') || 'Ce chapitre ne contient pas encore de questions. Veuillez régénérer le quiz ou patienter.'}
+          </p>
+          <button
+            onClick={() => router.push(`/courses/${courseId}/learn?tab=quiz`)}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
+          >
+            {translate('back') || 'Retour'}
+          </button>
+        </div>
       </div>
     );
   }

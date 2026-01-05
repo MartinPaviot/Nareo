@@ -148,7 +148,9 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     const fetchNote = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/courses/${courseId}/note`);
+        const response = await fetch(`/api/courses/${courseId}/note`, {
+          credentials: 'include', // Ensure cookies are sent for guest users
+        });
         if (response.ok) {
           const data = await response.json();
           if (data.content) {
@@ -248,6 +250,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ config }),
+        credentials: 'include', // Ensure cookies are sent for guest users
       });
 
       if (!response.ok) {
@@ -381,6 +384,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editContent }),
+        credentials: 'include', // Ensure cookies are sent for guest users
       });
 
       if (!response.ok) {

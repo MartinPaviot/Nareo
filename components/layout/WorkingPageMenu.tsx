@@ -104,6 +104,17 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
 
   return (
     <div className="flex items-center gap-2" ref={menuRef}>
+      {/* Sign up button visible directly for non-logged users */}
+      {!user && (
+        <button
+          onClick={() => router.push('/auth/signup')}
+          className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
+        >
+          <UserPlus className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">{translate('auth_signup_button')}</span>
+        </button>
+      )}
+
       {/* Upgrade Button - Only for non-premium logged-in users */}
       {user && profile && !profile.isPremium && (
         <button

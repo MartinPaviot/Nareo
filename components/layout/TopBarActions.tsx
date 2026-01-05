@@ -14,6 +14,7 @@ interface TopBarActionsProps {
   className?: string;
   hideMyCoursesButton?: boolean;
   showDarkModeToggle?: boolean; // Only show on working pages
+  hideLanguageToggle?: boolean; // Hide language toggle on landing page
 }
 
 // Language options for mobile menu
@@ -23,7 +24,7 @@ const LANGUAGE_OPTIONS: { code: Language; label: string; flag: string }[] = [
   { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
 ];
 
-export default function TopBarActions({ className, hideMyCoursesButton = false, showDarkModeToggle = false }: TopBarActionsProps) {
+export default function TopBarActions({ className, hideMyCoursesButton = false, showDarkModeToggle = false, hideLanguageToggle = false }: TopBarActionsProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { translate, currentLanguage, setLanguage } = useLanguage();
@@ -64,7 +65,6 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
     <>
       {/* Desktop version */}
       <div className={`hidden sm:flex items-center gap-3 ${className || ''}`}>
-        <LanguageToggle />
         {/* Upgrade Button - Only for non-premium logged-in users */}
         {user && !isPremium && (
           <button
@@ -91,14 +91,49 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
             </span>
           </button>
         )}
-        <SignOutButton />
+        {user ? (
+          <SignOutButton />
+        ) : (
+          <>
+            <button
+              onClick={() => router.push('/auth/signin')}
+              className="flex items-center gap-2 h-10 px-4 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              <span className="text-sm font-medium text-gray-700">
+                {translate('auth_signin_button')}
+              </span>
+            </button>
+            <button
+              onClick={() => router.push('/auth/signup')}
+              className="flex items-center gap-2 h-10 px-4 rounded-full text-white transition-all duration-200 shadow-sm hover:shadow-md"
+              style={{ backgroundColor: '#ff751f' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
+            >
+              <span className="text-sm font-medium">
+                {translate('auth_signup_button')}
+              </span>
+            </button>
+          </>
+        )}
+        {!hideLanguageToggle && <LanguageToggle />}
       </div>
 
       {/* Mobile version - hamburger menu */}
-      <div className="sm:hidden relative">
+      <div className="sm:hidden flex items-center gap-2">
+        {/* Sign up button visible directly on mobile for non-logged users */}
+        {!user && (
+          <button
+            onClick={() => router.push('/auth/signup')}
+            className="flex items-center h-9 px-3 rounded-full text-white text-sm font-medium transition-all duration-200 shadow-sm"
+            style={{ backgroundColor: '#ff751f' }}
+          >
+            {translate('auth_signup_button')}
+          </button>
+        )}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+          className="relative flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
           aria-label="Menu"
         >
           {mobileMenuOpen ? (

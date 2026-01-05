@@ -307,11 +307,13 @@ export async function POST(
               const chapterConcepts = conceptsByChapter.get(chapter.id) || [];
               const chapterText = chapter.source_text || '';
 
-              if (!chapterText) {
-                console.warn(`Chapter ${chapter.id} has no source text, skipping`);
+              if (!chapterText || chapterText.trim().length < 100) {
+                console.warn(`[quiz-generate] Chapter ${chapter.id} "${chapter.title}" has insufficient source text (${chapterText?.length || 0} chars), skipping`);
                 await admin.from('chapters').update({ status: 'ready' }).eq('id', chapter.id);
                 continue;
               }
+
+              console.log(`[quiz-generate] Processing chapter ${chapterIndex}/${totalChapters}: "${chapter.title}" (${chapterText.length} chars, ${chapterConcepts.length} concepts)`);
 
               const coverageMap = new Map<string, number>();
               chapterConcepts.forEach(c => coverageMap.set(c.id, 0));
@@ -330,22 +332,32 @@ export async function POST(
                   questionsGenerated: totalQuestionsGenerated
                 });
 
-                const generated = await generateMixedQuiz(
-                  {
-                    index: chapter.order_index + 1,
-                    title: chapter.title,
-                    short_summary: chapter.summary || '',
-                    difficulty: chapter.difficulty === 'hard' ? 3 : chapter.difficulty === 'medium' ? 2 : 1,
-                  },
-                  chapterText,
-                  modelLanguage,
-                  quizConfig,
-                  { enableSemanticValidation: true }
-                );
+                let generated;
+                try {
+                  generated = await generateMixedQuiz(
+                    {
+                      index: chapter.order_index + 1,
+                      title: chapter.title,
+                      short_summary: chapter.summary || '',
+                      difficulty: chapter.difficulty === 'hard' ? 3 : chapter.difficulty === 'medium' ? 2 : 1,
+                    },
+                    chapterText,
+                    modelLanguage,
+                    quizConfig,
+                    { enableSemanticValidation: true }
+                  );
+                } catch (genError: any) {
+                  console.error(`[quiz-generate] generateMixedQuiz failed for chapter "${chapter.title}":`, genError.message);
+                  // Continue to next pass or chapter instead of failing completely
+                  pass += 1;
+                  continue;
+                }
 
                 const rawQuestions: any[] = Array.isArray(generated)
                   ? generated
                   : (generated as any).questions || [];
+
+                console.log(`[quiz-generate] Chapter "${chapter.title}" pass ${pass + 1}: generated ${rawQuestions.length} raw questions`);
 
                 // Update progress: deduplication
                 sendProgress({
@@ -362,6 +374,8 @@ export async function POST(
                   chapter.order_index
                 );
                 const questions: any[] = dedupeResult.filtered as any[];
+
+                console.log(`[quiz-generate] Chapter "${chapter.title}" after dedupe: ${questions.length}/${rawQuestions.length} questions kept`);
 
                 // Update progress: saving questions
                 sendProgress({
@@ -512,6 +526,12 @@ export async function POST(
                 pass += 1;
               }
 
+              // Count questions generated for this chapter
+              const { count: chapterQuestionCount } = await admin
+                .from('questions')
+                .select('*', { count: 'exact', head: true })
+                .eq('chapter_id', chapter.id);
+
               // Mark chapter as ready
               await admin
                 .from('chapters')
@@ -519,16 +539,21 @@ export async function POST(
                 .eq('id', chapter.id);
 
               // Update progress: chapter complete
+              const chapterStatus = (chapterQuestionCount || 0) > 0 ? 'terminé ✓' : 'terminé (0 questions)';
               sendProgress({
                 type: 'progress',
-                message: `Chapitre ${chapterIndex}/${totalChapters} terminé ✓`,
+                message: `Chapitre ${chapterIndex}/${totalChapters} ${chapterStatus}`,
                 progress: baseProgress + 10,
                 chapterIndex,
                 totalChapters,
                 questionsGenerated: totalQuestionsGenerated
               });
 
-              console.log(`[quiz-generate] Chapter ${chapter.order_index + 1} (${chapter.title}) quiz generated - ${totalQuestionsGenerated} total questions`);
+              if ((chapterQuestionCount || 0) === 0) {
+                console.warn(`[quiz-generate] WARNING: Chapter "${chapter.title}" completed with 0 questions! Text length: ${chapterText.length}, concepts: ${chapterConcepts.length}`);
+              } else {
+                console.log(`[quiz-generate] Chapter ${chapter.order_index + 1} (${chapter.title}) completed with ${chapterQuestionCount} questions - ${totalQuestionsGenerated} total`);
+              }
 
             } catch (chapterError: any) {
               console.error(`Chapter ${chapter.id} quiz generation failed:`, chapterError);

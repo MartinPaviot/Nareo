@@ -889,19 +889,26 @@ export default function CourseLearnPage() {
                 refetch={refetch}
                 wasPlayingProgressiveQuiz={wasPlayingProgressiveQuiz}
                 onPlayingStateChange={setWasPlayingProgressiveQuiz}
-                onClearProgressiveQuiz={() => {
-                  // Only clear streaming questions if generation is NOT in progress
-                  // This prevents losing quiz data when user completes a quiz while others are still generating
-                  if (!isGeneratingQuiz) {
-                    setStreamingQuestions([]);
-                    if (courseId) {
-                      sessionStorage.removeItem(`progressive_quiz_${courseId}`);
-                    }
-                  }
+                onClearProgressiveQuiz={async () => {
+                  // Clear playing state immediately
                   setWasPlayingProgressiveQuiz(false);
                   if (courseId) {
                     sessionStorage.removeItem(`progressive_quiz_playing_${courseId}`);
                     sessionStorage.removeItem(`progressive_quiz_answers_${courseId}`);
+                  }
+
+                  // Only clear streaming questions if generation is NOT in progress
+                  if (!isGeneratingQuiz) {
+                    // Refetch to ensure we have the latest data from DB
+                    await refetch();
+
+                    // DON'T clear streaming questions immediately - let them persist
+                    // They will be naturally replaced on the next quiz generation
+                    // This prevents the blank screen issue when returning from progressive quiz
+                    // The streaming questions serve as a fallback display until user navigates away
+
+                    // Only clear sessionStorage for answers (not the questions themselves)
+                    // Questions in sessionStorage will be cleared on next generation start
                   }
                 }}
               />

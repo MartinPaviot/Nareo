@@ -269,27 +269,27 @@ export default function GenerationProgress({
     return steps.findIndex(s => s.key === currentStep.key) + 1;
   }, [currentStep, steps]);
 
-  // Build the counter string - format: "X/~Y questions générées"
+  // Build the counter string - format: "X/~Y questions generated"
   const counterText = useMemo(() => {
     if (type === 'quiz' && itemsGenerated !== undefined) {
+      const questionWord = itemsGenerated <= 1 ? translate('gen_question_generated') : translate('gen_questions_generated');
       if (totalItems !== undefined && totalItems > 0) {
-        return `${itemsGenerated}/~${totalItems} questions générées`;
+        return `${itemsGenerated}/~${totalItems} ${questionWord}`;
       }
-      const questionWord = itemsGenerated <= 1 ? 'question générée' : 'questions générées';
       return `${itemsGenerated} ${questionWord}`;
     }
     if (type === 'flashcards' && itemsGenerated !== undefined) {
+      const cardWord = itemsGenerated <= 1 ? translate('gen_card_generated') : translate('gen_cards_generated');
       if (totalItems !== undefined && totalItems > 0) {
-        return `${itemsGenerated}/~${totalItems} cartes générées`;
+        return `${itemsGenerated}/~${totalItems} ${cardWord}`;
       }
-      const cardWord = itemsGenerated <= 1 ? 'carte générée' : 'cartes générées';
       return `${itemsGenerated} ${cardWord}`;
     }
     if (type === 'note' && chapterIndex !== undefined && totalChapters !== undefined) {
-      return `Section ${chapterIndex}/${totalChapters}`;
+      return `${translate('gen_section')} ${chapterIndex}/${totalChapters}`;
     }
     return null;
-  }, [type, itemsGenerated, totalItems, chapterIndex, totalChapters]);
+  }, [type, itemsGenerated, totalItems, chapterIndex, totalChapters, translate]);
 
   // Translate step message
   const translateStepMessage = (step: GenerationStep): string => {

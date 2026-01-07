@@ -292,7 +292,7 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
               onClick={() => setExpanded(!expanded)}
               className={`font-medium mt-1 text-xs hover:underline ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
             >
-              {expanded ? 'Voir moins' : 'Voir plus'}
+              {expanded ? translate('show_less') : translate('show_more')}
             </button>
           )}
         </div>

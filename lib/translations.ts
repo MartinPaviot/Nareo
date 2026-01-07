@@ -22,6 +22,8 @@ export const translations: Record<Language, Translations> = {
     previous: 'Previous',
     submit: 'Submit',
     language_label: 'Language',
+    show_more: 'Show more',
+    show_less: 'Show less',
 
     // Cookie Banner
     cookie_banner_title: 'Cookie Settings',
@@ -1653,6 +1655,11 @@ export const translations: Record<Language, Translations> = {
     quiz_correct_answer_was: 'The correct answer was:',
     quiz_correct_answer_is: 'The correct answer is:',
     quiz_source_excerpt: 'Course excerpt:',
+    gen_questions_generated: 'questions generated',
+    gen_question_generated: 'question generated',
+    gen_cards_generated: 'cards generated',
+    gen_card_generated: 'card generated',
+    gen_section: 'Section',
 
     // Quiz Personalization Screen
     quiz_perso_title: 'Generate your quiz',
@@ -1697,6 +1704,8 @@ export const translations: Record<Language, Translations> = {
     previous: 'Précédent',
     submit: 'Soumettre',
     language_label: 'Langue',
+    show_more: 'Voir plus',
+    show_less: 'Voir moins',
 
     // Cookie Banner
     cookie_banner_title: 'Gestion des cookies',
@@ -3331,6 +3340,11 @@ export const translations: Record<Language, Translations> = {
     quiz_correct_answer_was: 'La bonne réponse était :',
     quiz_correct_answer_is: 'La bonne réponse est :',
     quiz_source_excerpt: 'Extrait du cours :',
+    gen_questions_generated: 'questions générées',
+    gen_question_generated: 'question générée',
+    gen_cards_generated: 'cartes générées',
+    gen_card_generated: 'carte générée',
+    gen_section: 'Section',
 
     // Quiz Personalization Screen
     quiz_perso_title: 'Génère ton quiz',
@@ -3375,6 +3389,8 @@ export const translations: Record<Language, Translations> = {
     previous: 'Vorherige',
     submit: 'Absenden',
     language_label: 'Sprache',
+    show_more: 'Mehr anzeigen',
+    show_less: 'Weniger anzeigen',
 
     // Cookie Banner
     cookie_banner_title: 'Cookie-Einstellungen',
@@ -5009,6 +5025,11 @@ export const translations: Record<Language, Translations> = {
     quiz_correct_answer_was: 'Die richtige Antwort war:',
     quiz_correct_answer_is: 'Die richtige Antwort ist:',
     quiz_source_excerpt: 'Kursauszug:',
+    gen_questions_generated: 'Fragen generiert',
+    gen_question_generated: 'Frage generiert',
+    gen_cards_generated: 'Karten generiert',
+    gen_card_generated: 'Karte generiert',
+    gen_section: 'Abschnitt',
 
     // Quiz Personalization Screen
     quiz_perso_title: 'Quiz generieren',

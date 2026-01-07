@@ -682,15 +682,18 @@ export default function QuizChapterManagement({
       )}
 
       {/* Progressive Quiz View - shown when user chooses to play during generation OR when resuming */}
-      {isPlayingProgressiveQuiz && streamingQuestions.length > 0 && (
+      {/* Note: We check streamingQuestions.length > 0 to ensure we have questions to display */}
+      {/* If streamingQuestions is empty but isPlayingProgressiveQuiz is true, we fall through to show chapters */}
+      {isPlayingProgressiveQuiz && streamingQuestions.length > 0 ? (
         <div className="space-y-4">
           {/* Back button to return to chapters view */}
           <button
-            onClick={() => {
+            onClick={async () => {
               setIsPlayingProgressiveQuiz(false);
               // If generation is complete, clear the progressive quiz state
+              // The parent's onClearProgressiveQuiz handles refetch before clearing
               if (!isGenerating) {
-                onClearProgressiveQuiz?.();
+                await onClearProgressiveQuiz?.();
               }
             }}
             className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${
@@ -706,28 +709,29 @@ export default function QuizChapterManagement({
             questionsGenerated={streamingQuestions.length}
             totalQuestions={undefined}
             progressMessage={generationMessage}
-            onComplete={(score, answers) => {
+            onComplete={async (score, answers) => {
               console.log('Progressive quiz completed:', { score, answers });
               setIsPlayingProgressiveQuiz(false);
               // Clear progressive quiz state after completion
-              onClearProgressiveQuiz?.();
-              // Refetch to update chapter data
-              refetch();
+              // The parent's onClearProgressiveQuiz now handles refetch internally
+              // to ensure data is loaded before clearing streaming questions
+              await onClearProgressiveQuiz?.();
             }}
             courseId={courseId}
           />
         </div>
-      )}
+      ) : null}
 
-      {/* Chapters list - hide when playing progressive quiz */}
-      {!isPlayingProgressiveQuiz && chapters.length === 0 && !isGenerating ? (
+      {/* Chapters list - show when NOT playing progressive quiz OR when streamingQuestions is empty (fallback) */}
+      {/* This ensures chapters are always visible after quiz completion, even if state is briefly inconsistent */}
+      {(!isPlayingProgressiveQuiz || streamingQuestions.length === 0) && chapters.length === 0 && !isGenerating ? (
         <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
           isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
         }`}>
           <AlertCircle className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-neutral-600' : 'text-gray-400'}`} />
           <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('quiz_no_chapters')}</p>
         </div>
-      ) : !isPlayingProgressiveQuiz && chapters.length > 0 ? (
+      ) : (!isPlayingProgressiveQuiz || streamingQuestions.length === 0) && chapters.length > 0 ? (
         <div className={`rounded-2xl border shadow-sm divide-y transition-colors ${
           isDark ? 'bg-neutral-900 border-neutral-800 divide-neutral-800' : 'bg-white border-gray-200 divide-gray-100'
         }`}>

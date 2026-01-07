@@ -536,13 +536,13 @@ export default function UploadZone() {
         <div
           className="mt-4 rounded-xl border p-3 text-sm"
           style={{
-            borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)',
-            backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : 'rgba(217, 26, 28, 0.1)',
-            color: isDark ? '#e94446' : '#d91a1c'
+            borderColor: 'rgba(217, 26, 28, 0.3)',
+            backgroundColor: isDark ? 'rgba(217, 26, 28, 0.15)' : '#fff6f3',
+            color: '#d91a1c'
           }}
         >
-          <p className="font-semibold mb-1">{translate('upload_error_state')}</p>
-          <p>{error || translate('upload_error_state_help')}</p>
+          <p className="font-semibold">{translate('upload_error_state')}</p>
+          <p className="text-xs mt-1 opacity-80">{translate('upload_error_state_help')}</p>
         </div>
       )}
 

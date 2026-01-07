@@ -26,7 +26,7 @@ const ACCEPTED_TYPES = [
   'application/msword',
 ];
 
-const MAX_IMAGES = 6;
+const MAX_IMAGES = 10;
 
 function formatSize(bytes: number) {
   if (!bytes) return '';
@@ -51,10 +51,11 @@ export default function UploadZone() {
     existingCourseDate: string;
   } | null>(null);
   const [skipDuplicateCheck, setSkipDuplicateCheck] = useState(false);
+  const [isFromCamera, setIsFromCamera] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleFiles = (incoming: FileList | null) => {
+  const handleFiles = (incoming: FileList | null, source: 'file_picker' | 'camera' | 'drop' = 'file_picker') => {
     if (!incoming) return;
     const selected = Array.from(incoming).filter((file) =>
       ACCEPTED_TYPES.includes(file.type)
@@ -73,7 +74,7 @@ export default function UploadZone() {
     const existingImages = files.filter((f) => f.type.startsWith('image/'));
     const existingDocuments = files.filter((f) => !f.type.startsWith('image/'));
 
-    // Rule: Only 1 document allowed (PDF, DOCX) OR multiple images (max 6)
+    // Rule: Only 1 document allowed (PDF, DOCX) OR multiple images (max 10)
     // Cannot mix documents and images
 
     // If user already has a document and tries to add more files
@@ -109,21 +110,118 @@ export default function UploadZone() {
       return;
     }
 
-    // Set files: either 1 document or up to 6 images
+    // Set files: either 1 document or up to MAX_IMAGES images
+    let newFiles: File[] = [];
     if (incomingDocuments.length === 1) {
-      setFiles([incomingDocuments[0]]);
+      newFiles = [incomingDocuments[0]];
     } else if (incomingImages.length > 0) {
       // Add incoming images to existing images
-      const newImages = [...existingImages, ...incomingImages].slice(0, MAX_IMAGES);
-      setFiles(newImages);
+      newFiles = [...existingImages, ...incomingImages].slice(0, MAX_IMAGES);
     }
+
+    setFiles(newFiles);
     setError(null);
+
+    // Track if files came from camera
+    const cameraSource = source === 'camera';
+    setIsFromCamera(cameraSource);
+
+    // Auto-start upload for non-camera sources (file picker, drag & drop)
+    if (!cameraSource && newFiles.length > 0) {
+      setTimeout(() => {
+        handleStartWithFiles(newFiles);
+      }, 100);
+    }
   };
 
   const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    handleFiles(event.dataTransfer.files);
+    handleFiles(event.dataTransfer.files, 'drop');
+  };
+
+  // Upload with files passed directly (used for auto-upload)
+  const handleStartWithFiles = async (filesToUpload: File[]) => {
+    if (!filesToUpload.length) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      // Check for duplicate course (only for authenticated users and if not already confirmed)
+      if (user && !skipDuplicateCheck) {
+        const checkResponse = await fetch('/api/courses/check-duplicate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: filesToUpload[0].name }),
+          credentials: 'include',
+        });
+        const checkData = await checkResponse.json();
+
+        if (checkData.isDuplicate && checkData.existingCourse) {
+          setDuplicateInfo({
+            filename: filesToUpload[0].name,
+            existingCourseTitle: checkData.existingCourse.title,
+            existingCourseDate: checkData.existingCourse.createdAt,
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      await performUploadWithFiles(filesToUpload);
+    } catch (uploadError) {
+      console.error('Upload error', uploadError);
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : translate('upload_error_state')
+      );
+      setIsProcessing(false);
+    }
+  };
+
+  const performUploadWithFiles = async (filesToUpload: File[]) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', filesToUpload[0]);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        if (data?.code === 'UPLOAD_LIMIT_REACHED') {
+          setShowUploadLimitModal(true);
+          setIsProcessing(false);
+          return;
+        }
+        throw new Error(data?.error || 'Upload failed');
+      }
+
+      // Redirect IMMEDIATELY - don't wait for anything else
+      if (data.courseId) {
+        trackEvent('upload_success', { userId: user?.id, courseId: data.courseId });
+        router.push(`/courses/${data.courseId}/learn`);
+        return; // Exit immediately after redirect
+      } else {
+        throw new Error('No courseId returned from upload');
+      }
+    } catch (uploadError) {
+      console.error('Upload error', uploadError);
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : translate('upload_error_state')
+      );
+      setIsProcessing(false);
+      setSkipDuplicateCheck(false);
+    }
   };
 
   const handleStart = async () => {
@@ -191,8 +289,14 @@ export default function UploadZone() {
         throw new Error(data?.error || 'Upload failed');
       }
 
-      trackEvent('upload_success', { userId: user?.id, courseId: data.courseId });
-      router.push(`/courses/${data.courseId}/learn`);
+      // Redirect IMMEDIATELY - don't wait for anything else
+      if (data.courseId) {
+        trackEvent('upload_success', { userId: user?.id, courseId: data.courseId });
+        router.push(`/courses/${data.courseId}/learn`);
+        return; // Exit immediately after redirect
+      } else {
+        throw new Error('No courseId returned from upload');
+      }
     } catch (uploadError) {
       console.error('Upload error', uploadError);
       setError(
@@ -200,7 +304,6 @@ export default function UploadZone() {
           ? uploadError.message
           : translate('upload_error_state')
       );
-    } finally {
       setIsProcessing(false);
       setSkipDuplicateCheck(false);
     }
@@ -235,7 +338,8 @@ export default function UploadZone() {
         </div>
       );
     }
-    if (files.length) {
+    // Only show "Ready for analysis" badge for camera uploads
+    if (files.length && isFromCamera) {
       return (
         <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold ${
           isDark
@@ -297,7 +401,7 @@ export default function UploadZone() {
           multiple
           accept={ACCEPTED_TYPES.join(',')}
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => handleFiles(e.target.files, 'file_picker')}
         />
         <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-3">
           {/* Icon */}
@@ -348,8 +452,9 @@ export default function UploadZone() {
               type="file"
               accept="image/*"
               capture="environment"
+              multiple
               className="hidden"
-              onChange={(e) => handleFiles(e.target.files)}
+              onChange={(e) => handleFiles(e.target.files, 'camera')}
             />
           </div>
 
@@ -361,14 +466,15 @@ export default function UploadZone() {
       </label>
 
 
-      {files.length > 0 && (
+      {/* Show files list and Generate button only for camera uploads */}
+      {files.length > 0 && isFromCamera && (
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
             <p className={`text-sm font-semibold ${isDark ? 'text-neutral-200' : 'text-gray-800'}`}>
               {translate('upload_selected_files')}
             </p>
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => cameraInputRef.current?.click()}
               className={`text-xs font-semibold ${isDark ? 'text-orange-400 hover:text-orange-300' : 'text-orange-600 hover:text-orange-700'}`}
             >
               {translate('upload_replace_files')}
@@ -405,6 +511,24 @@ export default function UploadZone() {
               </div>
             ))}
           </div>
+          {/* Generate button for camera uploads */}
+          <button
+            onClick={handleStart}
+            disabled={isProcessing}
+            className="w-full mt-4 px-5 py-3 rounded-xl text-white text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ backgroundColor: '#ff751f' }}
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+            onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
+          >
+            {isProcessing ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {translate('upload_processing_title')}
+              </span>
+            ) : (
+              translate('home_upload_cta_selected')
+            )}
+          </button>
         </div>
       )}
 
@@ -422,18 +546,6 @@ export default function UploadZone() {
         </div>
       )}
 
-      {isProcessing && (
-        <div className={`mt-4 rounded-xl border p-3 text-sm ${
-          isDark
-            ? 'border-orange-800/50 bg-orange-950/30 text-orange-400'
-            : 'border-orange-100 bg-orange-50 text-orange-800'
-        }`}>
-          <p className="font-semibold">{translate('upload_processing_title')}</p>
-          <p className={`text-xs mt-1 ${isDark ? 'text-orange-500' : 'text-orange-700'}`}>
-            {translate('upload_processing_subtitle')}
-          </p>
-        </div>
-      )}
 
       {showUploadLimitModal && (
         <UploadLimitModal onClose={() => setShowUploadLimitModal(false)} />

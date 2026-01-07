@@ -10,7 +10,7 @@ interface CourseLevelProps {
   folderName: string;
   folderId: string;
   courses: Course[];
-  currentCourseId: string;
+  currentCourseId?: string;
   folders: Folder[];
   onBack: () => void;
   onCourseClick: (courseId: string) => void;

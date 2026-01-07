@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Loader2, Download, Copy, Check, Sparkles, RotateCcw, Pencil, X, Save, UserPlus } from 'lucide-react';
+import { Loader2, Download, Copy, Check, RotateCcw, Pencil, X, Save, UserPlus } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -473,57 +473,46 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     // Show generation in progress with streaming content
     if (generating) {
       return (
-        <div className={`rounded-2xl border shadow-sm transition-colors ${
-          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-        }`}>
-          {/* Header with progress */}
-          <div className={`p-4 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                isDark ? 'bg-orange-500/20' : 'bg-orange-100'
-              }`}>
-                <Sparkles className="w-5 h-5 text-orange-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className={`text-lg font-semibold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-                  {translate('note_generating_title')}
-                </h3>
-                <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                  {translateProgressMessage(generationMessage, translate) || translate('gen_streaming_in_progress')}
-                </p>
-              </div>
-            </div>
-            <GenerationProgress
+        <div className="space-y-4">
+          {/* Show GenerationLoadingScreen when no content yet */}
+          {!streamingContent && (
+            <GenerationLoadingScreen
               type="note"
               progress={generationProgress}
-              message={generationMessage}
-              chapterIndex={sectionIndex}
-              totalChapters={totalSections}
-              chapterTitle={currentSection}
-              compact
+              progressMessage={generationMessage}
+              itemsGenerated={sectionIndex}
+              totalItems={totalSections}
             />
-          </div>
-
-          {/* Streaming content */}
-          {streamingContent && (
-            <div className="p-6">
-              <StreamingMarkdownView
-                content={streamingContent}
-                isStreaming={true}
-                showCursor={true}
-                autoScroll={true}
-                maxHeight="60vh"
-              />
-            </div>
           )}
 
-          {/* Placeholder when no content yet */}
-          {!streamingContent && (
-            <div className="p-8 text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-4" />
-              <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                {translate('gen_streaming_in_progress')}
-              </p>
+          {/* Streaming content - shown once content starts arriving */}
+          {streamingContent && (
+            <div className={`rounded-2xl border shadow-sm transition-colors ${
+              isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+            }`}>
+              {/* Header with progress */}
+              <div className={`p-4 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
+                <GenerationProgress
+                  type="note"
+                  progress={generationProgress}
+                  message={generationMessage}
+                  chapterIndex={sectionIndex}
+                  totalChapters={totalSections}
+                  chapterTitle={currentSection}
+                  compact
+                />
+              </div>
+
+              {/* Streaming content */}
+              <div className="p-6">
+                <StreamingMarkdownView
+                  content={streamingContent}
+                  isStreaming={true}
+                  showCursor={true}
+                  autoScroll={true}
+                  maxHeight="60vh"
+                />
+              </div>
             </div>
           )}
         </div>
@@ -658,54 +647,46 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
 
       {/* Regeneration streaming view - replaces note content during regeneration */}
       {generating && noteContent && (
-        <div className={`rounded-2xl border shadow-sm transition-colors mb-4 ${
-          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-        }`}>
-          {/* Header with progress */}
-          <div className={`p-4 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                isDark ? 'bg-orange-500/20' : 'bg-orange-100'
-              }`}>
-                <Sparkles className="w-5 h-5 text-orange-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className={`text-lg font-semibold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-                  {translate('aplus_note_regenerating')}
-                </h3>
-                <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                  {translateProgressMessage(generationMessage, translate) || translate('gen_streaming_in_progress')}
-                </p>
-              </div>
-            </div>
-            <GenerationProgress
+        <div className="space-y-4 mb-4">
+          {/* Show GenerationLoadingScreen when no content yet */}
+          {!streamingContent && (
+            <GenerationLoadingScreen
               type="note"
               progress={generationProgress}
-              message={generationMessage}
-              chapterIndex={sectionIndex}
-              totalChapters={totalSections}
-              chapterTitle={currentSection}
-              compact
+              progressMessage={generationMessage}
+              itemsGenerated={sectionIndex}
+              totalItems={totalSections}
             />
-          </div>
+          )}
 
-          {/* Streaming content */}
-          {streamingContent ? (
-            <div className="p-6">
-              <StreamingMarkdownView
-                content={streamingContent}
-                isStreaming={true}
-                showCursor={true}
-                autoScroll={true}
-                maxHeight="60vh"
-              />
-            </div>
-          ) : (
-            <div className="p-8 text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-4" />
-              <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                {translate('gen_streaming_in_progress')}
-              </p>
+          {/* Streaming content - shown once content starts arriving */}
+          {streamingContent && (
+            <div className={`rounded-2xl border shadow-sm transition-colors ${
+              isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+            }`}>
+              {/* Header with progress */}
+              <div className={`p-4 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
+                <GenerationProgress
+                  type="note"
+                  progress={generationProgress}
+                  message={generationMessage}
+                  chapterIndex={sectionIndex}
+                  totalChapters={totalSections}
+                  chapterTitle={currentSection}
+                  compact
+                />
+              </div>
+
+              {/* Streaming content */}
+              <div className="p-6">
+                <StreamingMarkdownView
+                  content={streamingContent}
+                  isStreaming={true}
+                  showCursor={true}
+                  autoScroll={true}
+                  maxHeight="60vh"
+                />
+              </div>
             </div>
           )}
         </div>

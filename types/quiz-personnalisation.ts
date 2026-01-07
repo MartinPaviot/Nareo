@@ -47,21 +47,21 @@ export const NIVEAU_QUANTITE_OPTIONS = [
     value: 'synthetique' as const,
     label: 'Synthétique',
     icon: '⚡',
-    description: '~3 questions/chapitre',
+    description: '5 questions/chapitre',
     multiplier: 0.5,
   },
   {
     value: 'standard' as const,
     label: 'Standard',
     icon: '📚',
-    description: '~5 questions/chapitre',
+    description: '10 questions/chapitre',
     multiplier: 1.0,
   },
   {
     value: 'exhaustif' as const,
     label: 'Exhaustif',
     icon: '🎯',
-    description: '~8 questions/chapitre',
+    description: 'Maximum de questions',
     multiplier: 1.5,
   },
 ] as const;
@@ -89,23 +89,26 @@ export const QUIZ_TYPES_OPTIONS = [
 
 /**
  * Calcule le nombre de questions ajusté selon le niveau
+ * IMPORTANT: Les valeurs sont FIXES pour synthétique et standard
+ * - Synthétique: TOUJOURS 5 questions par chapitre
+ * - Standard: TOUJOURS 10 questions par chapitre
+ * - Exhaustif: Au moins 12, ou plus si le contenu le permet
  */
 export function getAdjustedQuestionCount(
   baseCount: number,
   niveau: NiveauQuantite
 ): number {
-  const multipliers: Record<NiveauQuantite, number> = {
-    synthetique: 0.5,
-    standard: 1.0,
-    exhaustif: 1.5,
-  };
-  // Minimum questions par niveau pour garantir une couverture suffisante
-  const minimums: Record<NiveauQuantite, number> = {
-    synthetique: 3,
-    standard: 5,
-    exhaustif: 8,
-  };
-  return Math.max(minimums[niveau], Math.round(baseCount * multipliers[niveau]));
+  // Valeurs FIXES pour synthétique et standard, adaptatives pour exhaustif
+  switch (niveau) {
+    case 'synthetique':
+      return 5; // TOUJOURS 5 questions
+    case 'standard':
+      return 10; // TOUJOURS 10 questions
+    case 'exhaustif':
+      return Math.max(12, Math.round(baseCount * 1.5)); // Au moins 12, ou plus si le contenu le permet
+    default:
+      return 10;
+  }
 }
 
 // ============================================================================

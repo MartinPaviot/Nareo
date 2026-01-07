@@ -384,6 +384,7 @@ export default function HomePage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFromCamera, setIsFromCamera] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pricingBilling, setPricingBilling] = useState<'monthly' | 'annual'>('monthly');
@@ -606,15 +607,29 @@ export default function HomePage() {
       return;
     }
 
-    // Set files: either 1 document or up to 6 images
+    // Set files: either 1 document or up to MAX_IMAGES images
+    let newFiles: File[] = [];
     if (incomingDocuments.length === 1) {
-      setFiles([incomingDocuments[0]]);
+      newFiles = [incomingDocuments[0]];
     } else if (incomingImages.length > 0) {
       // Add incoming images to existing images
-      const newImages = [...existingImages, ...incomingImages].slice(0, MAX_IMAGES);
-      setFiles(newImages);
+      newFiles = [...existingImages, ...incomingImages].slice(0, MAX_IMAGES);
     }
+
+    setFiles(newFiles);
     setError(null);
+
+    // Track if files came from camera (for showing/hiding generate button)
+    const cameraSource = source === 'camera';
+    setIsFromCamera(cameraSource);
+
+    // Auto-start upload for non-camera sources (file picker, drag & drop)
+    if (!cameraSource && newFiles.length > 0) {
+      // Use setTimeout to ensure state is updated before starting upload
+      setTimeout(() => {
+        handleStartWithFiles(newFiles);
+      }, 100);
+    }
   };
 
   const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
@@ -629,6 +644,84 @@ export default function HomePage() {
       trackEvent('home_drag_started', { userId: user?.id });
     }
     setIsDragging(true);
+  };
+
+  // Upload with files passed directly (used for auto-upload on file selection)
+  const handleStartWithFiles = async (filesToUpload: File[]) => {
+    if (!filesToUpload.length) {
+      return;
+    }
+
+    const uploadStartTime = Date.now();
+    const file = filesToUpload[0];
+
+    trackEvent('home_upload_started', {
+      userId: user?.id,
+      isGuest: !user,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      fileSizeMB: (file.size / (1024 * 1024)).toFixed(2),
+      autoTriggered: true,
+    });
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // For guests (not logged in), include guestSessionId for later linking
+      if (!user) {
+        const guestSessionId = getOrCreateGuestSessionId();
+        formData.append('guestSessionId', guestSessionId);
+      }
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+      const uploadDuration = Date.now() - uploadStartTime;
+
+      if (!response.ok) {
+        trackEvent('home_upload_failed', {
+          userId: user?.id,
+          isGuest: !user,
+          error: data?.error,
+          statusCode: response.status,
+          uploadDurationMs: uploadDuration,
+        });
+        throw new Error(data?.error || 'Upload failed');
+      }
+
+      trackEvent('home_upload_success', {
+        userId: user?.id,
+        isGuest: !user,
+        courseId: data.courseId,
+        uploadDurationMs: uploadDuration,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+
+      router.push(`/courses/${data.courseId}/learn`);
+    } catch (uploadError) {
+      console.error('Upload error', uploadError);
+      const errorMessage = uploadError instanceof Error ? uploadError.message : translate('upload_error_state');
+
+      trackEvent('home_upload_error', {
+        userId: user?.id,
+        errorMessage,
+        uploadDurationMs: Date.now() - uploadStartTime,
+      });
+
+      setError(errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleStart = async () => {
@@ -715,7 +808,14 @@ export default function HomePage() {
       fileName: name,
       remainingFiles: files.length - 1,
     });
-    setFiles((prev) => prev.filter((f) => f.name !== name));
+    setFiles((prev) => {
+      const newFiles = prev.filter((f) => f.name !== name);
+      // Reset camera state if all files are removed
+      if (newFiles.length === 0) {
+        setIsFromCamera(false);
+      }
+      return newFiles;
+    });
   };
 
   // Track CTA button clicks
@@ -1272,44 +1372,38 @@ export default function HomePage() {
                 </div>
               )}
 
-              <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleStart}
-                  disabled={isProcessing || !files.length}
-                  className="flex-1 inline-flex items-center justify-center gap-2 h-[60px] md:h-12 rounded-xl text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                  style={{ backgroundColor: '#ff751f' }}
-                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
-                  onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      {translate('upload_processing_title')}
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      {files.length ? translate('home_upload_cta_selected') : translate('home_hero_cta_primary')}
-                    </>
-                  )}
-                </button>
-                <div className="flex-1 h-[60px] md:h-12 inline-flex items-center justify-center rounded-xl border border-gray-200 text-sm text-gray-700 bg-white">
-                  {files.length ? translate('upload_after_state_title') : translate('upload_action_waiting')}
+              {/* Only show Generate button and status badge for camera uploads */}
+              {isFromCamera && files.length > 0 && (
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={handleStart}
+                    disabled={isProcessing || !files.length}
+                    className="flex-1 inline-flex items-center justify-center gap-2 h-[60px] md:h-12 rounded-xl text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                    style={{ backgroundColor: '#ff751f' }}
+                    onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
+                    onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        {translate('upload_processing_title')}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        {translate('home_upload_cta_selected')}
+                      </>
+                    )}
+                  </button>
+                  <div className="flex-1 h-[60px] md:h-12 inline-flex items-center justify-center rounded-xl border border-gray-200 text-sm text-gray-700 bg-white">
+                    {translate('upload_after_state_title')}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {error && (
                 <div className="mt-4 rounded-xl border p-3 text-sm" style={{ borderColor: 'rgba(217, 26, 28, 0.3)', backgroundColor: '#fff6f3', color: '#d91a1c' }}>
                   <p>{error}</p>
-                </div>
-              )}
-
-              {isProcessing && (
-                <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 p-4 text-sm text-orange-800">
-                  <p className="font-semibold flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {translate('upload_processing_title')}
-                  </p>
                 </div>
               )}
 

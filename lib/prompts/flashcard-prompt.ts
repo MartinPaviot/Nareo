@@ -26,12 +26,14 @@ RULE 1 - ATOMICITY:
 - GOOD: Card 1: "WACC stands for?" → "Weighted Average Cost of Capital"
          Card 2: "WACC uses which two components?" → "Equity cost and debt cost"
 
-RULE 2 - MINIMUM INFORMATION:
-- Back/Answer: MAXIMUM 15 words. Aim for 5-10.
-- Front/Question: MAXIMUM 20 words.
-- Remove ALL unnecessary words.
-- BAD: "The WACC represents the weighted average cost of capital for a company, which is used as a discount rate"
-- GOOD: "Coût moyen pondéré du capital"
+RULE 2 - CONCISE BUT COMPLETE:
+- Back/Answer: 10-25 words. Be concise but NEVER sacrifice clarity or precision.
+- Front/Question: MAXIMUM 25 words.
+- Remove filler words, but KEEP all essential distinguishing elements.
+- A definition must be PRECISE enough to distinguish the concept from similar ones.
+- BAD: "Coût moyen pondéré du capital" (too vague - what is it used for? what does it measure?)
+- BAD: "The WACC represents the weighted average cost of capital for a company, which is used as a discount rate in financial calculations to determine present value" (too long)
+- GOOD: "Taux moyen de financement d'une entreprise (dette + capitaux propres), utilisé comme taux d'actualisation"
 
 RULE 3 - NO AMBIGUITY:
 - Only ONE correct answer possible.
@@ -73,6 +75,16 @@ RULE 7 - FORMULAS DECOMPOSED:
 RULE 8 - SUFFICIENT CONTEXT:
 - The question must contain enough context to find the answer.
 - Add qualifiers if needed: "In finance...", "According to CAPM...", "In the context of..."
+- The answer must also provide context when the term alone is ambiguous.
+
+RULE 8b - DEFINITIONS MUST BE MEANINGFUL:
+- A definition must explain WHAT the concept IS and WHY it matters or HOW it's used.
+- Never give just a translation or synonym as a definition.
+- Include: purpose, function, or distinguishing characteristic.
+- BAD: "Liquidité?" → "Capacité à être converti en cash" (incomplete)
+- GOOD: "Liquidité (finance)?" → "Facilité et rapidité avec laquelle un actif peut être converti en cash sans perte de valeur significative"
+- BAD: "Beta (β)?" → "Mesure du risque" (too vague)
+- GOOD: "Beta (β) en finance?" → "Coefficient mesurant la sensibilité d'un actif aux mouvements du marché (β=1: suit le marché, β>1: plus volatile)"
 
 RULE 9 - ANTI-INTERFERENCE:
 - Similar concepts need DISTINCTIVE questions.

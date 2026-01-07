@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { FolderPlus, Upload, Inbox, MessageCircleQuestion } from 'lucide-react';
+import { FolderPlus, Upload, Inbox, MessageCircleQuestion, Folder as FolderIcon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import SearchInput from './SearchInput';
 import FolderItem from './FolderItem';
 import CourseItem from './CourseItem';
+import ReviewsSection from './ReviewsSection';
 import type { Folder, Course } from '@/lib/courses/types';
 
 interface FolderLevelProps {
   folders: Folder[];
   uncategorized: Course[];
   activeFolderId: string | null;
-  currentCourseId: string;
+  currentCourseId?: string;
   onFolderClick: (folderId: string, folderName: string) => void;
   onCourseClick: (courseId: string) => void;
   onCreateFolder: () => void;
@@ -101,6 +102,9 @@ export default function FolderLevel({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4">
+        {/* Reviews section - shown only when not searching */}
+        {!filteredData.isSearching && <ReviewsSection />}
+
         {hasNoContent ? (
           // Empty state
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -128,11 +132,18 @@ export default function FolderLevel({
             {/* Folders section */}
             {filteredData.folders.length > 0 && (
               <div className="mb-4">
-                <p className={`text-xs font-semibold uppercase tracking-wider px-1 mb-2 ${
-                  isDark ? 'text-neutral-500' : 'text-gray-500'
-                }`}>
-                  {translate('sidebar_my_folders') || 'Mes dossiers'}
-                </p>
+                {/* Separator after reviews section */}
+                {!filteredData.isSearching && (
+                  <div className={`border-t mb-4 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`} />
+                )}
+                <div className={`flex items-center gap-1.5 px-1 mb-2`}>
+                  <FolderIcon className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`} />
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${
+                    isDark ? 'text-neutral-500' : 'text-gray-500'
+                  }`}>
+                    {translate('sidebar_my_folders') || 'Mes dossiers'}
+                  </p>
+                </div>
                 <div className="space-y-1">
                   {filteredData.folders.map((folder) => (
                     <FolderItem

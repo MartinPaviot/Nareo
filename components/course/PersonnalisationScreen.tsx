@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Loader2,
   ChevronDown,
@@ -11,26 +11,15 @@ import {
   Lightbulb,
   FileText,
   Calculator,
-  GraduationCap,
-  Scale,
-  TrendingUp,
-  FlaskConical,
-  Globe,
-  Languages,
-  Code,
-  Stethoscope,
-  HelpCircle,
   Layers
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   PersonnalisationConfig,
-  Matiere,
   NiveauDetail,
   RecapsConfig,
   DEFAULT_CONFIG,
-  DEFAULT_RECAPS_BY_MATIERE,
 } from '@/types/personnalisation';
 
 interface PersonnalisationScreenProps {
@@ -40,18 +29,6 @@ interface PersonnalisationScreenProps {
   isGenerating?: boolean;
   initialConfig?: PersonnalisationConfig; // Config initiale pour pré-remplir (régénération)
 }
-
-// Matières avec labels traduits via clés
-const MATIERES = [
-  { value: 'droit', labelKey: 'subject_law', icon: Scale, iconColor: 'text-amber-600' },
-  { value: 'economie', labelKey: 'subject_economics', icon: TrendingUp, iconColor: 'text-emerald-600' },
-  { value: 'sciences', labelKey: 'subject_sciences', icon: FlaskConical, iconColor: 'text-violet-600' },
-  { value: 'histoire-geo', labelKey: 'subject_history_geo', icon: Globe, iconColor: 'text-blue-600' },
-  { value: 'langues', labelKey: 'subject_languages', icon: Languages, iconColor: 'text-rose-600' },
-  { value: 'informatique', labelKey: 'subject_computer_science', icon: Code, iconColor: 'text-cyan-600' },
-  { value: 'medecine', labelKey: 'subject_medicine', icon: Stethoscope, iconColor: 'text-rose-600' },
-  { value: 'autre', labelKey: 'subject_other', icon: HelpCircle, iconColor: 'text-slate-500' },
-] as const;
 
 // Niveaux avec clés de traduction
 const NIVEAUX = [
@@ -76,37 +53,24 @@ export default function PersonnalisationScreen({
   const { translate } = useLanguage();
 
   // Utiliser initialConfig si fournie (régénération), sinon les défauts
-  const [matiere, setMatiere] = useState<Matiere>(initialConfig?.matiere ?? DEFAULT_CONFIG.matiere);
   const [niveau, setNiveau] = useState<NiveauDetail>(initialConfig?.niveau ?? DEFAULT_CONFIG.niveau);
   const [recaps, setRecaps] = useState<RecapsConfig>(initialConfig?.recaps ?? DEFAULT_CONFIG.recaps);
 
-  // Track si l'utilisateur a manuellement modifié les récaps
-  const [recapsManuallySet, setRecapsManuallySet] = useState(!!initialConfig);
-
   // Accordion states - un seul ouvert à la fois
-  const [openSection, setOpenSection] = useState<'matiere' | 'niveau' | 'recaps' | null>(null);
-
-  // Update recaps when matiere changes (sauf si déjà modifiés manuellement ou initialConfig fournie)
-  useEffect(() => {
-    if (!recapsManuallySet) {
-      setRecaps(DEFAULT_RECAPS_BY_MATIERE[matiere]);
-    }
-  }, [matiere, recapsManuallySet]);
+  const [openSection, setOpenSection] = useState<'niveau' | 'recaps' | null>(null);
 
   const handleRecapToggle = (key: keyof RecapsConfig) => {
-    setRecapsManuallySet(true); // L'utilisateur a modifié manuellement
     setRecaps((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleGenerate = () => {
-    onGenerate({ matiere, niveau, recaps });
+    onGenerate({ matiere: DEFAULT_CONFIG.matiere, niveau, recaps });
   };
 
-  const toggleSection = (section: 'matiere' | 'niveau' | 'recaps') => {
+  const toggleSection = (section: 'niveau' | 'recaps') => {
     setOpenSection(openSection === section ? null : section);
   };
 
-  const selectedMatiere = MATIERES.find((m) => m.value === matiere);
   const selectedNiveau = NIVEAUX.find((n) => n.value === niveau);
   const selectedRecapsCount = Object.values(recaps).filter(Boolean).length;
 
@@ -131,75 +95,6 @@ export default function PersonnalisationScreen({
         >
           {translate('study_sheet_subtitle')}
         </p>
-      </div>
-
-      {/* Section Matière */}
-      <div className="mb-2">
-        <button
-          type="button"
-          onClick={() => toggleSection('matiere')}
-          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-            openSection === 'matiere'
-              ? isDark ? 'bg-neutral-800 border border-orange-500/50' : 'bg-orange-50/50 border border-orange-200'
-              : isDark ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600' : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
-          }`}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              isDark ? 'bg-neutral-700' : 'bg-white shadow-sm border border-gray-100'
-            }`}>
-              {selectedMatiere ? (
-                <selectedMatiere.icon className={`w-[18px] h-[18px] ${selectedMatiere.iconColor}`} />
-              ) : (
-                <GraduationCap className={`w-[18px] h-[18px] ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
-              )}
-            </div>
-            <div className="flex flex-col items-start min-w-0">
-              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                {translate('study_sheet_subject_label')}
-              </span>
-              <span className={`text-sm font-semibold truncate ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-                {selectedMatiere ? translate(selectedMatiere.labelKey) : translate('study_sheet_subject_select')}
-              </span>
-            </div>
-          </div>
-          <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${openSection === 'matiere' ? 'rotate-180' : ''} ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
-        </button>
-
-        {openSection === 'matiere' && (
-          <div className={`mt-1 rounded-xl border overflow-hidden ${isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'}`}>
-            {MATIERES.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => { setMatiere(option.value as Matiere); setOpenSection(null); }}
-                className={`w-full text-left px-4 py-3 transition-all flex items-center gap-3 ${
-                  matiere === option.value
-                    ? isDark ? 'bg-neutral-700/50' : 'bg-gray-50'
-                    : isDark ? 'hover:bg-neutral-700/30' : 'hover:bg-gray-50/50'
-                }`}
-              >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  isDark ? 'bg-neutral-700' : 'bg-gray-100'
-                }`}>
-                  <option.icon className={`w-[18px] h-[18px] ${option.iconColor}`} />
-                </div>
-                <span className={`text-sm font-medium flex-1 ${
-                  matiere === option.value
-                    ? isDark ? 'text-white' : 'text-gray-900'
-                    : isDark ? 'text-neutral-300' : 'text-gray-700'
-                }`}>
-                  {translate(option.labelKey)}
-                </span>
-                {matiere === option.value && (
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center bg-orange-500">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Section Niveau */}

@@ -779,11 +779,15 @@ Only create questions that can be directly answered using one of these facts.`
   );
 
   // Phase 5: Apply niveau multiplier from quiz config
+  // Use _quotaOverride if provided (from generateMixedQuiz), otherwise calculate from niveau
   const quizConfig = options?.quizConfig || DEFAULT_QUIZ_CONFIG;
-  const adjustedCount = getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
-  const niveauBlock = getNiveauBlock(quizConfig.niveau, adaptiveCount.count);
+  const quotaOverride = (quizConfig as any)._quotaOverride;
+  const adjustedCount = quotaOverride !== undefined
+    ? quotaOverride
+    : getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
+  const niveauBlock = getNiveauBlock(quizConfig.niveau, adjustedCount);
 
-  console.log(`📊 Adaptive question count: ${adaptiveCount.count} -> ${adjustedCount} (niveau: ${quizConfig.niveau}, objectives: ${adaptiveCount.breakdown.objectives}, concepts: ${adaptiveCount.breakdown.concepts}, facts: ${adaptiveCount.breakdown.facts})`);
+  console.log(`📊 Adaptive question count: ${adaptiveCount.count} -> ${adjustedCount} (niveau: ${quizConfig.niveau}${quotaOverride !== undefined ? ', quota override' : ''}, objectives: ${adaptiveCount.breakdown.objectives}, concepts: ${adaptiveCount.breakdown.concepts}, facts: ${adaptiveCount.breakdown.facts})`);
 
   // Enhanced prompt with source_reference, cognitive_level, and strict quality rules
   const learningObjectives = learningObjectivesArray.length
@@ -978,6 +982,12 @@ ${truncatedText}`;
       }
 
       finalQuestions = semanticResult.validQuestions;
+    }
+
+    // Limit to adjustedCount (respect niveau setting)
+    if (finalQuestions.length > adjustedCount) {
+      console.log(`📏 Limiting from ${finalQuestions.length} to ${adjustedCount} questions (niveau: ${quizConfig.niveau})`);
+      finalQuestions = finalQuestions.slice(0, adjustedCount);
     }
 
     console.log('✅ Generated', finalQuestions.length, 'validated questions for chapter');
@@ -1508,10 +1518,14 @@ IMPORTANT: Each statement's source_reference MUST be one of these verified facts
     preExtractedFacts
   );
 
+  // Use _quotaOverride if provided (from generateMixedQuiz), otherwise calculate from niveau
   const quizConfig = options?.quizConfig || DEFAULT_QUIZ_CONFIG;
-  const adjustedCount = getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
+  const quotaOverride = (quizConfig as any)._quotaOverride;
+  const adjustedCount = quotaOverride !== undefined
+    ? quotaOverride
+    : getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
 
-  console.log(`📊 True/False question count: ${adjustedCount} (niveau: ${quizConfig.niveau})`);
+  console.log(`📊 True/False question count: ${adjustedCount} (niveau: ${quizConfig.niveau}${quotaOverride !== undefined ? ', quota override' : ''})`);
 
   const learningObjectives = learningObjectivesArray.length
     ? `\nLEARNING OBJECTIVES TO TEST:\n${learningObjectivesArray.map((obj, i) => `${i + 1}. ${obj}`).join('\n')}`
@@ -1573,10 +1587,16 @@ IMPORTANT: Each statement's source_reference MUST be one of these verified facts
 
     const content = response.choices[0].message.content;
     const parsed = JSON.parse(content || '{}');
-    const questions = parsed.questions || [];
+    let questions = parsed.questions || [];
 
     if (response.usage) {
       logContext.setTokens(response.usage);
+    }
+
+    // Limit to adjustedCount (respect niveau setting)
+    if (questions.length > adjustedCount) {
+      console.log(`📏 Limiting true/false from ${questions.length} to ${adjustedCount} questions (niveau: ${quizConfig.niveau})`);
+      questions = questions.slice(0, adjustedCount);
     }
 
     console.log('✅ Generated', questions.length, 'true/false questions');
@@ -1646,10 +1666,14 @@ IMPORTANT: Each question's source_reference MUST be one of these verified facts.
     preExtractedFacts
   );
 
+  // Use _quotaOverride if provided (from generateMixedQuiz), otherwise calculate from niveau
   const quizConfig = options?.quizConfig || DEFAULT_QUIZ_CONFIG;
-  const adjustedCount = getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
+  const quotaOverride = (quizConfig as any)._quotaOverride;
+  const adjustedCount = quotaOverride !== undefined
+    ? quotaOverride
+    : getAdjustedQuestionCount(adaptiveCount.count, quizConfig.niveau);
 
-  console.log(`📊 Fill-blank question count: ${adjustedCount} (niveau: ${quizConfig.niveau})`);
+  console.log(`📊 Fill-blank question count: ${adjustedCount} (niveau: ${quizConfig.niveau}${quotaOverride !== undefined ? ', quota override' : ''})`);
 
   const learningObjectives = learningObjectivesArray.length
     ? `\nLEARNING OBJECTIVES TO TEST:\n${learningObjectivesArray.map((obj, i) => `${i + 1}. ${obj}`).join('\n')}`
@@ -1711,10 +1735,16 @@ IMPORTANT: Each question's source_reference MUST be one of these verified facts.
 
     const content = response.choices[0].message.content;
     const parsed = JSON.parse(content || '{}');
-    const questions = parsed.questions || [];
+    let questions = parsed.questions || [];
 
     if (response.usage) {
       logContext.setTokens(response.usage);
+    }
+
+    // Limit to adjustedCount (respect niveau setting)
+    if (questions.length > adjustedCount) {
+      console.log(`📏 Limiting fill-blank from ${questions.length} to ${adjustedCount} questions (niveau: ${quizConfig.niveau})`);
+      questions = questions.slice(0, adjustedCount);
     }
 
     console.log('✅ Generated', questions.length, 'fill-blank questions');
@@ -1772,12 +1802,58 @@ export async function generateMixedQuiz(
     activeTypes.push(['qcm', true]);
   }
 
-  // Generate questions for each active type
+  // Calculate total questions based on niveau
+  // Use _requestedCount override if provided (for deduplication compensation)
+  const totalQuestions = (quizConfig as any)._requestedCount || getAdjustedQuestionCount(10, quizConfig.niveau);
+
+  // Calculate distribution: 60% QCM, 20% Vrai/Faux, 20% Texte à trous
+  // When only some types are active, redistribute proportionally
+  const typeDistribution: Record<string, number> = {
+    qcm: 0.6,
+    vrai_faux: 0.2,
+    texte_trous: 0.2,
+  };
+
+  // Calculate active types' total weight
+  const activeWeight = activeTypes.reduce((sum, [type]) => sum + (typeDistribution[type] || 0), 0);
+
+  // Calculate questions per type, redistributing based on active types
+  const questionsPerType: Record<string, number> = {};
+  let assignedQuestions = 0;
+
+  for (let i = 0; i < activeTypes.length; i++) {
+    const [type] = activeTypes[i];
+    const weight = typeDistribution[type] || 0;
+    const normalizedWeight = weight / activeWeight;
+
+    if (i === activeTypes.length - 1) {
+      // Last type gets remaining questions to ensure total is exact
+      questionsPerType[type] = totalQuestions - assignedQuestions;
+    } else {
+      questionsPerType[type] = Math.round(totalQuestions * normalizedWeight);
+      assignedQuestions += questionsPerType[type];
+    }
+  }
+
+  console.log(`📊 Question distribution for ${totalQuestions} total (niveau: ${quizConfig.niveau}):`, questionsPerType);
+
+  // Generate questions for each active type with its specific quota
   for (const [type] of activeTypes) {
+    const typeQuota = questionsPerType[type] || 0;
+    if (typeQuota === 0) continue;
+
+    // Create a modified quizConfig that will limit to this type's quota
+    // We use a custom niveau that maps to the exact count we want
+    const typeQuizConfig: QuizConfig = {
+      ...quizConfig,
+      // We'll pass quota through a special property and handle it in each generator
+      _quotaOverride: typeQuota,
+    } as QuizConfig & { _quotaOverride?: number };
+
     const sharedOptions = {
       enableSemanticValidation: options?.enableSemanticValidation,
       facts: preExtractedFacts,
-      quizConfig,
+      quizConfig: typeQuizConfig,
     };
 
     let questions: any[] = [];
@@ -1809,6 +1885,13 @@ export async function generateMixedQuiz(
           );
           break;
       }
+
+      // Limit to quota if generator returned more
+      if (questions.length > typeQuota) {
+        console.log(`📏 Limiting ${type} from ${questions.length} to ${typeQuota} questions`);
+        questions = questions.slice(0, typeQuota);
+      }
+
       console.log(`✅ Generated ${questions.length} ${type} questions for "${chapterMetadata.title}"`);
     } catch (typeError: any) {
       console.error(`❌ Failed to generate ${type} questions for "${chapterMetadata.title}":`, typeError.message);

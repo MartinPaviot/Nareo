@@ -28,8 +28,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import ChapterScoreBadge from './ChapterScoreBadge';
 import QuizPersonnalisationScreen from './QuizPersonnalisationScreen';
 import ProgressiveQuizView, { StreamingQuestion } from './ProgressiveQuizView';
+import GenerationProgress from './GenerationProgress';
+import GenerationLoadingScreen from './GenerationLoadingScreen';
 import CreateChallengeModal from '@/components/defi/CreateChallengeModal';
-import { QuizConfig, DEFAULT_QUIZ_CONFIG } from '@/types/quiz-personnalisation';
+import { QuizConfig, DEFAULT_QUIZ_CONFIG, getAdjustedQuestionCount } from '@/types/quiz-personnalisation';
 
 // Question type translation keys
 const QUESTION_TYPE_KEYS: Record<string, string> = {
@@ -95,11 +97,19 @@ interface QuizChapterManagementProps {
   generationMessage?: string; // Current step message
   /** Questions received from streaming during generation */
   streamingQuestions?: StreamingQuestion[];
+  /** Total expected questions from backend */
+  totalExpectedQuestions?: number;
   /** Whether to show the interactive quiz view during generation */
   enableProgressiveQuiz?: boolean;
   hasFullAccess?: boolean;
   isDemoId?: boolean;
   refetch: () => void;
+  /** Whether user was playing progressive quiz (persisted state from parent) */
+  wasPlayingProgressiveQuiz?: boolean;
+  /** Callback to update playing state in parent */
+  onPlayingStateChange?: (playing: boolean) => void;
+  /** Callback to clear progressive quiz state */
+  onClearProgressiveQuiz?: () => void;
 }
 
 export default function QuizChapterManagement({
@@ -114,10 +124,14 @@ export default function QuizChapterManagement({
   generationProgress = 0,
   generationMessage = '',
   streamingQuestions = [],
+  totalExpectedQuestions,
   enableProgressiveQuiz = false,
   hasFullAccess = false,
   isDemoId = false,
   refetch,
+  wasPlayingProgressiveQuiz = false,
+  onPlayingStateChange,
+  onClearProgressiveQuiz,
 }: QuizChapterManagementProps) {
   const router = useRouter();
   const { translate } = useLanguage();
@@ -138,8 +152,20 @@ export default function QuizChapterManagement({
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
 
-  // Progressive quiz state - allows playing during generation
-  const [isPlayingProgressiveQuiz, setIsPlayingProgressiveQuiz] = useState(false);
+  // Progressive quiz state - use parent state if available, otherwise local state
+  // This allows the quiz to persist when navigating away and back
+  const [localPlayingState, setLocalPlayingState] = useState(wasPlayingProgressiveQuiz);
+
+  // Sync local state with parent state
+  useEffect(() => {
+    setLocalPlayingState(wasPlayingProgressiveQuiz);
+  }, [wasPlayingProgressiveQuiz]);
+
+  const isPlayingProgressiveQuiz = localPlayingState;
+  const setIsPlayingProgressiveQuiz = useCallback((playing: boolean) => {
+    setLocalPlayingState(playing);
+    onPlayingStateChange?.(playing);
+  }, [onPlayingStateChange]);
 
   // Form states
   const [selectedChapterId, setSelectedChapterId] = useState<string>('');
@@ -622,39 +648,21 @@ export default function QuizChapterManagement({
         </div>
       </div>
 
-      {/* Generation progress banner OR Progressive Quiz during generation */}
+      {/* Generation progress screen OR Progressive Quiz during generation */}
       {isGenerating && !isPlayingProgressiveQuiz && (
-        <div className={`rounded-2xl border shadow-sm p-4 ${
-          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-        }`}>
-          <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-              isDark ? 'bg-orange-500/20' : 'bg-orange-100'
-            }`}>
-              <Loader2 className="w-5 h-5 text-orange-500 animate-spin" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-                {translate('quiz_generating_title', 'Génération du quiz en cours...')}
-              </p>
-              <p className={`text-xs truncate mb-2 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                {generationMessage || translate('quiz_please_wait', 'Veuillez patienter...')}
-              </p>
-              <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                <div
-                  className="bg-orange-500 h-1.5 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${generationProgress}%` }}
-                />
-              </div>
-            </div>
-            <div className={`text-right flex-shrink-0 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-              <p className="text-lg font-bold text-orange-500">{streamingQuestions.length}</p>
-              <p className="text-xs">{translate('quiz_questions_generated', 'questions')}</p>
-            </div>
-          </div>
+        <div className="space-y-4">
+          <GenerationLoadingScreen
+            type="quiz"
+            progress={generationProgress}
+            progressMessage={generationMessage}
+            itemsGenerated={streamingQuestions.length}
+            totalItems={totalExpectedQuestions}
+          />
           {/* Start now button - appears when at least 1 question is available */}
           {streamingQuestions.length > 0 && enableProgressiveQuiz && (
-            <div className={`mt-4 pt-4 border-t border-dashed ${isDark ? 'border-neutral-700' : 'border-gray-200'}`}>
+            <div className={`rounded-2xl border shadow-sm p-4 ${
+              isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+            }`}>
               <button
                 onClick={() => setIsPlayingProgressiveQuiz(true)}
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
@@ -666,19 +674,25 @@ export default function QuizChapterManagement({
                 </span>
               </button>
               <p className={`text-xs text-center mt-2 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
-                {translate('quiz_start_now_hint', 'Les autres questions arriveront pendant que vous jouez')}
+                {translate('quiz_start_now_hint', 'Les autres questions arriveront pendant que tu te test')}
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Progressive Quiz View - shown when user chooses to play during generation */}
-      {isGenerating && isPlayingProgressiveQuiz && streamingQuestions.length > 0 && (
+      {/* Progressive Quiz View - shown when user chooses to play during generation OR when resuming */}
+      {isPlayingProgressiveQuiz && streamingQuestions.length > 0 && (
         <div className="space-y-4">
-          {/* Back button to return to generation view */}
+          {/* Back button to return to chapters view */}
           <button
-            onClick={() => setIsPlayingProgressiveQuiz(false)}
+            onClick={() => {
+              setIsPlayingProgressiveQuiz(false);
+              // If generation is complete, clear the progressive quiz state
+              if (!isGenerating) {
+                onClearProgressiveQuiz?.();
+              }
+            }}
             className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${
               isDark ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700'
             }`}
@@ -695,6 +709,8 @@ export default function QuizChapterManagement({
             onComplete={(score, answers) => {
               console.log('Progressive quiz completed:', { score, answers });
               setIsPlayingProgressiveQuiz(false);
+              // Clear progressive quiz state after completion
+              onClearProgressiveQuiz?.();
               // Refetch to update chapter data
               refetch();
             }}
@@ -703,15 +719,15 @@ export default function QuizChapterManagement({
         </div>
       )}
 
-      {/* Chapters list */}
-      {chapters.length === 0 && !isGenerating ? (
+      {/* Chapters list - hide when playing progressive quiz */}
+      {!isPlayingProgressiveQuiz && chapters.length === 0 && !isGenerating ? (
         <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
           isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
         }`}>
           <AlertCircle className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-neutral-600' : 'text-gray-400'}`} />
           <p className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('quiz_no_chapters')}</p>
         </div>
-      ) : chapters.length > 0 ? (
+      ) : !isPlayingProgressiveQuiz && chapters.length > 0 ? (
         <div className={`rounded-2xl border shadow-sm divide-y transition-colors ${
           isDark ? 'bg-neutral-900 border-neutral-800 divide-neutral-800' : 'bg-white border-gray-200 divide-gray-100'
         }`}>
@@ -720,12 +736,15 @@ export default function QuizChapterManagement({
             // During generation, consider chapter ready if it has streaming questions
             const streamingChapterData = streamingQuestionsByChapter[chapter.id];
             const streamingCount = streamingChapterData?.questions.length || 0;
-            const totalQuestionCount = chapter.question_count + streamingCount;
-            // Chapter is "ready" (not loading) if:
-            // - status is 'ready' OR
-            // - it has questions (either from DB or streaming) OR
-            // - generation is NOT in progress (even with 0 questions, show as ready with disabled button)
-            const isChapterReady = chapter.status === 'ready' || chapter.question_count > 0 || streamingCount > 0 || !isGenerating;
+            // During generation, ONLY show streaming questions (backend deletes old ones)
+            // After generation, show database count
+            const totalQuestionCount = isGenerating ? streamingCount : chapter.question_count;
+            // Chapter is "ready" (showing play button, not loader) if:
+            // During generation: chapter has streaming questions (questions are being added)
+            // After generation: chapter has questions in DB
+            const isChapterReady = isGenerating
+              ? streamingCount > 0  // During generation: ready only if it has streaming questions
+              : (chapter.status === 'ready' || chapter.question_count > 0); // After: check DB status
             const isExpanded = expandedChapter === chapter.id;
             const chapterQuestions = getChapterQuestions(chapter.id);
 
@@ -759,17 +778,25 @@ export default function QuizChapterManagement({
                       </div>
                       <div className={`flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs ${isDark ? 'text-neutral-500' : 'text-gray-600'}`}>
                         <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${
-                          streamingCount > 0
+                          isGenerating && streamingCount > 0
                             ? isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
                             : isDark ? 'bg-neutral-800' : 'bg-gray-100'
                         }`}>
-                          {streamingCount > 0 && (
+                          {isGenerating && streamingCount > 0 && (
                             <Loader2 className="w-3 h-3 animate-spin" />
                           )}
-                          {totalQuestionCount} questions
-                          {streamingCount > 0 && (
-                            <span className="text-orange-500">+</span>
-                          )}
+                          {(() => {
+                            const targetCount = lastQuizConfig?.niveau !== 'exhaustif'
+                              ? getAdjustedQuestionCount(10, lastQuizConfig?.niveau || 'standard')
+                              : null;
+
+                            if (isGenerating && targetCount !== null) {
+                              const questionLabel = targetCount <= 1 ? 'question' : 'questions';
+                              return `${totalQuestionCount}/${targetCount} ${questionLabel}`;
+                            }
+                            const questionLabel = totalQuestionCount <= 1 ? 'question' : 'questions';
+                            return `${totalQuestionCount} ${questionLabel}`;
+                          })()}
                         </span>
                       </div>
                     </div>
@@ -791,8 +818,8 @@ export default function QuizChapterManagement({
                         </button>
                       )}
 
-                      {/* Score badge */}
-                      {chapter.score !== null && chapter.question_count > 0 && (
+                      {/* Score badge - hide during generation since scores are reset */}
+                      {!isGenerating && chapter.score !== null && chapter.question_count > 0 && (
                         <ChapterScoreBadge
                           scorePts={chapter.score}
                           maxPts={chapter.question_count * 10}
@@ -811,17 +838,10 @@ export default function QuizChapterManagement({
                             ? isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-orange-500/20 hover:text-orange-400' : 'bg-gray-100 text-gray-600 hover:bg-orange-100 hover:text-orange-600'
                             : 'bg-orange-500 text-white hover:bg-orange-600'
                         }`}
-                        title={totalQuestionCount === 0 ? translate('quiz_no_questions') : undefined}
                       >
                         {!isChapterReady ? (
                           <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
-                        ) : totalQuestionCount === 0 ? (
-                          <>
-                            <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span className="hidden sm:inline">0 questions</span>
-                            <span className="sm:hidden">0</span>
-                          </>
-                        ) : chapter.completed ? (
+                        ) : !isGenerating && chapter.completed ? (
                           <>
                             <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
                             Recommencer

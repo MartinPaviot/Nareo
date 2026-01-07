@@ -1139,6 +1139,9 @@ export function cleanAndNormalizePdfText(text: string): string {
   // Step 5: Compress multiple spaces to single space
   text = text.replace(/[ \t]+/g, ' ');
 
+  // Step 5b: Normalize spaced hyphens (e.g., "Qu'est - ce" → "Qu'est-ce")
+  text = text.replace(/\s+-\s+/g, '-');
+
   // Step 6: Normalize line breaks (max 2 consecutive)
   text = text.replace(/\n{3,}/g, '\n\n');
 

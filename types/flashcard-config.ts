@@ -11,10 +11,43 @@
 export type FlashcardNiveau = 'essentiel' | 'complet' | 'exhaustif';
 
 /**
+ * Types de cartes sélectionnables
+ */
+export type FlashcardCardType = 'definition' | 'question' | 'cloze';
+
+/**
+ * Configuration des types de cartes avec allocation en pourcentage
+ */
+export interface FlashcardTypeAllocation {
+  definition: boolean;  // Définition/formule
+  question: boolean;    // Question classique
+  cloze: boolean;       // Texte à trou
+}
+
+/**
+ * Allocation par défaut: 60% définition, 20% question, 20% cloze
+ */
+export const DEFAULT_TYPE_ALLOCATION: FlashcardTypeAllocation = {
+  definition: true,
+  question: true,
+  cloze: true,
+};
+
+/**
+ * Pourcentages d'allocation par type (total = 100%)
+ */
+export const TYPE_ALLOCATION_PERCENTAGES = {
+  definition: 60,
+  question: 20,
+  cloze: 20,
+} as const;
+
+/**
  * Configuration des flashcards
  */
 export interface FlashcardConfig {
   niveau: FlashcardNiveau;
+  types: FlashcardTypeAllocation;
 }
 
 /**
@@ -22,6 +55,7 @@ export interface FlashcardConfig {
  */
 export const DEFAULT_FLASHCARD_CONFIG: FlashcardConfig = {
   niveau: 'complet',
+  types: DEFAULT_TYPE_ALLOCATION,
 };
 
 /**

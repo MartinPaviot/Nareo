@@ -116,6 +116,55 @@ export default function ProgressiveQuizView({
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
   const [isQuizComplete, setIsQuizComplete] = useState(false);
 
+  // Storage key for persisting answers
+  const storageKey = `progressive_quiz_answers_${courseId}`;
+
+  // Restore userAnswers and currentQuestionIndex from sessionStorage on mount
+  useEffect(() => {
+    const savedData = sessionStorage.getItem(storageKey);
+    if (savedData) {
+      try {
+        const { answers, questionIndex } = JSON.parse(savedData);
+        if (Array.isArray(answers) && answers.length > 0) {
+          setUserAnswers(answers);
+          // Restore to the question after the last answered one, or last answered if it's incomplete
+          const lastAnsweredIndex = Math.min(questionIndex ?? answers.length, questions.length - 1);
+          setCurrentQuestionIndex(Math.max(0, lastAnsweredIndex));
+          // If this question was already answered, show feedback
+          const currentAnswer = answers.find((a: UserAnswer) => a.questionId === questions[lastAnsweredIndex]?.id);
+          if (currentAnswer) {
+            setShowFeedback(true);
+            if (currentAnswer.selectedIndex !== undefined) {
+              setSelectedAnswer(currentAnswer.selectedIndex);
+            }
+            if (currentAnswer.textAnswer) {
+              setTextAnswer(currentAnswer.textAnswer);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to restore progressive quiz answers:', e);
+      }
+    }
+  }, [storageKey]); // Only run on mount
+
+  // Persist userAnswers and currentQuestionIndex to sessionStorage
+  useEffect(() => {
+    if (userAnswers.length > 0) {
+      sessionStorage.setItem(storageKey, JSON.stringify({
+        answers: userAnswers,
+        questionIndex: currentQuestionIndex,
+      }));
+    }
+  }, [userAnswers, currentQuestionIndex, storageKey]);
+
+  // Clear storage when quiz is complete
+  useEffect(() => {
+    if (isQuizComplete) {
+      sessionStorage.removeItem(storageKey);
+    }
+  }, [isQuizComplete, storageKey]);
+
   const currentQuestion = questions[currentQuestionIndex];
   const hasMoreQuestions = currentQuestionIndex < questions.length - 1 || isGenerating;
   const canGoNext = currentQuestionIndex < questions.length - 1;

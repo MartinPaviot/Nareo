@@ -5,7 +5,7 @@ import { getServiceSupabase } from '@/lib/supabase';
 import { authenticateRequest } from '@/lib/api-auth';
 import { generateMixedQuiz } from '@/lib/openai-vision';
 import { CourseDeduplicationTracker } from '@/lib/llm';
-import { QuizConfig, DEFAULT_QUIZ_CONFIG } from '@/types/quiz-personnalisation';
+import { QuizConfig, DEFAULT_QUIZ_CONFIG, getAdjustedQuestionCount } from '@/types/quiz-personnalisation';
 
 // Helper to extract guestSessionId from cookies
 function getGuestSessionIdFromRequest(request: NextRequest): string | null {
@@ -52,6 +52,7 @@ function createSSEStream() {
     chapterIndex?: number;
     totalChapters?: number;
     questionsGenerated?: number;
+    totalQuestions?: number;
   }) => {
     if (controller) {
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
@@ -73,6 +74,7 @@ function createSSEStream() {
       questionNumber: number;
     };
     questionsGenerated: number;
+    totalQuestions?: number;
     progress: number;
   }) => {
     if (controller) {
@@ -84,6 +86,7 @@ function createSSEStream() {
           question: data.question,
         },
         questionsGenerated: data.questionsGenerated,
+        totalQuestions: data.totalQuestions,
         progress: data.progress,
       })}\n\n`));
     }
@@ -180,37 +183,82 @@ export async function POST(
       });
     }
 
-    // If quiz already exists (ready), delete old questions to regenerate
-    if (course.quiz_status === 'ready') {
-      console.log(`[quiz-generate] Quiz already exists, deleting old questions for regeneration...`);
+    // ALWAYS delete old questions AND reset quiz attempts before regenerating
+    // This ensures a clean slate for the new quiz generation
+    console.log(`[quiz-generate] Resetting quiz data before regeneration (current status: ${course.quiz_status})...`);
 
-      const { data: courseChapters } = await admin
-        .from('chapters')
-        .select('id')
+    const { data: courseChapters } = await admin
+      .from('chapters')
+      .select('id')
+      .eq('course_id', courseId);
+
+    if (courseChapters && courseChapters.length > 0) {
+      const chapterIds = courseChapters.map(ch => ch.id);
+      console.log(`[quiz-generate] Found ${chapterIds.length} chapters to clean: ${chapterIds.join(', ')}`);
+
+      // Delete quiz attempts for all chapters of this course
+      for (const chapterId of chapterIds) {
+        const { error: attemptError } = await admin
+          .from('quiz_attempts')
+          .delete()
+          .eq('chapter_id', chapterId);
+        if (attemptError) {
+          console.error(`[quiz-generate] Error deleting attempts for chapter ${chapterId}:`, attemptError);
+        }
+      }
+
+      // Also delete course-level quiz attempts (if any)
+      await admin
+        .from('quiz_attempts')
+        .delete()
         .eq('course_id', courseId);
 
-      if (courseChapters && courseChapters.length > 0) {
-        const chapterIds = courseChapters.map(ch => ch.id);
+      console.log(`[quiz-generate] Deleted quiz attempts for course`);
 
-        const { data: questionsToDelete } = await admin
+      // Count questions before deletion
+      const { count: beforeCount } = await admin
+        .from('questions')
+        .select('*', { count: 'exact', head: true })
+        .in('chapter_id', chapterIds);
+
+      console.log(`[quiz-generate] Questions before deletion: ${beforeCount}`);
+
+      // Delete questions for each chapter individually (more reliable than .in())
+      for (const chapterId of chapterIds) {
+        // First delete question_concepts links
+        const { data: chapterQuestions } = await admin
           .from('questions')
           .select('id')
-          .in('chapter_id', chapterIds);
+          .eq('chapter_id', chapterId);
 
-        if (questionsToDelete && questionsToDelete.length > 0) {
-          const questionIds = questionsToDelete.map(q => q.id);
-          await admin
-            .from('question_concepts')
-            .delete()
-            .in('question_id', questionIds);
-
-          await admin
-            .from('questions')
-            .delete()
-            .in('chapter_id', chapterIds);
-
-          console.log(`[quiz-generate] Deleted ${questionsToDelete.length} old questions`);
+        if (chapterQuestions && chapterQuestions.length > 0) {
+          const questionIds = chapterQuestions.map(q => q.id);
+          for (const qId of questionIds) {
+            await admin.from('question_concepts').delete().eq('question_id', qId);
+          }
         }
+
+        // Then delete questions
+        const { error: deleteError } = await admin
+          .from('questions')
+          .delete()
+          .eq('chapter_id', chapterId);
+
+        if (deleteError) {
+          console.error(`[quiz-generate] Error deleting questions for chapter ${chapterId}:`, deleteError);
+        }
+      }
+
+      // Verify deletion
+      const { count: afterCount } = await admin
+        .from('questions')
+        .select('*', { count: 'exact', head: true })
+        .in('chapter_id', chapterIds);
+
+      console.log(`[quiz-generate] Questions after deletion: ${afterCount} (deleted ${(beforeCount || 0) - (afterCount || 0)})`);
+
+      if ((afterCount || 0) > 0) {
+        console.error(`[quiz-generate] WARNING: ${afterCount} questions still remain after deletion!`);
       }
     }
 
@@ -268,17 +316,43 @@ export async function POST(
           conceptsByChapter.set(concept.chapter_id, chapterConcepts);
         });
 
-        const deduplicationTracker = new CourseDeduplicationTracker(0.85);
-        const chaptersToProcess = chapters.filter(ch => ch.status === 'ready');
+        // Seuil de déduplication à 0.92 = rejette seulement les questions quasi-identiques
+        // (0.85 était trop strict et rejetait des questions sur des sujets connexes)
+        const deduplicationTracker = new CourseDeduplicationTracker(0.92);
+        // Process ALL chapters that have source_text, not just 'ready' ones
+        // This ensures manually added chapters and chapters with any status get questions
+        const chaptersToProcess = chapters.filter(ch => {
+          const hasSourceText = ch.source_text && ch.source_text.trim().length >= 100;
+          if (!hasSourceText) {
+            console.log(`[quiz-generate] Skipping chapter "${ch.title}" - no source_text or too short (${ch.source_text?.length || 0} chars)`);
+          }
+          return hasSourceText;
+        });
         const totalChapters = chaptersToProcess.length;
+
+        if (totalChapters === 0) {
+          console.error('[quiz-generate] No chapters with sufficient source_text found');
+          throw new Error('No chapters with content to generate questions from');
+        }
         let totalQuestionsGenerated = 0;
+
+        // Calculate target questions per chapter and total
+        const questionsPerChapter = quizConfig.niveau === 'exhaustif'
+          ? 50
+          : getAdjustedQuestionCount(10, quizConfig.niveau);
+        const totalExpectedQuestions = totalChapters * questionsPerChapter;
+
+        // Track monotonic progress - never goes backwards
+        let currentProgress = 5;
 
         // Send initial progress
         sendProgress({
           type: 'progress',
           message: 'Initialisation...',
-          progress: 5,
-          totalChapters
+          progress: currentProgress,
+          totalChapters,
+          questionsGenerated: 0,
+          totalQuestions: totalExpectedQuestions
         });
 
         for (let i = 0; i < chaptersToProcess.length; i += MAX_CONCURRENT_CHAPTERS) {
@@ -286,17 +360,21 @@ export async function POST(
 
           for (const chapter of batch) {
             const chapterIndex = i + 1;
-            const baseProgress = 10 + Math.floor((chapterIndex / totalChapters) * 80);
+            // Progress is based on questions generated, not chapters
+            // Reserve 5% for init and 5% for finalization, so 90% for question generation
+            const progressPerQuestion = 90 / totalExpectedQuestions;
 
             try {
-              // Update progress: starting chapter
+              // Update progress: starting chapter (don't decrease progress)
+              currentProgress = Math.max(currentProgress, 5 + (chapterIndex - 1) * (85 / totalChapters));
               sendProgress({
                 type: 'progress',
                 message: `Analyse du chapitre ${chapterIndex}/${totalChapters}: ${chapter.title}`,
-                progress: baseProgress,
+                progress: Math.round(currentProgress),
                 chapterIndex,
                 totalChapters,
-                questionsGenerated: totalQuestionsGenerated
+                questionsGenerated: totalQuestionsGenerated,
+                totalQuestions: totalExpectedQuestions
               });
 
               await admin
@@ -307,12 +385,7 @@ export async function POST(
               const chapterConcepts = conceptsByChapter.get(chapter.id) || [];
               const chapterText = chapter.source_text || '';
 
-              if (!chapterText || chapterText.trim().length < 100) {
-                console.warn(`[quiz-generate] Chapter ${chapter.id} "${chapter.title}" has insufficient source text (${chapterText?.length || 0} chars), skipping`);
-                await admin.from('chapters').update({ status: 'ready' }).eq('id', chapter.id);
-                continue;
-              }
-
+              // Note: chapters without sufficient source_text are already filtered out above
               console.log(`[quiz-generate] Processing chapter ${chapterIndex}/${totalChapters}: "${chapter.title}" (${chapterText.length} chars, ${chapterConcepts.length} concepts)`);
 
               const coverageMap = new Map<string, number>();
@@ -320,17 +393,68 @@ export async function POST(
 
               let pass = 0;
               let finalCoverage = 0;
+              let chapterQuestionsInserted = 0;
 
-              while (pass < 2) {
-                // Update progress: generating questions
+              // Calculate the maximum questions allowed for this chapter based on niveau
+              // For standard: 10, for synthetique: 5, for exhaustif: unlimited (use 50 as cap)
+              const maxQuestionsPerChapter = quizConfig.niveau === 'exhaustif'
+                ? 50
+                : getAdjustedQuestionCount(10, quizConfig.niveau);
+
+              console.log(`[quiz-generate] Chapter "${chapter.title}" quota: ${maxQuestionsPerChapter} questions (niveau: ${quizConfig.niveau})`);
+
+              while (pass < 3) { // 3 passes max to ensure we reach quota
+                // Check if we've already reached the quota for this chapter
+                if (chapterQuestionsInserted >= maxQuestionsPerChapter) {
+                  console.log(`[quiz-generate] Chapter "${chapter.title}" already at quota (${chapterQuestionsInserted}/${maxQuestionsPerChapter}), skipping pass ${pass + 1}`);
+                  break;
+                }
+
+                // Calculate how many questions we still need
+                const questionsNeeded = maxQuestionsPerChapter - chapterQuestionsInserted;
+                // Ask for 50% more to compensate for deduplication losses
+                const questionsToRequest = Math.ceil(questionsNeeded * 1.5);
+
+                // Update progress: generating questions (increment by small amount)
+                currentProgress = Math.min(currentProgress + 1, 95);
                 sendProgress({
                   type: 'progress',
-                  message: `Génération des questions pour "${chapter.title}"${pass > 0 ? ' (complétion)' : ''}...`,
-                  progress: baseProgress + 3,
+                  message: `Génération des questions pour "${chapter.title}"${pass > 0 ? ` (complétion ${questionsNeeded} restantes)` : ''}...`,
+                  progress: Math.round(currentProgress),
                   chapterIndex,
                   totalChapters,
-                  questionsGenerated: totalQuestionsGenerated
+                  questionsGenerated: totalQuestionsGenerated,
+                  totalQuestions: totalExpectedQuestions
                 });
+
+                // Create a modified config that requests extra questions to compensate for deduplication
+                const adjustedConfig = {
+                  ...quizConfig,
+                  // Override the question count to request more
+                  _requestedCount: questionsToRequest
+                };
+
+                // Start a progress ticker to show activity during LLM generation
+                let tickerCount = 0;
+                const thinkingMessages = [
+                  `Réflexion en cours...`,
+                  `Analyse du contenu...`,
+                  `Création des questions...`,
+                  `Formulation en cours...`,
+                ];
+                const progressTicker = setInterval(() => {
+                  const messageIndex = tickerCount % thinkingMessages.length;
+                  sendProgress({
+                    type: 'progress',
+                    message: thinkingMessages[messageIndex],
+                    progress: Math.round(currentProgress),
+                    chapterIndex,
+                    totalChapters,
+                    questionsGenerated: totalQuestionsGenerated,
+                    totalQuestions: totalExpectedQuestions
+                  });
+                  tickerCount++;
+                }, 3000); // Update every 3 seconds
 
                 let generated;
                 try {
@@ -343,15 +467,17 @@ export async function POST(
                     },
                     chapterText,
                     modelLanguage,
-                    quizConfig,
-                    { enableSemanticValidation: true }
+                    adjustedConfig,
+                    { enableSemanticValidation: false } // Disabled to guarantee exact question count
                   );
                 } catch (genError: any) {
+                  clearInterval(progressTicker);
                   console.error(`[quiz-generate] generateMixedQuiz failed for chapter "${chapter.title}":`, genError.message);
                   // Continue to next pass or chapter instead of failing completely
                   pass += 1;
                   continue;
                 }
+                clearInterval(progressTicker);
 
                 const rawQuestions: any[] = Array.isArray(generated)
                   ? generated
@@ -359,14 +485,16 @@ export async function POST(
 
                 console.log(`[quiz-generate] Chapter "${chapter.title}" pass ${pass + 1}: generated ${rawQuestions.length} raw questions`);
 
-                // Update progress: deduplication
+                // Update progress: deduplication (small increment)
+                currentProgress = Math.min(currentProgress + 1, 95);
                 sendProgress({
                   type: 'progress',
                   message: `Vérification des doublons...`,
-                  progress: baseProgress + 5,
+                  progress: Math.round(currentProgress),
                   chapterIndex,
                   totalChapters,
-                  questionsGenerated: totalQuestionsGenerated
+                  questionsGenerated: totalQuestionsGenerated,
+                  totalQuestions: totalExpectedQuestions
                 });
 
                 const dedupeResult = deduplicationTracker.filterQuestions(
@@ -377,19 +505,29 @@ export async function POST(
 
                 console.log(`[quiz-generate] Chapter "${chapter.title}" after dedupe: ${questions.length}/${rawQuestions.length} questions kept`);
 
-                // Update progress: saving questions
+                // Update progress: saving questions (small increment)
+                currentProgress = Math.min(currentProgress + 1, 95);
                 sendProgress({
                   type: 'progress',
                   message: `Enregistrement de ${questions.length} questions...`,
-                  progress: baseProgress + 7,
+                  progress: Math.round(currentProgress),
                   chapterIndex,
                   totalChapters,
-                  questionsGenerated: totalQuestionsGenerated
+                  questionsGenerated: totalQuestionsGenerated,
+                  totalQuestions: totalExpectedQuestions
                 });
 
-                // Insert questions
-                for (let idx = 0; idx < questions.length; idx++) {
-                  const q = questions[idx];
+                // Calculate how many more questions we can insert for this chapter
+                const remainingQuota = maxQuestionsPerChapter - chapterQuestionsInserted;
+                const questionsToInsert = questions.slice(0, remainingQuota);
+
+                if (questionsToInsert.length < questions.length) {
+                  console.log(`[quiz-generate] Limiting insertion from ${questions.length} to ${questionsToInsert.length} to respect quota (${chapterQuestionsInserted}/${maxQuestionsPerChapter})`);
+                }
+
+                // Insert questions (limited to remaining quota)
+                for (let idx = 0; idx < questionsToInsert.length; idx++) {
+                  const q = questionsToInsert[idx];
                   const questionId = randomUUID();
 
                   const conceptIdsFromLLM: string[] = Array.isArray((q as any).concept_ids)
@@ -476,9 +614,13 @@ export async function POST(
 
                   if (!questionInsertError) {
                     totalQuestionsGenerated++;
+                    chapterQuestionsInserted++;
+
+                    // Update progress based on questions generated (progress grows with each question)
+                    // 5% init + 90% for questions + 5% finalize
+                    currentProgress = Math.min(5 + (totalQuestionsGenerated / totalExpectedQuestions) * 90, 95);
 
                     // Send the question via SSE so frontend can display it immediately
-                    const questionProgress = baseProgress + Math.floor((idx / questions.length) * 5);
                     sendQuestion({
                       chapterId: chapter.id,
                       chapterTitle: chapter.title,
@@ -493,7 +635,8 @@ export async function POST(
                         questionNumber: questionData.question_number,
                       },
                       questionsGenerated: totalQuestionsGenerated,
-                      progress: questionProgress,
+                      totalQuestions: totalExpectedQuestions,
+                      progress: Math.round(currentProgress),
                     });
                   }
 
@@ -520,7 +663,13 @@ export async function POST(
                   })
                   .eq('id', chapter.id);
 
+                // Stop if we've reached quota or good coverage
+                if (chapterQuestionsInserted >= maxQuestionsPerChapter) {
+                  console.log(`[quiz-generate] Chapter "${chapter.title}" reached quota (${chapterQuestionsInserted}/${maxQuestionsPerChapter})`);
+                  break;
+                }
                 if (finalCoverage >= 0.80) {
+                  console.log(`[quiz-generate] Chapter "${chapter.title}" reached good coverage (${Math.round(finalCoverage * 100)}%)`);
                   break;
                 }
                 pass += 1;
@@ -540,10 +689,13 @@ export async function POST(
 
               // Update progress: chapter complete
               const chapterStatus = (chapterQuestionCount || 0) > 0 ? 'terminé ✓' : 'terminé (0 questions)';
+              // Calculate progress based on chapter completion (15-85 range for generation)
+              const chapterCompleteProgress = Math.min(85, 15 + (chapterIndex / totalChapters) * 70);
+              currentProgress = Math.max(currentProgress, chapterCompleteProgress);
               sendProgress({
                 type: 'progress',
                 message: `Chapitre ${chapterIndex}/${totalChapters} ${chapterStatus}`,
-                progress: baseProgress + 10,
+                progress: currentProgress,
                 chapterIndex,
                 totalChapters,
                 questionsGenerated: totalQuestionsGenerated
@@ -562,10 +714,13 @@ export async function POST(
                 .update({ status: 'failed' })
                 .eq('id', chapter.id);
 
+              // Still advance progress even on error
+              const chapterErrorProgress = Math.min(85, 15 + (chapterIndex / totalChapters) * 70);
+              currentProgress = Math.max(currentProgress, chapterErrorProgress);
               sendProgress({
                 type: 'progress',
                 message: `Erreur sur le chapitre ${chapterIndex}`,
-                progress: baseProgress + 10,
+                progress: currentProgress,
                 chapterIndex,
                 totalChapters,
                 questionsGenerated: totalQuestionsGenerated

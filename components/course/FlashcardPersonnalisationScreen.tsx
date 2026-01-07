@@ -10,14 +10,18 @@ import {
   BookOpen,
   Target,
   Layers,
+  FileText,
+  HelpCircle,
+  TextCursorInput,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   FlashcardConfig,
   FlashcardNiveau,
+  FlashcardTypeAllocation,
   DEFAULT_FLASHCARD_CONFIG,
-  FLASHCARD_NIVEAU_OPTIONS,
+  DEFAULT_TYPE_ALLOCATION,
 } from '@/types/flashcard-config';
 
 interface FlashcardPersonnalisationScreenProps {
@@ -27,7 +31,7 @@ interface FlashcardPersonnalisationScreenProps {
   initialConfig?: FlashcardConfig;
 }
 
-// Niveaux avec icônes Lucide - les labels/descriptions sont traduits dans le composant
+// Niveaux avec icônes Lucide
 const NIVEAUX = [
   {
     value: 'essentiel' as const,
@@ -52,6 +56,31 @@ const NIVEAUX = [
   },
 ];
 
+// Types de cartes avec icônes
+const CARD_TYPES = [
+  {
+    key: 'definition' as const,
+    labelKey: 'flashcards_type_definition',
+    descriptionKey: 'flashcards_type_definition_desc',
+    icon: FileText,
+    iconColor: 'text-blue-500',
+  },
+  {
+    key: 'question' as const,
+    labelKey: 'flashcards_type_question',
+    descriptionKey: 'flashcards_type_question_desc',
+    icon: HelpCircle,
+    iconColor: 'text-green-500',
+  },
+  {
+    key: 'cloze' as const,
+    labelKey: 'flashcards_type_cloze',
+    descriptionKey: 'flashcards_type_cloze_desc',
+    icon: TextCursorInput,
+    iconColor: 'text-orange-500',
+  },
+];
+
 export default function FlashcardPersonnalisationScreen({
   onGenerate,
   onCancel,
@@ -65,15 +94,29 @@ export default function FlashcardPersonnalisationScreen({
   const [niveau, setNiveau] = useState<FlashcardNiveau>(
     initialConfig?.niveau ?? DEFAULT_FLASHCARD_CONFIG.niveau
   );
+  const [types, setTypes] = useState<FlashcardTypeAllocation>(
+    initialConfig?.types ?? DEFAULT_TYPE_ALLOCATION
+  );
 
-  // Accordion state
-  const [isOpen, setIsOpen] = useState(false);
+  // Accordion states
+  const [isNiveauOpen, setIsNiveauOpen] = useState(false);
+  const [isTypesOpen, setIsTypesOpen] = useState(false);
 
   const handleGenerate = () => {
-    onGenerate({ niveau });
+    onGenerate({ niveau, types });
+  };
+
+  const toggleType = (typeKey: keyof FlashcardTypeAllocation) => {
+    // Empêcher de désactiver tous les types
+    const newTypes = { ...types, [typeKey]: !types[typeKey] };
+    const enabledCount = Object.values(newTypes).filter(Boolean).length;
+    if (enabledCount >= 1) {
+      setTypes(newTypes);
+    }
   };
 
   const selectedNiveau = NIVEAUX.find((n) => n.value === niveau);
+  const enabledTypesCount = Object.values(types).filter(Boolean).length;
 
   return (
     <div
@@ -101,13 +144,146 @@ export default function FlashcardPersonnalisationScreen({
         </p>
       </div>
 
-      {/* Section Niveau (seule option de personnalisation) */}
+      {/* Section Types de cartes */}
+      <div className="mb-3">
+        <button
+          type="button"
+          onClick={() => setIsTypesOpen(!isTypesOpen)}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+            isTypesOpen
+              ? isDark
+                ? 'bg-neutral-800 border border-orange-500/50'
+                : 'bg-orange-50/50 border border-orange-200'
+              : isDark
+              ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600'
+              : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                isDark
+                  ? 'bg-neutral-700'
+                  : 'bg-white shadow-sm border border-gray-100'
+              }`}
+            >
+              <Layers
+                className={`w-[18px] h-[18px] ${
+                  isDark ? 'text-neutral-400' : 'text-gray-400'
+                }`}
+              />
+            </div>
+            <div className="flex flex-col items-start">
+              <span
+                className={`text-xs ${
+                  isDark ? 'text-neutral-400' : 'text-gray-500'
+                }`}
+              >
+                {translate('flashcards_types_label', 'Types de cartes')}
+              </span>
+              <span
+                className={`text-sm font-semibold ${
+                  isDark ? 'text-neutral-100' : 'text-gray-900'
+                }`}
+              >
+                {enabledTypesCount === 3
+                  ? translate('flashcards_types_all', 'Tous les types')
+                  : `${enabledTypesCount} ${translate('flashcards_types_selected', 'sélectionné(s)')}`}
+              </span>
+            </div>
+          </div>
+          <ChevronDown
+            className={`w-4 h-4 flex-shrink-0 transition-transform ${
+              isTypesOpen ? 'rotate-180' : ''
+            } ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}
+          />
+        </button>
+
+        {isTypesOpen && (
+          <div
+            className={`mt-1 rounded-xl border overflow-hidden ${
+              isDark
+                ? 'bg-neutral-800 border-neutral-700'
+                : 'bg-white border-gray-200'
+            }`}
+          >
+            {CARD_TYPES.map((cardType) => {
+              const isEnabled = types[cardType.key];
+              const Icon = cardType.icon;
+
+              return (
+                <button
+                  key={cardType.key}
+                  type="button"
+                  onClick={() => toggleType(cardType.key)}
+                  className={`w-full text-left px-4 py-3 transition-all ${
+                    isEnabled
+                      ? isDark
+                        ? 'bg-neutral-700/50'
+                        : 'bg-gray-50'
+                      : isDark
+                      ? 'hover:bg-neutral-700/30'
+                      : 'hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          isDark ? 'bg-neutral-700' : 'bg-gray-100'
+                        }`}
+                      >
+                        <Icon className={`w-5 h-5 ${cardType.iconColor}`} />
+                      </div>
+                      <div>
+                        <p
+                          className={`text-sm font-semibold ${
+                            isEnabled
+                              ? isDark
+                                ? 'text-white'
+                                : 'text-gray-900'
+                              : isDark
+                              ? 'text-neutral-400'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          {translate(cardType.labelKey)}
+                        </p>
+                        <p
+                          className={`text-xs ${
+                            isDark ? 'text-neutral-400' : 'text-gray-500'
+                          }`}
+                        >
+                          {translate(cardType.descriptionKey)}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+                        isEnabled
+                          ? 'bg-orange-500'
+                          : isDark
+                          ? 'border-2 border-neutral-600'
+                          : 'border-2 border-gray-300'
+                      }`}
+                    >
+                      {isEnabled && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Section Niveau */}
       <div className="mb-4">
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => setIsNiveauOpen(!isNiveauOpen)}
           className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-            isOpen
+            isNiveauOpen
               ? isDark
                 ? 'bg-neutral-800 border border-orange-500/50'
                 : 'bg-orange-50/50 border border-orange-200'
@@ -155,12 +331,12 @@ export default function FlashcardPersonnalisationScreen({
           </div>
           <ChevronDown
             className={`w-4 h-4 flex-shrink-0 transition-transform ${
-              isOpen ? 'rotate-180' : ''
+              isNiveauOpen ? 'rotate-180' : ''
             } ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}
           />
         </button>
 
-        {isOpen && (
+        {isNiveauOpen && (
           <div
             className={`mt-1 rounded-xl border overflow-hidden ${
               isDark
@@ -174,7 +350,7 @@ export default function FlashcardPersonnalisationScreen({
                 type="button"
                 onClick={() => {
                   setNiveau(option.value);
-                  setIsOpen(false);
+                  setIsNiveauOpen(false);
                 }}
                 className={`w-full text-left px-4 py-3 transition-all ${
                   niveau === option.value
@@ -230,17 +406,6 @@ export default function FlashcardPersonnalisationScreen({
             ))}
           </div>
         )}
-      </div>
-
-      {/* Info sur les types de cartes */}
-      <div
-        className={`mb-4 px-3 py-2 rounded-lg text-xs ${
-          isDark
-            ? 'bg-neutral-800 text-neutral-400'
-            : 'bg-gray-50 text-gray-500'
-        }`}
-      >
-        {translate('flashcards_card_types_info')}
       </div>
 
       {/* Buttons */}

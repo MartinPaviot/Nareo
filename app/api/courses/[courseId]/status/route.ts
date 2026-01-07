@@ -5,6 +5,7 @@ import { getServiceSupabase } from '@/lib/supabase';
 /**
  * GET /api/courses/[courseId]/status
  * Get detailed status of a course including pipeline job status
+ * Supports both authenticated users and guest (public) courses
  */
 export async function GET(
   request: NextRequest,
@@ -12,25 +13,34 @@ export async function GET(
 ) {
   const { courseId } = await params;
 
-  // Authenticate user
+  // Auth is optional - guests can check status of public courses
   const auth = await authenticateRequest(request);
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const admin = getServiceSupabase();
 
   try {
-    // Get course
+    console.log(`[status] Fetching course ${courseId}, auth: ${auth ? auth.user.id : 'guest'}`);
+
+    // Get course by ID first (using service client which bypasses RLS)
     const { data: course, error: courseError } = await admin
       .from('courses')
-      .select('id, title, status, quiz_status, error_message, created_at, updated_at')
+      .select('id, title, status, quiz_status, error_message, created_at, user_id, is_public')
       .eq('id', courseId)
-      .eq('user_id', auth.user.id)
       .maybeSingle();
 
+    console.log(`[status] Course query result:`, { course: course ? { id: course.id, is_public: course.is_public, user_id: course.user_id } : null, error: courseError });
+
     if (courseError || !course) {
+      console.log(`[status] Course ${courseId} not found in database`);
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+
+    // Check access: user must own the course OR course must be public
+    const hasAccess = course.is_public || (auth && course.user_id === auth.user.id);
+    console.log(`[status] Access check: is_public=${course.is_public}, user_id=${course.user_id}, hasAccess=${hasAccess}`);
+
+    if (!hasAccess) {
+      console.log(`[status] Access denied for course ${courseId}`);
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Get pipeline job
@@ -75,7 +85,6 @@ export async function GET(
       chapters_count: chaptersCount || 0,
       debug: {
         course_created: course.created_at,
-        course_updated: course.updated_at,
         job_created: job?.created_at,
         job_updated: job?.updated_at,
       }

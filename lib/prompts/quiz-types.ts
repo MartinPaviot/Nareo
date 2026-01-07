@@ -22,9 +22,10 @@ export function getNiveauBlock(niveau: NiveauQuantite, baseCount: number): strin
 
   const blocks: Record<NiveauQuantite, string> = {
     synthetique: `
-QUESTION COUNT: ${adjustedCount} questions (MODE SYNTHÉTIQUE)
+QUESTION COUNT: EXACTLY ${adjustedCount} questions (MODE SYNTHÉTIQUE - 5 questions par chapitre)
 
 SYNTHÉTIQUE RULES:
+- Generate EXACTLY 5 questions for this chapter
 - Focus on the MOST ESSENTIAL concepts only
 - Each question must test a CORE learning objective
 - Skip secondary details and nuances
@@ -32,18 +33,20 @@ SYNTHÉTIQUE RULES:
 - Every question must be "exam-critical"
 `,
     standard: `
-QUESTION COUNT: ${adjustedCount} questions (MODE STANDARD)
+QUESTION COUNT: EXACTLY ${adjustedCount} questions (MODE STANDARD - 10 questions par chapitre)
 
 STANDARD RULES:
+- Generate EXACTLY 10 questions for this chapter
 - Balanced coverage of all learning objectives
 - Include main concepts and important details
 - Test both fundamental and intermediate understanding
 `,
     exhaustif: `
-QUESTION COUNT: ${adjustedCount} questions (MODE EXHAUSTIF)
+QUESTION COUNT: ${adjustedCount}+ questions (MODE EXHAUSTIF - Maximum de questions)
 
 EXHAUSTIF RULES:
-- COMPREHENSIVE coverage of ALL concepts
+- Generate MORE than 10 questions - as many as needed to fully cover all concepts
+- COMPREHENSIVE coverage of ALL concepts in the chapter
 - Include nuances, exceptions, and edge cases
 - Test deep understanding and subtle distinctions
 - Cover secondary concepts and detailed applications

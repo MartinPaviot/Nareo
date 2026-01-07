@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Loader2, BookOpen, Layers, FileText, RefreshCw } from 'lucide-react';
 import GenerationLoadingScreen from '@/components/course/GenerationLoadingScreen';
+import ExtractionLoader from '@/components/course/ExtractionLoader';
 import Image from 'next/image';
 import LearnPageHeader from '@/components/layout/LearnPageHeader';
 import { CourseSidebar } from '@/components/Sidebar';
@@ -80,6 +81,9 @@ export default function CourseLearnPage() {
   const [quizGenerationProgress, setQuizGenerationProgress] = useState(0);
   const [quizGenerationMessage, setQuizGenerationMessage] = useState('');
   const [streamingQuestions, setStreamingQuestions] = useState<StreamingQuestion[]>([]);
+  const [totalExpectedQuestions, setTotalExpectedQuestions] = useState<number | undefined>(undefined);
+  // Track if user started playing during generation - persisted to survive navigation
+  const [wasPlayingProgressiveQuiz, setWasPlayingProgressiveQuiz] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
@@ -143,6 +147,11 @@ export default function CourseLearnPage() {
     setQuizGenerationMessage('Démarrage...');
     setStreamingQuestions([]); // Reset streaming questions
 
+    // Clear sessionStorage to ensure clean state on regeneration
+    sessionStorage.removeItem(`progressive_quiz_${courseId}`);
+    setWasPlayingProgressiveQuiz(false);
+    setTotalExpectedQuestions(undefined);
+
     try {
       const requestBody = { config };
       console.log('[learn] Sending POST to /api/courses/${courseId}/quiz/generate with body:', JSON.stringify(requestBody, null, 2));
@@ -191,7 +200,19 @@ export default function CourseLearnPage() {
               if (data.type === 'progress') {
                 setQuizGenerationProgress(data.progress || 0);
                 setQuizGenerationMessage(data.message || '');
+                // Capture totalQuestions from progress messages
+                if (data.totalQuestions) {
+                  setTotalExpectedQuestions(data.totalQuestions);
+                }
+                // On first progress message (after cleanup), refetch to show 0 questions
+                if (data.progress <= 10) {
+                  refetch();
+                }
               } else if (data.type === 'question') {
+                // Also capture totalQuestions from question events
+                if (data.totalQuestions) {
+                  setTotalExpectedQuestions(data.totalQuestions);
+                }
                 // Add streaming question for progressive quiz view
                 const questionData = data.data?.question;
                 if (questionData) {
@@ -210,6 +231,10 @@ export default function CourseLearnPage() {
                   setStreamingQuestions(prev => [...prev, newQuestion]);
                 }
                 setQuizGenerationProgress(data.progress || 0);
+                // Capture totalQuestions from question events
+                if (data.totalQuestions) {
+                  setTotalExpectedQuestions(data.totalQuestions);
+                }
               } else if (data.type === 'complete') {
                 setQuizGenerationProgress(100);
                 setQuizGenerationMessage('Quiz généré avec succès !');
@@ -285,6 +310,46 @@ export default function CourseLearnPage() {
       setIsRetrying(false);
     }
   }, [courseId, isDemoId, isRetrying, refetch, user?.id, apiChapters.length]);
+
+  // Persist streaming questions to sessionStorage during generation
+  useEffect(() => {
+    if (streamingQuestions.length > 0 && courseId) {
+      sessionStorage.setItem(`progressive_quiz_${courseId}`, JSON.stringify(streamingQuestions));
+    }
+  }, [streamingQuestions, courseId]);
+
+  // Persist wasPlayingProgressiveQuiz state
+  useEffect(() => {
+    if (courseId) {
+      if (wasPlayingProgressiveQuiz) {
+        sessionStorage.setItem(`progressive_quiz_playing_${courseId}`, 'true');
+      } else {
+        sessionStorage.removeItem(`progressive_quiz_playing_${courseId}`);
+      }
+    }
+  }, [wasPlayingProgressiveQuiz, courseId]);
+
+  // Restore streaming questions and playing state from sessionStorage on mount
+  useEffect(() => {
+    if (courseId && !isGeneratingQuiz) {
+      const savedQuestions = sessionStorage.getItem(`progressive_quiz_${courseId}`);
+      const wasPlaying = sessionStorage.getItem(`progressive_quiz_playing_${courseId}`);
+
+      if (savedQuestions) {
+        try {
+          const parsed = JSON.parse(savedQuestions) as StreamingQuestion[];
+          if (parsed.length > 0) {
+            setStreamingQuestions(parsed);
+            if (wasPlaying === 'true') {
+              setWasPlayingProgressiveQuiz(true);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to restore progressive quiz state:', e);
+        }
+      }
+    }
+  }, [courseId]); // Only run on mount/courseId change, not when isGeneratingQuiz changes
 
   // Track processing start time to detect stuck courses
   useEffect(() => {
@@ -546,6 +611,27 @@ export default function CourseLearnPage() {
     );
   }
 
+  // Show ExtractionLoader when course is being processed (not ready yet)
+  // This happens right after upload when the pipeline is extracting text
+  if (!isDemoId && course.status !== 'ready' && course.status !== 'failed') {
+    console.log(`[LearnPage] Showing ExtractionLoader for courseId: ${courseId}, status: ${course.status}`);
+    return (
+      <div className={`min-h-screen transition-colors ${
+        isDark
+          ? 'bg-neutral-900'
+          : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+      }`}>
+        <ExtractionLoader
+          courseId={courseId}
+          onComplete={() => {
+            // Refetch course data to get the updated status
+            refetch();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen transition-colors ${
       isDark
@@ -768,10 +854,22 @@ export default function CourseLearnPage() {
                 generationProgress={quizGenerationProgress}
                 generationMessage={quizGenerationMessage}
                 streamingQuestions={streamingQuestions}
+                totalExpectedQuestions={totalExpectedQuestions}
                 enableProgressiveQuiz={true}
                 hasFullAccess={hasFullAccess}
                 isDemoId={isDemoId}
                 refetch={refetch}
+                wasPlayingProgressiveQuiz={wasPlayingProgressiveQuiz}
+                onPlayingStateChange={setWasPlayingProgressiveQuiz}
+                onClearProgressiveQuiz={() => {
+                  setStreamingQuestions([]);
+                  setWasPlayingProgressiveQuiz(false);
+                  if (courseId) {
+                    sessionStorage.removeItem(`progressive_quiz_${courseId}`);
+                    sessionStorage.removeItem(`progressive_quiz_playing_${courseId}`);
+                    sessionStorage.removeItem(`progressive_quiz_answers_${courseId}`);
+                  }
+                }}
               />
             )}
           </>

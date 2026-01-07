@@ -2,6 +2,9 @@
   "functions": {
     "app/api/upload/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/courses/[courseId]/quiz/generate/route.ts": {
+      "maxDuration": 300
     }
   }
 }

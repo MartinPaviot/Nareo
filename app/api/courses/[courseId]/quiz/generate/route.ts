@@ -7,6 +7,10 @@ import { generateMixedQuiz } from '@/lib/openai-vision';
 import { CourseDeduplicationTracker } from '@/lib/llm';
 import { QuizConfig, DEFAULT_QUIZ_CONFIG, getAdjustedQuestionCount } from '@/types/quiz-personnalisation';
 
+// Increase max duration for quiz generation (requires Vercel Pro plan for > 60s)
+// This is needed because generating questions for multiple chapters takes time
+export const maxDuration = 300; // 5 minutes max
+
 // Helper to extract guestSessionId from cookies
 function getGuestSessionIdFromRequest(request: NextRequest): string | null {
   const cookies = request.cookies;
@@ -35,13 +39,30 @@ function getTrueFalseLabels(language: 'EN' | 'FR' | 'DE'): [string, string] {
 }
 
 // Create SSE stream for progress updates
-function createSSEStream() {
+function createSSEStream(signal?: AbortSignal) {
   const encoder = new TextEncoder();
   let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  let isClosed = false;
 
   const stream = new ReadableStream<Uint8Array>({
     start(c) {
       controller = c;
+      // Listen for client disconnection
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          console.log('[SSE] Client disconnected (abort signal)');
+          isClosed = true;
+          try {
+            controller?.close();
+          } catch {
+            // Already closed
+          }
+        });
+      }
+    },
+    cancel() {
+      console.log('[SSE] Stream cancelled by client');
+      isClosed = true;
     },
   });
 
@@ -55,10 +76,17 @@ function createSSEStream() {
     questionsGenerated?: number;
     totalQuestions?: number;
   }) => {
-    if (controller) {
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+    if (controller && !isClosed) {
+      try {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      } catch (e) {
+        console.log('[SSE] Failed to send progress, client likely disconnected');
+        isClosed = true;
+      }
     }
   };
+
+  const isClientConnected = () => !isClosed;
 
   // Send individual question as it's generated
   const sendQuestion = (data: {
@@ -78,28 +106,38 @@ function createSSEStream() {
     totalQuestions?: number;
     progress: number;
   }) => {
-    if (controller) {
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-        type: 'question',
-        data: {
-          chapterId: data.chapterId,
-          chapterTitle: data.chapterTitle,
-          question: data.question,
-        },
-        questionsGenerated: data.questionsGenerated,
-        totalQuestions: data.totalQuestions,
-        progress: data.progress,
-      })}\n\n`));
+    if (controller && !isClosed) {
+      try {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'question',
+          data: {
+            chapterId: data.chapterId,
+            chapterTitle: data.chapterTitle,
+            question: data.question,
+          },
+          questionsGenerated: data.questionsGenerated,
+          totalQuestions: data.totalQuestions,
+          progress: data.progress,
+        })}\n\n`));
+      } catch (e) {
+        console.log('[SSE] Failed to send question, client likely disconnected');
+        isClosed = true;
+      }
     }
   };
 
   const close = () => {
-    if (controller) {
-      controller.close();
+    if (controller && !isClosed) {
+      isClosed = true;
+      try {
+        controller.close();
+      } catch {
+        // Already closed
+      }
     }
   };
 
-  return { stream, sendProgress, sendQuestion, close };
+  return { stream, sendProgress, sendQuestion, close, isClientConnected };
 }
 
 export async function POST(
@@ -304,10 +342,11 @@ export async function POST(
 
     const modelLanguage = toModelLanguageCode(course.content_language || 'en');
 
-    // Create SSE stream
-    const { stream, sendProgress, sendQuestion, close } = createSSEStream();
+    // Create SSE stream with abort signal to detect client disconnection
+    const { stream, sendProgress, sendQuestion, close, isClientConnected } = createSSEStream(request.signal);
 
     // Start generation in background (async, don't await)
+    // IMPORTANT: Generation continues even if client disconnects - questions are saved to DB
     (async () => {
       try {
         const conceptsByChapter = new Map<string, typeof concepts>();
@@ -356,6 +395,21 @@ export async function POST(
           questionsGenerated: 0,
           totalQuestions: totalExpectedQuestions
         });
+
+        // Start heartbeat to keep SSE connection alive
+        // This prevents proxies/browsers from closing inactive connections
+        const heartbeatInterval = setInterval(() => {
+          if (isClientConnected()) {
+            sendProgress({
+              type: 'heartbeat',
+              progress: currentProgress,
+              questionsGenerated: totalQuestionsGenerated,
+              totalQuestions: totalExpectedQuestions
+            });
+          } else {
+            clearInterval(heartbeatInterval);
+          }
+        }, 15000); // Send heartbeat every 15 seconds
 
         for (let i = 0; i < chaptersToProcess.length; i += MAX_CONCURRENT_CHAPTERS) {
           const batch = chaptersToProcess.slice(i, i + MAX_CONCURRENT_CHAPTERS);
@@ -792,6 +846,7 @@ export async function POST(
           message: error.message || 'Erreur lors de la génération du quiz'
         });
       } finally {
+        clearInterval(heartbeatInterval);
         close();
       }
     })();

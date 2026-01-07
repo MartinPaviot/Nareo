@@ -282,11 +282,20 @@ export default function CourseLearnPage() {
     } catch (err) {
       console.error('Error generating quiz:', err);
       setQuizGenerationError(err instanceof Error ? err.message : 'Failed to generate quiz');
+
+      // SSE connection might have been lost but generation continues on server
+      // Refetch to check if quiz was actually generated
+      console.log('[learn] SSE error - refetching to check actual quiz status...');
+      await refetch();
     } finally {
       setIsGeneratingQuiz(false);
       setQuizGenerationProgress(0);
       setQuizGenerationMessage('');
       setQuizGenerationStep(undefined);
+
+      // Final refetch to ensure we have the latest state
+      // This handles cases where SSE completed but we missed the 'complete' event
+      await refetch();
     }
   }, [courseId, isDemoId, isGeneratingQuiz, refetch, triggerRefresh, user?.id]);
 
@@ -524,13 +533,17 @@ export default function CourseLearnPage() {
     }
   }, [course, chapters.length, isStuck, processingStartTime, jobStatus?.stage]);
 
-  // Poll for quiz status while generating (backup for Realtime)
+  // Poll for quiz status while generating (backup for Realtime and SSE disconnection)
+  // This ensures the UI stays updated even if SSE connection is lost
   useEffect(() => {
     if (isDemoId || !courseId) return;
-    if (course?.quiz_status !== 'generating') return;
+    // Poll if quiz is generating on server OR if client thinks it's generating
+    const shouldPoll = course?.quiz_status === 'generating' || isGeneratingQuiz;
+    if (!shouldPoll) return;
 
-    console.log('[quiz-poll] Starting poll for quiz completion');
+    console.log('[quiz-poll] Starting poll for quiz completion (quiz_status:', course?.quiz_status, ', isGeneratingQuiz:', isGeneratingQuiz, ')');
     const pollInterval = setInterval(async () => {
+      console.log('[quiz-poll] Polling...');
       await refetch();
     }, 3000); // Poll every 3 seconds
 
@@ -538,7 +551,7 @@ export default function CourseLearnPage() {
       console.log('[quiz-poll] Stopping poll');
       clearInterval(pollInterval);
     };
-  }, [isDemoId, courseId, course?.quiz_status, refetch]);
+  }, [isDemoId, courseId, course?.quiz_status, isGeneratingQuiz, refetch]);
 
   const handleChapterClick = (chapter: Chapter, index: number) => {
     // Chapter 1 is always accessible (even without account)

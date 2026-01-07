@@ -27,7 +27,7 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
       {/* Section header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full flex items-center justify-between px-1 py-1.5 rounded-lg transition-colors ${
+        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-colors ${
           isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'
         }`}
       >
@@ -39,7 +39,7 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
             {translate('sidebar_reviews_title', 'Révisions du jour')}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {isLoading ? (
             <Loader2 className="w-3 h-3 animate-spin text-orange-500" />
           ) : totalCount > 0 ? (

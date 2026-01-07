@@ -81,14 +81,14 @@ export default function CourseItem({
     <div className="relative group">
       <button
         onClick={onClick}
-        className={`w-full text-left rounded-lg transition-all ${
+        className={`w-full text-left rounded-lg transition-all px-3 py-2.5 ${
           isActive
             ? isDark
-              ? 'bg-orange-500/10 border-l-2 border-l-orange-500 pl-3 pr-3 py-2.5'
-              : 'bg-orange-50 border-l-2 border-l-orange-500 pl-3 pr-3 py-2.5'
+              ? 'bg-orange-500/10 border-l-2 border-l-orange-500'
+              : 'bg-orange-50 border-l-2 border-l-orange-500'
             : isDark
-              ? 'hover:bg-neutral-800 pl-4 pr-3 py-2.5'
-              : 'hover:bg-gray-50 pl-4 pr-3 py-2.5'
+              ? 'hover:bg-neutral-800'
+              : 'hover:bg-gray-50'
         }`}
       >
         <div className="flex items-start gap-2.5">

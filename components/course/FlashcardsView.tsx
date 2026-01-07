@@ -145,13 +145,38 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
   const [sessionState, setSessionState] = useState<'playing' | 'completed'>('playing');
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
 
+  // Track cards to retry at the end of session (cards marked as "hard")
+  const [cardsToRetry, setCardsToRetry] = useState<Set<string>>(new Set());
+
   // Streaming state for progressive loading
   const [generationProgress, setGenerationProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
+  const [generationStep, setGenerationStep] = useState<string | undefined>();
   const [cardsGenerated, setCardsGenerated] = useState(0);
   const [totalCards, setTotalCards] = useState<number | undefined>(undefined);
   const [streamingFlashcards, setStreamingFlashcards] = useState<StreamingFlashcard[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Map step keys to translation keys for flashcard generation
+  const translateStepMessage = useCallback((step: string | undefined, message: string | undefined): string => {
+    const STEP_TO_TRANSLATION_KEY: Record<string, string> = {
+      'analyzing_document': 'gen_step_analyzing_document',
+      'identifying_concepts': 'gen_step_identifying_concepts',
+      'generating_content': 'gen_step_generating_flashcards',
+      'saving_content': 'gen_step_saving_flashcards',
+      'finalizing': 'gen_step_finalizing',
+    };
+
+    if (step) {
+      const translationKey = STEP_TO_TRANSLATION_KEY[step];
+      if (translationKey) {
+        return translate(translationKey);
+      }
+    }
+
+    // Fallback to message if no step
+    return message || translate('gen_step_analyzing_document');
+  }, [translate]);
 
   // Check if current card index is beyond guest limit
   const isCardLocked = !user && currentIndex >= GUEST_FLASHCARD_LIMIT;
@@ -218,6 +243,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
     setError(null);
     setGenerationProgress(0);
     setProgressMessage('');
+    setGenerationStep(undefined);
     setCardsGenerated(0);
     setTotalCards(undefined);
     setStreamingFlashcards([]);
@@ -269,6 +295,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
 
               if (data.type === 'progress') {
                 setProgressMessage(data.message || '');
+                setGenerationStep(data.step);
                 setGenerationProgress(data.progress || 0);
                 if (data.cardsGenerated !== undefined) {
                   setCardsGenerated(data.cardsGenerated);
@@ -607,6 +634,19 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
       lastRating: rating,
     };
 
+    // Track cards marked as "hard" for retry at the end of the session
+    // Always add to retry queue if marked hard (allows multiple retries)
+    if (rating === 'hard') {
+      setCardsToRetry(prev => new Set(prev).add(card.id));
+    } else {
+      // If user marks good/easy, remove from retry queue
+      setCardsToRetry(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(card.id);
+        return newSet;
+      });
+    }
+
     // Save to server with spaced repetition data
     if (user) {
       fetch('/api/flashcards/reviews/update', {
@@ -639,25 +679,50 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
       setFlashcards(updatedFlashcards);
 
       if (isLastCard) {
-        // Session completed - show recap
-        setSessionStats(prev => prev ? completeSessionStats(prev) : null);
-        setSessionState('completed');
-        setIsFullscreen(false);
+        // Check if there are "hard" cards to retry at the end of the session
+        // Get all cards currently in the retry queue
+        const cardsToRetryNow = Array.from(cardsToRetry);
 
-        // Record activity for gamification (add points to dashboard)
-        if (user) {
-          try {
-            await fetch('/api/gamification/activity', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                points_earned: sessionPoints + pointsMap[rating],
-                questions_answered: flashcards.length,
-                questions_correct: flashcards.filter((_, idx) => idx < currentIndex).length + (rating === 'good' || rating === 'easy' ? 1 : 0),
-              }),
-            });
-          } catch (err) {
-            console.error('Error recording flashcard activity:', err);
+        // Also include current card if it was marked hard
+        if (rating === 'hard' && !cardsToRetryNow.includes(card.id)) {
+          cardsToRetryNow.push(card.id);
+        }
+
+        if (cardsToRetryNow.length > 0) {
+          // Add the cards to retry at the end of the deck
+          const retryCards = cardsToRetryNow
+            .map(id => updatedFlashcards.find(fc => fc.id === id))
+            .filter((fc): fc is Flashcard => fc !== undefined);
+
+          // Clear the cards to retry queue (they will be re-added if marked hard again)
+          setCardsToRetry(new Set());
+
+          // Add retry cards to the end of the deck and continue
+          setFlashcards([...updatedFlashcards, ...retryCards]);
+          setIsFlipped(false);
+          setHasAnswered(false);
+          setCurrentIndex(prev => prev + 1);
+        } else {
+          // Session completed - show recap
+          setSessionStats(prev => prev ? completeSessionStats(prev) : null);
+          setSessionState('completed');
+          setIsFullscreen(false);
+
+          // Record activity for gamification (add points to dashboard)
+          if (user) {
+            try {
+              await fetch('/api/gamification/activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  points_earned: sessionPoints + pointsMap[rating],
+                  questions_answered: flashcards.length,
+                  questions_correct: flashcards.filter((_, idx) => idx < currentIndex).length + (rating === 'good' || rating === 'easy' ? 1 : 0),
+                }),
+              });
+            } catch (err) {
+              console.error('Error recording flashcard activity:', err);
+            }
           }
         }
       } else {
@@ -666,7 +731,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
         setCurrentIndex((prev) => prev + 1);
       }
     }, 400);
-  }, [hasAnswered, flashcards, currentIndex, currentCardProgress, user, sessionStats, sessionPoints]);
+  }, [hasAnswered, flashcards, currentIndex, currentCardProgress, user, sessionStats, sessionPoints, cardsToRetry]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -768,7 +833,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
               progress={generationProgress}
               cardsGenerated={cardsGenerated}
               totalCards={totalCards}
-              progressMessage={progressMessage}
+              progressMessage={translateStepMessage(generationStep, progressMessage)}
               courseId={courseId}
               onComplete={() => {
                 // Refresh will happen automatically when generation completes
@@ -779,7 +844,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
             <GenerationLoadingScreen
               type="flashcards"
               progress={generationProgress}
-              progressMessage={progressMessage}
+              progressMessage={translateStepMessage(generationStep, progressMessage)}
               itemsGenerated={cardsGenerated}
               totalItems={totalCards}
             />
@@ -833,13 +898,37 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
 
   // Session completed - show recap screen
   if (sessionState === 'completed' && sessionStats) {
-    const handleRestartSession = () => {
+    const handleRestartSession = async () => {
       setSessionState('playing');
       setSessionStats(null);
       setCurrentIndex(0);
       setIsFlipped(false);
       setHasAnswered(false);
       setSessionPoints(0);
+      // Reset retry tracking for new session
+      setCardsToRetry(new Set());
+      // Reload original flashcards to remove duplicates added for retry
+      try {
+        const response = await fetch(`/api/courses/${courseId}/flashcards`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.flashcards && data.flashcards.length > 0) {
+            const normalizedFlashcards = data.flashcards.map((fc: Flashcard & { concept?: string; definition?: string }) => ({
+              id: fc.id,
+              type: fc.type || 'definition',
+              front: fc.front || fc.concept || '',
+              back: fc.back || fc.definition || '',
+              mastery: fc.mastery || 'new',
+              correctCount: fc.correctCount || 0,
+              incorrectCount: fc.incorrectCount || 0,
+              chapterId: fc.chapterId,
+            }));
+            setFlashcards(normalizedFlashcards);
+          }
+        }
+      } catch (err) {
+        console.error('Error reloading flashcards:', err);
+      }
     };
 
     return (

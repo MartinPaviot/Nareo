@@ -66,7 +66,15 @@ function createProgressStream() {
     },
   });
 
-  const sendProgress = (data: { type: string; message?: string; progress?: number; content?: string }) => {
+  const sendProgress = (data: {
+    type: string;
+    message?: string;
+    step?: string;
+    progress?: number;
+    content?: string;
+    sectionIndex?: number;
+    totalSections?: number;
+  }) => {
     if (controller) {
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
     }
@@ -660,16 +668,35 @@ export async function POST(
       if (sourceText.length > 15000) {
         console.log('[A+ Note] Using MULTI-PASS generation with STREAMING (document > 15k chars)');
 
-        // Pass 1: Extract structure
-        sendProgress({ type: 'progress', message: 'Analyzing document structure...', progress: 15 });
+        // Pass 1: Extract structure (0-20%)
+        // Send initial progress with step key for frontend translation
+        sendProgress({ type: 'progress', step: 'analyzing_document', progress: 1 });
         console.log('[A+ Note] Pass 1: Extracting document structure...');
-        const structure = await extractStructure(sourceText, language, config);
-        console.log(`[A+ Note] Found ${structure.sections.length} sections`);
 
-        // Pass 2: Transcribe each section with streaming
+        // Start a progress ticker to show activity during structure extraction
+        // Slower progression from 0-20% for a smoother initial experience
+        let structureProgress = 1;
+        const structureTicker = setInterval(() => {
+          if (structureProgress < 18) {
+            structureProgress += 0.5;
+            sendProgress({ type: 'progress', step: 'analyzing_document', progress: Math.round(structureProgress) });
+          }
+        }, 1200); // Increment every 1.2 seconds for slower progression
+
+        let structure;
+        try {
+          structure = await extractStructure(sourceText, language, config);
+        } finally {
+          clearInterval(structureTicker);
+        }
+
+        console.log(`[A+ Note] Found ${structure.sections.length} sections`);
+        sendProgress({ type: 'progress', step: 'analyzing_document', progress: 20 });
+
+        // Pass 2: Transcribe each section with streaming (20-70%)
         const sectionCount = structure.sections.length;
         const metadataToIgnore = structure.metadata_to_ignore || [];
-        sendProgress({ type: 'progress', message: `Transcribing ${sectionCount} sections...`, progress: 20 });
+        sendProgress({ type: 'progress', step: 'extracting_chapter', progress: 21, sectionIndex: 1, totalSections: sectionCount });
 
         // Send initial title as chunk
         const titleChunk = `# ${structure.title || course.title}\n\n`;
@@ -680,12 +707,15 @@ export async function POST(
         // Process sections sequentially for streaming (one at a time for smooth UX)
         for (let i = 0; i < structure.sections.length; i++) {
           const section = structure.sections[i];
-          const progressPercent = 20 + Math.floor(((i + 1) / structure.sections.length) * 45);
+          // Progress from 20% to 70% based on section completion
+          const progressPercent = 20 + Math.floor(((i + 0.5) / structure.sections.length) * 50);
 
           sendProgress({
             type: 'progress',
-            message: `Transcribing section ${i + 1}/${sectionCount}...`,
+            step: 'extracting_chapter',
             progress: progressPercent,
+            sectionIndex: i + 1,
+            totalSections: sectionCount,
           });
 
           const sectionSourceText = findSectionText(sourceText, section, structure.sections, i);
@@ -715,11 +745,28 @@ export async function POST(
         // Assemble content for post-processing
         let mainContent = titleChunk + transcribedSections.join('\n\n---\n\n');
 
-        // Pass 3: Verify completeness
-        sendProgress({ type: 'progress', message: 'Verifying completeness...', progress: 70 });
+        // Pass 3: Verify completeness (70-80%)
+        sendProgress({ type: 'progress', step: 'verifying_content', progress: 70 });
         console.log('[A+ Note] Pass 3: Verifying completeness...');
-        const verification = await verifyCompleteness(structure, mainContent, language, config);
+
+        // Progress ticker during verification
+        let verifyProgress = 70;
+        const verifyTicker = setInterval(() => {
+          if (verifyProgress < 78) {
+            verifyProgress += 1;
+            sendProgress({ type: 'progress', step: 'verifying_content', progress: verifyProgress });
+          }
+        }, 600);
+
+        let verification;
+        try {
+          verification = await verifyCompleteness(structure, mainContent, language, config);
+        } finally {
+          clearInterval(verifyTicker);
+        }
+
         console.log(`[A+ Note] Completeness score: ${verification.completeness_score}%`);
+        sendProgress({ type: 'progress', step: 'verifying_content', progress: 79 });
 
         // Append missing content if any
         if (verification.missing_content && verification.missing_content.trim().length > 0) {
@@ -729,11 +776,28 @@ export async function POST(
           mainContent += missingChunk;
         }
 
-        // Glossaire généré UNIQUEMENT si l'option est cochée dans les récaps
+        // Glossaire généré UNIQUEMENT si l'option est cochée dans les récaps (80-95%)
         if (config.recaps.definitions) {
-          sendProgress({ type: 'progress', message: 'Generating glossary...', progress: 80 });
+          sendProgress({ type: 'progress', step: 'generating_content', progress: 80 });
           console.log('[A+ Note] Generating glossary (user requested)...');
-          const glossary = await generateGlossary(mainContent, language, config);
+
+          // Progress ticker during glossary generation
+          let glossaryProgress = 80;
+          const glossaryTicker = setInterval(() => {
+            if (glossaryProgress < 92) {
+              glossaryProgress += 1;
+              sendProgress({ type: 'progress', step: 'generating_content', progress: glossaryProgress });
+            }
+          }, 500);
+
+          let glossary;
+          try {
+            glossary = await generateGlossary(mainContent, language, config);
+          } finally {
+            clearInterval(glossaryTicker);
+          }
+
+          sendProgress({ type: 'progress', step: 'generating_content', progress: 93 });
           const glossaryChunk = `\n\n---\n\n${glossary}`;
           sendChunk(glossaryChunk);
           noteContent = mainContent + glossaryChunk;
@@ -743,8 +807,31 @@ export async function POST(
 
       } else {
         console.log('[A+ Note] Using SINGLE-PASS generation with STREAMING (document <= 15k chars)');
-        sendProgress({ type: 'progress', message: 'Generating note...', progress: 30 });
-        noteContent = await singlePassGenerationStreaming(sourceText, language, config, imageContext, sendChunk);
+        // For short documents, use single-pass with progressive updates (0-95%)
+        sendProgress({ type: 'progress', step: 'analyzing_document', progress: 1 });
+
+        // Progress ticker during single-pass generation
+        // Slower progression from 0-20% then faster after
+        let singlePassProgress = 1;
+        const singlePassTicker = setInterval(() => {
+          if (singlePassProgress < 85) {
+            // Slower increment before 20%, faster after
+            const increment = singlePassProgress < 20 ? 0.8 : 2;
+            singlePassProgress += increment;
+            const step = singlePassProgress < 20 ? 'analyzing_document' : 'generating_content';
+            sendProgress({ type: 'progress', step, progress: Math.round(singlePassProgress) });
+          }
+        }, 1200); // 1.2 seconds between updates for slower initial feel
+
+        try {
+          noteContent = await singlePassGenerationStreaming(sourceText, language, config, imageContext, (content) => {
+            sendChunk(content);
+          });
+        } finally {
+          clearInterval(singlePassTicker);
+        }
+
+        sendProgress({ type: 'progress', step: 'generating_content', progress: 90 });
       }
 
       if (!noteContent) {
@@ -758,9 +845,26 @@ export async function POST(
       const needsSchemasRecap = config.recaps.schemas;
 
       if (needsFormulasRecap || needsSchemasRecap) {
-        sendProgress({ type: 'progress', message: 'Generating recaps...', progress: 90 });
+        sendProgress({ type: 'progress', step: 'generating_content', progress: 90 });
         console.log('[A+ Note] Generating recaps (formules/schemas)...');
-        const recapsContent = await generateRecaps(noteContent, language, config);
+
+        // Progress ticker during recaps generation
+        let recapsProgress = 90;
+        const recapsTicker = setInterval(() => {
+          if (recapsProgress < 94) {
+            recapsProgress += 1;
+            sendProgress({ type: 'progress', step: 'generating_content', progress: recapsProgress });
+          }
+        }, 400);
+
+        let recapsContent;
+        try {
+          recapsContent = await generateRecaps(noteContent, language, config);
+        } finally {
+          clearInterval(recapsTicker);
+        }
+
+        sendProgress({ type: 'progress', step: 'generating_content', progress: 94 });
         if (recapsContent && recapsContent.trim().length > 0) {
           noteContent = `${noteContent}${RECAPS_HEADER}${recapsContent}`;
         }
@@ -768,7 +872,7 @@ export async function POST(
 
       console.log(`[A+ Note] Generation complete. Note length: ${noteContent.length} characters`);
 
-      sendProgress({ type: 'progress', message: 'Saving note...', progress: 95 });
+      sendProgress({ type: 'progress', step: 'finalizing', progress: 95 });
 
       // Save note and config to course (use admin client to bypass RLS for guest users)
       const { error: updateError } = await admin

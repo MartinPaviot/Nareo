@@ -144,8 +144,139 @@ export default function FlashcardPersonnalisationScreen({
         </p>
       </div>
 
-      {/* Section Types de cartes */}
+      {/* Section Niveau (Nombre de cartes) */}
       <div className="mb-3">
+        <button
+          type="button"
+          onClick={() => setIsNiveauOpen(!isNiveauOpen)}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+            isNiveauOpen
+              ? isDark
+                ? 'bg-neutral-800 border border-orange-500/50'
+                : 'bg-orange-50/50 border border-orange-200'
+              : isDark
+              ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600'
+              : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                isDark
+                  ? 'bg-neutral-700'
+                  : 'bg-white shadow-sm border border-gray-100'
+              }`}
+            >
+              {selectedNiveau ? (
+                <selectedNiveau.icon
+                  className={`w-[18px] h-[18px] ${selectedNiveau.iconColor}`}
+                />
+              ) : (
+                <Layers
+                  className={`w-[18px] h-[18px] ${
+                    isDark ? 'text-neutral-400' : 'text-gray-400'
+                  }`}
+                />
+              )}
+            </div>
+            <div className="flex flex-col items-start">
+              <span
+                className={`text-xs ${
+                  isDark ? 'text-neutral-400' : 'text-gray-500'
+                }`}
+              >
+                {translate('flashcards_card_count_label')}
+              </span>
+              <span
+                className={`text-sm font-semibold ${
+                  isDark ? 'text-neutral-100' : 'text-gray-900'
+                }`}
+              >
+                {selectedNiveau ? translate(selectedNiveau.labelKey) : translate('flashcards_card_count_select')}
+              </span>
+            </div>
+          </div>
+          <ChevronDown
+            className={`w-4 h-4 flex-shrink-0 transition-transform ${
+              isNiveauOpen ? 'rotate-180' : ''
+            } ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}
+          />
+        </button>
+
+        {isNiveauOpen && (
+          <div
+            className={`mt-1 rounded-xl border overflow-hidden ${
+              isDark
+                ? 'bg-neutral-800 border-neutral-700'
+                : 'bg-white border-gray-200'
+            }`}
+          >
+            {NIVEAUX.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setNiveau(option.value);
+                  setIsNiveauOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 transition-all ${
+                  niveau === option.value
+                    ? isDark
+                      ? 'bg-neutral-700/50'
+                      : 'bg-gray-50'
+                    : isDark
+                    ? 'hover:bg-neutral-700/30'
+                    : 'hover:bg-gray-50/50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        isDark ? 'bg-neutral-700' : 'bg-gray-100'
+                      }`}
+                    >
+                      <option.icon
+                        className={`w-5 h-5 ${option.iconColor}`}
+                      />
+                    </div>
+                    <div>
+                      <p
+                        className={`text-sm font-semibold ${
+                          niveau === option.value
+                            ? isDark
+                              ? 'text-white'
+                              : 'text-gray-900'
+                            : isDark
+                            ? 'text-neutral-200'
+                            : 'text-gray-900'
+                        }`}
+                      >
+                        {translate(option.labelKey)}
+                      </p>
+                      <p
+                        className={`text-xs ${
+                          isDark ? 'text-neutral-400' : 'text-gray-500'
+                        }`}
+                      >
+                        {translate(option.descriptionKey)}
+                      </p>
+                    </div>
+                  </div>
+                  {niveau === option.value && (
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center bg-orange-500">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Section Types de cartes */}
+      <div className="mb-4">
         <button
           type="button"
           onClick={() => setIsTypesOpen(!isTypesOpen)}
@@ -273,137 +404,6 @@ export default function FlashcardPersonnalisationScreen({
                 </button>
               );
             })}
-          </div>
-        )}
-      </div>
-
-      {/* Section Niveau */}
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => setIsNiveauOpen(!isNiveauOpen)}
-          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-            isNiveauOpen
-              ? isDark
-                ? 'bg-neutral-800 border border-orange-500/50'
-                : 'bg-orange-50/50 border border-orange-200'
-              : isDark
-              ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600'
-              : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                isDark
-                  ? 'bg-neutral-700'
-                  : 'bg-white shadow-sm border border-gray-100'
-              }`}
-            >
-              {selectedNiveau ? (
-                <selectedNiveau.icon
-                  className={`w-[18px] h-[18px] ${selectedNiveau.iconColor}`}
-                />
-              ) : (
-                <Layers
-                  className={`w-[18px] h-[18px] ${
-                    isDark ? 'text-neutral-400' : 'text-gray-400'
-                  }`}
-                />
-              )}
-            </div>
-            <div className="flex flex-col items-start">
-              <span
-                className={`text-xs ${
-                  isDark ? 'text-neutral-400' : 'text-gray-500'
-                }`}
-              >
-                {translate('flashcards_card_count_label')}
-              </span>
-              <span
-                className={`text-sm font-semibold ${
-                  isDark ? 'text-neutral-100' : 'text-gray-900'
-                }`}
-              >
-                {selectedNiveau ? translate(selectedNiveau.labelKey) : translate('flashcards_card_count_select')}
-              </span>
-            </div>
-          </div>
-          <ChevronDown
-            className={`w-4 h-4 flex-shrink-0 transition-transform ${
-              isNiveauOpen ? 'rotate-180' : ''
-            } ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}
-          />
-        </button>
-
-        {isNiveauOpen && (
-          <div
-            className={`mt-1 rounded-xl border overflow-hidden ${
-              isDark
-                ? 'bg-neutral-800 border-neutral-700'
-                : 'bg-white border-gray-200'
-            }`}
-          >
-            {NIVEAUX.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  setNiveau(option.value);
-                  setIsNiveauOpen(false);
-                }}
-                className={`w-full text-left px-4 py-3 transition-all ${
-                  niveau === option.value
-                    ? isDark
-                      ? 'bg-neutral-700/50'
-                      : 'bg-gray-50'
-                    : isDark
-                    ? 'hover:bg-neutral-700/30'
-                    : 'hover:bg-gray-50/50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        isDark ? 'bg-neutral-700' : 'bg-gray-100'
-                      }`}
-                    >
-                      <option.icon
-                        className={`w-5 h-5 ${option.iconColor}`}
-                      />
-                    </div>
-                    <div>
-                      <p
-                        className={`text-sm font-semibold ${
-                          niveau === option.value
-                            ? isDark
-                              ? 'text-white'
-                              : 'text-gray-900'
-                            : isDark
-                            ? 'text-neutral-200'
-                            : 'text-gray-900'
-                        }`}
-                      >
-                        {translate(option.labelKey)}
-                      </p>
-                      <p
-                        className={`text-xs ${
-                          isDark ? 'text-neutral-400' : 'text-gray-500'
-                        }`}
-                      >
-                        {translate(option.descriptionKey)}
-                      </p>
-                    </div>
-                  </div>
-                  {niveau === option.value && (
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center bg-orange-500">
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </div>
-              </button>
-            ))}
           </div>
         )}
       </div>

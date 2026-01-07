@@ -36,13 +36,44 @@ interface ParsedNote {
   content: string;
 }
 
+// Map step keys to translation keys for note generation
+const STEP_TO_TRANSLATION_KEY: Record<string, string> = {
+  'analyzing_document': 'gen_step_analyzing_structure',
+  'extracting_chapter': 'gen_step_transcribing_sections',
+  'verifying_content': 'gen_step_verifying_completeness',
+  'generating_content': 'gen_step_generating_glossary',
+  'finalizing': 'gen_step_saving_note',
+};
+
 // Helper to translate progress messages from API
-function translateProgressMessage(message: string, translate: (key: string) => string): string {
-  if (!message) return '';
+function translateProgressMessage(
+  message: string | undefined,
+  step: string | undefined,
+  translate: (key: string) => string,
+  sectionIndex?: number,
+  totalSections?: number
+): string {
+  // If we have a step key, use it for translation
+  if (step) {
+    const translationKey = STEP_TO_TRANSLATION_KEY[step];
+    if (translationKey) {
+      let translated = translate(translationKey);
+      // Replace placeholders if we're transcribing sections
+      if (step === 'extracting_chapter' && sectionIndex !== undefined && totalSections !== undefined) {
+        translated = translate('aplus_note_progress_transcribing')
+          .replace('{current}', sectionIndex.toString())
+          .replace('{total}', totalSections.toString());
+      }
+      return translated;
+    }
+  }
+
+  // Fallback for legacy messages (backwards compatibility)
+  if (!message) return translate('gen_step_analyzing_structure');
 
   // Map API messages to translation keys
   if (message.includes('Analyzing document structure')) {
-    return translate('aplus_note_progress_analyzing');
+    return translate('gen_step_analyzing_structure');
   }
   if (message.includes('Transcribing section') || message.includes('Transcribing')) {
     // Extract numbers from "Transcribing section 3/6..." or "Transcribing 6 sections..."
@@ -61,13 +92,16 @@ function translateProgressMessage(message: string, translate: (key: string) => s
     return translate('aplus_note_progress_generating');
   }
   if (message.includes('Generating glossary')) {
-    return translate('aplus_note_progress_glossary');
+    return translate('gen_step_generating_glossary');
   }
   if (message.includes('Generating note')) {
     return translate('aplus_note_progress_generating');
   }
   if (message.includes('Saving note')) {
-    return translate('aplus_note_progress_saving');
+    return translate('gen_step_saving_note');
+  }
+  if (message.includes('Verifying completeness')) {
+    return translate('gen_step_verifying_completeness');
   }
 
   // Fallback: return as-is if no match
@@ -86,6 +120,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
   const [generating, setGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationMessage, setGenerationMessage] = useState('');
+  const [generationStep, setGenerationStep] = useState<string | undefined>();
   const [currentSection, setCurrentSection] = useState<string | undefined>();
   const [sectionIndex, setSectionIndex] = useState<number | undefined>();
   const [totalSections, setTotalSections] = useState<number | undefined>();
@@ -233,7 +268,8 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
 
     setGenerating(true);
     setGenerationProgress(0);
-    setGenerationMessage('Starting...');
+    setGenerationMessage('');
+    setGenerationStep(undefined);
     setStreamingContent(''); // Reset streaming content
     setCurrentSection(undefined);
     setSectionIndex(undefined);
@@ -285,6 +321,10 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
               if (data.type === 'progress') {
                 setGenerationProgress(data.progress || 0);
                 setGenerationMessage(data.message || '');
+                setGenerationStep(data.step);
+                // Update section info if provided in progress event
+                if (data.sectionIndex !== undefined) setSectionIndex(data.sectionIndex);
+                if (data.totalSections !== undefined) setTotalSections(data.totalSections);
               } else if (data.type === 'chunk') {
                 // Accumulate streaming content
                 accumulatedContent += data.content;
@@ -325,6 +365,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
       setGenerating(false);
       setGenerationProgress(0);
       setGenerationMessage('');
+      setGenerationStep(undefined);
       setCurrentSection(undefined);
       setSectionIndex(undefined);
       setTotalSections(undefined);
@@ -408,47 +449,14 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     setDownloading(true);
 
     try {
-      // html2pdf.js now uses html2canvas-pro (via webpack alias) which supports lab() colors
-      const html2pdf = (await import('html2pdf.js')).default;
+      const { generatePDFWithTextLayer } = await import('@/lib/pdf-with-text-layer');
+      const filename = `${courseTitle.replace(/[^a-z0-9]/gi, '_')}_Study_Sheet.pdf`;
 
-      // Clone the content for PDF generation
-      const element = contentRef.current.cloneNode(true) as HTMLElement;
-
-      // Force light mode styles for PDF export (remove dark-mode class)
-      element.classList.remove('dark-mode');
-      // Apply light mode background
-      element.style.backgroundColor = '#ffffff';
-      element.style.color = '#374151';
-
-      const opt = {
-        margin: [15, 15, 15, 15] as [number, number, number, number],
-        filename: `${courseTitle.replace(/[^a-z0-9]/gi, '_')}_Study_Sheet.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          letterRendering: true,
-        },
-        jsPDF: {
-          unit: 'mm' as const,
-          format: 'a4' as const,
-          orientation: 'portrait' as const
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-
-      await html2pdf().set(opt).from(element).save();
+      await generatePDFWithTextLayer(contentRef.current, filename, { margin: 15, scale: 2 });
     } catch (err) {
       console.error('Error generating PDF:', err);
     } finally {
       setDownloading(false);
-
-      // Cleanup any leftover html2pdf elements that might block interactions
-      setTimeout(() => {
-        document.querySelectorAll('.html2pdf__overlay, .html2pdf__container').forEach(el => el.remove());
-        document.body.style.overflow = '';
-        document.body.style.pointerEvents = '';
-      }, 200);
     }
   };
 
@@ -479,7 +487,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
             <GenerationLoadingScreen
               type="note"
               progress={generationProgress}
-              progressMessage={generationMessage}
+              progressMessage={translateProgressMessage(generationMessage, generationStep, translate, sectionIndex, totalSections)}
               itemsGenerated={sectionIndex}
               totalItems={totalSections}
             />
@@ -495,7 +503,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
                 <GenerationProgress
                   type="note"
                   progress={generationProgress}
-                  message={generationMessage}
+                  message={translateProgressMessage(generationMessage, generationStep, translate, sectionIndex, totalSections)}
                   chapterIndex={sectionIndex}
                   totalChapters={totalSections}
                   chapterTitle={currentSection}
@@ -653,7 +661,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
             <GenerationLoadingScreen
               type="note"
               progress={generationProgress}
-              progressMessage={generationMessage}
+              progressMessage={translateProgressMessage(generationMessage, generationStep, translate, sectionIndex, totalSections)}
               itemsGenerated={sectionIndex}
               totalItems={totalSections}
             />
@@ -669,7 +677,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
                 <GenerationProgress
                   type="note"
                   progress={generationProgress}
-                  message={generationMessage}
+                  message={translateProgressMessage(generationMessage, generationStep, translate, sectionIndex, totalSections)}
                   chapterIndex={sectionIndex}
                   totalChapters={totalSections}
                   chapterTitle={currentSection}

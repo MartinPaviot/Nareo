@@ -136,8 +136,8 @@ export default function FolderLevel({
                 {!filteredData.isSearching && (
                   <div className={`border-t mb-4 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`} />
                 )}
-                <div className={`flex items-center gap-1.5 px-1 mb-2`}>
-                  <FolderIcon className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`} />
+                <div className={`flex items-center gap-2 px-3 mb-2`}>
+                  <FolderIcon className="w-4 h-4 text-orange-500" />
                   <p className={`text-xs font-semibold uppercase tracking-wider ${
                     isDark ? 'text-neutral-500' : 'text-gray-500'
                   }`}>
@@ -167,7 +167,7 @@ export default function FolderLevel({
                 {filteredData.folders.length > 0 && (
                   <div className={`border-t pt-4 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`} />
                 )}
-                <p className={`text-xs font-semibold uppercase tracking-wider px-1 mb-2 ${
+                <p className={`text-xs font-semibold uppercase tracking-wider px-3 mb-2 ${
                   isDark ? 'text-neutral-500' : 'text-gray-500'
                 }`}>
                   {translate('sidebar_courses') || 'Cours'}
@@ -204,7 +204,7 @@ export default function FolderLevel({
             {!filteredData.isSearching && filteredData.uncategorized.length > 0 && (
               <div>
                 <div className={`border-t pt-4 mt-2 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wider px-1 mb-2 ${
+                  <p className={`text-xs font-semibold uppercase tracking-wider px-3 mb-2 ${
                     isDark ? 'text-neutral-500' : 'text-gray-500'
                   }`}>
                     {translate('sidebar_no_folder') || 'Sans dossier'}

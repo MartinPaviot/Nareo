@@ -68,7 +68,7 @@ export default function CourseLevel({
           </div>
         ) : (
           <>
-            <p className={`text-xs font-semibold uppercase tracking-wider px-1 mb-2 ${
+            <p className={`text-xs font-semibold uppercase tracking-wider px-3 mb-2 ${
               isDark ? 'text-neutral-500' : 'text-gray-500'
             }`}>
               {translate('sidebar_courses') || 'Cours'}

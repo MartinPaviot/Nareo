@@ -29,6 +29,7 @@ function createSSEStream() {
   const sendProgress = (data: {
     type: string;
     message?: string;
+    step?: string;
     progress?: number;
     cardsGenerated?: number;
     totalCards?: number;
@@ -267,7 +268,7 @@ export async function POST(
         // Send initial progress
         sendProgress({
           type: 'progress',
-          message: 'Analyzing document...',
+          step: 'analyzing_document',
           progress: 10,
         });
 
@@ -291,7 +292,7 @@ export async function POST(
 
         sendProgress({
           type: 'progress',
-          message: 'Processing flashcards...',
+          step: 'identifying_concepts',
           progress: 50,
         });
 
@@ -330,7 +331,7 @@ export async function POST(
 
         sendProgress({
           type: 'progress',
-          message: 'Saving flashcards...',
+          step: 'saving_content',
           progress: 60,
         });
 

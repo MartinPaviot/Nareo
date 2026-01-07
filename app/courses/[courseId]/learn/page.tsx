@@ -80,8 +80,33 @@ export default function CourseLearnPage() {
   const [quizGenerationError, setQuizGenerationError] = useState<string | null>(null);
   const [quizGenerationProgress, setQuizGenerationProgress] = useState(0);
   const [quizGenerationMessage, setQuizGenerationMessage] = useState('');
+  const [quizGenerationStep, setQuizGenerationStep] = useState<string | undefined>();
   const [streamingQuestions, setStreamingQuestions] = useState<StreamingQuestion[]>([]);
   const [totalExpectedQuestions, setTotalExpectedQuestions] = useState<number | undefined>(undefined);
+
+  // Map step keys to translation keys for quiz generation
+  const translateQuizStepMessage = useCallback((step: string | undefined, message: string | undefined): string => {
+    const STEP_TO_TRANSLATION_KEY: Record<string, string> = {
+      'analyzing_document': 'gen_step_analyzing_document',
+      'extracting_chapter': 'gen_step_extracting_chapter',
+      'identifying_concepts': 'gen_step_identifying_concepts',
+      'generating_content': 'gen_step_generating_questions',
+      'verifying_content': 'gen_step_verifying_duplicates',
+      'saving_content': 'gen_step_finalizing',
+      'finalizing': 'gen_step_finalizing',
+    };
+
+    if (step) {
+      const translationKey = STEP_TO_TRANSLATION_KEY[step];
+      if (translationKey) {
+        return translate(translationKey);
+      }
+    }
+
+    // Fallback to message if no step
+    return message || translate('gen_step_analyzing_document');
+  }, [translate]);
+
   // Track if user started playing during generation - persisted to survive navigation
   const [wasPlayingProgressiveQuiz, setWasPlayingProgressiveQuiz] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -144,7 +169,8 @@ export default function CourseLearnPage() {
     setIsGeneratingQuiz(true);
     setQuizGenerationError(null);
     setQuizGenerationProgress(0);
-    setQuizGenerationMessage('Démarrage...');
+    setQuizGenerationMessage('');
+    setQuizGenerationStep(undefined);
     setStreamingQuestions([]); // Reset streaming questions
 
     // Clear sessionStorage to ensure clean state on regeneration
@@ -200,6 +226,7 @@ export default function CourseLearnPage() {
               if (data.type === 'progress') {
                 setQuizGenerationProgress(data.progress || 0);
                 setQuizGenerationMessage(data.message || '');
+                setQuizGenerationStep(data.step);
                 // Capture totalQuestions from progress messages
                 if (data.totalQuestions) {
                   setTotalExpectedQuestions(data.totalQuestions);
@@ -237,7 +264,7 @@ export default function CourseLearnPage() {
                 }
               } else if (data.type === 'complete') {
                 setQuizGenerationProgress(100);
-                setQuizGenerationMessage('Quiz généré avec succès !');
+                setQuizGenerationStep('finalizing');
                 // Final refetch to get all data
                 await refetch();
                 triggerRefresh();
@@ -259,6 +286,7 @@ export default function CourseLearnPage() {
       setIsGeneratingQuiz(false);
       setQuizGenerationProgress(0);
       setQuizGenerationMessage('');
+      setQuizGenerationStep(undefined);
     }
   }, [courseId, isDemoId, isGeneratingQuiz, refetch, triggerRefresh, user?.id]);
 
@@ -852,7 +880,7 @@ export default function CourseLearnPage() {
                 onRegenerateQuiz={handleGenerateQuiz}
                 isGenerating={isGeneratingQuiz}
                 generationProgress={quizGenerationProgress}
-                generationMessage={quizGenerationMessage}
+                generationMessage={translateQuizStepMessage(quizGenerationStep, quizGenerationMessage)}
                 streamingQuestions={streamingQuestions}
                 totalExpectedQuestions={totalExpectedQuestions}
                 enableProgressiveQuiz={true}

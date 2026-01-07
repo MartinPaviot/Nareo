@@ -48,6 +48,7 @@ function createSSEStream() {
   const sendProgress = (data: {
     type: string;
     message?: string;
+    step?: string;
     progress?: number;
     chapterIndex?: number;
     totalChapters?: number;
@@ -348,7 +349,7 @@ export async function POST(
         // Send initial progress
         sendProgress({
           type: 'progress',
-          message: 'Initialisation...',
+          step: 'analyzing_document',
           progress: currentProgress,
           totalChapters,
           questionsGenerated: 0,
@@ -369,7 +370,7 @@ export async function POST(
               currentProgress = Math.max(currentProgress, 5 + (chapterIndex - 1) * (85 / totalChapters));
               sendProgress({
                 type: 'progress',
-                message: `Analyse du chapitre ${chapterIndex}/${totalChapters}: ${chapter.title}`,
+                step: 'extracting_chapter',
                 progress: Math.round(currentProgress),
                 chapterIndex,
                 totalChapters,
@@ -419,7 +420,7 @@ export async function POST(
                 currentProgress = Math.min(currentProgress + 1, 95);
                 sendProgress({
                   type: 'progress',
-                  message: `Génération des questions pour "${chapter.title}"${pass > 0 ? ` (complétion ${questionsNeeded} restantes)` : ''}...`,
+                  step: 'generating_content',
                   progress: Math.round(currentProgress),
                   chapterIndex,
                   totalChapters,
@@ -435,18 +436,17 @@ export async function POST(
                 };
 
                 // Start a progress ticker to show activity during LLM generation
+                // Use step keys that rotate through identifying_concepts and generating_content
                 let tickerCount = 0;
-                const thinkingMessages = [
-                  `Réflexion en cours...`,
-                  `Analyse du contenu...`,
-                  `Création des questions...`,
-                  `Formulation en cours...`,
+                const thinkingSteps = [
+                  'identifying_concepts',
+                  'generating_content',
                 ];
                 const progressTicker = setInterval(() => {
-                  const messageIndex = tickerCount % thinkingMessages.length;
+                  const stepIndex = tickerCount % thinkingSteps.length;
                   sendProgress({
                     type: 'progress',
-                    message: thinkingMessages[messageIndex],
+                    step: thinkingSteps[stepIndex],
                     progress: Math.round(currentProgress),
                     chapterIndex,
                     totalChapters,
@@ -489,7 +489,7 @@ export async function POST(
                 currentProgress = Math.min(currentProgress + 1, 95);
                 sendProgress({
                   type: 'progress',
-                  message: `Vérification des doublons...`,
+                  step: 'verifying_content',
                   progress: Math.round(currentProgress),
                   chapterIndex,
                   totalChapters,
@@ -509,7 +509,7 @@ export async function POST(
                 currentProgress = Math.min(currentProgress + 1, 95);
                 sendProgress({
                   type: 'progress',
-                  message: `Enregistrement de ${questions.length} questions...`,
+                  step: 'saving_content',
                   progress: Math.round(currentProgress),
                   chapterIndex,
                   totalChapters,
@@ -688,13 +688,12 @@ export async function POST(
                 .eq('id', chapter.id);
 
               // Update progress: chapter complete
-              const chapterStatus = (chapterQuestionCount || 0) > 0 ? 'terminé ✓' : 'terminé (0 questions)';
               // Calculate progress based on chapter completion (15-85 range for generation)
               const chapterCompleteProgress = Math.min(85, 15 + (chapterIndex / totalChapters) * 70);
               currentProgress = Math.max(currentProgress, chapterCompleteProgress);
               sendProgress({
                 type: 'progress',
-                message: `Chapitre ${chapterIndex}/${totalChapters} ${chapterStatus}`,
+                step: 'generating_content',
                 progress: currentProgress,
                 chapterIndex,
                 totalChapters,
@@ -719,7 +718,7 @@ export async function POST(
               currentProgress = Math.max(currentProgress, chapterErrorProgress);
               sendProgress({
                 type: 'progress',
-                message: `Erreur sur le chapitre ${chapterIndex}`,
+                step: 'generating_content',
                 progress: currentProgress,
                 chapterIndex,
                 totalChapters,

@@ -63,14 +63,20 @@ RULE 6 - REVERSED FOR ACRONYMS:
 - This creates 2 cards: term→definition AND definition→term.
 - Use type "reversed" for these.
 
-RULE 7 - FORMULAS DECOMPOSED:
-- Each variable in a formula = separate card.
-- The formula itself = one card.
-- BAD: One card explaining entire CAPM formula with all variables
-- GOOD: Card 1: "CAPM formula?" → "ke = rf + β(Rm - rf)"
-         Card 2: "In CAPM, rf represents?" → "Risk-free rate"
-         Card 3: "In CAPM, β measures?" → "Systematic risk sensitivity"
-         Card 4: "In CAPM, (Rm - rf) represents?" → "Market risk premium"
+RULE 7 - FORMULAS WITH DEDICATED CARDS:
+- Use type "formula" for mathematical equations and scientific formulas.
+- Each formula = one formula card with name, formula, and optional context.
+- Variables can be explained in separate basic cards.
+- Formula cards are designed to show the formula prominently.
+- Use LaTeX notation when appropriate (e.g., "$E = mc^2$" or "$\\frac{d}{dx}$").
+- EXAMPLES:
+  - Card: {"type": "formula", "name": "Énergie cinétique", "formula": "E = ½mv²", "context": "physique classique"}
+  - Card: {"type": "formula", "name": "CAPM", "formula": "ke = rf + β(Rm - rf)", "context": "finance"}
+  - Card: {"type": "formula", "name": "Théorème de Pythagore", "formula": "a² + b² = c²"}
+- For complex formulas, also create basic cards explaining each variable:
+  - Card 1: Formula card for the equation itself
+  - Card 2: "In CAPM, rf represents?" → "Risk-free rate"
+  - Card 3: "In CAPM, β measures?" → "Systematic risk sensitivity"
 
 RULE 8 - SUFFICIENT CONTEXT:
 - The question must contain enough context to find the answer.
@@ -106,7 +112,8 @@ Choose the type based on content:
 | Acronym (WACC, CAPM, DCF) | reversed | Test both directions |
 | Definition with context | cloze | Context aids recall |
 | Simple fact/definition | basic | Direct Q&A |
-| Formula variable | basic | Specific question |
+| Mathematical equation/formula | formula | Highlight the formula |
+| Formula variable explanation | basic | Specific question |
 | Technical vocabulary | reversed | Test both directions |
 | Relationship/condition | cloze | Context matters |
 
@@ -131,6 +138,12 @@ Return valid JSON only. No markdown, no explanation.
       "type": "reversed",
       "term": "WACC",
       "definition": "Weighted Average Cost of Capital"
+    },
+    {
+      "type": "formula",
+      "name": "WACC Formula",
+      "formula": "WACC = (E/V) × Re + (D/V) × Rd × (1-Tc)",
+      "context": "Corporate Finance"
     }
   ]
 }`;
@@ -173,11 +186,12 @@ export function getFlashcardUserPrompt(
 ${NIVEAU_INSTRUCTIONS[niveau]}
 
 DISTRIBUTION GUIDELINE:
-- ~40% Basic cards (simple facts, definitions)
-- ~40% Cloze cards (context-dependent knowledge)
-- ~20% Reversed cards (acronyms, vocabulary)
+- ~35% Basic cards (simple facts, definitions)
+- ~35% Cloze cards (context-dependent knowledge)
+- ~15% Reversed cards (acronyms, vocabulary)
+- ~15% Formula cards (equations, mathematical formulas)
 
-Adjust based on actual content (more formulas = more cloze, more acronyms = more reversed).
+Adjust based on actual content: if the source has many formulas, increase formula cards; if many acronyms, increase reversed cards. ALWAYS create formula cards when the text contains mathematical equations or scientific formulas.
 
 COURSE: ${courseTitle}
 

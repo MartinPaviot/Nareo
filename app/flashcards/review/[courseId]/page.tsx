@@ -202,8 +202,8 @@ export default function ReviewPage() {
         });
       }
 
-      // Update session stats
-      setSessionStats(prev => prev ? updateSessionStats(prev, rating) : createSessionStats(sessionCards.length));
+      // Update session stats with card ID for tracking attempts
+      setSessionStats(prev => prev ? updateSessionStats(prev, rating, currentCard.id) : createSessionStats(sessionCards.length));
 
       // Check if this is the last card
       const isLastCard = currentIndex + 1 >= sessionCards.length;

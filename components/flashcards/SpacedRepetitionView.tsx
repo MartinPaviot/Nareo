@@ -17,6 +17,8 @@ import {
 } from '@/lib/spaced-repetition';
 import RatingButtons from './RatingButtons';
 import SessionRecap from './SessionRecap';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 
 // Mapping des types de cartes vers des labels lisibles
 const FLASHCARD_TYPE_LABELS: Record<string, string> = {
@@ -29,6 +31,44 @@ const FLASHCARD_TYPE_LABELS: Record<string, string> = {
   intuition: 'Intuition',
   link: 'Lien',
 };
+
+/**
+ * Rend une formule en HTML avec KaTeX si elle contient du LaTeX
+ * Supporte les notations $...$ ou $$...$$ ou les formules sans délimiteurs
+ */
+function renderFormula(text: string): string {
+  if (!text) return '';
+
+  // Si le texte contient déjà des délimiteurs LaTeX
+  if (text.includes('$')) {
+    // Remplacer les $$...$$ par du KaTeX display mode
+    let result = text.replace(/\$\$(.*?)\$\$/g, (_, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
+      } catch {
+        return `$$${formula}$$`;
+      }
+    });
+
+    // Remplacer les $...$ par du KaTeX inline
+    result = result.replace(/\$([^$]+)\$/g, (_, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false });
+      } catch {
+        return `$${formula}$`;
+      }
+    });
+
+    return result;
+  }
+
+  // Sinon, essayer de rendre comme une formule mathématique
+  try {
+    return katex.renderToString(text, { displayMode: true, throwOnError: false });
+  } catch {
+    return text;
+  }
+}
 
 interface SpacedRepetitionViewProps {
   cards: FlashcardWithProgress[];
@@ -325,11 +365,20 @@ export default function SpacedRepetitionView({
             }`}>
               {translate('flashcards_answer', 'Réponse')}
             </span>
-            <p className={`text-lg sm:text-xl md:text-2xl text-center leading-relaxed px-2 ${
-              isDark ? 'text-neutral-200' : 'text-gray-800'
-            }`}>
-              {currentCard.back}
-            </p>
+            {currentCard.type === 'formula' ? (
+              <div
+                className={`text-xl sm:text-2xl md:text-3xl text-center leading-relaxed px-2 font-mono ${
+                  isDark ? 'text-neutral-200' : 'text-gray-800'
+                }`}
+                dangerouslySetInnerHTML={{ __html: renderFormula(currentCard.back) }}
+              />
+            ) : (
+              <p className={`text-lg sm:text-xl md:text-2xl text-center leading-relaxed px-2 ${
+                isDark ? 'text-neutral-200' : 'text-gray-800'
+              }`}>
+                {currentCard.back}
+              </p>
+            )}
           </div>
         </div>
       </div>

@@ -101,7 +101,7 @@ export const FLASHCARD_COUNT_BY_NIVEAU: Record<FlashcardNiveau, number> = {
 /**
  * Types de cartes générées
  */
-export type FlashcardType = 'basic' | 'cloze' | 'reversed';
+export type FlashcardType = 'basic' | 'cloze' | 'reversed' | 'formula';
 
 /**
  * Carte Basic (question → réponse)
@@ -137,9 +137,22 @@ export interface ReversedCard {
 }
 
 /**
+ * Carte Formula (formule mathématique/scientifique)
+ * Pour: équations, formules, expressions mathématiques
+ * Front: nom ou description de la formule
+ * Back: la formule elle-même (en LaTeX ou notation standard)
+ */
+export interface FormulaCard {
+  type: 'formula';
+  name: string;        // Nom de la formule (ex: "Formule de l'énergie cinétique")
+  formula: string;     // La formule elle-même (ex: "E = ½mv²" ou en LaTeX "$E = \frac{1}{2}mv^2$")
+  context?: string;    // Contexte optionnel (ex: "en physique classique")
+}
+
+/**
  * Union de tous les types de cartes
  */
-export type Flashcard = BasicCard | ClozeCard | ReversedCard;
+export type Flashcard = BasicCard | ClozeCard | ReversedCard | FormulaCard;
 
 /**
  * Réponse du LLM pour la génération de flashcards

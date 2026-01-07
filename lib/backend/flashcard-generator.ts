@@ -8,6 +8,7 @@ import {
   BasicCard,
   ClozeCard,
   ReversedCard,
+  FormulaCard,
   FLASHCARD_COUNT_BY_NIVEAU,
   DEFAULT_FLASHCARD_CONFIG,
 } from '@/types/flashcard-config';
@@ -31,11 +32,14 @@ interface FlashcardDBData {
   cloze_answer?: string;
   reversed_term?: string;
   reversed_def?: string;
+  formula_name?: string;
+  formula_expression?: string;
+  formula_context?: string;
 }
 
 /**
  * Convertit une flashcard LLM en format base de données
- * Gère les 3 types Anki: basic, cloze, reversed
+ * Gère les 4 types: basic, cloze, reversed, formula
  */
 function convertToDBFormat(card: Flashcard): FlashcardDBData {
   switch (card.type) {
@@ -69,6 +73,19 @@ function convertToDBFormat(card: Flashcard): FlashcardDBData {
         back: card.definition,
         reversed_term: card.term,
         reversed_def: card.definition,
+      };
+
+    case 'formula':
+      // Pour une carte formula, on affiche le nom de la formule en front
+      // et la formule elle-même en back
+      const contextSuffix = card.context ? ` (${card.context})` : '';
+      return {
+        type: 'formula',
+        front: `${card.name}${contextSuffix}`,
+        back: card.formula,
+        formula_name: card.name,
+        formula_expression: card.formula,
+        formula_context: card.context,
       };
 
     default:
@@ -115,6 +132,15 @@ function validateAndCleanFlashcards(rawCards: any[]): Flashcard[] {
           type: 'reversed',
           term: String(card.term).trim(),
           definition: String(card.definition).trim(),
+        });
+      }
+    } else if (type === 'formula') {
+      if (card.name && card.formula) {
+        validCards.push({
+          type: 'formula',
+          name: String(card.name).trim(),
+          formula: String(card.formula).trim(),
+          context: card.context ? String(card.context).trim() : undefined,
         });
       }
     } else {
@@ -278,17 +304,20 @@ const CHAPTER_FLASHCARD_PROMPT = `You are an expert flashcard creator following 
 RULES:
 1. ONE fact per card (atomicity)
 2. Answers: MAX 15 words
-3. Use type "basic" for simple facts, "cloze" for context-dependent knowledge, "reversed" for acronyms
+3. Use type "basic" for simple facts, "cloze" for context-dependent knowledge, "reversed" for acronyms, "formula" for mathematical equations
 4. For cloze: format is {{c1::answer}} with ONE cloze per card
 5. For reversed: term and definition that work both directions
-6. NO lists, NO multiple answers, NO administrative content
+6. For formula: name, formula (the equation), and optional context
+7. NO lists, NO multiple answers, NO administrative content
+8. ALWAYS create formula cards when the content contains mathematical equations or scientific formulas
 
 OUTPUT FORMAT (JSON only):
 {
   "flashcards": [
     {"type": "basic", "front": "...", "back": "..."},
     {"type": "cloze", "text": "The {{c1::term}} is...", "cloze_id": "c1", "answer": "term"},
-    {"type": "reversed", "term": "ABC", "definition": "Full Name"}
+    {"type": "reversed", "term": "ABC", "definition": "Full Name"},
+    {"type": "formula", "name": "Energy formula", "formula": "E = mc²", "context": "Physics"}
   ]
 }`;
 
@@ -320,7 +349,7 @@ export async function generateChapterFlashcards(
         },
         {
           role: 'user',
-          content: `Create 5-8 atomic flashcards for this chapter. Mix types (basic, cloze, reversed) based on content.
+          content: `Create 5-8 atomic flashcards for this chapter. Mix types (basic, cloze, reversed, formula) based on content. If the content contains formulas or equations, ALWAYS include formula cards.
 
 Chapter: ${chapterTitle}
 

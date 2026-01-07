@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { SessionStats, getMasteredCount, getDifficultCount, getSessionDuration } from '@/lib/spaced-repetition';
+import { SessionStats, getMasteredCount, getDifficultCount, getSessionDuration, getWeightedScore } from '@/lib/spaced-repetition';
 import { RotateCcw, Check, Calendar, Clock, Star, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -151,7 +151,8 @@ export default function SessionRecap({
   const masteredCount = getMasteredCount(stats);
   const difficultCount = getDifficultCount(stats);
   const duration = getSessionDuration(stats);
-  const masteryPercentage = stats.total > 0 ? Math.round((masteredCount / stats.total) * 100) : 0;
+  // Use weighted score based on attempts instead of simple mastery percentage
+  const masteryPercentage = getWeightedScore(stats);
   const colors = getScoreColors(masteryPercentage, isDark);
   const earnedStars = getStars(masteryPercentage);
 

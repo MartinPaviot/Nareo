@@ -25,6 +25,23 @@ export const translations: Record<Language, Translations> = {
     show_more: 'Show more',
     show_less: 'Show less',
 
+    // Extraction Loader
+    extraction_importing: 'Importing...',
+    extraction_loading: 'Loading...',
+    extraction_loading_alt: 'Loading in progress',
+    extraction_error_title: 'Extraction error',
+    extraction_error_not_found: 'Course not found. Please try uploading again.',
+    extraction_error_connection: 'Connection error. Please refresh the page.',
+    extraction_refresh_page: 'Refresh page',
+    extraction_stage_queued: 'Preparing...',
+    extraction_stage_start: 'Starting...',
+    extraction_stage_download: 'Retrieving document...',
+    extraction_stage_extraction: 'Extracting text...',
+    extraction_stage_language: 'Detecting language...',
+    extraction_stage_structuring: 'Analyzing structure...',
+    extraction_stage_insertion: 'Finalizing...',
+    extraction_stage_done: 'Done!',
+
     // Cookie Banner
     cookie_banner_title: 'Cookie Settings',
     cookie_banner_message: 'We use cookies to improve your experience on our site. Essential cookies are necessary for the site to function properly. Analytics cookies help us understand how you use our site.',
@@ -1706,6 +1723,23 @@ export const translations: Record<Language, Translations> = {
     language_label: 'Langue',
     show_more: 'Voir plus',
     show_less: 'Voir moins',
+
+    // Extraction Loader
+    extraction_importing: 'Import en cours...',
+    extraction_loading: 'Chargement...',
+    extraction_loading_alt: 'Chargement en cours',
+    extraction_error_title: "Erreur d'extraction",
+    extraction_error_not_found: "Cours introuvable. Veuillez réessayer l'upload.",
+    extraction_error_connection: 'Erreur de connexion. Veuillez rafraîchir la page.',
+    extraction_refresh_page: 'Rafraîchir la page',
+    extraction_stage_queued: 'Préparation...',
+    extraction_stage_start: 'Démarrage...',
+    extraction_stage_download: 'Récupération du document...',
+    extraction_stage_extraction: 'Extraction du texte...',
+    extraction_stage_language: 'Détection de la langue...',
+    extraction_stage_structuring: 'Analyse de la structure...',
+    extraction_stage_insertion: 'Finalisation...',
+    extraction_stage_done: 'Terminé !',
 
     // Cookie Banner
     cookie_banner_title: 'Gestion des cookies',
@@ -3391,6 +3425,23 @@ export const translations: Record<Language, Translations> = {
     language_label: 'Sprache',
     show_more: 'Mehr anzeigen',
     show_less: 'Weniger anzeigen',
+
+    // Extraction Loader
+    extraction_importing: 'Import läuft...',
+    extraction_loading: 'Laden...',
+    extraction_loading_alt: 'Laden läuft',
+    extraction_error_title: 'Extraktionsfehler',
+    extraction_error_not_found: 'Kurs nicht gefunden. Bitte versuche den Upload erneut.',
+    extraction_error_connection: 'Verbindungsfehler. Bitte aktualisiere die Seite.',
+    extraction_refresh_page: 'Seite aktualisieren',
+    extraction_stage_queued: 'Vorbereitung...',
+    extraction_stage_start: 'Starten...',
+    extraction_stage_download: 'Dokument wird abgerufen...',
+    extraction_stage_extraction: 'Text wird extrahiert...',
+    extraction_stage_language: 'Sprache wird erkannt...',
+    extraction_stage_structuring: 'Struktur wird analysiert...',
+    extraction_stage_insertion: 'Finalisierung...',
+    extraction_stage_done: 'Fertig!',
 
     // Cookie Banner
     cookie_banner_title: 'Cookie-Einstellungen',

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 // Ordre des stages pour calculer les limites de progression
@@ -19,16 +20,16 @@ const stageToProgress: Record<string, number> = {
   'done': 100
 };
 
-// Messages des stages en français
-const stageMessages: Record<string, string> = {
-  'queued': 'Préparation...',
-  'start': 'Démarrage...',
-  'download': 'Récupération du document...',
-  'extraction': 'Extraction du texte...',
-  'language_detection': 'Détection de la langue...',
-  'structuring': 'Analyse de la structure...',
-  'insertion': 'Finalisation...',
-  'done': 'Terminé !'
+// Stage to translation key mapping
+const stageTranslationKeys: Record<string, string> = {
+  'queued': 'extraction_stage_queued',
+  'start': 'extraction_stage_start',
+  'download': 'extraction_stage_download',
+  'extraction': 'extraction_stage_extraction',
+  'language_detection': 'extraction_stage_language',
+  'structuring': 'extraction_stage_structuring',
+  'insertion': 'extraction_stage_insertion',
+  'done': 'extraction_stage_done'
 };
 
 // Obtenir la limite max pour un stage (= début du stage suivant - 1)
@@ -61,6 +62,7 @@ interface ExtractionLoaderProps {
 
 export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoaderProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
   const [displayProgress, setDisplayProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState('queued');
   const [courseTitle, setCourseTitle] = useState('');
@@ -88,7 +90,7 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
     return LOADING_GIFS[randomIndex];
   }, []);
 
-  const stageMessage = stageMessages[currentStage] || 'Extraction du texte...';
+  const stageMessage = translate(stageTranslationKeys[currentStage] || 'extraction_stage_extraction');
 
   // Animation fluide de la progression
   useEffect(() => {
@@ -230,7 +232,7 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
         console.log(`[ExtractionLoader] Not found retry ${currentNotFound}/${MAX_NOT_FOUND_RETRIES}`);
 
         if (currentNotFound >= MAX_NOT_FOUND_RETRIES) {
-          setError('Cours introuvable. Veuillez réessayer l\'upload.');
+          setError('extraction_error_not_found');
           clearInterval(intervalId);
         }
         return;
@@ -242,7 +244,7 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
         setFailureCount(currentFailures);
 
         if (currentFailures >= MAX_FAILURES) {
-          setError('Erreur de connexion. Veuillez rafraîchir la page.');
+          setError('extraction_error_connection');
           clearInterval(intervalId);
         }
         return;
@@ -300,19 +302,19 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
             <h2 className={`text-lg font-semibold mb-2 ${
               isDark ? 'text-white' : 'text-gray-900'
             }`}>
-              Erreur d'extraction
+              {translate('extraction_error_title')}
             </h2>
             <p className={`text-sm mb-5 ${
               isDark ? 'text-neutral-400' : 'text-gray-600'
             }`}>
-              {error}
+              {translate(error)}
             </p>
             <button
               onClick={() => window.location.reload()}
               className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm rounded-xl transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              Rafraîchir la page
+              {translate('extraction_refresh_page')}
             </button>
           </div>
         </div>
@@ -336,7 +338,7 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
             <span className={`font-medium text-sm ${
               isDark ? 'text-neutral-200' : 'text-gray-700'
             }`}>
-              Import en cours...
+              {translate('extraction_importing')}
             </span>
           </div>
         </div>
@@ -349,7 +351,7 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
           }`}>
             <img
               src={selectedGif}
-              alt="Chargement en cours"
+              alt={translate('extraction_loading_alt')}
               className="w-full h-full object-contain"
             />
           </div>
@@ -380,7 +382,7 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
             <p className={`font-medium text-sm truncate ${
               isDark ? 'text-neutral-100' : 'text-gray-900'
             }`}>
-              {courseTitle || 'Chargement...'}
+              {courseTitle || translate('extraction_loading')}
             </p>
             <p className={`text-xs ${
               isDark ? 'text-neutral-500' : 'text-gray-500'

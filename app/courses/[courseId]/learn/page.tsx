@@ -869,7 +869,10 @@ export default function CourseLearnPage() {
             )}
 
             {/* Chapters list OR Progressive Quiz during generation */}
-            {(isDemoId || course?.quiz_status === 'ready' || course?.quiz_status === 'partial' || isGeneratingQuiz) && (
+            {/* Show QuizChapterManagement when quiz exists or is being generated
+                Always show if chapters exist to prevent blank screen after quiz completion
+            */}
+            {(isDemoId || course?.quiz_status === 'ready' || course?.quiz_status === 'partial' || course?.quiz_status === 'generating' || isGeneratingQuiz || chapters.length > 0) && (
               <QuizChapterManagement
                 courseId={courseId}
                 courseTitle={course.title}

@@ -344,7 +344,8 @@ export async function POST(
         const totalExpectedQuestions = totalChapters * questionsPerChapter;
 
         // Track monotonic progress - never goes backwards
-        let currentProgress = 5;
+        // Start at 2% to give more room for slow progression at the beginning
+        let currentProgress = 2;
 
         // Send initial progress
         sendProgress({
@@ -367,7 +368,10 @@ export async function POST(
 
             try {
               // Update progress: starting chapter (don't decrease progress)
-              currentProgress = Math.max(currentProgress, 5 + (chapterIndex - 1) * (85 / totalChapters));
+              // Use a slower curve at the beginning: start at 5% for first chapter
+              // and progress more gradually (use 75% of range, leaving room at start and end)
+              const chapterStartProgress = 5 + (chapterIndex - 1) * (70 / totalChapters);
+              currentProgress = Math.max(currentProgress, chapterStartProgress);
               sendProgress({
                 type: 'progress',
                 step: 'extracting_chapter',
@@ -417,7 +421,9 @@ export async function POST(
                 const questionsToRequest = Math.ceil(questionsNeeded * 1.5);
 
                 // Update progress: generating questions (increment by small amount)
-                currentProgress = Math.min(currentProgress + 1, 95);
+                // Smaller increments at the beginning for smoother progression
+                const progressIncrement = currentProgress < 20 ? 0.5 : 1;
+                currentProgress = Math.min(currentProgress + progressIncrement, 95);
                 sendProgress({
                   type: 'progress',
                   step: 'generating_content',
@@ -440,18 +446,24 @@ export async function POST(
                 let tickerCount = 0;
                 let tickerProgress = currentProgress;
                 // Calculate max progress for this chapter's LLM call (don't go beyond chapter's allocated range)
-                const chapterProgressRange = 85 / totalChapters;
+                const chapterProgressRange = 70 / totalChapters;
                 const maxTickerProgress = Math.min(
-                  5 + chapterIndex * chapterProgressRange - 5, // Leave room for saving
-                  currentProgress + 15 // Don't jump more than 15%
+                  5 + chapterIndex * chapterProgressRange - 3, // Leave room for saving
+                  currentProgress + 10 // Don't jump more than 10%
                 );
                 const thinkingSteps = [
                   'identifying_concepts',
                   'generating_content',
                 ];
+                // Slower increment at the beginning (first 20%), faster later
+                const getTickerIncrement = () => {
+                  if (tickerProgress < 15) return 0.2; // Very slow at the start
+                  if (tickerProgress < 30) return 0.3; // Slow in early phase
+                  return 0.5; // Normal speed later
+                };
                 const progressTicker = setInterval(() => {
-                  // Increment progress slowly during LLM call (0.5% every 2 seconds)
-                  tickerProgress = Math.min(tickerProgress + 0.5, maxTickerProgress, 90);
+                  // Increment progress with variable speed (slower at start)
+                  tickerProgress = Math.min(tickerProgress + getTickerIncrement(), maxTickerProgress, 90);
                   currentProgress = Math.max(currentProgress, tickerProgress);
                   const stepIndex = tickerCount % thinkingSteps.length;
                   sendProgress({
@@ -496,7 +508,8 @@ export async function POST(
                 console.log(`[quiz-generate] Chapter "${chapter.title}" pass ${pass + 1}: generated ${rawQuestions.length} raw questions`);
 
                 // Update progress: deduplication (small increment)
-                currentProgress = Math.min(currentProgress + 1, 95);
+                const dedupeIncrement = currentProgress < 20 ? 0.3 : 0.8;
+                currentProgress = Math.min(currentProgress + dedupeIncrement, 95);
                 sendProgress({
                   type: 'progress',
                   step: 'verifying_content',
@@ -516,7 +529,8 @@ export async function POST(
                 console.log(`[quiz-generate] Chapter "${chapter.title}" after dedupe: ${questions.length}/${rawQuestions.length} questions kept`);
 
                 // Update progress: saving questions (small increment)
-                currentProgress = Math.min(currentProgress + 1, 95);
+                const saveIncrement = currentProgress < 20 ? 0.3 : 0.8;
+                currentProgress = Math.min(currentProgress + saveIncrement, 95);
                 sendProgress({
                   type: 'progress',
                   step: 'saving_content',

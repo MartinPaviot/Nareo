@@ -17,7 +17,7 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
   const { translate } = useLanguage();
   const { user } = useAuth();
   const { counts, totalCount, isLoading } = useTodayReviewCounts();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Don't show section if user is not logged in
   if (!user) return null;

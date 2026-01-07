@@ -348,6 +348,9 @@ export async function POST(
     // Start generation in background (async, don't await)
     // IMPORTANT: Generation continues even if client disconnects - questions are saved to DB
     (async () => {
+      // Declare heartbeat interval outside try block so it can be cleared in finally
+      let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
       try {
         const conceptsByChapter = new Map<string, typeof concepts>();
         (concepts || []).forEach(concept => {
@@ -398,7 +401,7 @@ export async function POST(
 
         // Start heartbeat to keep SSE connection alive
         // This prevents proxies/browsers from closing inactive connections
-        const heartbeatInterval = setInterval(() => {
+        heartbeatInterval = setInterval(() => {
           if (isClientConnected()) {
             sendProgress({
               type: 'heartbeat',
@@ -846,7 +849,9 @@ export async function POST(
           message: error.message || 'Erreur lors de la génération du quiz'
         });
       } finally {
-        clearInterval(heartbeatInterval);
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
         close();
       }
     })();

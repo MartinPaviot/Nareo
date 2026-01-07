@@ -156,9 +156,10 @@ function convertToDBFormat(card: Flashcard): { type: string; front: string; back
       };
 
     case 'reversed':
+      // On stocke uniquement le terme, l'UI ajoute "means?/signifie?/bedeutet?" selon la langue
       return {
         type: 'reversed',
-        front: `${card.term} signifie ?`,
+        front: card.term,
         back: card.definition,
       };
 
@@ -269,30 +270,57 @@ export async function POST(
         sendProgress({
           type: 'progress',
           step: 'analyzing_document',
-          progress: 10,
+          progress: 5,
         });
 
+        // Start a progress ticker to show activity during LLM generation
+        // This prevents the UI from appearing frozen during the API call
+        let tickerProgress = 5;
+        const thinkingSteps = [
+          'analyzing_document',
+          'identifying_concepts',
+          'generating_content',
+        ];
+        let tickerCount = 0;
+        const progressTicker = setInterval(() => {
+          // Advance progress slowly (max 45% during LLM call)
+          tickerProgress = Math.min(tickerProgress + 2, 45);
+          const stepIndex = tickerCount % thinkingSteps.length;
+          sendProgress({
+            type: 'progress',
+            step: thinkingSteps[stepIndex],
+            progress: tickerProgress,
+          });
+          tickerCount++;
+        }, 2000); // Update every 2 seconds
+
         // Generate flashcards using GPT-4o with new Anki prompt
-        const response = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content: `${FLASHCARD_SYSTEM_PROMPT}\n\n${languageInstruction}`,
-            },
-            {
-              role: 'user',
-              content: userPrompt,
-            },
-          ],
-          temperature: 0.4,
-          max_tokens: 6000,
-          response_format: { type: 'json_object' },
-        });
+        let response;
+        try {
+          response = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'system',
+                content: `${FLASHCARD_SYSTEM_PROMPT}\n\n${languageInstruction}`,
+              },
+              {
+                role: 'user',
+                content: userPrompt,
+              },
+            ],
+            temperature: 0.4,
+            max_tokens: 6000,
+            response_format: { type: 'json_object' },
+          });
+        } finally {
+          // Stop the ticker once LLM call completes
+          clearInterval(progressTicker);
+        }
 
         sendProgress({
           type: 'progress',
-          step: 'identifying_concepts',
+          step: 'verifying_content',
           progress: 50,
         });
 

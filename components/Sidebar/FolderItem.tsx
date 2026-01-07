@@ -26,7 +26,7 @@ export default function FolderItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
+      className={`w-full flex items-center gap-2 px-2.5 py-1 rounded-md transition-all group ${
         isActive
           ? isDark
             ? 'bg-orange-500/20 border border-orange-500/30'
@@ -38,14 +38,14 @@ export default function FolderItem({
     >
       {/* Folder icon */}
       <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
         style={{ backgroundColor: `${color}20` }}
       >
         {icon ? (
-          <span className="text-base">{icon}</span>
+          <span className="text-sm">{icon}</span>
         ) : (
           <Folder
-            className="w-4 h-4"
+            className="w-3.5 h-3.5"
             style={{ color }}
           />
         )}

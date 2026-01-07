@@ -81,7 +81,7 @@ export default function CourseItem({
     <div className="relative group">
       <button
         onClick={onClick}
-        className={`w-full text-left rounded-lg transition-all px-3 py-2.5 ${
+        className={`w-full text-left rounded-md transition-all px-2.5 py-1 ${
           isActive
             ? isDark
               ? 'bg-orange-500/10 border-l-2 border-l-orange-500'
@@ -91,9 +91,9 @@ export default function CourseItem({
               : 'hover:bg-gray-50'
         }`}
       >
-        <div className="flex items-start gap-2.5">
+        <div className="flex items-start gap-2">
           {/* File icon */}
-          <FileText className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+          <FileText className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
             isActive
               ? 'text-orange-500'
               : isDark
@@ -123,9 +123,9 @@ export default function CourseItem({
             )}
 
             {/* Progress bar and stats */}
-            <div className="mt-1.5 flex items-center gap-2">
+            <div className="mt-1 flex items-center gap-2">
               {/* Progress bar */}
-              <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${
+              <div className={`flex-1 h-1 rounded-full overflow-hidden ${
                 isDark ? 'bg-neutral-700' : 'bg-gray-200'
               }`}>
                 <div

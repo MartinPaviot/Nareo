@@ -34,6 +34,51 @@ const turndownService = new TurndownService({
 // Add GFM support (tables, strikethrough, etc.)
 turndownService.use(gfm);
 
+// Custom rule for TipTap tables - must be added AFTER gfm plugin to override it
+// TipTap tables have <p> tags inside cells which the default gfm plugin doesn't handle well
+turndownService.addRule('tiptapTable', {
+  filter: 'table',
+  replacement: function(_content, node) {
+    const table = node as HTMLTableElement;
+    const rows = table.querySelectorAll('tr');
+    if (rows.length === 0) return '';
+
+    const result: string[] = [];
+    let isFirstRow = true;
+
+    rows.forEach((row) => {
+      const cells = row.querySelectorAll('th, td');
+      const cellContents: string[] = [];
+
+      cells.forEach((cell) => {
+        // Extract text content, handling <p> tags inside cells
+        let text = '';
+        const paragraphs = cell.querySelectorAll('p');
+        if (paragraphs.length > 0) {
+          // Join multiple paragraphs with space
+          text = Array.from(paragraphs).map(p => p.textContent?.trim() || '').join(' ');
+        } else {
+          text = cell.textContent?.trim() || '';
+        }
+        // Escape pipe characters in cell content
+        text = text.replace(/\|/g, '\\|');
+        cellContents.push(text);
+      });
+
+      result.push('| ' + cellContents.join(' | ') + ' |');
+
+      // Add separator row after header (first row)
+      if (isFirstRow) {
+        const separator = cellContents.map(() => '---').join(' | ');
+        result.push('| ' + separator + ' |');
+        isFirstRow = false;
+      }
+    });
+
+    return '\n\n' + result.join('\n') + '\n\n';
+  }
+});
+
 // Add custom rules for better conversion
 turndownService.addRule('strikethrough', {
   filter: ['del', 's'] as const,

@@ -79,7 +79,7 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
                   key={course.course_id}
                   href={`/flashcards/review/${course.course_id}`}
                   onClick={onClose}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`flex items-center justify-between px-2.5 py-1 rounded-md text-sm transition-colors ${
                     isDark
                       ? 'hover:bg-neutral-800 text-neutral-300'
                       : 'hover:bg-gray-100 text-gray-700'
@@ -96,7 +96,7 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
               <Link
                 href="/flashcards/review/all"
                 onClick={onClose}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   isDark
                     ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
                     : 'bg-orange-50 text-orange-600 hover:bg-orange-100'

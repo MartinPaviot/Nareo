@@ -234,38 +234,38 @@ export default function FolderLevel({
       </div>
 
       {/* Footer - Action buttons */}
-      <div className={`px-4 py-3 border-t space-y-2 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
+      <div className={`px-3 py-2 border-t space-y-1 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
         <button
           onClick={onCreateFolder}
-          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+          className={`w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
             isDark
               ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-orange-400'
               : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-600'
           }`}
         >
-          <FolderPlus className="w-4 h-4" />
+          <FolderPlus className="w-3.5 h-3.5" />
           {translate('sidebar_new_folder') || 'Nouveau dossier'}
         </button>
         <button
           onClick={onUploadCourse}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-white hover:opacity-90"
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors text-white hover:opacity-90"
           style={{ backgroundColor: '#ffa51f' }}
         >
-          <Upload className="w-4 h-4" />
+          <Upload className="w-3.5 h-3.5" />
           {translate('sidebar_upload_course') || 'Déposer un cours'}
         </button>
 
         {/* Separator */}
-        <div className={`border-t pt-2 mt-2 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
+        <div className={`border-t pt-1 mt-1 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
           <button
             onClick={onContactClick}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
+            className={`w-full flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-colors ${
               isDark
                 ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <MessageCircleQuestion className="w-4 h-4" />
+            <MessageCircleQuestion className="w-3.5 h-3.5" />
             {translate('sidebar_support_contact') || 'Support & Contact'}
           </button>
         </div>

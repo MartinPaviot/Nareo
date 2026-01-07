@@ -3,12 +3,22 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { SessionStats, getMasteredCount, getDifficultCount, getSessionDuration, getWeightedScore } from '@/lib/spaced-repetition';
-import { RotateCcw, Check, Calendar, Clock, Star, CheckCircle2 } from 'lucide-react';
+import { SessionStats, getMasteredCount, getDifficultCount, getSessionDuration, getWeightedScore, Rating } from '@/lib/spaced-repetition';
+import { RotateCcw, Check, Calendar, Clock, Star, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import Image from 'next/image';
+
+// Card result with rating and next review date
+export interface CardResult {
+  id: string;
+  front: string;
+  back: string;
+  rating: Rating;
+  nextReviewAt: Date;
+}
 
 interface SessionRecapProps {
   stats: SessionStats;
+  cardResults?: CardResult[];
   onRetryDifficult?: () => void;
   onFinish: () => void;
   nextReviewInfo?: {
@@ -141,12 +151,14 @@ const StarRating = ({ earnedStars }: { earnedStars: number }) => {
 
 export default function SessionRecap({
   stats,
+  cardResults = [],
   onRetryDifficult,
   onFinish,
   nextReviewInfo,
 }: SessionRecapProps) {
   const { isDark } = useTheme();
   const { translate } = useLanguage();
+  const [showDetails, setShowDetails] = useState(false);
 
   const masteredCount = getMasteredCount(stats);
   const difficultCount = getDifficultCount(stats);
@@ -155,6 +167,11 @@ export default function SessionRecap({
   const masteryPercentage = getWeightedScore(stats);
   const colors = getScoreColors(masteryPercentage, isDark);
   const earnedStars = getStars(masteryPercentage);
+
+  // Group cards by rating
+  const easyCards = cardResults.filter(c => c.rating === 'easy');
+  const goodCards = cardResults.filter(c => c.rating === 'good');
+  const hardCards = cardResults.filter(c => c.rating === 'hard');
 
   // Format duration
   const formatDuration = (seconds: number): string => {
@@ -232,62 +249,122 @@ export default function SessionRecap({
       <div className={`rounded-2xl border p-4 ${
         isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
       }`}>
-        <div className="grid grid-cols-2 gap-3">
-          {/* Mastered */}
+        <div className="grid grid-cols-3 gap-2">
+          {/* Easy - blue-500 #3b82f6 */}
           <div
-            className="rounded-xl p-3 border"
-            style={{
-              backgroundColor: isDark ? 'rgba(55, 159, 90, 0.1)' : '#edf7f1',
-              borderColor: isDark ? 'rgba(55, 159, 90, 0.3)' : '#b8dfc6'
-            }}
+            className={`rounded-xl p-3 border ${isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: '#379f5a' }}>
-                <CheckCircle2 className="w-3 h-3 text-white" />
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="w-4 h-4 rounded-full flex items-center justify-center bg-blue-500">
+                <Star className="w-2.5 h-2.5 text-white fill-white" />
               </div>
-              <h4 className="text-sm font-semibold" style={{ color: isDark ? '#6ee7a0' : '#256838' }}>
-                {translate('flashcard_cards_mastered') || 'Cartes maîtrisées'}
+              <h4 className={`text-xs font-semibold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                {translate('flashcard_rating_easy') || 'Facile'}
               </h4>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold" style={{ color: '#379f5a' }}>
-                {stats.good + stats.easy}
-              </span>
-              <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-                ({stats.good} {translate('flashcard_rating_good') || 'Bien'} + {stats.easy} {translate('flashcard_rating_easy') || 'Facile'})
-              </span>
-            </div>
+            <span className="text-2xl font-bold text-blue-500">
+              {stats.easy}
+            </span>
           </div>
 
-          {/* To Review */}
+          {/* Good - green-500 #22c55e */}
           <div
-            className="rounded-xl p-3 border"
-            style={{
-              backgroundColor: isDark ? 'rgba(249, 115, 22, 0.1)' : '#FFF7ED',
-              borderColor: isDark ? 'rgba(249, 115, 22, 0.3)' : '#FED7AA'
-            }}
+            className={`rounded-xl p-3 border ${isDark ? 'bg-green-500/10 border-green-500/30' : 'bg-green-50 border-green-200'}`}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center leading-none">
-                <span className="text-white text-[11px] font-bold -mt-px">!</span>
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="w-4 h-4 rounded-full flex items-center justify-center bg-green-500">
+                <CheckCircle2 className="w-2.5 h-2.5 text-white" />
               </div>
-              <h4 className="text-sm font-semibold" style={{ color: isDark ? '#fdba74' : '#c2410c' }}>
-                {translate('flashcard_to_review') || 'À revoir'}
+              <h4 className={`text-xs font-semibold ${isDark ? 'text-green-400' : 'text-green-700'}`}>
+                {translate('flashcard_rating_good') || 'Bien'}
               </h4>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-orange-500">
-                {stats.hard}
-              </span>
-              {stats.hard > 0 && (
-                <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-                  ({translate('flashcard_review_soon') || 'bientôt'})
-                </span>
-              )}
+            <span className="text-2xl font-bold text-green-500">
+              {stats.good}
+            </span>
+          </div>
+
+          {/* Hard - red-500 #ef4444 */}
+          <div
+            className={`rounded-xl p-3 border ${isDark ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200'}`}
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center leading-none">
+                <span className="text-white text-[9px] font-bold">!</span>
+              </div>
+              <h4 className={`text-xs font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                {translate('flashcard_rating_hard') || 'Difficile'}
+              </h4>
             </div>
+            <span className="text-2xl font-bold text-red-500">
+              {stats.hard}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* Detailed card breakdown - collapsible */}
+      {cardResults.length > 0 && (
+        <div className={`rounded-2xl border overflow-hidden ${
+          isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+        }`}>
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className={`w-full flex items-center justify-between p-4 transition-colors ${
+              isDark ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-50'
+            }`}
+          >
+            <span className={`text-sm font-semibold ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
+              {translate('flashcard_detailed_results') || 'Détail des cartes'}
+            </span>
+            {showDetails ? (
+              <ChevronUp className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
+            ) : (
+              <ChevronDown className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
+            )}
+          </button>
+
+          {showDetails && (
+            <div className={`border-t ${isDark ? 'border-neutral-700' : 'border-gray-200'}`}>
+              {/* Easy cards */}
+              {easyCards.length > 0 && (
+                <CardGroup
+                  title={translate('flashcard_rating_easy') || 'Facile'}
+                  cards={easyCards}
+                  colorClass="text-blue-500"
+                  bgClass={isDark ? 'bg-blue-500/5' : 'bg-blue-50/50'}
+                  icon={<Star className="w-3 h-3 fill-current" />}
+                  isDark={isDark}
+                />
+              )}
+
+              {/* Good cards */}
+              {goodCards.length > 0 && (
+                <CardGroup
+                  title={translate('flashcard_rating_good') || 'Bien'}
+                  cards={goodCards}
+                  colorClass="text-green-500"
+                  bgClass={isDark ? 'bg-green-500/5' : 'bg-green-50/50'}
+                  icon={<CheckCircle2 className="w-3 h-3" />}
+                  isDark={isDark}
+                />
+              )}
+
+              {/* Hard cards */}
+              {hardCards.length > 0 && (
+                <CardGroup
+                  title={translate('flashcard_rating_hard') || 'Difficile'}
+                  cards={hardCards}
+                  colorClass="text-red-500"
+                  bgClass={isDark ? 'bg-red-500/5' : 'bg-red-50/50'}
+                  icon={<span className="text-[10px] font-bold">!</span>}
+                  isDark={isDark}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="space-y-2">
@@ -315,16 +392,61 @@ export default function SessionRecap({
           {translate('flashcard_finish_session') || 'Terminer la session'}
         </button>
       </div>
+    </div>
+  );
+}
 
-      {/* Next review info */}
-      {nextReviewInfo && nextReviewInfo.count > 0 && (
-        <div className={`flex items-center justify-center gap-2 text-sm ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-          <Calendar className="w-4 h-4" />
-          <span>
-            {translate('flashcard_next_review') || 'Prochaine révision'} : {nextReviewInfo.date} ({nextReviewInfo.count} {translate('flashcard_cards') || 'cartes'})
-          </span>
-        </div>
-      )}
+// Helper component to display a group of cards
+function CardGroup({
+  title,
+  cards,
+  colorClass,
+  bgClass,
+  icon,
+  isDark,
+}: {
+  title: string;
+  cards: CardResult[];
+  colorClass: string;
+  bgClass: string;
+  icon: React.ReactNode;
+  isDark: boolean;
+}) {
+  const formatNextReview = (date: Date): string => {
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) return 'Aujourd\'hui';
+    if (diffDays === 1) return 'Demain';
+    if (diffDays < 7) return `Dans ${diffDays} jours`;
+    if (diffDays < 30) {
+      const weeks = Math.round(diffDays / 7);
+      return `Dans ${weeks} sem.`;
+    }
+    const months = Math.round(diffDays / 30);
+    return `Dans ${months} mois`;
+  };
+
+  return (
+    <div className={bgClass}>
+      <div className={`flex items-center gap-2 px-4 py-2 border-b ${isDark ? 'border-neutral-700' : 'border-gray-200'}`}>
+        <span className={colorClass}>{icon}</span>
+        <span className={`text-xs font-semibold ${colorClass}`}>{title}</span>
+        <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>({cards.length})</span>
+      </div>
+      <div className="divide-y divide-neutral-700/30">
+        {cards.map((card) => (
+          <div key={card.id} className={`px-4 py-2 flex items-center justify-between gap-3`}>
+            <p className={`text-sm flex-1 truncate ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+              {card.front}
+            </p>
+            <span className={`text-xs whitespace-nowrap ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
+              {formatNextReview(card.nextReviewAt)}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

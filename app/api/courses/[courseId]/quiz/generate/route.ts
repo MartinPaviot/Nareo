@@ -436,25 +436,35 @@ export async function POST(
                 };
 
                 // Start a progress ticker to show activity during LLM generation
-                // Use step keys that rotate through identifying_concepts and generating_content
+                // This prevents the UI from appearing frozen during long API calls
                 let tickerCount = 0;
+                let tickerProgress = currentProgress;
+                // Calculate max progress for this chapter's LLM call (don't go beyond chapter's allocated range)
+                const chapterProgressRange = 85 / totalChapters;
+                const maxTickerProgress = Math.min(
+                  5 + chapterIndex * chapterProgressRange - 5, // Leave room for saving
+                  currentProgress + 15 // Don't jump more than 15%
+                );
                 const thinkingSteps = [
                   'identifying_concepts',
                   'generating_content',
                 ];
                 const progressTicker = setInterval(() => {
+                  // Increment progress slowly during LLM call (0.5% every 2 seconds)
+                  tickerProgress = Math.min(tickerProgress + 0.5, maxTickerProgress, 90);
+                  currentProgress = Math.max(currentProgress, tickerProgress);
                   const stepIndex = tickerCount % thinkingSteps.length;
                   sendProgress({
                     type: 'progress',
                     step: thinkingSteps[stepIndex],
-                    progress: Math.round(currentProgress),
+                    progress: Math.round(tickerProgress),
                     chapterIndex,
                     totalChapters,
                     questionsGenerated: totalQuestionsGenerated,
                     totalQuestions: totalExpectedQuestions
                   });
                   tickerCount++;
-                }, 3000); // Update every 3 seconds
+                }, 2000); // Update every 2 seconds
 
                 let generated;
                 try {

@@ -20,17 +20,43 @@ import SessionRecap from './SessionRecap';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
-// Mapping des types de cartes vers des labels lisibles
-const FLASHCARD_TYPE_LABELS: Record<string, string> = {
-  basic: 'Question',
-  cloze: 'Texte à trous',
-  reversed: 'Vocabulaire',
-  definition: 'Définition',
-  formula: 'Formule',
-  condition: 'Condition',
-  intuition: 'Intuition',
-  link: 'Lien',
+// Mapping des types de cartes vers des clés de traduction
+const FLASHCARD_TYPE_TRANSLATION_KEYS: Record<string, string> = {
+  basic: 'flashcard_type_basic',
+  cloze: 'flashcard_type_cloze',
+  reversed: 'flashcard_type_reversed',
+  definition: 'flashcard_type_definition',
+  formula: 'flashcard_type_formula',
+  condition: 'flashcard_type_condition',
+  intuition: 'flashcard_type_intuition',
+  link: 'flashcard_type_link',
 };
+
+/**
+ * Formate le front d'une carte reversed pour afficher la traduction correcte
+ * - Anciennes cartes: ont "terme signifie ?" en dur -> on extrait le terme et reformate
+ * - Nouvelles cartes: ont juste le terme -> on ajoute la traduction
+ */
+function formatReversedCardFront(front: string, type: string, translateFn: (key: string, fallback?: string) => string): string {
+  if (type !== 'reversed') return front;
+
+  // Patterns pour les anciennes cartes avec texte en dur
+  const oldPatterns = [
+    / signifie \?$/,  // FR
+    / means\?$/,      // EN
+    / bedeutet\?$/,   // DE
+  ];
+
+  for (const pattern of oldPatterns) {
+    if (pattern.test(front)) {
+      const term = front.replace(pattern, '');
+      return `${term} ${translateFn('flashcard_term_means', 'means?')}`;
+    }
+  }
+
+  // Nouvelles cartes: le front est juste le terme, on ajoute la traduction
+  return `${front} ${translateFn('flashcard_term_means', 'means?')}`;
+}
 
 /**
  * Rend une formule en HTML avec KaTeX si elle contient du LaTeX
@@ -338,12 +364,12 @@ export default function SpacedRepetitionView({
             style={{ backfaceVisibility: 'hidden' }}
           >
             <span className="text-xs sm:text-sm text-orange-500 font-semibold uppercase tracking-wide mb-3">
-              {FLASHCARD_TYPE_LABELS[currentCard.type] || currentCard.type}
+              {translate(FLASHCARD_TYPE_TRANSLATION_KEYS[currentCard.type]) || currentCard.type}
             </span>
             <h3 className={`text-xl sm:text-2xl md:text-3xl font-bold text-center px-2 leading-tight ${
               isDark ? 'text-neutral-50' : 'text-gray-900'
             }`}>
-              {currentCard.front}
+              {formatReversedCardFront(currentCard.front, currentCard.type, translate)}
             </h3>
             <p className={`text-sm sm:text-base mt-4 sm:mt-6 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
               {translate('flashcards_tap_to_flip', 'Touchez pour retourner')}

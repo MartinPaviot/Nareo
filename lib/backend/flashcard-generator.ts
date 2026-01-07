@@ -64,12 +64,11 @@ function convertToDBFormat(card: Flashcard): FlashcardDBData {
       };
 
     case 'reversed':
-      // Pour une carte reversed, on stocke terme/définition
-      // Le front sera le terme, le back la définition
-      // (L'UI pourra gérer l'inversion pour tester les 2 sens)
+      // Pour une carte reversed, on stocke uniquement le terme
+      // L'UI ajoute dynamiquement "means?/signifie?/bedeutet?" selon la langue
       return {
         type: 'reversed',
-        front: `${card.term} signifie ?`,
+        front: card.term,
         back: card.definition,
         reversed_term: card.term,
         reversed_def: card.definition,

@@ -203,8 +203,8 @@ export default function GenerationProgress({
     if (progress !== lastServerProgress) {
       setLastServerProgress(progress);
       setTimeSinceLastUpdate(0);
-      // When server sends a new progress, immediately update to it
-      setSmoothProgress(progress);
+      // Only update smoothProgress if server progress is higher (never go backwards)
+      setSmoothProgress(prev => Math.max(prev, progress));
     }
   }, [progress, lastServerProgress]);
 
@@ -218,8 +218,9 @@ export default function GenerationProgress({
         if (prev >= 100) return 100;
 
         // Calculate target based on server progress
-        // Allow smooth progress to go slightly ahead of server progress to show activity
-        const maxAllowed = Math.min(progress + 5, 99); // Never exceed server + 5% or 99%
+        // Allow smooth progress to go ahead of server progress to show activity
+        // More buffer (15%) prevents the UI from appearing frozen during long LLM calls
+        const maxAllowed = Math.min(progress + 15, 95); // Never exceed server + 15% or 95%
 
         // If server progress is ahead, catch up quickly
         if (progress > prev) {
@@ -228,9 +229,9 @@ export default function GenerationProgress({
 
         // If we're below max allowed, advance slowly (degressive speed)
         if (prev < maxAllowed) {
-          // Slower as we get closer to the target
+          // Slower as we get closer to the target, with minimum increment for responsiveness
           const remaining = maxAllowed - prev;
-          const increment = Math.max(0.1, remaining * 0.02); // Slower increment as we approach target
+          const increment = Math.max(0.15, remaining * 0.03); // Slightly faster for better UX
           return Math.min(prev + increment, maxAllowed);
         }
 

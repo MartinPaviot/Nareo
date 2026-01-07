@@ -222,47 +222,28 @@ export function getDifficultCount(stats: SessionStats): number {
 }
 
 /**
- * Calculates weighted score based on attempts
- * Each card starts at 100% and loses points with each "hard" before validation
- * Formula: score_card = 100 × (0.5 ^ number_of_hard)
- * Final score = average of all card scores
+ * Calculates weighted score based on all responses
  *
- * Example:
- * - Card validated directly: 100%
- * - Card with 1 "hard" then validated: 50%
- * - Card with 2 "hard" then validated: 25%
+ * Score calculation:
+ * - Each "easy" response = 100%
+ * - Each "good" response = 70%
+ * - Each "hard" response = 0%
+ * - Final score = average across ALL responses
+ *
+ * Example: 5 easy + 10 good + 2 hard = 17 responses
+ * - Score = (5*100 + 10*70 + 2*0) / 17 = 1200 / 17 = 71%
  */
 export function getWeightedScore(stats: SessionStats): number {
-  if (stats.total === 0) return 0;
+  const totalResponses = stats.hard + stats.good + stats.easy;
+  if (totalResponses === 0) return 0;
 
-  let totalScore = 0;
+  // Weighted points per response type
+  const easyPoints = stats.easy * 100;
+  const goodPoints = stats.good * 70;
+  const hardPoints = stats.hard * 0;
 
-  // For each unique card that was eventually validated (good or easy)
-  // We need to count validated cards = good + easy
-  const validatedCardsCount = stats.good + stats.easy;
+  const totalScore = easyPoints + goodPoints + hardPoints;
 
-  if (validatedCardsCount === 0) return 0;
-
-  // Calculate score for each card based on hard attempts
-  // Cards that were validated contribute their weighted score
-  // Score = 100 * (0.5 ^ hardAttempts)
-
-  // Get all cards that had hard attempts
-  const cardsWithHardAttempts = new Set(stats.hardAttemptsPerCard.keys());
-
-  // Calculate score for cards with recorded hard attempts
-  let cardsAccountedFor = 0;
-  cardsWithHardAttempts.forEach((cardId) => {
-    const hardAttempts = stats.hardAttemptsPerCard.get(cardId) || 0;
-    const cardScore = 100 * Math.pow(0.5, hardAttempts);
-    totalScore += cardScore;
-    cardsAccountedFor++;
-  });
-
-  // Cards that were validated without any hard attempts get 100%
-  const cardsWithoutHardAttempts = validatedCardsCount - cardsAccountedFor;
-  totalScore += cardsWithoutHardAttempts * 100;
-
-  // Return average score across all validated cards
-  return Math.round(totalScore / validatedCardsCount);
+  // Return average score across ALL responses
+  return Math.round(totalScore / totalResponses);
 }

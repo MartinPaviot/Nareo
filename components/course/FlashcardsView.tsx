@@ -16,18 +16,18 @@ import RatingButtons from '@/components/flashcards/RatingButtons';
 import SessionRecap from '@/components/flashcards/SessionRecap';
 import { Rating, calculateNextReview, getMasteryLevel, FlashcardProgress, SessionStats, createSessionStats, updateSessionStats, completeSessionStats } from '@/lib/spaced-repetition';
 
-// Mapping des types de cartes vers des labels lisibles
-const FLASHCARD_TYPE_LABELS: Record<string, string> = {
+// Mapping des types de cartes vers des clés de traduction
+const FLASHCARD_TYPE_TRANSLATION_KEYS: Record<string, string> = {
   // Types Anki
-  basic: 'Question',
-  cloze: 'Texte à trous',
-  reversed: 'Vocabulaire',
+  basic: 'flashcard_type_basic',
+  cloze: 'flashcard_type_cloze',
+  reversed: 'flashcard_type_reversed',
   // Types legacy
-  definition: 'Définition',
-  formula: 'Formule',
-  condition: 'Condition',
-  intuition: 'Intuition',
-  link: 'Lien',
+  definition: 'flashcard_type_definition',
+  formula: 'flashcard_type_formula',
+  condition: 'flashcard_type_condition',
+  intuition: 'flashcard_type_intuition',
+  link: 'flashcard_type_link',
 };
 
 // Keyboard shortcuts tooltip
@@ -1008,7 +1008,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
                 style={{ backfaceVisibility: 'hidden' }}
               >
                 <span className="text-sm sm:text-base text-orange-500 font-semibold uppercase tracking-wide mb-4">
-                  {FLASHCARD_TYPE_LABELS[currentCard.type] || currentCard.type}
+                  {translate(FLASHCARD_TYPE_TRANSLATION_KEYS[currentCard.type]) || currentCard.type}
                 </span>
                 <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center leading-tight px-4 ${
                   isDark ? 'text-neutral-50' : 'text-gray-900'
@@ -1224,7 +1224,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
             style={{ backfaceVisibility: 'hidden' }}
           >
             <span className="text-xs sm:text-sm text-orange-500 font-semibold uppercase tracking-wide mb-3">
-              {FLASHCARD_TYPE_LABELS[currentCard.type] || currentCard.type}
+              {translate(FLASHCARD_TYPE_TRANSLATION_KEYS[currentCard.type]) || currentCard.type}
             </span>
             <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center px-2 leading-tight ${
               isDark ? 'text-neutral-50' : 'text-gray-900'

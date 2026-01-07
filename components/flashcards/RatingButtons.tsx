@@ -1,7 +1,8 @@
 'use client';
 
-import { Rating, RATING_CONFIG, getIntervalLabel, FlashcardProgress } from '@/lib/spaced-repetition';
+import { Rating, RATING_CONFIG, FlashcardProgress, calculateNextReview } from '@/lib/spaced-repetition';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface RatingButtonsProps {
   onRate: (rating: Rating) => void;
@@ -12,6 +13,13 @@ interface RatingButtonsProps {
 
 const RATINGS: Rating[] = ['hard', 'good', 'easy'];
 
+// Translation keys for rating labels
+const RATING_TRANSLATION_KEYS: Record<Rating, string> = {
+  hard: 'flashcard_rating_hard',
+  good: 'flashcard_rating_good',
+  easy: 'flashcard_rating_easy',
+};
+
 export default function RatingButtons({
   onRate,
   currentProgress,
@@ -19,12 +27,39 @@ export default function RatingButtons({
   compact = false,
 }: RatingButtonsProps) {
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
+
+  // Get translated interval label
+  const getTranslatedIntervalLabel = (
+    progress: FlashcardProgress | null,
+    rating: Rating
+  ): string => {
+    const { interval_days } = calculateNextReview(progress, rating);
+
+    if (interval_days === 0) return translate('flashcard_interval_to_review') || 'À revoir';
+    if (interval_days === 1) return translate('flashcard_interval_1_day') || '1 jour';
+    if (interval_days < 7) {
+      const template = translate('flashcard_interval_days') || '{count} jours';
+      return template.replace('{count}', String(interval_days));
+    }
+    if (interval_days < 30) {
+      const weeks = Math.round(interval_days / 7);
+      if (weeks === 1) return translate('flashcard_interval_1_week') || '1 sem.';
+      const template = translate('flashcard_interval_weeks') || '{count} sem.';
+      return template.replace('{count}', String(weeks));
+    }
+    const months = Math.round(interval_days / 30);
+    if (months === 1) return translate('flashcard_interval_1_month') || '1 mois';
+    const template = translate('flashcard_interval_months') || '{count} mois';
+    return template.replace('{count}', String(months));
+  };
 
   return (
     <div className={`flex ${compact ? 'gap-1.5' : 'gap-2'} justify-center`}>
       {RATINGS.map((rating, index) => {
         const config = RATING_CONFIG[rating];
-        const interval = getIntervalLabel(currentProgress, rating);
+        const interval = getTranslatedIntervalLabel(currentProgress, rating);
+        const translatedLabel = translate(RATING_TRANSLATION_KEYS[rating]) || config.label;
         const keyNumber = index + 1; // 1, 2, 3
 
         return (
@@ -47,7 +82,7 @@ export default function RatingButtons({
               {keyNumber}
             </span>
             <span className={`font-semibold ${compact ? 'text-xs' : 'text-sm'} ${isDark ? config.textDark : config.textLight}`}>
-              {compact ? config.labelShort : config.label}
+              {translatedLabel}
             </span>
             <span className={`${compact ? 'text-[10px]' : 'text-xs'} mt-0.5 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
               {interval}

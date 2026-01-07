@@ -373,7 +373,7 @@ export default function ProgressiveQuizView({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className={`text-sm font-medium ${isDark ? 'text-neutral-300' : 'text-gray-600'}`}>
-              Question {currentQuestionIndex + 1} / {questions.length}
+              {translate('quiz_progress').replace('{current}', String(currentQuestionIndex + 1)).replace('{total}', String(questions.length))}
               {isGenerating && <span className="text-orange-500"> (+)</span>}
             </span>
             {currentQuestion?.chapterTitle && (
@@ -538,7 +538,7 @@ export default function ProgressiveQuizView({
                 />
                 {showFeedback && currentQuestion.answerText && (
                   <p className={`mt-2 text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                    {translate('quiz_correct_answer')}: <strong>{currentQuestion.answerText}</strong>
+                    {translate('quiz_correct_answer_is')} <strong>{currentQuestion.answerText}</strong>
                   </p>
                 )}
               </div>

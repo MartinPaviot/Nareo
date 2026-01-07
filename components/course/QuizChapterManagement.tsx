@@ -426,7 +426,7 @@ export default function QuizChapterManagement({
       {/* Question Type Selector */}
       <div>
         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-          Type de question
+          {translate('quiz_question_type_label')}
         </label>
         <div className="grid grid-cols-3 gap-2">
           {(['mcq', 'true_false', 'fill_blank'] as const).map((type) => {
@@ -844,12 +844,12 @@ export default function QuizChapterManagement({
                         ) : !isGenerating && chapter.completed ? (
                           <>
                             <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4" />
-                            Recommencer
+                            {translate('quiz_restart')}
                           </>
                         ) : (
                           <>
                             <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-                            Commencer
+                            {translate('quiz_start')}
                           </>
                         )}
                       </button>

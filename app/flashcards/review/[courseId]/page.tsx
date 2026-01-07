@@ -14,7 +14,7 @@ import { useSidebarNavigation } from '@/hooks/useSidebarNavigation';
 import { CourseSidebar } from '@/components/Sidebar';
 import LearnPageHeader from '@/components/layout/LearnPageHeader';
 import RatingButtons from '@/components/flashcards/RatingButtons';
-import SessionRecap from '@/components/flashcards/SessionRecap';
+import SessionRecap, { CardResult } from '@/components/flashcards/SessionRecap';
 import {
   Rating,
   SessionStats,
@@ -26,16 +26,16 @@ import {
   FlashcardProgress,
 } from '@/lib/spaced-repetition';
 
-// Mapping des types de cartes vers des labels lisibles
-const FLASHCARD_TYPE_LABELS: Record<string, string> = {
-  basic: 'Question',
-  cloze: 'Texte à trous',
-  reversed: 'Vocabulaire',
-  definition: 'Définition',
-  formula: 'Formule',
-  condition: 'Condition',
-  intuition: 'Intuition',
-  link: 'Lien',
+// Mapping des types de cartes vers des clés de traduction
+const FLASHCARD_TYPE_TRANSLATION_KEYS: Record<string, string> = {
+  basic: 'flashcard_type_basic',
+  cloze: 'flashcard_type_cloze',
+  reversed: 'flashcard_type_reversed',
+  definition: 'flashcard_type_definition',
+  formula: 'flashcard_type_formula',
+  condition: 'flashcard_type_condition',
+  intuition: 'flashcard_type_intuition',
+  link: 'flashcard_type_link',
 };
 
 // Keyboard shortcuts tooltip
@@ -135,6 +135,7 @@ export default function ReviewPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [sessionPoints, setSessionPoints] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [cardResults, setCardResults] = useState<CardResult[]>([]);
 
   // Initialize session when cards are loaded
   useEffect(() => {
@@ -204,6 +205,18 @@ export default function ReviewPage() {
 
       // Update session stats with card ID for tracking attempts
       setSessionStats(prev => prev ? updateSessionStats(prev, rating, currentCard.id) : createSessionStats(sessionCards.length));
+
+      // Add card result for the recap (only keep the last result per card)
+      setCardResults(prev => {
+        const filtered = prev.filter(r => r.id !== currentCard.id);
+        return [...filtered, {
+          id: currentCard.id,
+          front: currentCard.front,
+          back: currentCard.back,
+          rating,
+          nextReviewAt: newProgress.next_review_at,
+        }];
+      });
 
       // Check if this is the last card
       const isLastCard = currentIndex + 1 >= sessionCards.length;
@@ -483,7 +496,7 @@ export default function ReviewPage() {
                 style={{ backfaceVisibility: 'hidden' }}
               >
                 <span className="text-sm sm:text-base text-orange-500 font-semibold uppercase tracking-wide mb-4">
-                  {FLASHCARD_TYPE_LABELS[currentCard.type] || currentCard.type}
+                  {translate(FLASHCARD_TYPE_TRANSLATION_KEYS[currentCard.type]) || currentCard.type}
                 </span>
                 <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center leading-tight px-4 ${
                   isDark ? 'text-neutral-50' : 'text-gray-900'
@@ -616,6 +629,7 @@ export default function ReviewPage() {
             }`}>
               <SessionRecap
                 stats={sessionStats}
+                cardResults={cardResults}
                 onFinish={handleFinish}
                 nextReviewInfo={{
                   date: translate('flashcard_tomorrow', 'demain'),
@@ -681,7 +695,7 @@ export default function ReviewPage() {
                       style={{ backfaceVisibility: 'hidden' }}
                     >
                       <span className="text-xs sm:text-sm text-orange-500 font-semibold uppercase tracking-wide mb-3">
-                        {FLASHCARD_TYPE_LABELS[currentCard.type] || currentCard.type}
+                        {translate(FLASHCARD_TYPE_TRANSLATION_KEYS[currentCard.type]) || currentCard.type}
                       </span>
                       <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center px-2 leading-tight ${
                         isDark ? 'text-neutral-50' : 'text-gray-900'

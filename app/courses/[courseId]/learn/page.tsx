@@ -890,10 +890,16 @@ export default function CourseLearnPage() {
                 wasPlayingProgressiveQuiz={wasPlayingProgressiveQuiz}
                 onPlayingStateChange={setWasPlayingProgressiveQuiz}
                 onClearProgressiveQuiz={() => {
-                  setStreamingQuestions([]);
+                  // Only clear streaming questions if generation is NOT in progress
+                  // This prevents losing quiz data when user completes a quiz while others are still generating
+                  if (!isGeneratingQuiz) {
+                    setStreamingQuestions([]);
+                    if (courseId) {
+                      sessionStorage.removeItem(`progressive_quiz_${courseId}`);
+                    }
+                  }
                   setWasPlayingProgressiveQuiz(false);
                   if (courseId) {
-                    sessionStorage.removeItem(`progressive_quiz_${courseId}`);
                     sessionStorage.removeItem(`progressive_quiz_playing_${courseId}`);
                     sessionStorage.removeItem(`progressive_quiz_answers_${courseId}`);
                   }

@@ -29,9 +29,10 @@ interface QuizProgressDotsProps {
   questionIds: string[];
   onNavigate: (index: number) => void;
   isDark?: boolean;
+  translate: (key: string) => string;
 }
 
-function QuizProgressDots({ total, current, answers, questionIds, onNavigate, isDark }: QuizProgressDotsProps) {
+function QuizProgressDots({ total, current, answers, questionIds, onNavigate, isDark, translate }: QuizProgressDotsProps) {
   const dotsContainerRef = useRef<HTMLDivElement>(null);
 
   // Show compact text for >15 questions
@@ -40,7 +41,7 @@ function QuizProgressDots({ total, current, answers, questionIds, onNavigate, is
     return (
       <div className="flex items-center justify-center gap-2 py-2">
         <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{current + 1}/{total}</span>
-        <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>({answeredCount} répondues)</span>
+        <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>({answeredCount} {translate('dashboard_answered_label')})</span>
       </div>
     );
   }
@@ -138,15 +139,15 @@ interface ExitModalProps {
   isDark?: boolean;
 }
 
-function ExitConfirmModal({ remainingCount, onConfirm, onCancel, isDark }: ExitModalProps) {
+function ExitConfirmModal({ remainingCount, onConfirm, onCancel, isDark, translate }: ExitModalProps & { translate: (key: string) => string }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className={`rounded-2xl p-6 max-w-sm w-full shadow-xl ${
         isDark ? 'bg-neutral-800 border border-neutral-700' : 'bg-white'
       }`}>
-        <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>Quitter le quiz ?</h3>
+        <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{translate('quiz_exit_title')}</h3>
         <p className={`mb-4 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-          Tu as {remainingCount} question{remainingCount > 1 ? 's' : ''} non répondue{remainingCount > 1 ? 's' : ''}.
+          {translate('quiz_exit_message').replace('{count}', String(remainingCount))}
         </p>
         <div className="flex gap-3">
           <button
@@ -157,13 +158,13 @@ function ExitConfirmModal({ remainingCount, onConfirm, onCancel, isDark }: ExitM
                 : 'border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            Continuer
+            {translate('quiz_exit_continue')}
           </button>
           <button
             onClick={onConfirm}
             className="flex-1 px-4 py-2 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors"
           >
-            Quitter
+            {translate('quiz_exit_leave')}
           </button>
         </div>
       </div>
@@ -276,7 +277,7 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
       {/* Correct answer if incorrect */}
       {!isCorrect && correctAnswer && (
         <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-          La bonne réponse était : {correctAnswer}
+          {translate('quiz_correct_answer_was')} {correctAnswer}
         </p>
       )}
 
@@ -302,7 +303,7 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
         <div className={`mt-3 p-3 rounded-lg border-l-4 ${
           isDark ? 'bg-neutral-800 border-neutral-600' : 'bg-gray-100 border-gray-300'
         }`}>
-          <p className={`text-xs mb-1 font-medium ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>Extrait du cours :</p>
+          <p className={`text-xs mb-1 font-medium ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>{translate('quiz_source_excerpt')}</p>
           <p className={`text-sm italic leading-relaxed ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>&ldquo;{sourceExcerpt}&rdquo;</p>
         </div>
       )}
@@ -990,6 +991,7 @@ export default function ChapterQuizPage() {
           onConfirm={handleExitConfirm}
           onCancel={handleExitCancel}
           isDark={isDark}
+          translate={translate}
         />
       )}
       <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
@@ -1018,7 +1020,7 @@ export default function ChapterQuizPage() {
             isDark ? 'text-neutral-400' : 'text-gray-600'
           }`}>
             <span className={isDark ? 'text-neutral-500' : 'text-gray-500'}>
-              Question {currentIndex + 1} sur {questions.length}
+              {translate('quiz_progress').replace('{current}', String(currentIndex + 1)).replace('{total}', String(questions.length))}
             </span>
             <span className={`font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
               {score} / {totalPossiblePoints} {translate('learn_pts')}
@@ -1185,11 +1187,11 @@ export default function ChapterQuizPage() {
                   onClick={handleFinishClick}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white text-sm sm:text-base font-semibold hover:bg-orange-600"
                 >
-                  Terminer le quiz
+                  {translate('quiz_finish')}
                 </button>
               ) : (
                 <span className={`flex-1 text-center text-sm ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-                  {remainingCount} question{remainingCount > 1 ? 's' : ''} restante{remainingCount > 1 ? 's' : ''}
+                  {translate('quiz_remaining_questions').replace('{count}', String(remainingCount))}
                 </span>
               )
             )}
@@ -1217,6 +1219,7 @@ export default function ChapterQuizPage() {
             questionIds={questionIds}
             onNavigate={navigateToQuestion}
             isDark={isDark}
+            translate={translate}
           />
         </div>
       </div>

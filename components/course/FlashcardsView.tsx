@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Sparkles, ThumbsUp, ThumbsDown, Star, UserPlus, HelpCircle, Plus, X, Trash2, Pencil, Maximize2, Minimize2, Lock } from 'lucide-react';
+import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Star, UserPlus, HelpCircle, Plus, X, Trash2, Pencil, Maximize2, Minimize2, Lock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -12,6 +12,9 @@ import GenerationLoadingScreen from './GenerationLoadingScreen';
 import FlashcardPersonnalisationScreen from './FlashcardPersonnalisationScreen';
 import ProgressiveFlashcardsView, { StreamingFlashcard } from './ProgressiveFlashcardsView';
 import { FlashcardConfig } from '@/types/flashcard-config';
+import RatingButtons from '@/components/flashcards/RatingButtons';
+import SessionRecap from '@/components/flashcards/SessionRecap';
+import { Rating, calculateNextReview, getMasteryLevel, FlashcardProgress, SessionStats, createSessionStats, updateSessionStats, completeSessionStats } from '@/lib/spaced-repetition';
 
 // Mapping des types de cartes vers des labels lisibles
 const FLASHCARD_TYPE_LABELS: Record<string, string> = {
@@ -50,29 +53,29 @@ function KeyboardHelpTooltip({ isDark }: { isDark?: boolean }) {
         <HelpCircle className="w-4 h-4" />
       </button>
       {isVisible && (
-        <div className={`absolute right-0 top-full mt-1 z-50 text-xs rounded-lg p-3 shadow-lg min-w-[200px] ${
+        <div className={`absolute right-0 top-full mt-1 z-50 text-xs rounded-lg p-3 shadow-lg min-w-[220px] ${
           isDark ? 'bg-neutral-700 text-neutral-100' : 'bg-gray-900 text-white'
         }`}>
           <div className="space-y-1.5">
             <div className="flex justify-between gap-4">
-              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>← →</span>
-              <span>{translate('flashcards_nav_cards') || 'Navigate cards'}</span>
-            </div>
-            <div className="flex justify-between gap-4">
               <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>Space / ↑ ↓</span>
-              <span>{translate('flashcards_flip') || 'Flip card'}</span>
+              <span>{translate('flashcards_flip') || 'Retourner'}</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>⌫ Backspace</span>
-              <span>{translate('flashcards_didnt_know') || "Didn't know"}</span>
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>1</span>
+              <span>{translate('flashcard_rating_hard') || 'Difficile'}</span>
             </div>
             <div className="flex justify-between gap-4">
-              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>↵ Enter</span>
-              <span>{translate('flashcards_knew_it') || 'Knew it'}</span>
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>2</span>
+              <span>{translate('flashcard_rating_good') || 'Bien'}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>3</span>
+              <span>{translate('flashcard_rating_easy') || 'Facile'}</span>
             </div>
             <div className="flex justify-between gap-4">
               <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>F</span>
-              <span>{translate('flashcards_fullscreen') || 'Fullscreen'}</span>
+              <span>{translate('flashcards_fullscreen') || 'Plein écran'}</span>
             </div>
           </div>
         </div>
@@ -90,6 +93,12 @@ interface Flashcard {
   correctCount: number;
   incorrectCount: number;
   chapterId?: string | null;
+  // Spaced repetition fields
+  easeFactor?: number;
+  intervalDays?: number;
+  nextReviewAt?: string;
+  reviewCount?: number;
+  lastRating?: Rating;
 }
 
 interface FlashcardsViewProps {
@@ -131,6 +140,10 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
   const [editCardBack, setEditCardBack] = useState('');
   const [editingCard, setEditingCard] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Session state for tracking progress and showing recap
+  const [sessionState, setSessionState] = useState<'playing' | 'completed'>('playing');
+  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
 
   // Streaming state for progressive loading
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -545,6 +558,116 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
     setIsFlipped((prev) => !prev);
   }, [isCardLocked]);
 
+  // Get current card's progress for spaced repetition
+  const currentCardProgress: FlashcardProgress | null = useMemo(() => {
+    const card = flashcards[currentIndex];
+    if (!card || !card.easeFactor) return null;
+    return {
+      ease_factor: card.easeFactor,
+      interval_days: card.intervalDays || 0,
+      next_review_at: card.nextReviewAt ? new Date(card.nextReviewAt) : new Date(),
+    };
+  }, [flashcards, currentIndex]);
+
+  const handleRating = useCallback(async (rating: Rating) => {
+    if (hasAnswered) return;
+    setHasAnswered(true);
+
+    // Initialize session stats if not already done
+    if (!sessionStats) {
+      setSessionStats(createSessionStats(flashcards.length));
+    }
+
+    // Update session stats
+    setSessionStats(prev => prev ? updateSessionStats(prev, rating) : createSessionStats(flashcards.length));
+
+    // Award points based on rating
+    const pointsMap: Record<Rating, number> = {
+      hard: 0,
+      good: 10,
+      easy: 15,
+    };
+    setSessionPoints((prev) => prev + pointsMap[rating]);
+
+    const card = flashcards[currentIndex];
+
+    // Calculate new spaced repetition values
+    const newProgress = calculateNextReview(currentCardProgress, rating);
+    const newMastery = getMasteryLevel(newProgress.interval_days);
+
+    const updatedCard: Flashcard = {
+      ...card,
+      correctCount: rating === 'good' || rating === 'easy' ? card.correctCount + 1 : card.correctCount,
+      incorrectCount: rating === 'hard' ? card.incorrectCount + 1 : card.incorrectCount,
+      mastery: newMastery,
+      easeFactor: newProgress.ease_factor,
+      intervalDays: newProgress.interval_days,
+      nextReviewAt: newProgress.next_review_at.toISOString(),
+      reviewCount: (card.reviewCount || 0) + 1,
+      lastRating: rating,
+    };
+
+    // Save to server with spaced repetition data
+    if (user) {
+      fetch('/api/flashcards/reviews/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flashcardId: card.id,
+          rating,
+          easeFactor: newProgress.ease_factor,
+          intervalDays: newProgress.interval_days,
+          nextReviewAt: newProgress.next_review_at.toISOString(),
+          mastery: newMastery,
+          reviewCount: (card.reviewCount || 0) + 1,
+          correctCount: updatedCard.correctCount,
+          incorrectCount: updatedCard.incorrectCount,
+        }),
+      }).catch(err => console.error('Error saving rating:', err));
+    }
+
+    // Check if this is the last card
+    const isLastCard = currentIndex + 1 >= flashcards.length;
+
+    // Auto-advance to next card after a short delay
+    // Update local state only when moving to the next card to avoid showing
+    // updated interval values while the current card is still visible
+    setTimeout(async () => {
+      // Update local state when moving to next card
+      const updatedFlashcards = [...flashcards];
+      updatedFlashcards[currentIndex] = updatedCard;
+      setFlashcards(updatedFlashcards);
+
+      if (isLastCard) {
+        // Session completed - show recap
+        setSessionStats(prev => prev ? completeSessionStats(prev) : null);
+        setSessionState('completed');
+        setIsFullscreen(false);
+
+        // Record activity for gamification (add points to dashboard)
+        if (user) {
+          try {
+            await fetch('/api/gamification/activity', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                points_earned: sessionPoints + pointsMap[rating],
+                questions_answered: flashcards.length,
+                questions_correct: flashcards.filter((_, idx) => idx < currentIndex).length + (rating === 'good' || rating === 'easy' ? 1 : 0),
+              }),
+            });
+          } catch (err) {
+            console.error('Error recording flashcard activity:', err);
+          }
+        }
+      } else {
+        setIsFlipped(false);
+        setHasAnswered(false);
+        setCurrentIndex((prev) => prev + 1);
+      }
+    }, 400);
+  }, [hasAnswered, flashcards, currentIndex, currentCardProgress, user, sessionStats, sessionPoints]);
+
   // Keyboard navigation
   useEffect(() => {
     if (flashcards.length === 0) return;
@@ -556,32 +679,33 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
       }
 
       switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          handlePrev();
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          handleNext();
-          break;
         case 'ArrowUp':
         case 'ArrowDown':
         case ' ':
           e.preventDefault();
-          handleFlip();
-          break;
-        case 'Backspace':
-          // "Didn't know" - only when flipped and not already answered
-          if (isFlipped && !hasAnswered) {
-            e.preventDefault();
-            handleFeedback(false);
+          if (!isFlipped) {
+            handleFlip();
           }
           break;
-        case 'Enter':
-          // "Knew it" - only when flipped and not already answered
+        case '1':
+          // Difficile - only when flipped and not already answered
           if (isFlipped && !hasAnswered) {
             e.preventDefault();
-            handleFeedback(true);
+            handleRating('hard');
+          }
+          break;
+        case '2':
+          // Bien - only when flipped and not already answered
+          if (isFlipped && !hasAnswered) {
+            e.preventDefault();
+            handleRating('good');
+          }
+          break;
+        case '3':
+          // Facile - only when flipped and not already answered
+          if (isFlipped && !hasAnswered) {
+            e.preventDefault();
+            handleRating('easy');
           }
           break;
         case 'f':
@@ -600,47 +724,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [flashcards.length, isFlipped, hasAnswered, isFullscreen, handleNext, handlePrev, handleFlip]);
-
-  const handleFeedback = async (correct: boolean) => {
-    if (hasAnswered) return;
-    setHasAnswered(true);
-
-    // Award points for correct answers
-    if (correct) {
-      setSessionPoints((prev) => prev + 10);
-    }
-
-    const card = flashcards[currentIndex];
-    const updatedCard = {
-      ...card,
-      correctCount: correct ? card.correctCount + 1 : card.correctCount,
-      incorrectCount: correct ? card.incorrectCount : card.incorrectCount + 1,
-      mastery: correct && card.correctCount >= 2 ? 'mastered' as const : 'learning' as const,
-    };
-
-    // Update local state
-    const updatedFlashcards = [...flashcards];
-    updatedFlashcards[currentIndex] = updatedCard;
-    setFlashcards(updatedFlashcards);
-
-    // Save to server (fire and forget)
-    fetch(`/api/courses/${courseId}/flashcards/feedback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        flashcardId: card.id,
-        correct,
-      }),
-    }).catch(err => console.error('Error saving feedback:', err));
-
-    // Auto-advance to next card after a short delay
-    setTimeout(() => {
-      setIsFlipped(false);
-      setHasAnswered(false);
-      setCurrentIndex((prev) => (prev + 1) % flashcards.length);
-    }, 400);
-  };
+  }, [flashcards.length, isFlipped, hasAnswered, isFullscreen, handleFlip, handleRating]);
 
   if (loading) {
     return (
@@ -747,6 +831,33 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
     );
   }
 
+  // Session completed - show recap screen
+  if (sessionState === 'completed' && sessionStats) {
+    const handleRestartSession = () => {
+      setSessionState('playing');
+      setSessionStats(null);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+      setHasAnswered(false);
+      setSessionPoints(0);
+    };
+
+    return (
+      <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+        isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+      }`}>
+        <SessionRecap
+          stats={sessionStats}
+          onFinish={handleRestartSession}
+          nextReviewInfo={{
+            date: translate('flashcard_tomorrow', 'demain'),
+            count: sessionStats.good + sessionStats.easy,
+          }}
+        />
+      </div>
+    );
+  }
+
   // Show flashcard carousel
   const currentCard = flashcards[currentIndex];
 
@@ -782,8 +893,9 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
           </button>
         </div>
 
-        {/* Carte centrée */}
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-8 overflow-hidden">
+        {/* Zone centrale : carte */}
+        <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 overflow-visible" style={{ zIndex: 10 }}>
+          {/* Carte */}
           <div
             onClick={handleFlip}
             className="relative w-full max-w-3xl cursor-pointer"
@@ -849,85 +961,43 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
           </div>
         </div>
 
-        {/* Footer compact avec contrôles */}
-        <div className={`px-4 sm:px-8 py-3 border-t ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
-          <div className="max-w-3xl mx-auto flex flex-col gap-2">
-            {/* Feedback buttons */}
-            {isFlipped && (
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleFeedback(false);
-                  }}
-                  disabled={hasAnswered}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                    hasAnswered
-                      ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : ''
-                  }`}
-                  style={!hasAnswered ? {
-                    backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3',
-                    color: isDark ? '#e94446' : '#d91a1c',
-                    borderWidth: '1px',
-                    borderStyle: 'solid',
-                    borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)'
-                  } : {}}
-                >
-                  <ThumbsDown className="w-4 h-4" />
-                  <span>{translate('flashcards_didnt_know')}</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleFeedback(true);
-                  }}
-                  disabled={hasAnswered}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                    hasAnswered
-                      ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : ''
-                  }`}
-                  style={!hasAnswered ? {
-                    backgroundColor: isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.1)',
-                    color: isDark ? '#5cb978' : '#379f5a',
-                    borderWidth: '1px',
-                    borderStyle: 'solid',
-                    borderColor: isDark ? 'rgba(55, 159, 90, 0.3)' : 'rgba(55, 159, 90, 0.3)'
-                  } : {}}
-                >
-                  <ThumbsUp className="w-4 h-4" />
-                  <span>{translate('flashcards_knew_it')}</span>
-                </button>
-              </div>
-            )}
+        {/* Rating buttons - entre la carte et la barre du bas */}
+        {isFlipped && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="py-6 flex items-center justify-center"
+            style={{ position: 'relative', zIndex: 1 }}
+          >
+            <RatingButtons
+              onRate={handleRating}
+              currentProgress={currentCardProgress}
+              disabled={hasAnswered}
+            />
+          </div>
+        )}
 
-            {/* Navigation */}
+        {/* Footer - barre de progression uniquement */}
+        <div className={`px-4 sm:px-8 py-3 border-t ${isDark ? 'border-neutral-800' : 'border-gray-200'}`} style={{ position: 'relative', zIndex: 1 }}>
+          <div className="max-w-3xl mx-auto">
+            {/* Progress bar */}
             <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={handlePrev}
-                className={`p-2 rounded-lg transition-colors ${
-                  isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-
-              {/* Progress bar */}
+              <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
+                {currentIndex + 1} / {flashcards.length}
+              </span>
               <div className={`flex-1 max-w-sm h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-200'}`}>
                 <div
                   className="h-full bg-orange-500 transition-all duration-300"
                   style={{ width: `${((currentIndex + 1) / flashcards.length) * 100}%` }}
                 />
               </div>
-
               <button
-                onClick={handleNext}
+                onClick={() => setIsFullscreen(false)}
                 className={`p-2 rounded-lg transition-colors ${
                   isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
+                title="Esc"
               >
-                <ChevronRight className="w-5 h-5" />
+                <Minimize2 className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -1046,7 +1116,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
       {/* Flashcard */}
       <div
         onClick={handleFlip}
-        className="relative w-full aspect-[4/3] sm:aspect-[3/2] cursor-pointer perspective-1000"
+        className="relative w-full aspect-[5/3] sm:aspect-[2/1] cursor-pointer perspective-1000"
       >
         <div
           className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${
@@ -1102,98 +1172,39 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
         </div>
       </div>
 
-      {/* Feedback buttons - only show when flipped */}
+      {/* Rating buttons - visible seulement quand la carte est retournée */}
       {isFlipped && (
-        <div className="flex items-center justify-center gap-2 sm:gap-4">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleFeedback(false);
-            }}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="h-20 flex items-center justify-center"
+        >
+          <RatingButtons
+            onRate={handleRating}
+            currentProgress={currentCardProgress}
             disabled={hasAnswered}
-            className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-sm sm:text-base transition-all ${
-              hasAnswered
-                ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : ''
-            }`}
-            style={!hasAnswered ? {
-              backgroundColor: isDark ? 'rgba(217, 26, 28, 0.2)' : '#fff6f3',
-              color: isDark ? '#e94446' : '#d91a1c',
-              borderWidth: '1px',
-              borderStyle: 'solid',
-              borderColor: isDark ? 'rgba(217, 26, 28, 0.3)' : 'rgba(217, 26, 28, 0.3)'
-            } : {}}
-          >
-            <ThumbsDown className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden xs:inline">{translate('flashcards_didnt_know')}</span>
-            <span className="xs:hidden">{translate('flashcards_no')}</span>
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleFeedback(true);
-            }}
-            disabled={hasAnswered}
-            className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-medium text-sm sm:text-base transition-all ${
-              hasAnswered
-                ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : ''
-            }`}
-            style={!hasAnswered ? {
-              backgroundColor: isDark ? 'rgba(55, 159, 90, 0.2)' : 'rgba(55, 159, 90, 0.1)',
-              color: isDark ? '#5cb978' : '#379f5a',
-              borderWidth: '1px',
-              borderStyle: 'solid',
-              borderColor: isDark ? 'rgba(55, 159, 90, 0.3)' : 'rgba(55, 159, 90, 0.3)'
-            } : {}}
-          >
-            <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden xs:inline">{translate('flashcards_knew_it')}</span>
-            <span className="xs:hidden">{translate('flashcards_yes')}</span>
-          </button>
+          />
         </div>
       )}
 
-      {/* Navigation */}
-      <div className="flex items-center justify-center gap-2 sm:gap-4">
-        <button
-          onClick={handlePrev}
-          className={`p-2 sm:p-3 rounded-xl transition-colors ${
-            isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
-
-        {/* Dots indicator - hide on small screens if too many cards */}
-        <div className="flex gap-1 max-w-[200px] sm:max-w-none overflow-hidden">
-          {flashcards.length <= 15 ? (
-            flashcards.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => {
-                  setIsFlipped(false);
-                  setCurrentIndex(idx);
-                }}
-                className={`w-2 h-2 rounded-full transition-colors flex-shrink-0 ${
-                  idx === currentIndex ? 'bg-orange-500' : isDark ? 'bg-neutral-700' : 'bg-gray-300'
-                }`}
-              />
-            ))
-          ) : (
-            <span className={`text-xs sm:text-sm ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-              {currentIndex + 1} / {flashcards.length}
-            </span>
-          )}
+      {/* Progress indicator */}
+      <div className="flex items-center justify-center gap-3">
+        <span className={`text-xs sm:text-sm ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
+          {currentIndex + 1} / {flashcards.length}
+        </span>
+        <div className={`flex-1 max-w-xs h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-200'}`}>
+          <div
+            className="h-full bg-orange-500 transition-all duration-300"
+            style={{ width: `${((currentIndex + 1) / flashcards.length) * 100}%` }}
+          />
         </div>
-
         <button
-          onClick={handleNext}
-          className={`p-2 sm:p-3 rounded-xl transition-colors ${
+          onClick={() => setIsFullscreen(true)}
+          className={`p-2 rounded-lg transition-colors ${
             isDark ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
+          title="F"
         >
-          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+          <Maximize2 className="w-4 h-4" />
         </button>
       </div>
 

@@ -184,6 +184,9 @@ export default function GenerationProgress({
   const { translate } = useLanguage();
   const { isDark } = useTheme();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [smoothProgress, setSmoothProgress] = useState(0);
+  const [lastServerProgress, setLastServerProgress] = useState(0);
+  const [timeSinceLastUpdate, setTimeSinceLastUpdate] = useState(0);
 
   // Start timer when component mounts
   useEffect(() => {
@@ -194,6 +197,49 @@ export default function GenerationProgress({
 
     return () => clearInterval(interval);
   }, []);
+
+  // Track when server progress changes
+  useEffect(() => {
+    if (progress !== lastServerProgress) {
+      setLastServerProgress(progress);
+      setTimeSinceLastUpdate(0);
+      // When server sends a new progress, immediately update to it
+      setSmoothProgress(progress);
+    }
+  }, [progress, lastServerProgress]);
+
+  // Smooth progress interpolation - advances slowly when server doesn't update
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeSinceLastUpdate(prev => prev + 0.1);
+
+      setSmoothProgress(prev => {
+        // If we've reached 100%, stop
+        if (prev >= 100) return 100;
+
+        // Calculate target based on server progress
+        // Allow smooth progress to go slightly ahead of server progress to show activity
+        const maxAllowed = Math.min(progress + 5, 99); // Never exceed server + 5% or 99%
+
+        // If server progress is ahead, catch up quickly
+        if (progress > prev) {
+          return Math.min(prev + 2, progress);
+        }
+
+        // If we're below max allowed, advance slowly (degressive speed)
+        if (prev < maxAllowed) {
+          // Slower as we get closer to the target
+          const remaining = maxAllowed - prev;
+          const increment = Math.max(0.1, remaining * 0.02); // Slower increment as we approach target
+          return Math.min(prev + increment, maxAllowed);
+        }
+
+        return prev;
+      });
+    }, 100); // Update every 100ms for smooth animation
+
+    return () => clearInterval(interval);
+  }, [progress]);
 
   // Get the appropriate steps for this generation type
   const steps = useMemo(() => {
@@ -209,6 +255,9 @@ export default function GenerationProgress({
     }
   }, [type]);
 
+  // Use smoothProgress for UI display, but keep original progress for step detection
+  const displayProgress = smoothProgress;
+
   const currentStep = useMemo(() => getCurrentStep(steps, progress), [steps, progress]);
   const completedSteps = useMemo(() => getCompletedSteps(steps, progress), [steps, progress]);
   const pendingSteps = useMemo(() => getPendingSteps(steps, progress), [steps, progress]);
@@ -219,34 +268,27 @@ export default function GenerationProgress({
     return steps.findIndex(s => s.key === currentStep.key) + 1;
   }, [currentStep, steps]);
 
-  // Build the counter string
+  // Build the counter string - format: "X/~Y questions générées"
   const counterText = useMemo(() => {
     if (type === 'quiz' && itemsGenerated !== undefined) {
-      if (totalItems !== undefined) {
-        return translate('gen_question_counter', {
-          current: itemsGenerated.toString(),
-          total: totalItems.toString(),
-        });
+      if (totalItems !== undefined && totalItems > 0) {
+        return `${itemsGenerated}/~${totalItems} questions générées`;
       }
-      return `${itemsGenerated} ${translate('quiz_question_type_mcq', 'questions')}`;
+      const questionWord = itemsGenerated <= 1 ? 'question générée' : 'questions générées';
+      return `${itemsGenerated} ${questionWord}`;
     }
     if (type === 'flashcards' && itemsGenerated !== undefined) {
-      if (totalItems !== undefined) {
-        return translate('gen_flashcard_counter', {
-          current: itemsGenerated.toString(),
-          total: totalItems.toString(),
-        });
+      if (totalItems !== undefined && totalItems > 0) {
+        return `${itemsGenerated}/~${totalItems} cartes générées`;
       }
-      return `${itemsGenerated} ${translate('flashcard_card', 'cards')}`;
+      const cardWord = itemsGenerated <= 1 ? 'carte générée' : 'cartes générées';
+      return `${itemsGenerated} ${cardWord}`;
     }
     if (type === 'note' && chapterIndex !== undefined && totalChapters !== undefined) {
-      return translate('gen_section_counter', {
-        current: chapterIndex.toString(),
-        total: totalChapters.toString(),
-      });
+      return `Section ${chapterIndex}/${totalChapters}`;
     }
     return null;
-  }, [type, itemsGenerated, totalItems, chapterIndex, totalChapters, translate]);
+  }, [type, itemsGenerated, totalItems, chapterIndex, totalChapters]);
 
   // Translate step message
   const translateStepMessage = (step: GenerationStep): string => {
@@ -265,7 +307,8 @@ export default function GenerationProgress({
     return translated;
   };
 
-  const currentStepText = currentStep ? translateStepMessage(currentStep) : translate('gen_finalizing');
+  // Use the message from backend if available, otherwise fall back to step translation
+  const currentStepText = message || (currentStep ? translateStepMessage(currentStep) : translate('gen_finalizing'));
 
   if (compact) {
     // Compact version: pulsing dot + typewriter text
@@ -299,22 +342,22 @@ export default function GenerationProgress({
           <motion.div
             className="bg-gradient-to-r from-orange-500 to-orange-400 h-1.5 rounded-full"
             initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            animate={{ width: `${displayProgress}%` }}
+            transition={{ duration: 0.15, ease: 'linear' }}
           />
         </div>
 
         {/* Counter and percentage */}
-        {counterText && (
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
+          {counterText && (
             <span className={`text-xs font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
               {counterText}
             </span>
-            <span className={`text-xs font-medium ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-              {Math.round(progress)}%
-            </span>
-          </div>
-        )}
+          )}
+          <span className={`text-xs font-medium ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+            {Math.round(displayProgress)}%
+          </span>
+        </div>
       </div>
     );
   }
@@ -351,8 +394,8 @@ export default function GenerationProgress({
           <motion.div
             className="bg-gradient-to-r from-orange-500 to-orange-400 h-2.5 rounded-full"
             initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            animate={{ width: `${displayProgress}%` }}
+            transition={{ duration: 0.15, ease: 'linear' }}
           />
         </div>
 
@@ -366,13 +409,10 @@ export default function GenerationProgress({
             )}
           </div>
 
-          {/* Percentage and time */}
+          {/* Percentage */}
           <div className="flex items-center gap-3">
-            <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-              {translate('gen_time_elapsed', { time: formatTime(elapsedSeconds) })}
-            </span>
             <span className={`text-sm font-semibold ${isDark ? 'text-neutral-200' : 'text-gray-800'}`}>
-              {Math.round(progress)}%
+              {Math.round(displayProgress)}%
             </span>
           </div>
         </div>

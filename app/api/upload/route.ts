@@ -128,20 +128,7 @@ export async function POST(request: NextRequest) {
     });
     await logEvent('upload_success', { userId: userId ?? undefined, courseId, payload: { jobId, guestSessionId: !userId ? guestSessionId : undefined } });
 
-    // Process the course synchronously to ensure it completes
-    // Note: after() can be unreliable in dev mode
-    if (jobId) {
-      try {
-        console.log(`[upload] Starting processing for job ${jobId}`);
-        await processCourseJob(jobId);
-        console.log(`[upload] Processing completed for job ${jobId}`);
-      } catch (err) {
-        console.error(`[upload] Processing failed for job ${jobId}:`, err);
-        // Don't throw - the course is created, just processing failed
-      }
-    }
-
-    // Assign course to folder if specified
+    // Assign course to folder if specified (do this before returning)
     if (folderId && userId) {
       const { error: folderError } = await supabase
         .from('courses')
@@ -151,17 +138,32 @@ export async function POST(request: NextRequest) {
 
       if (folderError) {
         console.error(`[upload] Failed to assign course ${courseId} to folder ${folderId}:`, folderError);
-        // Don't throw - the course is created, just folder assignment failed
       } else {
         console.log(`[upload] Course ${courseId} assigned to folder ${folderId}`);
       }
     }
 
+    // Process the course in the background using after()
+    // This allows us to return immediately while processing continues
+    if (jobId) {
+      after(async () => {
+        try {
+          console.log(`[upload] Starting background processing for job ${jobId}`);
+          await processCourseJob(jobId);
+          console.log(`[upload] Background processing completed for job ${jobId}`);
+        } catch (err) {
+          console.error(`[upload] Background processing failed for job ${jobId}:`, err);
+        }
+      });
+    }
+
+    // Return immediately with courseId - client will redirect to learn page
+    // which shows ExtractionLoader while pipeline runs in background
     return NextResponse.json({
       success: true,
       courseId,
       content_language: null,
-      message: 'Cours traité avec succès.',
+      message: 'Cours en cours de traitement.',
     });
   } catch (error: any) {
     await logEvent('upload_failed', {

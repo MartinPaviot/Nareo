@@ -32,7 +32,7 @@ interface CourseSidebarProps {
   level: SidebarLevel;
   selectedFolderId: string | null;
   selectedFolderName: string | null;
-  currentCourseId: string;
+  currentCourseId?: string;
   onClose: () => void;
   onOpen: () => void;
   onGoToFolderLevel: () => void;

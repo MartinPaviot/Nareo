@@ -174,17 +174,6 @@ export default function GenerationLoadingScreen({
         </div>
       )}
 
-      {/* Time estimate badge */}
-      {timeEstimate && (
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium mb-4 ${
-          isDark ? 'bg-orange-500/15 text-orange-300' : 'bg-orange-100 text-orange-700'
-        }`}>
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {timeEstimate}
-        </div>
-      )}
 
       {/* Rotating quote */}
       <div className={`mt-4 px-4 py-3 rounded-xl ${

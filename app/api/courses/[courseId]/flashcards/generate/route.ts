@@ -191,7 +191,10 @@ export async function POST(
     try {
       const body = await request.json();
       if (body.niveau && ['essentiel', 'complet', 'exhaustif'].includes(body.niveau)) {
-        config = { niveau: body.niveau as FlashcardNiveau };
+        config = {
+          niveau: body.niveau as FlashcardNiveau,
+          types: body.types ?? DEFAULT_FLASHCARD_CONFIG.types,
+        };
       }
     } catch {
       // If no body or parse error, use defaults

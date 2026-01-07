@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         .from('user_gamification')
         .update({
           total_points: (gamification.total_points || 0) + points_earned,
+          total_xp: (gamification.total_xp || 0) + points_earned, // Points also count as XP
           total_quizzes_completed: (gamification.total_quizzes_completed || 0) + quizzes_completed,
           total_questions_answered: (gamification.total_questions_answered || 0) + questions_answered,
           total_questions_correct: (gamification.total_questions_correct || 0) + questions_correct,

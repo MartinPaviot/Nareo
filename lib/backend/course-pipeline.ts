@@ -196,7 +196,7 @@ export async function processCourseJob(jobId: string) {
 
   try {
     logStep("download_start", { courseId: course.id, stage: "download" });
-    await admin.from("pipeline_jobs").update({ stage: "download" }).eq("id", jobId);
+    await admin.from("pipeline_jobs").update({ stage: "download", updated_at: new Date().toISOString() }).eq("id", jobId);
 
     const download = await admin.storage.from(bucket).download(storagePath);
     if (download.error || !download.data) {
@@ -206,7 +206,7 @@ export async function processCourseJob(jobId: string) {
     const ext = path.extname(storagePath).toLowerCase();
 
     logStep("extraction_start", { courseId: course.id, ext });
-    await admin.from("pipeline_jobs").update({ stage: "extraction" }).eq("id", jobId);
+    await admin.from("pipeline_jobs").update({ stage: "extraction", updated_at: new Date().toISOString() }).eq("id", jobId);
 
     let extractedText = "";
     let documentPages: string[] = [];
@@ -234,8 +234,8 @@ export async function processCourseJob(jobId: string) {
       throw new Error(`Insufficient text extracted (${validation.reason})`);
     }
 
-    logStep("llm_structuring_start", { courseId: course.id });
-    await admin.from("pipeline_jobs").update({ stage: "structuring" }).eq("id", jobId);
+    // Update stage to language_detection
+    await admin.from("pipeline_jobs").update({ stage: "language_detection", updated_at: new Date().toISOString() }).eq("id", jobId);
 
     const cleanText = truncateTextIntelligently(extractedText, LLM_CONFIG.truncation.courseText);
     const detectedLanguage = await detectContentLanguageFromText(cleanText);
@@ -267,6 +267,7 @@ export async function processCourseJob(jobId: string) {
     // === PHASE 1: Detect chapters using LLM ===
     // LLM provides better chapter detection than algorithmic approach
     // as it understands document structure, TOC, and content organization
+    await admin.from("pipeline_jobs").update({ stage: "structuring", updated_at: new Date().toISOString() }).eq("id", jobId);
     logStep("detecting_chapters_llm", { courseId: course.id });
 
     let chapterStructure: any[];
@@ -378,6 +379,9 @@ export async function processCourseJob(jobId: string) {
     // === CHAPTER INSERTION (NO QUIZ GENERATION) ===
     // Quiz generation is now ON-DEMAND via /api/courses/[courseId]/quiz/generate
     // This makes upload much faster and allows user customization before generation
+
+    // Update stage to insertion
+    await admin.from("pipeline_jobs").update({ stage: "insertion", updated_at: new Date().toISOString() }).eq("id", jobId);
 
     // Insert chapters with their text (quiz generation is on-demand)
     for (const chapter of chapters) {

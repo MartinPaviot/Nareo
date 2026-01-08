@@ -9,6 +9,7 @@ import { QuizConfig, DEFAULT_QUIZ_CONFIG, getAdjustedQuestionCount } from '@/typ
 
 // Max duration for quiz generation
 // Vercel Hobby plan limit is 60 seconds, Pro plan allows 300 seconds
+// With chunked approach, each request handles 1-2 chapters max
 export const maxDuration = 300;
 
 // Helper to extract guestSessionId from cookies
@@ -94,6 +95,12 @@ async function runQuizGeneration(
     importance: string | null;
   }> | null
 ) {
+  console.log('🚀 [runQuizGeneration] ENTRY - Starting quiz generation function');
+  console.log(`🚀 [runQuizGeneration] courseId: ${courseId}`);
+  console.log(`🚀 [runQuizGeneration] chapters: ${chapters.length}`);
+  console.log(`🚀 [runQuizGeneration] concepts: ${concepts?.length || 0}`);
+  console.log(`🚀 [runQuizGeneration] language: ${modelLanguage}`);
+
   const admin = getServiceSupabase();
 
   try {
@@ -271,6 +278,7 @@ async function runQuizGeneration(
               await new Promise(resolve => setTimeout(resolve, 1000 * retry)); // Reduced delay
             }
 
+            console.log(`[quiz-generate] 🔥 CALLING generateMixedQuizParallel for chapter "${chapter.title}" (attempt ${retry + 1})`);
             generated = await generateMixedQuizParallel(
               {
                 index: chapter.order_index + 1,
@@ -643,23 +651,49 @@ export async function POST(
 
     const modelLanguage = toModelLanguageCode(course.content_language || 'en');
 
-    // Start generation in background - this runs independently of HTTP connection
-    // Using setImmediate/setTimeout to ensure the response is sent first
-    // The generation will continue even if the client disconnects
-    setTimeout(() => {
-      runQuizGeneration(courseId, quizConfig, modelLanguage, chapters, concepts)
-        .catch(err => {
-          console.error('[quiz-generate] Background generation failed:', err);
-        });
-    }, 0);
+    // SYNCHRONOUS GENERATION - no setTimeout because Vercel kills the function after response
+    // This runs within the same request, respecting the 300s timeout
+    console.log('[quiz-generate] Starting SYNCHRONOUS quiz generation...');
+    console.log(`[quiz-generate] MISTRAL env var present: ${!!process.env.MISTRAL}`);
+    console.log(`[quiz-generate] MISTRAL env var length: ${process.env.MISTRAL?.length || 0}`);
+    console.log(`[quiz-generate] Chapters count: ${chapters.length}`);
+    console.log(`[quiz-generate] Quiz config:`, JSON.stringify(quizConfig));
 
-    // Return immediately with status - client will poll for updates
-    return NextResponse.json({
-      success: true,
-      message: 'Quiz generation started',
-      courseId,
-      status: 'generating',
-    });
+    try {
+      await runQuizGeneration(courseId, quizConfig, modelLanguage, chapters, concepts);
+
+      // Get final stats
+      const { data: finalCourse } = await admin
+        .from('courses')
+        .select('quiz_status, quiz_questions_generated')
+        .eq('id', courseId)
+        .single();
+
+      console.log('[quiz-generate] Generation completed successfully');
+
+      return NextResponse.json({
+        success: true,
+        message: 'Quiz generation completed',
+        courseId,
+        status: finalCourse?.quiz_status || 'ready',
+        questionsGenerated: finalCourse?.quiz_questions_generated || 0,
+      });
+    } catch (genError: any) {
+      console.error('[quiz-generate] Generation failed:', genError);
+
+      // Mark as failed in DB
+      await admin.from('courses').update({
+        quiz_status: 'failed',
+        quiz_error_message: genError.message || 'Quiz generation failed',
+      }).eq('id', courseId);
+
+      return NextResponse.json({
+        success: false,
+        error: genError.message || 'Quiz generation failed',
+        courseId,
+        status: 'failed',
+      }, { status: 500 });
+    }
 
   } catch (error: any) {
     console.error('Error starting quiz generation:', error);

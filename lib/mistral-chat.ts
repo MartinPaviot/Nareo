@@ -42,6 +42,11 @@ export async function mistralChatJSON<T = unknown>(options: {
 }): Promise<T> {
   const { model, systemPrompt, userPrompt, temperature = 0.3, maxTokens = 4000 } = options;
 
+  // Debug log at function entry
+  console.log('🔮 [Mistral] mistralChatJSON called');
+  console.log(`🔮 [Mistral] API key present: ${!!process.env.MISTRAL}`);
+  console.log(`🔮 [Mistral] API key length: ${process.env.MISTRAL?.length || 0}`);
+
   if (!process.env.MISTRAL) {
     console.error('❌ [Mistral] MISTRAL API key not configured');
     throw new Error('MISTRAL API key not configured');

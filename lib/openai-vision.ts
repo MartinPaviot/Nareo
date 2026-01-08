@@ -1847,6 +1847,11 @@ export async function generateMixedQuizParallel(
     facts?: VerifiableFact[];
   }
 ) {
+  console.log('🎲 [PARALLEL] ENTRY - generateMixedQuizParallel called');
+  console.log(`🎲 [PARALLEL] Chapter: ${chapterMetadata.title}`);
+  console.log(`🎲 [PARALLEL] Language: ${language}`);
+  console.log(`🎲 [PARALLEL] chapterText length: ${chapterText?.length || 0}`);
+  console.log(`🎲 [PARALLEL] isMistralAvailable: ${isMistralAvailable()}`);
   console.log('🎲 [PARALLEL] Generating mixed quiz for chapter:', chapterMetadata.title);
 
   const activeTypes = Object.entries(quizConfig.types).filter(([, active]) => active);

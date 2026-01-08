@@ -12,19 +12,19 @@ export default function SidebarHeader({ onClose }: SidebarHeaderProps) {
   const { isDark } = useTheme();
 
   return (
-    <div className={`flex items-center justify-between px-4 h-[65px] border-b ${
+    <div className={`flex items-center justify-between px-3 h-[52px] border-b ${
       isDark ? 'border-neutral-800' : 'border-gray-200'
     }`}>
       {/* Logo mascotte + title */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <Image
           src="/chat/mascotte.png"
           alt="Nareo"
-          width={48}
-          height={48}
-          className="rounded-xl"
+          width={40}
+          height={40}
+          className="rounded-lg"
         />
-        <span className={`text-lg font-bold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+        <span className={`text-base font-bold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
           Nareo
         </span>
       </div>

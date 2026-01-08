@@ -68,7 +68,7 @@ export default function StreakCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl p-5 border relative overflow-hidden ${
+      className={`rounded-xl p-3 border relative overflow-hidden ${
         isDark
           ? `${darkColors.bg} ${darkColors.border}`
           : `${colors.bg} ${colors.border}`
@@ -80,28 +80,28 @@ export default function StreakCard({
       )}
 
       {/* Streak Freeze indicator - top right */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-2.5 right-2.5">
         <StreakFreezeIndicator count={freezesAvailable} />
       </div>
 
       <div className="relative z-10">
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-3">
           {/* Circle with flame inside */}
           <ProgressCircle
             progress={progress}
-            size={100}
-            strokeWidth={8}
+            size={64}
+            strokeWidth={6}
             progressColor={circleColors.progress}
             backgroundColor={circleColors.background}
           >
-            <StreakFlame state={state} size="lg" />
+            <StreakFlame state={state} size="md" />
           </ProgressCircle>
 
           {/* Info */}
           <div className="flex-1">
-            <h3 className={`text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('streak_label')}</h3>
-            <div className="flex items-center gap-2">
-              <p className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <h3 className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('streak_label')}</h3>
+            <div className="flex items-center gap-1.5">
+              <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {currentStreak} {translate('streak_days')}
               </p>
               {/* Record badge */}
@@ -109,18 +109,18 @@ export default function StreakCard({
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                  className={`inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full ${
                     isDark ? 'bg-orange-900/50' : 'bg-orange-100'
                   }`}
                 >
-                  <span className={`text-xs font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{translate('streak_personal_record')}</span>
+                  <span className={`text-[10px] font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{translate('streak_personal_record')}</span>
                 </motion.div>
               )}
             </div>
             {/* Timer */}
-            <div className="mt-2 flex items-center gap-2">
-              <Clock className={`w-4 h-4 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
-              <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+            <div className="mt-1 flex items-center gap-1.5">
+              <Clock className={`w-3 h-3 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                 {translate('streak_time_remaining')}: <span className="font-mono font-semibold">{timeLeft}</span>
               </span>
             </div>

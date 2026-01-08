@@ -35,9 +35,9 @@ function MyCoursesScreen() {
         showDarkModeToggle={true}
       />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-4 space-y-4">
         {/* Stats Module - Unified gamified progress area with border */}
-        <div className={`rounded-2xl border-2 p-4 ${
+        <div className={`rounded-xl border-2 p-3 ${
           isDark ? 'border-neutral-700' : 'border-gray-200'
         }`}>
           <StatsModule />

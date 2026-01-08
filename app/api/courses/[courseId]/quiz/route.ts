@@ -448,7 +448,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete a question
+// DELETE - Delete a question or all questions for a course
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ courseId: string }> }
@@ -456,29 +456,46 @@ export async function DELETE(
   try {
     const { courseId } = await params;
 
-    // Authenticate user
+    // Try to authenticate user (optional for guest users)
     const auth = await authenticateRequest(request);
-    if (!auth) {
+    const guestSessionId = getGuestSessionIdFromRequest(request);
+
+    // Must have either authentication or guest session
+    if (!auth && !guestSessionId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get question ID from query params
+    // Get question ID from query params (optional - if not provided, delete all)
     const { searchParams } = new URL(request.url);
     const questionId = searchParams.get('questionId');
 
-    if (!questionId) {
-      return NextResponse.json({ error: 'Question ID is required' }, { status: 400 });
-    }
-
     const supabase = await createSupabaseServerClient();
+    const admin = getServiceSupabase();
 
-    // Check course exists and belongs to user
-    const { data: course, error: courseError } = await supabase
-      .from('courses')
-      .select('id')
-      .eq('id', courseId)
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
+    // Check course exists and belongs to user/guest
+    let course;
+    let courseError;
+
+    if (auth) {
+      const result = await supabase
+        .from('courses')
+        .select('id')
+        .eq('id', courseId)
+        .eq('user_id', auth.user.id)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    } else {
+      const result = await admin
+        .from('courses')
+        .select('id, user_id, guest_session_id')
+        .eq('id', courseId)
+        .is('user_id', null)
+        .eq('guest_session_id', guestSessionId)
+        .maybeSingle();
+      course = result.data;
+      courseError = result.error;
+    }
 
     if (courseError) {
       console.error('Error fetching course:', courseError);
@@ -489,8 +506,74 @@ export async function DELETE(
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
+    // Use admin client for guest users to bypass RLS
+    const dbClient = auth ? supabase : admin;
+
+    // If no questionId provided, delete ALL questions for this course
+    if (!questionId) {
+      console.log(`[quiz-delete] Deleting all questions for course ${courseId}`);
+
+      // Get all chapters for this course
+      const { data: chapters } = await dbClient
+        .from('chapters')
+        .select('id')
+        .eq('course_id', courseId);
+
+      if (!chapters || chapters.length === 0) {
+        return NextResponse.json({ success: true, deletedCount: 0 });
+      }
+
+      const chapterIds = chapters.map(ch => ch.id);
+      let totalDeleted = 0;
+
+      // For each chapter, delete questions and related data
+      for (const chapterId of chapterIds) {
+        // Get questions for this chapter
+        const { data: questions } = await dbClient
+          .from('questions')
+          .select('id')
+          .eq('chapter_id', chapterId);
+
+        if (questions && questions.length > 0) {
+          const questionIds = questions.map(q => q.id);
+
+          // Delete question_concepts links
+          for (const qId of questionIds) {
+            await admin.from('question_concepts').delete().eq('question_id', qId);
+          }
+
+          // Delete quiz_attempts for these questions
+          for (const qId of questionIds) {
+            await admin.from('quiz_attempts').delete().eq('question_id', qId);
+          }
+
+          // Delete questions
+          const { error: deleteError } = await admin
+            .from('questions')
+            .delete()
+            .eq('chapter_id', chapterId);
+
+          if (deleteError) {
+            console.error(`[quiz-delete] Error deleting questions for chapter ${chapterId}:`, deleteError);
+          } else {
+            totalDeleted += questions.length;
+          }
+        }
+
+        // Also delete chapter-level quiz attempts
+        await admin.from('quiz_attempts').delete().eq('chapter_id', chapterId);
+      }
+
+      // Delete course-level quiz attempts
+      await admin.from('quiz_attempts').delete().eq('course_id', courseId);
+
+      console.log(`[quiz-delete] Deleted ${totalDeleted} questions for course ${courseId}`);
+      return NextResponse.json({ success: true, deletedCount: totalDeleted });
+    }
+
+    // Single question deletion (original behavior)
     // Verify the question belongs to this course
-    const { data: question, error: fetchError } = await supabase
+    const { data: question, error: fetchError } = await dbClient
       .from('questions')
       .select('id, chapters!inner(course_id)')
       .eq('id', questionId)
@@ -507,19 +590,19 @@ export async function DELETE(
     }
 
     // Delete question_concepts links first (foreign key constraint)
-    await supabase
+    await admin
       .from('question_concepts')
       .delete()
       .eq('question_id', questionId);
 
     // Delete quiz_attempts for this question
-    await supabase
+    await admin
       .from('quiz_attempts')
       .delete()
       .eq('question_id', questionId);
 
     // Delete the question
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await admin
       .from('questions')
       .delete()
       .eq('id', questionId);

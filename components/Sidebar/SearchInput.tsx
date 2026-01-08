@@ -14,7 +14,7 @@ export default function SearchInput({ value, onChange, placeholder = 'Rechercher
 
   return (
     <div className="relative">
-      <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${
+      <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${
         isDark ? 'text-neutral-500' : 'text-gray-400'
       }`} />
       <input
@@ -22,7 +22,7 @@ export default function SearchInput({ value, onChange, placeholder = 'Rechercher
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full pl-9 pr-8 py-2 text-sm rounded-lg border transition-colors ${
+        className={`w-full pl-8 pr-7 py-1.5 text-[11px] rounded-md border transition-colors ${
           isDark
             ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder:text-neutral-500 focus:border-orange-500'
             : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-orange-500'
@@ -31,13 +31,13 @@ export default function SearchInput({ value, onChange, placeholder = 'Rechercher
       {value && (
         <button
           onClick={() => onChange('')}
-          className={`absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded transition-colors ${
+          className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded transition-colors ${
             isDark
               ? 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700'
               : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
           }`}
         >
-          <X className="w-4 h-4" />
+          <X className="w-3.5 h-3.5" />
         </button>
       )}
     </div>

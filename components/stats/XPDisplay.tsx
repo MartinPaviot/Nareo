@@ -21,17 +21,17 @@ export default function XPDisplay({ totalXP, showProgress = true, compact = fals
 
   if (compact) {
     return (
-      <div className={`rounded-xl p-4 border shadow-sm text-center ${
+      <div className={`rounded-md px-2 py-1.5 border shadow-sm text-center ${
         isDark
           ? 'bg-neutral-800 border-neutral-700'
           : 'bg-white border-gray-100'
       }`}>
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <Star className="w-4 h-4 text-orange-500" />
-          <span className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_label_level')}</span>
+        <div className="flex items-center justify-center gap-1 mb-0">
+          <Star className="w-3 h-3 text-orange-500" />
+          <span className={`text-[9px] font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_label_level')}</span>
         </div>
-        <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{currentLevel.level}</p>
-        <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{formatNumber(totalXP)} XP</p>
+        <p className={`text-sm font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{currentLevel.level}</p>
+        <p className={`text-[9px] leading-tight ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{formatNumber(totalXP)} XP</p>
       </div>
     );
   }

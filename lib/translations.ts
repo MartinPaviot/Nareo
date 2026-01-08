@@ -1202,6 +1202,7 @@ export const translations: Record<Language, Translations> = {
     courses_sort_oldest: 'Oldest first',
     courses_sort_alphabetical: 'A to Z',
     courses_sort_alphabetical_desc: 'Z to A',
+    courses_uncategorized: 'Uncategorized',
     course_actions: 'Course actions',
 
     // Course Management - Delete Course
@@ -1265,6 +1266,8 @@ export const translations: Record<Language, Translations> = {
     folder_empty_hint: 'Drag and drop courses here or use the menu',
     folder_rename: 'Rename',
     folder_delete: 'Delete',
+    folder_drop_here: 'Drop here',
+    folder_drop_here_uncategorized: 'Remove from folder',
     delete_folder_action: 'Delete folder',
     delete_folder_confirm: 'Delete this folder? Courses will not be deleted.',
     delete_folder_title: 'Delete Folder',
@@ -2904,6 +2907,7 @@ export const translations: Record<Language, Translations> = {
     courses_sort_oldest: 'Plus ancien',
     courses_sort_alphabetical: 'A à Z',
     courses_sort_alphabetical_desc: 'Z à A',
+    courses_uncategorized: 'Non classés',
     course_actions: 'Actions du cours',
 
     // Gestion de Cours - Supprimer un Cours
@@ -2967,6 +2971,8 @@ export const translations: Record<Language, Translations> = {
     folder_empty_hint: 'Glissez-déposez des cours ici ou utilisez le menu',
     folder_rename: 'Renommer',
     folder_delete: 'Supprimer',
+    folder_drop_here: 'Déposer ici',
+    folder_drop_here_uncategorized: 'Retirer du dossier',
     delete_folder_action: 'Supprimer le dossier',
     delete_folder_confirm: 'Supprimer ce dossier ? Les cours ne seront pas supprimés.',
     delete_folder_title: 'Supprimer le dossier',
@@ -4606,6 +4612,7 @@ export const translations: Record<Language, Translations> = {
     courses_sort_oldest: 'Älteste zuerst',
     courses_sort_alphabetical: 'A bis Z',
     courses_sort_alphabetical_desc: 'Z bis A',
+    courses_uncategorized: 'Nicht kategorisiert',
     course_actions: 'Kursaktionen',
 
     // Kursverwaltung - Kurs löschen
@@ -4669,6 +4676,8 @@ export const translations: Record<Language, Translations> = {
     folder_empty_hint: 'Ziehen Sie Kurse hierher oder verwenden Sie das Menü',
     folder_rename: 'Umbenennen',
     folder_delete: 'Löschen',
+    folder_drop_here: 'Hier ablegen',
+    folder_drop_here_uncategorized: 'Aus Ordner entfernen',
     delete_folder_action: 'Ordner löschen',
     delete_folder_confirm: 'Diesen Ordner löschen? Kurse werden nicht gelöscht.',
     delete_folder_title: 'Ordner löschen',

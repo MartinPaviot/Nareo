@@ -193,7 +193,7 @@ export default function CourseSidebar({
       {/* Toggle button with mascot - only visible when sidebar is closed */}
       {!isOpen && (
         <div
-          className={`hidden md:flex fixed top-0 left-0 h-[65px] z-40 flex items-center gap-3 px-4 border-b ${
+          className={`hidden md:flex fixed top-0 left-0 h-[52px] z-40 flex items-center gap-2 px-3 border-b ${
             isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
           }`}
           style={{ pointerEvents: disabled ? 'none' : 'auto', opacity: disabled ? 0.5 : 1 }}
@@ -201,28 +201,28 @@ export default function CourseSidebar({
           <button
             onClick={onOpen}
             disabled={disabled}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors ${
               isDark
                 ? 'hover:bg-neutral-800 text-neutral-400 hover:text-orange-400'
                 : 'hover:bg-gray-100 text-gray-500 hover:text-orange-500'
             }`}
             aria-label="Ouvrir le menu"
           >
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5" />
           </button>
           <Image
             src="/chat/mascotte.png"
             alt="Nareo"
-            width={48}
-            height={48}
-            className="rounded-xl"
+            width={40}
+            height={40}
+            className="rounded-lg"
           />
         </div>
       )}
 
       {/* Desktop: Animated sidebar that pushes content */}
       <aside
-        className={`hidden md:flex fixed top-0 left-0 h-full w-[280px] z-40 flex-col transition-all duration-300 ease-out ${
+        className={`hidden md:flex fixed top-0 left-0 h-full w-[250px] z-40 flex-col transition-all duration-300 ease-out ${
           isDark ? 'bg-neutral-900' : 'bg-white'
         } ${isOpen ? (isDark ? 'border-r border-neutral-800' : 'border-r border-gray-200') : ''}`}
         style={{
@@ -306,7 +306,7 @@ export default function CourseSidebar({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className={`md:hidden fixed top-0 left-0 h-full w-[280px] z-50 shadow-2xl flex flex-col ${
+              className={`md:hidden fixed top-0 left-0 h-full w-[250px] z-50 shadow-2xl flex flex-col ${
                 isDark ? 'bg-neutral-900' : 'bg-white'
               }`}
               style={{

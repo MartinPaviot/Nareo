@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, MoreHorizontal, Pencil, Trash2, Upload, Check, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, MoreHorizontal, Pencil, Trash2, Upload, Check, X, FolderInput } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
@@ -90,31 +90,42 @@ export default function FolderSection({ folder }: FolderSectionProps) {
   return (
     <section
       ref={setNodeRef}
-      className={`rounded-2xl border transition-all ${
+      className={`rounded-lg border transition-all ${
         isDark ? 'border-neutral-800' : 'border-gray-100'
       } ${isOver ? 'ring-2 ring-orange-500 ring-offset-2' : ''}`}
     >
       {/* Folder header */}
       <div
         onClick={handleToggle}
-        className={`p-4 flex items-center justify-between cursor-pointer transition-colors ${
-          isDark
-            ? 'bg-neutral-900 hover:bg-neutral-800'
-            : 'bg-gray-50 hover:bg-gray-100'
+        className={`px-3 py-3 flex items-center justify-between cursor-pointer transition-all relative ${
+          isOver
+            ? 'bg-orange-500/20'
+            : isDark
+              ? 'bg-neutral-900 hover:bg-neutral-800'
+              : 'bg-gray-50 hover:bg-gray-100'
         }`}
       >
-        <div className="flex items-center gap-3">
+        {/* Drop indicator overlay */}
+        {isOver && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs font-medium shadow-lg">
+              <FolderInput className="w-3.5 h-3.5" />
+              {translate('folder_drop_here')}
+            </div>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
           {/* Chevron */}
           <motion.div
             animate={{ rotate: isCollapsed ? 0 : 90 }}
             transition={{ duration: 0.2 }}
           >
-            <ChevronRight className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+            <ChevronRight className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
           </motion.div>
 
           {/* Icon with color */}
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
+            className="w-6 h-6 rounded-md flex items-center justify-center text-sm"
             style={{ backgroundColor: `${folder.color}20` }}
           >
             {folderIcon}
@@ -122,14 +133,14 @@ export default function FolderSection({ folder }: FolderSectionProps) {
 
           {/* Folder name */}
           {isRenaming ? (
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <input
                 ref={renameInputRef}
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={handleRenameKeyDown}
-                className={`px-2 py-1 rounded-lg border text-sm font-medium ${
+                className={`px-2 py-0.5 rounded-md border text-xs font-medium ${
                   isDark
                     ? 'bg-neutral-800 border-neutral-600 text-white focus:border-orange-500'
                     : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
@@ -137,25 +148,25 @@ export default function FolderSection({ folder }: FolderSectionProps) {
               />
               <button
                 onClick={handleConfirmRename}
-                className="p-1 rounded-lg bg-green-500/20 text-green-500 hover:bg-green-500/30"
+                className="p-0.5 rounded-md bg-green-500/20 text-green-500 hover:bg-green-500/30"
               >
-                <Check className="w-4 h-4" />
+                <Check className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleCancelRename}
-                className={`p-1 rounded-lg ${isDark ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}
+                className={`p-0.5 rounded-md ${isDark ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}
               >
-                <X className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
+                <X className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
               </button>
             </div>
           ) : (
-            <span className={`font-medium ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+            <span className={`text-sm font-medium ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
               {folder.name}
             </span>
           )}
 
           {/* Course count badge */}
-          <span className={`text-sm px-2 py-0.5 rounded-full ${
+          <span className={`text-xs px-1.5 py-0 rounded-full ${
             isDark
               ? 'bg-neutral-800 text-neutral-400'
               : 'bg-gray-200 text-gray-600'
@@ -172,11 +183,11 @@ export default function FolderSection({ folder }: FolderSectionProps) {
         >
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-1.5 rounded-md transition-colors ${
               isDark ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'
             }`}
           >
-            <MoreHorizontal className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+            <MoreHorizontal className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
           </button>
 
           {/* Dropdown menu */}
@@ -186,7 +197,7 @@ export default function FolderSection({ folder }: FolderSectionProps) {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-lg border z-10 ${
+                className={`absolute right-0 top-full mt-1 w-40 rounded-lg shadow-lg border z-10 ${
                   isDark
                     ? 'bg-neutral-900 border-neutral-800'
                     : 'bg-white border-gray-200'
@@ -194,23 +205,23 @@ export default function FolderSection({ folder }: FolderSectionProps) {
               >
                 <button
                   onClick={handleStartRename}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm ${
+                  className={`w-full flex items-center gap-1.5 px-3 py-2 text-left text-xs ${
                     isDark
                       ? 'hover:bg-neutral-800 text-neutral-200'
                       : 'hover:bg-gray-50 text-gray-700'
                   }`}
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-3.5 h-3.5" />
                   {translate('folder_rename')}
                 </button>
                 <button
                   onClick={handleDelete}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm ${
+                  className={`w-full flex items-center gap-1.5 px-3 py-2 text-left text-xs ${
                     isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'
                   }`}
                   style={{ color: '#d91a1c' }}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                   {translate('folder_delete')}
                 </button>
               </motion.div>
@@ -229,9 +240,9 @@ export default function FolderSection({ folder }: FolderSectionProps) {
             transition={{ duration: 0.2 }}
             className={`overflow-hidden ${isDark ? 'bg-neutral-950' : 'bg-white'}`}
           >
-            <div className="p-4">
+            <div className="p-3">
               {folder.courses.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {folder.courses.map((course) => (
                     <DraggableCourseCard
                       key={course.id}

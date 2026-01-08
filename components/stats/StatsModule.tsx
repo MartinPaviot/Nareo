@@ -27,17 +27,17 @@ interface StatCardProps {
 
 function StatCard({ icon: Icon, label, value, subValue, valueColor, isDark = false }: StatCardProps) {
   return (
-    <div className={`rounded-xl p-4 border shadow-sm text-center ${
+    <div className={`rounded-md px-2 py-1.5 border shadow-sm text-center ${
       isDark
         ? 'bg-neutral-800 border-neutral-700'
         : 'bg-white border-gray-100'
     }`}>
-      <div className="flex items-center justify-center gap-2 mb-1">
-        <Icon className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
-        <span className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{label}</span>
+      <div className="flex items-center justify-center gap-1 mb-0">
+        <Icon className={`w-3 h-3 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+        <span className={`text-[9px] font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{label}</span>
       </div>
-      <p className={`text-xl font-bold ${!valueColor ? (isDark ? 'text-white' : 'text-gray-900') : ''}`} style={valueColor ? { color: valueColor } : {}}>{value}</p>
-      {subValue && <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{subValue}</p>}
+      <p className={`text-sm font-bold leading-tight ${!valueColor ? (isDark ? 'text-white' : 'text-gray-900') : ''}`} style={valueColor ? { color: valueColor } : {}}>{value}</p>
+      {subValue && <p className={`text-[9px] leading-tight ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{subValue}</p>}
     </div>
   );
 }
@@ -88,7 +88,7 @@ export default function StatsModule() {
     : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Milestone Modal */}
       {showMilestoneModal && milestoneRewards.length > 0 && (
         <MilestoneModal
@@ -98,7 +98,7 @@ export default function StatsModule() {
       )}
 
       {/* Row 1: Streak + Daily Goal */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <StreakCard
           currentStreak={currentStreak}
           longestStreak={longestStreak}
@@ -116,7 +116,7 @@ export default function StatsModule() {
       </div>
 
       {/* Row 2: Stats secondaires */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <StatCard
           icon={BookOpen}
           label={translate('stats_label_quiz')}

@@ -15,6 +15,7 @@ interface Chapter {
   in_progress: boolean;
   score: number | null;
   status: 'pending' | 'processing' | 'ready' | 'failed'; // Chapter processing status
+  source_text?: string | null; // Original chapter text for quiz generation
 }
 
 interface CourseData {

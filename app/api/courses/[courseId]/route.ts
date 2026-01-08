@@ -63,7 +63,7 @@ export async function DELETE(
 
 /**
  * PATCH /api/courses/[courseId]
- * Update course properties (currently only editable_title)
+ * Update course properties (editable_title, quiz_status, quiz_config)
  */
 export async function PATCH(
   request: NextRequest,
@@ -83,9 +83,9 @@ export async function PATCH(
 
     const { courseId } = await params;
     const body = await request.json();
-    const { editable_title } = body;
+    const { editable_title, quiz_status, quiz_config } = body;
 
-    // Validation
+    // Validation for editable_title
     if (editable_title !== undefined) {
       if (typeof editable_title !== 'string') {
         return NextResponse.json(
@@ -110,6 +110,15 @@ export async function PATCH(
       }
     }
 
+    // Validation for quiz_status
+    const validQuizStatuses = ['pending', 'generating', 'ready', 'partial', 'failed'];
+    if (quiz_status !== undefined && !validQuizStatuses.includes(quiz_status)) {
+      return NextResponse.json(
+        { error: 'Invalid quiz_status' },
+        { status: 400 }
+      );
+    }
+
     // Verify the course belongs to the user
     const { data: course, error: courseError } = await supabase
       .from('courses')
@@ -125,12 +134,22 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Build update object with only provided fields
+    const updateData: Record<string, any> = {};
+    if (editable_title !== undefined) {
+      updateData.editable_title = editable_title.trim();
+    }
+    if (quiz_status !== undefined) {
+      updateData.quiz_status = quiz_status;
+    }
+    if (quiz_config !== undefined) {
+      updateData.quiz_config = quiz_config;
+    }
+
     // Update the course
     const { data: updatedCourse, error: updateError } = await supabase
       .from('courses')
-      .update({
-        editable_title: editable_title?.trim(),
-      })
+      .update(updateData)
       .eq('id', courseId)
       .select()
       .single();

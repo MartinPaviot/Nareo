@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { FileText, Check, MoreHorizontal, FolderInput, Inbox } from 'lucide-react';
+import { FileText, Check, MoreHorizontal, FolderInput, Inbox, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getMasteryColor } from '@/lib/courses/utils';
@@ -81,76 +81,72 @@ export default function CourseItem({
     <div className="relative group">
       <button
         onClick={onClick}
-        className={`w-full text-left rounded-md transition-all px-2.5 py-1 ${
+        className={`w-full flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-all ${
           isActive
             ? isDark
-              ? 'bg-orange-500/10 border-l-2 border-l-orange-500'
-              : 'bg-orange-50 border-l-2 border-l-orange-500'
+              ? 'bg-orange-500/20 border border-orange-500/30'
+              : 'bg-orange-50 border border-orange-200'
             : isDark
-              ? 'hover:bg-neutral-800'
-              : 'hover:bg-gray-50'
+              ? 'hover:bg-neutral-800 border border-transparent'
+              : 'hover:bg-gray-50 border border-transparent'
         }`}
       >
-        <div className="flex items-start gap-2">
-          {/* File icon */}
-          <FileText className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
+        {/* File icon */}
+        <FileText className={`w-3 h-3 flex-shrink-0 ${
+          isActive
+            ? 'text-orange-500'
+            : isDark
+              ? 'text-neutral-500'
+              : 'text-gray-400'
+        }`} />
+
+        {/* Course name and subtitle */}
+        <div className="flex-1 min-w-0">
+          <span className={`text-[10px] font-medium truncate block ${
             isActive
               ? 'text-orange-500'
               : isDark
-                ? 'text-neutral-500'
-                : 'text-gray-400'
-          }`} />
-
-          <div className="flex-1 min-w-0">
-            {/* Course name */}
-            <p className={`text-sm font-medium truncate pr-6 ${
-              isActive
-                ? 'text-orange-500'
-                : isDark
-                  ? 'text-neutral-100'
-                  : 'text-gray-900'
+                ? 'text-neutral-100'
+                : 'text-gray-900'
+          }`}>
+            {name}
+          </span>
+          {subtitle && (
+            <span className={`text-[9px] truncate block ${
+              isDark ? 'text-neutral-500' : 'text-gray-500'
             }`}>
-              {name}
-            </p>
-
-            {/* Folder name subtitle (when searching) */}
-            {subtitle && (
-              <p className={`text-xs truncate mt-0.5 ${
-                isDark ? 'text-neutral-500' : 'text-gray-500'
-              }`}>
-                {subtitle}
-              </p>
-            )}
-
-            {/* Progress bar and stats */}
-            <div className="mt-1 flex items-center gap-2">
-              {/* Progress bar */}
-              <div className={`flex-1 h-1 rounded-full overflow-hidden ${
-                isDark ? 'bg-neutral-700' : 'bg-gray-200'
-              }`}>
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${Math.min(100, masteryPercentage)}%`,
-                    backgroundColor: masteryColor,
-                  }}
-                />
-              </div>
-
-              {/* Progress text */}
-              <span className={`text-xs whitespace-nowrap ${
-                isDark ? 'text-neutral-500' : 'text-gray-500'
-              }`}>
-                {masteredChapters}/{totalChapters}
-              </span>
-
-              {/* Completed checkmark */}
-              {isCompleted && (
-                <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-              )}
-            </div>
-          </div>
+              {subtitle}
+            </span>
+          )}
         </div>
+
+        {/* Progress badge */}
+        <span className={`px-1.5 py-0 text-[10px] font-medium rounded-full flex-shrink-0 ${
+          isCompleted
+            ? 'bg-green-100 text-green-600'
+            : isActive
+              ? isDark
+                ? 'bg-orange-500/30 text-orange-400'
+                : 'bg-orange-100 text-orange-600'
+              : isDark
+                ? 'bg-neutral-700 text-neutral-400'
+                : 'bg-gray-100 text-gray-500'
+        }`}>
+          {masteredChapters}/{totalChapters}
+        </span>
+
+        {/* Completed checkmark or chevron */}
+        {isCompleted ? (
+          <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+        ) : (
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform flex-shrink-0 ${
+            isActive
+              ? 'text-orange-500'
+              : isDark
+                ? 'text-neutral-500 group-hover:text-neutral-400'
+                : 'text-gray-400 group-hover:text-gray-500'
+          } group-hover:translate-x-0.5`} />
+        )}
       </button>
 
       {/* Move menu button - appears on hover */}
@@ -161,16 +157,16 @@ export default function CourseItem({
             e.stopPropagation();
             setShowMenu(!showMenu);
           }}
-          className={`absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+          className={`absolute top-1/2 -translate-y-1/2 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
             showMenu ? 'opacity-100' : ''
           } ${
             isDark
-              ? 'hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200'
-              : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600'
+              ? 'hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200 bg-neutral-800'
+              : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600 bg-white'
           }`}
           title={translate('sidebar_move_course') || 'Déplacer vers...'}
         >
-          <MoreHorizontal className="w-4 h-4" />
+          <MoreHorizontal className="w-3.5 h-3.5" />
         </button>
       )}
 

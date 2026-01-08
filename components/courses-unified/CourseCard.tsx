@@ -116,26 +116,21 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
       onMouseDown={handleTouchStart}
       onMouseUp={handleTouchEnd}
       onMouseLeave={handleTouchEnd}
-      className={`rounded-xl p-4 border cursor-pointer transition-all ${
+      className={`rounded-md px-2.5 py-2 border cursor-pointer transition-all ${
         isDark
           ? 'bg-neutral-900 border-neutral-800 hover:border-neutral-700 hover:shadow-lg'
           : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-md'
       }`}
     >
       {/* Top row: Title + Actions + Freshness */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-1">
         <div className="flex-1 min-w-0">
-          <h3 className={`font-medium truncate ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+          <h3 className={`text-xs font-medium truncate ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
             {course.name}
           </h3>
-          {course.current_chapter && (
-            <p className={`text-sm mt-0.5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-              {translate('course_chapter_in_progress', { chapter: course.current_chapter.chapter_number })}
-            </p>
-          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {/* Actions menu */}
           {showActions && (
             <CourseActionsMenu
@@ -147,7 +142,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
 
           {/* Freshness indicator */}
           <div
-            className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+            className="flex items-center px-1 py-0 rounded-full text-[9px] font-medium"
             style={{
               backgroundColor: freshnessBg,
               color: freshnessColor,
@@ -159,16 +154,16 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
       </div>
 
       {/* Progress bar */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-1">
-          <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
+      <div className="mb-1">
+        <div className="flex items-center justify-between">
+          <span className={`text-[9px] ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
             {translate('course_mastery_label')}
           </span>
-          <span className={`text-xs font-medium ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+          <span className={`text-[9px] font-medium ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
             {masteryPercentage}%
           </span>
         </div>
-        <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+        <div className={`h-1 rounded-full overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${masteryPercentage}%` }}
@@ -180,18 +175,18 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <BookOpen className={`w-4 h-4 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
-            <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
+            <BookOpen className={`w-3 h-3 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+            <span className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
               {course.mastered_chapters}/{course.total_chapters} {translate('courses_chapters_label')}
             </span>
           </div>
           {course.cards_to_review > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-purple-500" />
-              <span className="text-sm text-purple-500 font-medium">
+            <div className="flex items-center gap-0.5">
+              <Layers className="w-3 h-3 text-purple-500" />
+              <span className="text-[10px] text-purple-500 font-medium">
                 {course.cards_to_review} {translate('courses_cards_label')}
               </span>
             </div>
@@ -201,7 +196,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
 
       {/* CTA Button */}
       <button
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white font-medium transition-colors"
+        className="w-full flex items-center justify-center gap-1 py-1 rounded-md text-xs text-white font-medium transition-colors"
         style={{ backgroundColor: '#ff751f' }}
         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
@@ -215,7 +210,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
         ) : (
           <>
             <span>{getCTALabel()}</span>
-            <CTAIcon className="w-4 h-4" />
+            <CTAIcon className="w-3 h-3" />
           </>
         )}
       </button>

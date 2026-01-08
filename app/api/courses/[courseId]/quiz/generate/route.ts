@@ -9,7 +9,8 @@ import { QuizConfig, DEFAULT_QUIZ_CONFIG, getAdjustedQuestionCount } from '@/typ
 
 // Increase max duration for quiz generation (requires Vercel Pro plan for > 60s)
 // This is needed because generating questions for multiple chapters takes time
-export const maxDuration = 300; // 5 minutes max
+// 10 minutes for courses with many chapters (7-10+) to avoid timeout on later chapters
+export const maxDuration = 600; // 10 minutes max
 
 // Helper to extract guestSessionId from cookies
 function getGuestSessionIdFromRequest(request: NextRequest): string | null {
@@ -214,12 +215,11 @@ export async function POST(
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    // Check if quiz generation is already in progress
+    // Note: We no longer block regeneration when quiz_status is 'generating'
+    // This allows users to force regenerate if a previous generation got stuck
+    // The old questions will be deleted and new ones generated
     if (course.quiz_status === 'generating') {
-      return NextResponse.json({
-        message: 'Quiz generation already in progress',
-        status: 'generating'
-      });
+      console.log(`[quiz-generate] Quiz status is 'generating' but allowing regeneration (may have been stuck)`);
     }
 
     // ALWAYS delete old questions AND reset quiz attempts before regenerating
@@ -386,8 +386,8 @@ export async function POST(
         const totalExpectedQuestions = totalChapters * questionsPerChapter;
 
         // Track monotonic progress - never goes backwards
-        // Start at 2% to give more room for slow progression at the beginning
-        let currentProgress = 2;
+        // Start at 1% - very low to allow gradual increase during slow LLM calls
+        let currentProgress = 1;
 
         // Send initial progress
         sendProgress({
@@ -425,9 +425,10 @@ export async function POST(
 
             try {
               // Update progress: starting chapter (don't decrease progress)
-              // Use a slower curve at the beginning: start at 5% for first chapter
-              // and progress more gradually (use 75% of range, leaving room at start and end)
-              const chapterStartProgress = 5 + (chapterIndex - 1) * (70 / totalChapters);
+              // Each chapter gets an equal portion of the 5-85% range
+              // Start very low (2%) to have room for gradual increases during LLM calls
+              const chapterProgressRange = 80 / totalChapters;
+              const chapterStartProgress = 2 + (chapterIndex - 1) * chapterProgressRange;
               currentProgress = Math.max(currentProgress, chapterStartProgress);
               sendProgress({
                 type: 'progress',
@@ -477,10 +478,9 @@ export async function POST(
                 // Ask for 50% more to compensate for deduplication losses
                 const questionsToRequest = Math.ceil(questionsNeeded * 1.5);
 
-                // Update progress: generating questions (increment by small amount)
-                // Smaller increments at the beginning for smoother progression
-                const progressIncrement = currentProgress < 20 ? 0.5 : 1;
-                currentProgress = Math.min(currentProgress + progressIncrement, 95);
+                // Update progress: generating questions (very small increment)
+                // The ticker will handle smooth progression during LLM calls
+                currentProgress = Math.min(currentProgress + 0.2, 95);
                 sendProgress({
                   type: 'progress',
                   step: 'generating_content',
@@ -502,25 +502,27 @@ export async function POST(
                 // This prevents the UI from appearing frozen during long API calls
                 let tickerCount = 0;
                 let tickerProgress = currentProgress;
-                // Calculate max progress for this chapter's LLM call (don't go beyond chapter's allocated range)
-                const chapterProgressRange = 70 / totalChapters;
-                const maxTickerProgress = Math.min(
-                  5 + chapterIndex * chapterProgressRange - 3, // Leave room for saving
-                  currentProgress + 10 // Don't jump more than 10%
-                );
+
+                // Don't limit progress to chapter boundaries - let it grow smoothly
+                // Cap at 85% to leave room for final steps
+                const maxTickerProgress = 85;
+
                 const thinkingSteps = [
                   'identifying_concepts',
                   'generating_content',
+                  'analyzing_content',
+                  'generating_content',
                 ];
-                // Slower increment at the beginning (first 20%), faster later
-                const getTickerIncrement = () => {
-                  if (tickerProgress < 15) return 0.2; // Very slow at the start
-                  if (tickerProgress < 30) return 0.3; // Slow in early phase
-                  return 0.5; // Normal speed later
-                };
+
+                // Fixed small increment - progress grows steadily during LLM call
+                // ~0.25% every 2 seconds = 7.5% per minute
+                // A 2-minute LLM call will add ~15% progress
                 const progressTicker = setInterval(() => {
-                  // Increment progress with variable speed (slower at start)
-                  tickerProgress = Math.min(tickerProgress + getTickerIncrement(), maxTickerProgress, 90);
+                  // Small fixed increment that slows down as we get higher
+                  const increment = tickerProgress < 30 ? 0.25 :
+                                   tickerProgress < 50 ? 0.2 :
+                                   tickerProgress < 70 ? 0.15 : 0.1;
+                  tickerProgress = Math.min(tickerProgress + increment, maxTickerProgress);
                   currentProgress = Math.max(currentProgress, tickerProgress);
                   const stepIndex = tickerCount % thinkingSteps.length;
                   sendProgress({
@@ -536,27 +538,50 @@ export async function POST(
                 }, 2000); // Update every 2 seconds
 
                 let generated;
-                try {
-                  generated = await generateMixedQuiz(
-                    {
-                      index: chapter.order_index + 1,
-                      title: chapter.title,
-                      short_summary: chapter.summary || '',
-                      difficulty: chapter.difficulty === 'hard' ? 3 : chapter.difficulty === 'medium' ? 2 : 1,
-                    },
-                    chapterText,
-                    modelLanguage,
-                    adjustedConfig,
-                    { enableSemanticValidation: false } // Disabled to guarantee exact question count
-                  );
-                } catch (genError: any) {
-                  clearInterval(progressTicker);
-                  console.error(`[quiz-generate] generateMixedQuiz failed for chapter "${chapter.title}":`, genError.message);
+                const maxRetries = 2;
+                let lastError: Error | null = null;
+
+                for (let retry = 0; retry <= maxRetries; retry++) {
+                  try {
+                    if (retry > 0) {
+                      console.log(`[quiz-generate] Retry ${retry}/${maxRetries} for chapter "${chapter.title}"`);
+                      // Wait before retry (exponential backoff: 2s, 4s)
+                      await new Promise(resolve => setTimeout(resolve, 2000 * retry));
+                    }
+
+                    generated = await generateMixedQuiz(
+                      {
+                        index: chapter.order_index + 1,
+                        title: chapter.title,
+                        short_summary: chapter.summary || '',
+                        difficulty: chapter.difficulty === 'hard' ? 3 : chapter.difficulty === 'medium' ? 2 : 1,
+                      },
+                      chapterText,
+                      modelLanguage,
+                      adjustedConfig,
+                      { enableSemanticValidation: false } // Disabled to guarantee exact question count
+                    );
+                    lastError = null;
+                    break; // Success, exit retry loop
+                  } catch (genError: any) {
+                    lastError = genError;
+                    console.error(`[quiz-generate] generateMixedQuiz attempt ${retry + 1} failed for chapter "${chapter.title}":`, genError.message);
+
+                    // Don't retry on certain errors (e.g., content policy violations)
+                    if (genError.message?.includes('content_policy') || genError.message?.includes('invalid_api_key')) {
+                      break;
+                    }
+                  }
+                }
+
+                clearInterval(progressTicker);
+
+                if (lastError || !generated) {
+                  console.error(`[quiz-generate] All retries failed for chapter "${chapter.title}", moving to next pass`);
                   // Continue to next pass or chapter instead of failing completely
                   pass += 1;
                   continue;
                 }
-                clearInterval(progressTicker);
 
                 const rawQuestions: any[] = Array.isArray(generated)
                   ? generated
@@ -565,8 +590,7 @@ export async function POST(
                 console.log(`[quiz-generate] Chapter "${chapter.title}" pass ${pass + 1}: generated ${rawQuestions.length} raw questions`);
 
                 // Update progress: deduplication (small increment)
-                const dedupeIncrement = currentProgress < 20 ? 0.3 : 0.8;
-                currentProgress = Math.min(currentProgress + dedupeIncrement, 95);
+                currentProgress = Math.min(currentProgress + 0.3, 95);
                 sendProgress({
                   type: 'progress',
                   step: 'verifying_content',
@@ -586,8 +610,7 @@ export async function POST(
                 console.log(`[quiz-generate] Chapter "${chapter.title}" after dedupe: ${questions.length}/${rawQuestions.length} questions kept`);
 
                 // Update progress: saving questions (small increment)
-                const saveIncrement = currentProgress < 20 ? 0.3 : 0.8;
-                currentProgress = Math.min(currentProgress + saveIncrement, 95);
+                currentProgress = Math.min(currentProgress + 0.3, 95);
                 sendProgress({
                   type: 'progress',
                   step: 'saving_content',

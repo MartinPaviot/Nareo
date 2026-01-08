@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -104,18 +104,18 @@ export default function CoursesModule() {
   const hasContent = folders.length > 0 || uncategorized.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header with search and new folder button */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* Search bar */}
         <div className={`flex-1 relative ${isDark ? 'text-neutral-300' : 'text-gray-600'}`}>
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             placeholder={translate('courses_search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full pl-10 pr-10 py-2.5 rounded-xl border transition-colors ${
+            className={`w-full pl-8 pr-8 py-1.5 text-sm rounded-lg border transition-colors ${
               isDark
                 ? 'bg-neutral-800 border-neutral-700 focus:border-orange-500 placeholder-neutral-500'
                 : 'bg-white border-gray-200 focus:border-orange-500 placeholder-gray-400'
@@ -124,36 +124,36 @@ export default function CoursesModule() {
           {searchQuery && (
             <button
               onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Challenge buttons */}
           <button
             onClick={() => setShowCreateChallengeModal(true)}
-            className="shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-white"
+            className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-white"
             style={{ backgroundColor: '#ff751f' }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
           >
-            <Target className="w-4 h-4" />
+            <Target className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{translate('challenge_create', 'Créer un défi')}</span>
           </button>
 
           <button
             onClick={() => setShowJoinChallengeModal(true)}
-            className={`shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
+            className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
               isDark
                 ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
                 : 'border-gray-200 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{translate('challenge_join', 'Rejoindre')}</span>
           </button>
 
@@ -164,13 +164,13 @@ export default function CoursesModule() {
           >
             <button
               onClick={() => setShowSortMenu(!showSortMenu)}
-              className={`shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
+              className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                 isDark
                   ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
                   : 'border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <ArrowUpDown className="w-4 h-4" />
+              <ArrowUpDown className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{translate('courses_sort_folders')}</span>
             </button>
 
@@ -182,7 +182,7 @@ export default function CoursesModule() {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -5 }}
                   transition={{ duration: 0.15 }}
-                  className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-lg border z-20 overflow-hidden ${
+                  className={`absolute right-0 top-full mt-1 w-44 rounded-lg shadow-lg border z-20 overflow-hidden ${
                     isDark
                       ? 'bg-neutral-900 border-neutral-800'
                       : 'bg-white border-gray-200'
@@ -200,7 +200,7 @@ export default function CoursesModule() {
                         setFolderSort(option.value);
                         setShowSortMenu(false);
                       }}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
                         folderSort === option.value
                           ? isDark
                             ? 'bg-orange-500/10 text-orange-400'
@@ -212,7 +212,7 @@ export default function CoursesModule() {
                     >
                       <span>{option.label}</span>
                       {folderSort === option.value && (
-                        <Check className="w-4 h-4" />
+                        <Check className="w-3.5 h-3.5" />
                       )}
                     </button>
                   ))}
@@ -226,13 +226,13 @@ export default function CoursesModule() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setIsCreateFolderOpen(true)}
-            className={`shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+            className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               isDark
                 ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700'
                 : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'
             }`}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{translate('courses_create_folder')}</span>
           </motion.button>
         </div>
@@ -241,7 +241,7 @@ export default function CoursesModule() {
       {/* Conditional display: search or normal view */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -316,24 +316,24 @@ function EmptyCoursesState({ onCreateFolder }: { onCreateFolder: () => void }) {
   const { translate } = useLanguage();
 
   return (
-    <div className={`text-center py-12 rounded-2xl ${isDark ? 'bg-neutral-900' : 'bg-gray-50'}`}>
-      <div className="text-5xl mb-4">📚</div>
-      <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+    <div className={`text-center py-8 rounded-lg ${isDark ? 'bg-neutral-900' : 'bg-gray-50'}`}>
+      <div className="text-3xl mb-2">📚</div>
+      <h3 className={`text-sm font-semibold mb-1 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
         {translate('courses_empty_title')}
       </h3>
-      <p className={`mb-6 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+      <p className={`text-xs mb-4 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
         {translate('courses_empty_subtitle')}
       </p>
-      <div className="flex items-center justify-center gap-3">
+      <div className="flex items-center justify-center gap-2">
         <button
           onClick={onCreateFolder}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium border ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${
             isDark
               ? 'border-neutral-700 text-neutral-200 hover:bg-neutral-800'
               : 'border-gray-200 text-gray-700 hover:bg-gray-50'
           }`}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           {translate('courses_create_folder_button')}
         </button>
       </div>

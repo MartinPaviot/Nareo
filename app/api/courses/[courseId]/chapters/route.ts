@@ -250,6 +250,9 @@ export async function GET(
           in_progress: !!attempt && !attempt.completed_at,
           score: attempt?.score ?? null,
           content_language: course.content_language || course.language || 'en',
+          // Include source_text length info for quiz generation filtering
+          // (we don't send the full text to save bandwidth, just its existence/length)
+          source_text: chapter.source_text || null,
           // Map status for frontend display:
           // - 'pending_quiz' -> 'ready' (chapter content is ready, quiz just hasn't been generated yet)
           // - 'processing' -> 'ready' if chapter has questions (generation completed but status wasn't updated)

@@ -158,11 +158,23 @@ export default function CourseLearnPage() {
     useRealtime: true, // Use Supabase Realtime for instant updates
   });
 
-  // Function to generate quiz on demand with optional config (uses SSE streaming)
+  // Function to generate quiz on demand - chapter by chapter for reliability
+  // Each chapter is generated independently, so timeouts on one don't affect others
   const handleGenerateQuiz = useCallback(async (config?: QuizConfig) => {
     console.log('[learn] handleGenerateQuiz called with config:', config);
     if (isGeneratingQuiz || !courseId || isDemoId) {
       console.log('[learn] handleGenerateQuiz aborted:', { isGeneratingQuiz, courseId, isDemoId });
+      return;
+    }
+
+    // Get chapters to process
+    const chaptersToGenerate = apiChapters.filter(ch =>
+      ch.source_text && ch.source_text.trim().length >= 100
+    );
+
+    if (chaptersToGenerate.length === 0) {
+      console.error('[learn] No chapters with sufficient content');
+      setQuizGenerationError('No chapters with content to generate questions from');
       return;
     }
 
@@ -176,116 +188,156 @@ export default function CourseLearnPage() {
     // Clear sessionStorage to ensure clean state on regeneration
     sessionStorage.removeItem(`progressive_quiz_${courseId}`);
     setWasPlayingProgressiveQuiz(false);
-    setTotalExpectedQuestions(undefined);
+
+    // Calculate expected questions
+    const questionsPerChapter = config?.niveau === 'exhaustif' ? 50 : config?.niveau === 'synthetique' ? 5 : 10;
+    const totalExpected = chaptersToGenerate.length * questionsPerChapter;
+    setTotalExpectedQuestions(totalExpected);
+
+    let totalQuestionsGenerated = 0;
+    const failedChapters: string[] = [];
 
     try {
-      const requestBody = { config };
-      console.log('[learn] Sending POST to /api/courses/${courseId}/quiz/generate with body:', JSON.stringify(requestBody, null, 2));
+      // First, clear all existing questions via the cleanup endpoint
+      console.log('[learn] Clearing existing questions...');
+      setQuizGenerationStep('analyzing_document');
+      setQuizGenerationMessage('Préparation...');
 
-      const response = await fetch(`/api/courses/${courseId}/quiz/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+      // Delete existing quiz data
+      await fetch(`/api/courses/${courseId}/quiz`, {
+        method: 'DELETE',
       });
 
-      console.log('[learn] Response status:', response.status);
+      // Update course status to generating
+      await fetch(`/api/courses/${courseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quiz_status: 'generating', quiz_config: config }),
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[learn] Error response:', errorData);
-        throw new Error(errorData?.error || 'Failed to generate quiz');
-      }
+      await refetch();
 
-      // Handle SSE streaming response
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response stream');
-      }
+      // Generate quiz for each chapter sequentially with retry
+      const MAX_RETRIES = 2;
 
-      const decoder = new TextDecoder();
-      let buffer = '';
+      for (let i = 0; i < chaptersToGenerate.length; i++) {
+        const chapter = chaptersToGenerate[i];
+        const chapterProgress = ((i / chaptersToGenerate.length) * 90) + 5; // 5-95%
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        console.log(`[learn] Generating quiz for chapter ${i + 1}/${chaptersToGenerate.length}: "${chapter.title}"`);
 
-        buffer += decoder.decode(value, { stream: true });
+        setQuizGenerationProgress(Math.round(chapterProgress));
+        setQuizGenerationStep('generating_content');
+        setQuizGenerationMessage(`Chapitre ${i + 1}/${chaptersToGenerate.length}: ${chapter.title}`);
 
-        // Process complete SSE messages
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
+        let chapterSuccess = false;
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              console.log('[learn] SSE data received:', data);
-
-              if (data.type === 'progress') {
-                setQuizGenerationProgress(data.progress || 0);
-                setQuizGenerationMessage(data.message || '');
-                setQuizGenerationStep(data.step);
-                // Capture totalQuestions from progress messages
-                if (data.totalQuestions) {
-                  setTotalExpectedQuestions(data.totalQuestions);
-                }
-                // On first progress message (after cleanup), refetch to show 0 questions
-                if (data.progress <= 10) {
-                  refetch();
-                }
-              } else if (data.type === 'question') {
-                // Also capture totalQuestions from question events
-                if (data.totalQuestions) {
-                  setTotalExpectedQuestions(data.totalQuestions);
-                }
-                // Add streaming question for progressive quiz view
-                const questionData = data.data?.question;
-                if (questionData) {
-                  const newQuestion: StreamingQuestion = {
-                    id: questionData.id,
-                    chapterId: data.data.chapterId,
-                    chapterTitle: data.data.chapterTitle || '',
-                    type: questionData.type,
-                    questionText: questionData.questionText,
-                    options: questionData.options,
-                    correctOptionIndex: questionData.correctOptionIndex,
-                    answerText: questionData.answerText,
-                    explanation: questionData.explanation,
-                    questionNumber: data.questionsGenerated || streamingQuestions.length + 1,
-                  };
-                  setStreamingQuestions(prev => [...prev, newQuestion]);
-                }
-                setQuizGenerationProgress(data.progress || 0);
-                // Capture totalQuestions from question events
-                if (data.totalQuestions) {
-                  setTotalExpectedQuestions(data.totalQuestions);
-                }
-              } else if (data.type === 'complete') {
-                setQuizGenerationProgress(100);
-                setQuizGenerationStep('finalizing');
-                // Final refetch to get all data
-                await refetch();
-                triggerRefresh();
-                trackEvent('quiz_generated', { userId: user?.id, courseId, config, questionsGenerated: data.questionsGenerated });
-              } else if (data.type === 'error') {
-                throw new Error(data.message || 'Generation failed');
-              }
-            } catch (parseError) {
-              if (parseError instanceof SyntaxError) continue;
-              throw parseError;
+        for (let retry = 0; retry <= MAX_RETRIES && !chapterSuccess; retry++) {
+          try {
+            if (retry > 0) {
+              console.log(`[learn] Retry ${retry}/${MAX_RETRIES} for chapter "${chapter.title}"`);
+              setQuizGenerationMessage(`Chapitre ${i + 1}/${chaptersToGenerate.length}: ${chapter.title} (tentative ${retry + 1})`);
+              // Exponential backoff: 2s, 4s
+              await new Promise(resolve => setTimeout(resolve, 2000 * retry));
             }
+
+            const response = await fetch(`/api/courses/${courseId}/chapters/${chapter.id}/quiz/generate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                config,
+                clearExisting: false, // Already cleared above
+              }),
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              console.error(`[learn] Chapter "${chapter.title}" attempt ${retry + 1} failed:`, errorData);
+
+              // Don't retry on certain errors
+              if (errorData?.error?.includes('insufficient content') || response.status === 400) {
+                break; // Skip retries for content issues
+              }
+              continue; // Try again
+            }
+
+            const result = await response.json();
+            console.log(`[learn] Chapter "${chapter.title}" completed:`, result.questionsGenerated, 'questions');
+
+            totalQuestionsGenerated += result.questionsGenerated || 0;
+            chapterSuccess = true;
+
+            // Add generated questions to streaming view
+            if (result.questions && Array.isArray(result.questions)) {
+              const newQuestions: StreamingQuestion[] = result.questions.map((q: any, idx: number) => ({
+                id: q.id,
+                chapterId: chapter.id,
+                chapterTitle: chapter.title,
+                type: q.type,
+                questionText: q.questionText,
+                options: q.options,
+                correctOptionIndex: q.correctOptionIndex,
+                answerText: q.answerText,
+                explanation: q.explanation,
+                questionNumber: totalQuestionsGenerated - result.questions.length + idx + 1,
+              }));
+              setStreamingQuestions(prev => [...prev, ...newQuestions]);
+            }
+
+            // Refetch to update UI
+            await refetch();
+
+          } catch (chapterError: any) {
+            console.error(`[learn] Chapter "${chapter.title}" attempt ${retry + 1} error:`, chapterError);
+            // Continue to next retry
           }
         }
+
+        if (!chapterSuccess) {
+          failedChapters.push(chapter.title);
+        }
       }
+
+      // Update course status
+      const finalStatus = failedChapters.length === 0 ? 'ready' :
+                          failedChapters.length === chaptersToGenerate.length ? 'failed' : 'partial';
+
+      await fetch(`/api/courses/${courseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quiz_status: finalStatus }),
+      });
+
+      setQuizGenerationProgress(100);
+      setQuizGenerationStep('finalizing');
+
+      // Final refetch
+      await refetch();
+      triggerRefresh();
+
+      trackEvent('quiz_generated', {
+        userId: user?.id,
+        courseId,
+        config,
+        questionsGenerated: totalQuestionsGenerated,
+        failedChapters: failedChapters.length,
+      });
+
+      if (failedChapters.length > 0) {
+        console.warn(`[learn] Quiz generation completed with ${failedChapters.length} failed chapters:`, failedChapters);
+      }
+
     } catch (err) {
       console.error('Error generating quiz:', err);
       setQuizGenerationError(err instanceof Error ? err.message : 'Failed to generate quiz');
 
-      // SSE connection might have been lost but generation continues on server
-      // Refetch to check if quiz was actually generated
-      console.log('[learn] SSE error - refetching to check actual quiz status...');
+      // Update course status to failed
+      await fetch(`/api/courses/${courseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quiz_status: 'failed' }),
+      }).catch(() => {});
+
       await refetch();
     } finally {
       setIsGeneratingQuiz(false);
@@ -293,11 +345,10 @@ export default function CourseLearnPage() {
       setQuizGenerationMessage('');
       setQuizGenerationStep(undefined);
 
-      // Final refetch to ensure we have the latest state
-      // This handles cases where SSE completed but we missed the 'complete' event
+      // Final refetch
       await refetch();
     }
-  }, [courseId, isDemoId, isGeneratingQuiz, refetch, triggerRefresh, user?.id]);
+  }, [courseId, isDemoId, isGeneratingQuiz, apiChapters, refetch, triggerRefresh, user?.id]);
 
   // Function to retry processing a stuck course
   const handleRetryProcessing = useCallback(async () => {
@@ -552,6 +603,46 @@ export default function CourseLearnPage() {
       clearInterval(pollInterval);
     };
   }, [isDemoId, courseId, course?.quiz_status, isGeneratingQuiz, refetch]);
+
+  // Detect stuck 'generating' status when user returns to page
+  // If quiz_status is 'generating' but we're not actively generating locally,
+  // the generation was likely interrupted. Reset to 'partial' after checking chapter status.
+  useEffect(() => {
+    if (isDemoId || !courseId || !course) return;
+    if (course.quiz_status !== 'generating') return;
+    if (isGeneratingQuiz) return; // We are actively generating
+
+    // Quiz status is 'generating' but we're not generating locally
+    // This means the user navigated away during generation or the page was refreshed
+    console.log('[quiz-status] Detected stuck "generating" status, checking chapter states...');
+
+    // Count chapters with questions to determine actual status
+    const chaptersWithQuestions = chapters.filter(ch => ch.question_count > 0);
+    const totalChapters = chapters.length;
+
+    // Determine correct status based on chapters
+    let correctStatus: string;
+    if (chaptersWithQuestions.length === 0) {
+      correctStatus = 'pending'; // No questions generated yet
+    } else if (chaptersWithQuestions.length === totalChapters) {
+      correctStatus = 'ready'; // All chapters have questions
+    } else {
+      correctStatus = 'partial'; // Some chapters have questions
+    }
+
+    console.log(`[quiz-status] Resetting from 'generating' to '${correctStatus}' (${chaptersWithQuestions.length}/${totalChapters} chapters have questions)`);
+
+    // Reset the quiz status
+    fetch(`/api/courses/${courseId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quiz_status: correctStatus }),
+    }).then(() => {
+      refetch();
+    }).catch(err => {
+      console.error('[quiz-status] Failed to reset quiz status:', err);
+    });
+  }, [isDemoId, courseId, course?.quiz_status, isGeneratingQuiz, chapters, refetch, course]);
 
   const handleChapterClick = (chapter: Chapter, index: number) => {
     // Chapter 1 is always accessible (even without account)
@@ -894,7 +985,7 @@ export default function CourseLearnPage() {
                 savedQuizConfig={course.quiz_config}
                 onChapterClick={handleChapterClick}
                 onRegenerateQuiz={handleGenerateQuiz}
-                isGenerating={isGeneratingQuiz}
+                isGenerating={isGeneratingQuiz || course?.quiz_status === 'generating'}
                 generationProgress={quizGenerationProgress}
                 generationMessage={translateQuizStepMessage(quizGenerationStep, quizGenerationMessage)}
                 streamingQuestions={streamingQuestions}

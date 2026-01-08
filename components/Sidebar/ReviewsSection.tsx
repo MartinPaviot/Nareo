@@ -23,51 +23,51 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
   if (!user) return null;
 
   return (
-    <div className={`mb-4 ${isDark ? '' : ''}`}>
+    <div className="pb-0.5">
       {/* Section header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-colors ${
+        className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
           isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'
         }`}
       >
-        <div className="flex items-center gap-2">
-          <Bell className={`w-4 h-4 ${totalCount > 0 ? 'text-orange-500' : isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
-          <span className={`text-xs font-semibold uppercase tracking-wider ${
-            isDark ? 'text-neutral-400' : 'text-gray-600'
+        <div className="flex items-center gap-1.5">
+          <Bell className={`w-3.5 h-3.5 ${totalCount > 0 ? 'text-orange-500' : isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${
+            isDark ? 'text-neutral-500' : 'text-gray-500'
           }`}>
             {translate('sidebar_reviews_title', 'Révisions du jour')}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {isLoading ? (
             <Loader2 className="w-3 h-3 animate-spin text-orange-500" />
           ) : totalCount > 0 ? (
-            <span className="bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+            <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0 rounded-full min-w-[18px] text-center">
               {totalCount}
             </span>
           ) : null}
           {isExpanded ? (
-            <ChevronDown className={`w-4 h-4 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+            <ChevronDown className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
           ) : (
-            <ChevronRight className={`w-4 h-4 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+            <ChevronRight className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
           )}
         </div>
       </button>
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="mt-2 space-y-1">
+        <div className="mt-1 space-y-0.5">
           {isLoading ? (
-            <div className="flex items-center justify-center py-3">
-              <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="w-3 h-3 animate-spin text-orange-500" />
             </div>
           ) : totalCount === 0 ? (
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+            <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg ${
               isDark ? 'bg-neutral-800/50' : 'bg-gray-50'
             }`}>
-              <Check className="w-4 h-4 text-green-500" />
-              <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+              <Check className="w-3 h-3 text-green-500" />
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
                 {translate('sidebar_no_reviews', 'Rien à réviser !')}
               </span>
             </div>
@@ -79,14 +79,14 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
                   key={course.course_id}
                   href={`/flashcards/review/${course.course_id}`}
                   onClick={onClose}
-                  className={`flex items-center justify-between px-2.5 py-1 rounded-md text-sm transition-colors ${
+                  className={`flex items-center justify-between px-2 py-0.5 rounded-md text-xs transition-colors ${
                     isDark
                       ? 'hover:bg-neutral-800 text-neutral-300'
                       : 'hover:bg-gray-100 text-gray-700'
                   }`}
                 >
                   <span className="truncate pr-2">{course.course_title}</span>
-                  <span className={`text-xs flex-shrink-0 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
+                  <span className={`text-[10px] flex-shrink-0 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
                     ({course.count})
                   </span>
                 </Link>
@@ -96,7 +96,7 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
               <Link
                 href="/flashcards/review/all"
                 onClick={onClose}
-                className={`flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
                   isDark
                     ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
                     : 'bg-orange-50 text-orange-600 hover:bg-orange-100'

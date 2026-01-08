@@ -40,27 +40,27 @@ export default function MasteryBar({
   const isInDanger = daysUntilDegradation !== null && daysUntilDegradation !== undefined && daysUntilDegradation <= 2 && daysUntilDegradation > 0;
 
   return (
-    <div className={`${compact ? 'py-2' : 'py-3'}`}>
-      <div className="flex items-center justify-between mb-1">
-        <span className={`font-medium ${isDark ? 'text-neutral-200' : 'text-gray-900'} ${compact ? 'text-sm' : 'text-base'} truncate max-w-[200px]`}>
+    <div className={`${compact ? 'py-1' : 'py-2'}`}>
+      <div className="flex items-center justify-between mb-0.5">
+        <span className={`font-medium ${isDark ? 'text-neutral-200' : 'text-gray-900'} ${compact ? 'text-xs' : 'text-sm'} truncate max-w-[200px]`}>
           {chapterTitle}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {isInDanger && (
-            <span className="text-xs font-medium" style={{ color: '#d91a1c' }}>
+            <span className="text-[10px] font-medium" style={{ color: '#d91a1c' }}>
               {daysUntilDegradation}j
             </span>
           )}
           <span
-            className={`text-xs font-medium px-2 py-0.5 rounded-full`}
+            className={`text-[10px] font-medium px-1.5 py-0 rounded-full`}
             style={{ backgroundColor: masteryLevel === 'discovery' ? '#fff6f3' : config.color + '20', color: config.color }}
           >
             {translate(MASTERY_LEVEL_KEYS[masteryLevel])}
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-neutral-700' : 'bg-gray-100'}`}>
+      <div className="flex items-center gap-1.5">
+        <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-neutral-700' : 'bg-gray-100'}`}>
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${precision}%` }}
@@ -69,7 +69,7 @@ export default function MasteryBar({
             style={{ backgroundColor: config.color }}
           />
         </div>
-        <span className={`text-xs w-10 text-right ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{precision}%</span>
+        <span className={`text-[10px] w-8 text-right ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{precision}%</span>
       </div>
     </div>
   );

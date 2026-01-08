@@ -31,14 +31,14 @@ export default function LearnPageHeader({
   }[maxWidth];
 
   return (
-    <header className={`border-b transition-colors sticky top-0 z-30 backdrop-blur-xl h-[65px] ${
+    <header className={`border-b transition-colors sticky top-0 z-30 backdrop-blur-xl h-[52px] ${
       isDark
         ? 'bg-neutral-900/95 border-neutral-800'
         : 'bg-white/95 border-gray-200'
     }`}>
-      <div className={`${maxWidthClass} mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-4`}>
+      <div className={`${maxWidthClass} mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3`}>
         {/* Left side: Breadcrumb */}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <CourseBreadcrumb
             folderName={folderName}
             courseName={courseName}

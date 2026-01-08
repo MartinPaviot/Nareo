@@ -20,6 +20,7 @@ const nextConfig = {
   // Alias to replace html2canvas with html2canvas-pro (supports lab/oklch colors)
   // Works for both Turbopack (dev) and Webpack (production build)
   turbopack: {
+    root: __dirname,
     resolveAlias: {
       'html2canvas': 'html2canvas-pro',
     },

@@ -653,78 +653,16 @@ export default function QuizChapterManagement({
         <div className="space-y-4">
           <GenerationLoadingScreen
             type="quiz"
-            progress={generationProgress}
-            progressMessage={generationMessage}
+            progress={generationProgress || 0}
+            progressMessage={generationMessage || translate('quiz_generation_in_progress', 'Génération en cours...')}
             itemsGenerated={streamingQuestions.length}
             totalItems={totalExpectedQuestions}
           />
-          {/* Start now button - appears when at least 1 question is available */}
-          {streamingQuestions.length > 0 && enableProgressiveQuiz && (
-            <div className={`rounded-2xl border shadow-sm p-4 ${
-              isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-            }`}>
-              <button
-                onClick={() => setIsPlayingProgressiveQuiz(true)}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
-              >
-                <Play className="w-4 h-4" />
-                {translate('quiz_start_now', 'Commencer maintenant')}
-                <span className={`text-xs px-2 py-0.5 rounded-full bg-white/20`}>
-                  {streamingQuestions.length} {translate('quiz_questions_ready', 'prêtes')}
-                </span>
-              </button>
-              <p className={`text-xs text-center mt-2 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
-                {translate('quiz_start_now_hint', 'Les autres questions arriveront pendant que tu te test')}
-              </p>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Progressive Quiz View - shown when user chooses to play during generation OR when resuming */}
-      {/* Note: We check streamingQuestions.length > 0 to ensure we have questions to display */}
-      {/* If streamingQuestions is empty but isPlayingProgressiveQuiz is true, we fall through to show chapters */}
-      {isPlayingProgressiveQuiz && streamingQuestions.length > 0 ? (
-        <div className="space-y-4">
-          {/* Back button to return to chapters view */}
-          <button
-            onClick={async () => {
-              setIsPlayingProgressiveQuiz(false);
-              // If generation is complete, clear the progressive quiz state
-              // The parent's onClearProgressiveQuiz handles refetch before clearing
-              if (!isGenerating) {
-                await onClearProgressiveQuiz?.();
-              }
-            }}
-            className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${
-              isDark ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            ← {translate('back', 'Retour')}
-          </button>
-          <ProgressiveQuizView
-            questions={streamingQuestions}
-            isGenerating={isGenerating}
-            progress={generationProgress}
-            questionsGenerated={streamingQuestions.length}
-            totalQuestions={undefined}
-            progressMessage={generationMessage}
-            onComplete={async (score, answers) => {
-              console.log('Progressive quiz completed:', { score, answers });
-              setIsPlayingProgressiveQuiz(false);
-              // Clear progressive quiz state after completion
-              // The parent's onClearProgressiveQuiz now handles refetch internally
-              // to ensure data is loaded before clearing streaming questions
-              await onClearProgressiveQuiz?.();
-            }}
-            courseId={courseId}
-          />
-        </div>
-      ) : null}
-
-      {/* Chapters list - show when NOT playing progressive quiz OR when streamingQuestions is empty (fallback) */}
-      {/* This ensures chapters are always visible after quiz completion, even if state is briefly inconsistent */}
-      {(!isPlayingProgressiveQuiz || streamingQuestions.length === 0) && chapters.length === 0 && !isGenerating ? (
+      {/* Chapters list */}
+      {chapters.length === 0 && !isGenerating ? (
         <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
           isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
         }`}>

@@ -42,7 +42,7 @@ export default function DailyGoalCard({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className={`rounded-2xl p-5 border relative overflow-hidden ${
+        className={`rounded-xl p-3 border relative overflow-hidden ${
           completed
             ? ''
             : isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-100'
@@ -55,19 +55,19 @@ export default function DailyGoalCard({
         {/* Settings button */}
         <button
           onClick={() => setShowSettings(true)}
-          className={`absolute top-4 right-4 p-1.5 rounded-full transition-colors ${
+          className={`absolute top-2.5 right-2.5 p-1 rounded-full transition-colors ${
             isDark ? 'hover:bg-neutral-700' : 'hover:bg-gray-100'
           }`}
         >
-          <Settings className={`w-4 h-4 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+          <Settings className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
         </button>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-3">
           {/* Progress circle */}
           <ProgressCircle
             progress={progress}
-            size={100}
-            strokeWidth={8}
+            size={64}
+            strokeWidth={6}
             progressColor={completed ? '#379f5a' : '#F97316'}
             backgroundColor={isDark ? '#262626' : '#E5E7EB'}
           >
@@ -77,29 +77,29 @@ export default function DailyGoalCard({
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               >
-                <Check className="w-8 h-8" style={{ color: '#379f5a' }} />
+                <Check className="w-5 h-5" style={{ color: '#379f5a' }} />
               </motion.div>
             ) : (
               <div className="text-center">
-                <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{current}</p>
-                <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>/ {target}</p>
+                <p className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{current}</p>
+                <p className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>/ {target}</p>
               </div>
             )}
           </ProgressCircle>
 
           {/* Info */}
           <div className="flex-1">
-            <h3 className={`text-sm font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_daily_goal_title')}</h3>
-            <p className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`} style={completed ? { color: '#379f5a' } : {}}>
+            <h3 className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_daily_goal_title')}</h3>
+            <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`} style={completed ? { color: '#379f5a' } : {}}>
               {completed
                 ? (current > target
                     ? translate('stats_daily_goal_extra', { count: String(current - target) })
                     : translate('stats_daily_goal_completed'))
                 : translate('stats_daily_goal_remaining', { count: String(target - current) })}
             </p>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-lg">{config.emoji}</span>
-              <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="text-sm">{config.emoji}</span>
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                 {config.label} ({config.timeEstimate})
               </span>
             </div>
@@ -113,9 +113,9 @@ export default function DailyGoalCard({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="mt-4 text-center"
+              className="mt-2 text-center"
             >
-              <p className="text-sm font-medium" style={{ color: '#379f5a' }}>
+              <p className="text-xs font-medium" style={{ color: '#379f5a' }}>
                 {translate('stats_label_xp_bonus')}
               </p>
             </motion.div>

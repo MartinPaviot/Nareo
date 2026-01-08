@@ -51,7 +51,7 @@
     "form-data": "^4.0.4",
     "framer-motion": "^12.23.24",
     "html2canvas-pro": "^1.5.13",
-    "html2pdf.js": "^0.12.1",
+    "html2pdf.js": "^0.13.0",
     "katex": "^0.16.25",
     "lucide-react": "^0.553.0",
     "mammoth": "^1.11.0",

@@ -208,7 +208,8 @@ export default function GenerationProgress({
     }
   }, [progress, lastServerProgress]);
 
-  // Smooth progress interpolation - advances slowly when server doesn't update
+  // Smooth progress interpolation - follows server progress closely
+  // The server now sends continuous updates via ticker, so we just need to smooth transitions
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeSinceLastUpdate(prev => prev + 0.1);
@@ -217,21 +218,20 @@ export default function GenerationProgress({
         // If we've reached 100%, stop
         if (prev >= 100) return 100;
 
-        // Calculate target based on server progress
-        // Allow smooth progress to go ahead of server progress to show activity
-        // More buffer (15%) prevents the UI from appearing frozen during long LLM calls
-        const maxAllowed = Math.min(progress + 15, 95); // Never exceed server + 15% or 95%
+        // Only allow a small buffer ahead of server progress (3% max)
+        // This provides smooth animation without racing ahead too fast
+        const maxAllowed = Math.min(progress + 3, 95);
 
-        // If server progress is ahead, catch up quickly
+        // If server progress is ahead, catch up smoothly
         if (progress > prev) {
-          return Math.min(prev + 2, progress);
+          // Catch up at 0.5% per 100ms = 5% per second
+          return Math.min(prev + 0.5, progress);
         }
 
-        // If we're below max allowed, advance slowly (degressive speed)
+        // If we're below max allowed, advance very slowly
         if (prev < maxAllowed) {
-          // Slower as we get closer to the target, with minimum increment for responsiveness
-          const remaining = maxAllowed - prev;
-          const increment = Math.max(0.15, remaining * 0.03); // Slightly faster for better UX
+          // Very small increment to show activity without racing ahead
+          const increment = 0.05; // 0.5% per second max
           return Math.min(prev + increment, maxAllowed);
         }
 

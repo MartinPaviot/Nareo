@@ -355,15 +355,15 @@ export default function UploadZone() {
   };
 
   return (
-    <div className={`rounded-3xl shadow-lg p-4 sm:p-6 ${
+    <div className={`rounded-xl shadow-lg p-3 sm:p-4 ${
       isDark
         ? 'bg-neutral-900 border border-neutral-800'
         : 'bg-white border border-orange-100'
     }`}>
       {/* Header - Title and subtitle with formats */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className={`text-base font-bold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-0.5">
+          <h2 className={`text-sm font-bold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
             {translate('home_upload_title')}{' '}
             <span className="relative inline-block">
               <span className="relative z-10">{translate('home_upload_title_highlight')}</span>
@@ -372,7 +372,7 @@ export default function UploadZone() {
           </h2>
           {renderStateBadge()}
         </div>
-        <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+        <p className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
           {translate('home_upload_helper')}
         </p>
       </div>
@@ -385,7 +385,7 @@ export default function UploadZone() {
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`block border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+        className={`block border-2 border-dashed rounded-xl transition-all cursor-pointer ${
           isDragging
             ? isDark
               ? 'border-orange-500 bg-orange-950/30'
@@ -403,14 +403,14 @@ export default function UploadZone() {
           className="hidden"
           onChange={(e) => handleFiles(e.target.files, 'file_picker')}
         />
-        <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-3">
+        <div className="flex flex-col items-center justify-center py-6 px-3 text-center space-y-2">
           {/* Icon */}
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ background: 'linear-gradient(to bottom right, #ff751f, #e5681b)' }}>
-            <Upload className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-lg" style={{ background: 'linear-gradient(to bottom right, #ff751f, #e5681b)' }}>
+            <Upload className="w-5 h-5" />
           </div>
 
           {/* Dropzone hint */}
-          <p className={`text-base font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+          <p className={`text-sm font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
             {translate('home_upload_drop_text')}
           </p>
 
@@ -423,7 +423,7 @@ export default function UploadZone() {
                 e.preventDefault();
                 fileInputRef.current?.click();
               }}
-              className="px-5 py-2.5 rounded-lg text-white text-sm font-semibold transition-colors"
+              className="px-4 py-2 rounded-lg text-white text-xs font-semibold transition-colors"
               style={{ backgroundColor: '#ff751f' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
@@ -438,13 +438,13 @@ export default function UploadZone() {
                 e.preventDefault();
                 cameraInputRef.current?.click();
               }}
-              className={`md:hidden px-6 py-3 rounded-xl border-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+              className={`md:hidden px-4 py-2 rounded-lg border-2 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
                 isDark
                   ? 'border-neutral-600 text-neutral-300 hover:border-orange-500/50 hover:text-orange-400'
                   : 'border-gray-300 text-gray-700 hover:border-orange-400 hover:text-orange-600'
               }`}
             >
-              <Camera className="w-4 h-4" />
+              <Camera className="w-3.5 h-3.5" />
               {translate('home_upload_use_camera')}
             </button>
             <input
@@ -459,7 +459,7 @@ export default function UploadZone() {
           </div>
 
           {/* Helper text for camera - mobile only */}
-          <p className={`md:hidden text-xs mt-2 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
+          <p className={`md:hidden text-[10px] mt-1 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
             {translate('home_upload_camera_helper')}
           </p>
         </div>

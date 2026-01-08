@@ -1907,3 +1907,147 @@ export async function generateMixedQuiz(
   console.log(`✅ Mixed quiz complete: ${shuffledQuestions.length} questions from ${activeTypes.length} type(s)`);
   return shuffledQuestions;
 }
+
+/**
+ * Parallel version of generateMixedQuiz - generates all question types simultaneously
+ * This is ~2-3x faster than the sequential version
+ */
+export async function generateMixedQuizParallel(
+  chapterMetadata: {
+    index?: number;
+    title: string;
+    short_summary?: string;
+    difficulty?: number;
+    learning_objectives?: string[];
+    key_concepts?: string[];
+  },
+  chapterText: string,
+  language: 'EN' | 'FR' | 'DE' = 'EN',
+  quizConfig: QuizConfig,
+  options?: {
+    enableSemanticValidation?: boolean;
+    facts?: VerifiableFact[];
+  }
+) {
+  console.log('🎲 [PARALLEL] Generating mixed quiz for chapter:', chapterMetadata.title);
+
+  // Pre-extract facts once for all question types (this is shared)
+  let preExtractedFacts: VerifiableFact[] = options?.facts || [];
+  if (preExtractedFacts.length === 0) {
+    console.log('📚 Pre-extracting verifiable facts for mixed quiz...');
+    try {
+      preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
+      console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+    } catch (factError: any) {
+      console.error(`❌ Failed to extract facts for "${chapterMetadata.title}":`, factError.message);
+      preExtractedFacts = [];
+    }
+  }
+
+  const activeTypes = Object.entries(quizConfig.types).filter(([, active]) => active);
+
+  if (activeTypes.length === 0) {
+    console.warn('⚠️ No question types selected, defaulting to QCM');
+    activeTypes.push(['qcm', true]);
+  }
+
+  // Calculate total questions based on niveau
+  const totalQuestions = (quizConfig as any)._requestedCount || getAdjustedQuestionCount(10, quizConfig.niveau);
+
+  // Calculate distribution: 60% QCM, 20% Vrai/Faux, 20% Texte à trous
+  const typeDistribution: Record<string, number> = {
+    qcm: 0.6,
+    vrai_faux: 0.2,
+    texte_trous: 0.2,
+  };
+
+  const activeWeight = activeTypes.reduce((sum, [type]) => sum + (typeDistribution[type] || 0), 0);
+
+  const questionsPerType: Record<string, number> = {};
+  let assignedQuestions = 0;
+
+  for (let i = 0; i < activeTypes.length; i++) {
+    const [type] = activeTypes[i];
+    const weight = typeDistribution[type] || 0;
+    const normalizedWeight = weight / activeWeight;
+
+    if (i === activeTypes.length - 1) {
+      questionsPerType[type] = totalQuestions - assignedQuestions;
+    } else {
+      questionsPerType[type] = Math.round(totalQuestions * normalizedWeight);
+      assignedQuestions += questionsPerType[type];
+    }
+  }
+
+  console.log(`📊 [PARALLEL] Question distribution for ${totalQuestions} total:`, questionsPerType);
+
+  // Generate all question types IN PARALLEL
+  const generationPromises = activeTypes.map(async ([type]) => {
+    const typeQuota = questionsPerType[type] || 0;
+    if (typeQuota === 0) return [];
+
+    const typeQuizConfig: QuizConfig = {
+      ...quizConfig,
+      _quotaOverride: typeQuota,
+    } as QuizConfig & { _quotaOverride?: number };
+
+    const sharedOptions = {
+      enableSemanticValidation: options?.enableSemanticValidation,
+      facts: preExtractedFacts,
+      quizConfig: typeQuizConfig,
+    };
+
+    try {
+      let questions: any[] = [];
+
+      switch (type) {
+        case 'qcm':
+          questions = await generateConceptChapterQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+        case 'vrai_faux':
+          questions = await generateTrueFalseQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+        case 'texte_trous':
+          questions = await generateFillBlankQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+      }
+
+      // Limit to quota
+      if (questions.length > typeQuota) {
+        console.log(`📏 [PARALLEL] Limiting ${type} from ${questions.length} to ${typeQuota} questions`);
+        questions = questions.slice(0, typeQuota);
+      }
+
+      console.log(`✅ [PARALLEL] Generated ${questions.length} ${type} questions`);
+      return questions;
+    } catch (typeError: any) {
+      console.error(`❌ [PARALLEL] Failed to generate ${type} questions:`, typeError.message);
+      return [];
+    }
+  });
+
+  // Wait for all types to complete
+  const results = await Promise.all(generationPromises);
+  const allQuestions = results.flat();
+
+  // Shuffle all questions together
+  const shuffledQuestions = shuffleArray(allQuestions);
+
+  console.log(`✅ [PARALLEL] Mixed quiz complete: ${shuffledQuestions.length} questions from ${activeTypes.length} type(s)`);
+  return shuffledQuestions;
+}

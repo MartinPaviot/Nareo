@@ -66,7 +66,7 @@ export default function ChapterSidebar({
 
   if (isCollapsed) {
     return (
-      <div className="w-16 bg-white border-r border-gray-200 h-screen flex flex-col items-center py-4 gap-4 transition-all duration-300 ease-in-out">
+      <div className="w-14 bg-white border-r border-gray-200 h-screen flex flex-col items-center py-3 gap-3 transition-all duration-300 ease-in-out">
         {/* Toggle Button */}
         <button
           onClick={() => handleToggleCollapse(false)}
@@ -101,10 +101,10 @@ export default function ChapterSidebar({
               key={chapter.id}
               onClick={() => onChapterClick(chapter.id)}
               className={`
-                w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm
+                w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs
                 transition-all
-                ${isActive 
-                  ? 'bg-orange-500 text-white' 
+                ${isActive
+                  ? 'bg-orange-500 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-orange-100'
                 }
               `}
@@ -119,49 +119,49 @@ export default function ChapterSidebar({
   }
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 h-screen overflow-y-auto flex flex-col transition-all duration-300 ease-in-out">
+    <div className="w-72 bg-white border-r border-gray-200 h-screen overflow-y-auto flex flex-col transition-all duration-300 ease-in-out">
       {/* Your Progress Header */}
       <div className="border-b border-gray-200">
         {/* Top row aligned with main header */}
-        <div className="h-16 px-6 flex items-center justify-between">
+        <div className="h-14 px-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-orange-500 flex-shrink-0" />
-            <h2 className="text-base font-bold text-gray-900 whitespace-nowrap">{translate('sidebar_progress')}</h2>
+            <BookOpen className="w-4 h-4 text-orange-500 flex-shrink-0" />
+            <h2 className="text-sm font-bold text-gray-900 whitespace-nowrap">{translate('sidebar_progress')}</h2>
           </div>
-          
+
           {/* Home Button */}
           <button
             onClick={onHomeClick}
-            className="p-2 hover:bg-orange-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors"
             title={translate('sidebar_dashboard')}
           >
-            <Home className="w-5 h-5 text-orange-500" />
+            <Home className="w-4 h-4 text-orange-500" />
           </button>
         </div>
-        
+
         {/* Progress info section */}
-        <div className="px-6 pb-6">
-          <p className="text-sm text-gray-600 mb-4">
+        <div className="px-4 pb-4">
+          <p className="text-xs text-gray-600 mb-3">
             {completedChapters} / {totalChapters} {translate('sidebar_mastered')}
           </p>
-          
+
           {/* Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+          <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
             <div
-              className="bg-green-500 h-2 rounded-full transition-all duration-300"
+              className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
               style={{ width: `${totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0}%` }}
             />
           </div>
 
           {/* Current Score */}
-          <div className="mt-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">{translate('sidebar_current_score')}</span>
-              <span className="text-sm font-bold text-gray-900">{totalScore}/{maxScore}</span>
+          <div className="mt-3">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-xs font-medium text-gray-700">{translate('sidebar_current_score')}</span>
+              <span className="text-xs font-bold text-gray-900">{totalScore}/{maxScore}</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-1.5">
               <div
-                className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${maxScore > 0 ? (totalScore / maxScore) * 100 : 0}%` }}
               />
             </div>
@@ -170,13 +170,13 @@ export default function ChapterSidebar({
       </div>
 
       {/* Chapter List */}
-      <div className="flex-1 p-4 space-y-3">
+      <div className="flex-1 p-3 space-y-2">
         {sortedChapters.map((chapter, index) => {
           const progress = chapterProgress.find(p => p.chapterId === chapter.id);
           const isActive = chapter.id === currentChapterId;
           const score = progress?.score || 0;
           const currentQuestion = progress?.currentQuestion || 1;
-          
+
           // Determine which phases are completed based on questions answered
           const mcqPhaseComplete = progress ? progress.questionsAnswered >= 3 : false;
           const shortAnswerComplete = progress ? progress.questionsAnswered >= 4 : false;
@@ -187,32 +187,32 @@ export default function ChapterSidebar({
               key={chapter.id}
               onClick={() => onChapterClick(chapter.id)}
               className={`
-                p-4 rounded-lg border-2 cursor-pointer transition-all
-                ${isActive 
-                  ? 'border-orange-500 bg-orange-50' 
+                p-3 rounded-lg border-2 cursor-pointer transition-all
+                ${isActive
+                  ? 'border-orange-500 bg-orange-50'
                   : 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50'
                 }
               `}
             >
               {/* Chapter Number and Title */}
-              <div className="flex items-start gap-2 mb-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">
+              <div className="flex items-start gap-2 mb-2">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
                   {index + 1}
                 </span>
-                <h3 className="font-semibold text-gray-900 flex-1 line-clamp-2">
+                <h3 className="font-semibold text-gray-900 flex-1 line-clamp-2 text-sm leading-tight">
                   {localizedTitles.get(chapter.id) || chapter.title}
                 </h3>
               </div>
 
               {/* Phase Indicators */}
-              <div className="space-y-2 mb-3">
+              <div className="space-y-1.5 mb-2">
                 {/* MCQ Phase */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <div
                     className={`
-                      w-4 h-4 rounded-full border-2 flex items-center justify-center
-                      ${mcqPhaseComplete 
-                        ? 'bg-orange-500 border-orange-500' 
+                      w-3 h-3 rounded-full border-[1.5px] flex items-center justify-center
+                      ${mcqPhaseComplete
+                        ? 'bg-orange-500 border-orange-500'
                         : currentQuestion <= 3 && isActive
                         ? 'border-orange-500'
                         : 'border-gray-300'
@@ -220,23 +220,23 @@ export default function ChapterSidebar({
                     `}
                   >
                     {mcqPhaseComplete && (
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
                   </div>
-                  <span className={`text-xs ${mcqPhaseComplete ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
+                  <span className={`text-[10px] ${mcqPhaseComplete ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
                     {translate('sidebar_phase_mcq')}
                   </span>
                 </div>
 
                 {/* Short Answer */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <div
                     className={`
-                      w-4 h-4 rounded-full border-2 flex items-center justify-center
-                      ${shortAnswerComplete 
-                        ? 'bg-orange-500 border-orange-500' 
+                      w-3 h-3 rounded-full border-[1.5px] flex items-center justify-center
+                      ${shortAnswerComplete
+                        ? 'bg-orange-500 border-orange-500'
                         : currentQuestion === 4 && isActive
                         ? 'border-orange-500'
                         : 'border-gray-300'
@@ -244,23 +244,23 @@ export default function ChapterSidebar({
                     `}
                   >
                     {shortAnswerComplete && (
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
                   </div>
-                  <span className={`text-xs ${shortAnswerComplete ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
+                  <span className={`text-[10px] ${shortAnswerComplete ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
                     {translate('sidebar_phase_short')}
                   </span>
                 </div>
 
                 {/* Reflective */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <div
                     className={`
-                      w-4 h-4 rounded-full border-2 flex items-center justify-center
-                      ${reflectiveComplete 
-                        ? 'bg-orange-500 border-orange-500' 
+                      w-3 h-3 rounded-full border-[1.5px] flex items-center justify-center
+                      ${reflectiveComplete
+                        ? 'bg-orange-500 border-orange-500'
                         : currentQuestion === 5 && isActive
                         ? 'border-orange-500'
                         : 'border-gray-300'
@@ -268,26 +268,26 @@ export default function ChapterSidebar({
                     `}
                   >
                     {reflectiveComplete && (
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
                   </div>
-                  <span className={`text-xs ${reflectiveComplete ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
+                  <span className={`text-[10px] ${reflectiveComplete ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
                     {translate('sidebar_phase_reflective')}
                   </span>
                 </div>
               </div>
 
               {/* Progress Bar */}
-              <div className="mt-3">
+              <div className="mt-2">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-gray-600">{translate('sidebar_progress_label')}</span>
-                  <span className="text-xs font-bold text-gray-900">{score}/100</span>
+                  <span className="text-[10px] text-gray-600">{translate('sidebar_progress_label')}</span>
+                  <span className="text-[10px] font-bold text-gray-900">{score}/100</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                <div className="w-full bg-gray-200 rounded-full h-1">
                   <div
-                    className="bg-green-500 h-1.5 rounded-full transition-all duration-300"
+                    className="bg-green-500 h-1 rounded-full transition-all duration-300"
                     style={{ width: `${score}%` }}
                   />
                 </div>

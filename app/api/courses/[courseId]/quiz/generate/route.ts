@@ -349,7 +349,7 @@ export async function POST(
     // IMPORTANT: Generation continues even if client disconnects - questions are saved to DB
     (async () => {
       // Declare heartbeat interval outside try block so it can be cleared in finally
-      let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+      let heartbeatInterval: ReturnType<typeof setInterval> | undefined;
 
       try {
         const conceptsByChapter = new Map<string, typeof concepts>();

@@ -546,9 +546,14 @@ export async function POST(
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    // Check if already generating
+    // STRICT CHECK: Block if already generating to prevent duplicate generations
     if (course.quiz_status === 'generating') {
-      console.log(`[quiz-generate] Quiz already generating, allowing regeneration`);
+      console.log(`[quiz-generate] Quiz already generating, BLOCKING duplicate request`);
+      return NextResponse.json({
+        error: 'Quiz generation already in progress',
+        status: 'generating',
+        courseId,
+      }, { status: 409 }); // 409 Conflict
     }
 
     // ALWAYS delete old questions AND reset quiz attempts before regenerating

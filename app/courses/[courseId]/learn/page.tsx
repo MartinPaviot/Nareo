@@ -85,6 +85,8 @@ export default function CourseLearnPage() {
   }, [folders, courseId]);
   const [quizGenerationError, setQuizGenerationError] = useState<string | null>(null);
   const [streamingQuestions, setStreamingQuestions] = useState<StreamingQuestion[]>([]);
+  // Local state to show loading immediately when generation starts (before server confirms)
+  const [isStartingGeneration, setIsStartingGeneration] = useState(false);
 
   // Map step keys to translation keys for quiz generation
   const translateQuizStepMessage = useCallback((step: string | undefined, message: string | undefined): string => {
@@ -167,8 +169,18 @@ export default function CourseLearnPage() {
   const totalExpectedQuestions = apiCourse?.quiz_total_questions ?? undefined;
   const questionsGenerated = apiCourse?.quiz_questions_generated ?? 0;
 
-  // isGeneratingQuiz is now derived from the server status
-  const isGeneratingQuiz = apiCourse?.quiz_status === 'generating';
+  // isGeneratingQuiz is now derived from the server status OR local starting state
+  // This ensures the loading screen appears immediately when user clicks generate
+  const isGeneratingQuiz = isStartingGeneration || apiCourse?.quiz_status === 'generating';
+
+  // Debug log for isGeneratingQuiz state
+  useEffect(() => {
+    console.log('[learn] Generation state:', {
+      isStartingGeneration,
+      quiz_status: apiCourse?.quiz_status,
+      isGeneratingQuiz,
+    });
+  }, [isStartingGeneration, apiCourse?.quiz_status, isGeneratingQuiz]);
 
   // Generate a progress message based on the step
   const quizGenerationMessage = useMemo(() => {
@@ -187,9 +199,9 @@ export default function CourseLearnPage() {
     return STEP_TO_MESSAGE[quizGenerationStep] || quizGenerationStep;
   }, [quizGenerationStep]);
 
-  // Function to generate quiz on demand - fire-and-forget approach
-  // The backend handles all generation independently of the client connection
-  // Progress is tracked via polling from the database
+  // Function to generate quiz on demand - synchronous approach
+  // The backend now waits for completion before returning
+  // Progress is tracked via polling from the database during generation
   const handleGenerateQuiz = useCallback(async (config?: QuizConfig) => {
     console.log('[learn] handleGenerateQuiz called with config:', config);
     if (!courseId || isDemoId) {
@@ -197,23 +209,24 @@ export default function CourseLearnPage() {
       return;
     }
 
-    // Check if already generating on server
-    if (apiCourse?.quiz_status === 'generating') {
-      console.log('[learn] Quiz already generating on server, skipping');
+    // Check if already generating on server or locally
+    if (isStartingGeneration || apiCourse?.quiz_status === 'generating') {
+      console.log('[learn] Quiz already generating, skipping');
       return;
     }
 
     setQuizGenerationError(null);
     setStreamingQuestions([]); // Reset streaming questions
+    setIsStartingGeneration(true); // Show loading immediately
 
     // Clear sessionStorage to ensure clean state on regeneration
     sessionStorage.removeItem(`progressive_quiz_${courseId}`);
     setWasPlayingProgressiveQuiz(false);
 
     try {
-      console.log('[learn] Starting quiz generation (fire-and-forget)...');
+      console.log('[learn] Starting quiz generation...');
 
-      // Call the API - it will return immediately and continue generation in background
+      // Call the API - it now waits for completion (synchronous)
       const response = await fetch(`/api/courses/${courseId}/quiz/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -226,9 +239,9 @@ export default function CourseLearnPage() {
       }
 
       const result = await response.json();
-      console.log('[learn] Quiz generation started:', result);
+      console.log('[learn] Quiz generation completed:', result);
 
-      // Refetch to get the updated status (should be 'generating')
+      // Refetch to get the updated status (should be 'ready' now)
       await refetch();
 
       trackEvent('quiz_generation_started', {
@@ -238,11 +251,14 @@ export default function CourseLearnPage() {
       });
 
     } catch (err) {
-      console.error('Error starting quiz generation:', err);
-      setQuizGenerationError(err instanceof Error ? err.message : 'Failed to start quiz generation');
+      console.error('Error during quiz generation:', err);
+      setQuizGenerationError(err instanceof Error ? err.message : 'Failed to generate quiz');
       await refetch();
+    } finally {
+      // Clear local loading state - server state will take over
+      setIsStartingGeneration(false);
     }
-  }, [courseId, isDemoId, apiCourse?.quiz_status, refetch, user?.id]);
+  }, [courseId, isDemoId, isStartingGeneration, apiCourse?.quiz_status, refetch, user?.id]);
 
   // Function to retry processing a stuck course
   const handleRetryProcessing = useCallback(async () => {
@@ -894,7 +910,8 @@ export default function CourseLearnPage() {
             )}
 
             {/* Quiz not generated yet - show personnalisation screen (hide once generation starts) */}
-            {!isDemoId && course?.status === 'ready' && !isGeneratingQuiz && course?.quiz_status !== 'ready' && course?.quiz_status !== 'generating' && course?.quiz_status !== 'partial' && (
+            {/* Use isGeneratingQuiz which includes local isStartingGeneration state for immediate feedback */}
+            {!isDemoId && course?.status === 'ready' && !isGeneratingQuiz && course?.quiz_status !== 'ready' && course?.quiz_status !== 'partial' && (
               <>
                 {quizGenerationError && (
                   <div

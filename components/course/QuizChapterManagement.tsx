@@ -208,6 +208,11 @@ export default function QuizChapterManagement({
     console.log('[QuizChapterManagement] Current lastQuizConfig:', lastQuizConfig);
   }, [lastQuizConfig]);
 
+  // Debug: log isGenerating state
+  useEffect(() => {
+    console.log('[QuizChapterManagement] isGenerating:', isGenerating, 'isPlayingProgressiveQuiz:', isPlayingProgressiveQuiz);
+  }, [isGenerating, isPlayingProgressiveQuiz]);
+
   // Fetch questions for expanded chapter
   const fetchQuestions = useCallback(async () => {
     if (!courseId || isDemoId) return;

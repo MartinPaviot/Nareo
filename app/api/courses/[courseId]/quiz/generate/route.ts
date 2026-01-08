@@ -40,6 +40,22 @@ function getTrueFalseLabels(language: 'EN' | 'FR' | 'DE'): [string, string] {
   }
 }
 
+/**
+ * Progress milestones for quiz generation
+ * These are the key stages with their target percentages
+ * Frontend will animate smoothly between these values
+ */
+const PROGRESS_MILESTONES = {
+  STARTING: 3,              // Initial state
+  ANALYZING: 8,             // Analyzing document structure
+  EXTRACTING_FACTS: 15,     // Extracting facts from chapters
+  GENERATING_START: 20,     // Starting question generation
+  // 20-85: Generating questions (distributed across chapters)
+  VALIDATING: 88,           // Validating and deduplicating
+  SAVING: 95,               // Final save
+  COMPLETE: 100,            // Done
+};
+
 // Update progress in database (fire-and-forget, doesn't throw)
 async function updateQuizProgress(
   admin: ReturnType<typeof getServiceSupabase>,
@@ -68,6 +84,7 @@ async function updateQuizProgress(
     }
 
     await admin.from('courses').update(updateData).eq('id', courseId);
+    console.log(`[quiz-progress] Updated: ${data.currentStep || 'unknown'} - ${data.progress ?? '?'}%`);
   } catch (e) {
     console.error('[quiz-generate] Failed to update progress:', e);
   }
@@ -143,15 +160,28 @@ async function runQuizGeneration(
     const totalExpectedQuestions = totalChapters * questionsPerChapter;
 
     // Track monotonic progress - never goes backwards
-    let currentProgress = 1;
+    let currentProgress = PROGRESS_MILESTONES.STARTING;
 
-    // Update initial progress
+    // Update initial progress - STARTING
     await updateQuizProgress(admin, courseId, {
       progress: currentProgress,
       questionsGenerated: 0,
       totalQuestions: totalExpectedQuestions,
+      currentStep: 'starting',
+    });
+
+    // Small delay to ensure frontend sees the starting state
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // ANALYZING phase
+    currentProgress = PROGRESS_MILESTONES.ANALYZING;
+    await updateQuizProgress(admin, courseId, {
+      progress: currentProgress,
       currentStep: 'analyzing_document',
     });
+
+    // Small processing delay
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Helper to build question data object (extracted to avoid duplication)
     const buildQuestionData = (q: any, questionId: string, chapterId: string, idx: number) => {
@@ -396,15 +426,34 @@ async function runQuizGeneration(
       return { questionsGenerated: chapterQuestionsInserted, chapterId: chapter.id };
     };
 
+    // EXTRACTING_FACTS phase
+    currentProgress = PROGRESS_MILESTONES.EXTRACTING_FACTS;
+    await updateQuizProgress(admin, courseId, {
+      progress: currentProgress,
+      currentStep: 'identifying_concepts',
+    });
+
+    // GENERATING_START phase
+    currentProgress = PROGRESS_MILESTONES.GENERATING_START;
+    await updateQuizProgress(admin, courseId, {
+      progress: currentProgress,
+      currentStep: 'generating_content',
+    });
+
     // Process chapters in parallel batches
+    // Progress range: GENERATING_START (20) to VALIDATING (88) = 68 points distributed across chapters
+    const progressPerChapter = (PROGRESS_MILESTONES.VALIDATING - PROGRESS_MILESTONES.GENERATING_START) / Math.max(1, chaptersToProcess.length);
+
     for (let i = 0; i < chaptersToProcess.length; i += MAX_CONCURRENT_CHAPTERS) {
       const batch = chaptersToProcess.slice(i, i + MAX_CONCURRENT_CHAPTERS);
       const batchStartIndex = i;
 
-      // Update progress for batch start (fire-and-forget)
-      const batchProgress = Math.round(5 + (i / chaptersToProcess.length) * 80);
+      // Calculate progress based on chapter index
+      // Start at GENERATING_START, end before VALIDATING
+      const batchProgress = Math.round(PROGRESS_MILESTONES.GENERATING_START + (i * progressPerChapter));
       currentProgress = Math.max(currentProgress, batchProgress);
-      updateQuizProgress(admin, courseId, {
+
+      await updateQuizProgress(admin, courseId, {
         progress: currentProgress,
         currentStep: 'generating_content',
         questionsGenerated: totalQuestionsGenerated,
@@ -427,16 +476,35 @@ async function runQuizGeneration(
         totalQuestionsGenerated += result.questionsGenerated;
       }
 
-      // Update progress after batch (fire-and-forget)
-      currentProgress = Math.round(5 + ((i + batch.length) / chaptersToProcess.length) * 85);
-      updateQuizProgress(admin, courseId, {
-        progress: Math.min(currentProgress, 95),
+      // Update progress after batch completion
+      const completedChapters = i + batch.length;
+      currentProgress = Math.round(PROGRESS_MILESTONES.GENERATING_START + (completedChapters * progressPerChapter));
+      currentProgress = Math.min(currentProgress, PROGRESS_MILESTONES.VALIDATING - 1);
+
+      await updateQuizProgress(admin, courseId, {
+        progress: currentProgress,
         questionsGenerated: totalQuestionsGenerated,
         currentStep: 'generating_content',
       });
 
-      console.log(`[quiz-generate] Batch complete: ${batchResults.length} chapters, ${totalQuestionsGenerated} total questions`);
+      console.log(`[quiz-generate] Batch complete: ${batchResults.length} chapters, ${totalQuestionsGenerated} total questions, progress: ${currentProgress}%`);
     }
+
+    // VALIDATING phase
+    currentProgress = PROGRESS_MILESTONES.VALIDATING;
+    await updateQuizProgress(admin, courseId, {
+      progress: currentProgress,
+      currentStep: 'verifying_content',
+      questionsGenerated: totalQuestionsGenerated,
+    });
+
+    // SAVING phase
+    currentProgress = PROGRESS_MILESTONES.SAVING;
+    await updateQuizProgress(admin, courseId, {
+      progress: currentProgress,
+      currentStep: 'saving_content',
+      questionsGenerated: totalQuestionsGenerated,
+    });
 
     // Update course quiz status
     const { data: readyChapters } = await admin

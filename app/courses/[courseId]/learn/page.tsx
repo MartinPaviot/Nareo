@@ -25,6 +25,7 @@ import { useCourseChapters } from '@/hooks/useCourseChapters';
 import { useSidebarNavigation } from '@/hooks/useSidebarNavigation';
 import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
 import { useQuizProgressStream } from '@/hooks/useSSEStream';
+import { useSmoothedProgress } from '@/hooks/useAnimatedProgress';
 import { QuizConfig } from '@/types/quiz-personnalisation';
 
 interface Chapter {
@@ -541,10 +542,14 @@ export default function CourseLearnPage() {
   });
 
   // SSE-based progress values (override polling values when streaming)
-  const sseProgress = quizStream.isStreaming ? quizStream.progress : quizGenerationProgress;
+  const rawProgress = quizStream.isStreaming ? quizStream.progress : quizGenerationProgress;
   const sseQuestionsGenerated = quizStream.isStreaming
     ? quizStream.events.filter(e => e.type === 'question').length
     : questionsGenerated;
+
+  // Apply smooth animation to progress (slowly increments 0.5%/sec between server updates)
+  // This prevents the progress bar from "freezing" and gives users visual feedback
+  const sseProgress = useSmoothedProgress(rawProgress, isGeneratingQuiz);
 
   // Start SSE stream when quiz generation begins
   useEffect(() => {

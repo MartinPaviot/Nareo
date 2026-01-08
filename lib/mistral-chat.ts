@@ -43,27 +43,41 @@ export async function mistralChatJSON<T = unknown>(options: {
   const { model, systemPrompt, userPrompt, temperature = 0.3, maxTokens = 4000 } = options;
 
   if (!process.env.MISTRAL) {
+    console.error('❌ [Mistral] MISTRAL API key not configured');
     throw new Error('MISTRAL API key not configured');
   }
 
-  const response = await mistral.chat.complete({
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature,
-    maxTokens,
-    responseFormat: { type: 'json_object' },
-  });
+  console.log(`🔮 [Mistral] Calling ${model} (temp: ${temperature}, maxTokens: ${maxTokens})`);
 
-  const content = response.choices?.[0]?.message?.content;
+  try {
+    const response = await mistral.chat.complete({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature,
+      maxTokens,
+      responseFormat: { type: 'json_object' },
+    });
 
-  if (!content || typeof content !== 'string') {
-    throw new Error('No content in Mistral response');
+    const content = response.choices?.[0]?.message?.content;
+
+    if (!content || typeof content !== 'string') {
+      console.error('❌ [Mistral] No content in response:', JSON.stringify(response));
+      throw new Error('No content in Mistral response');
+    }
+
+    console.log(`✅ [Mistral] Response received (${content.length} chars)`);
+    return JSON.parse(content) as T;
+  } catch (error: any) {
+    console.error('❌ [Mistral] API call failed:', error.message || error);
+    if (error.response) {
+      console.error('❌ [Mistral] Response status:', error.response.status);
+      console.error('❌ [Mistral] Response data:', JSON.stringify(error.response.data));
+    }
+    throw error;
   }
-
-  return JSON.parse(content) as T;
 }
 
 /**

@@ -223,6 +223,10 @@ export default function CourseLearnPage() {
     sessionStorage.removeItem(`progressive_quiz_${courseId}`);
     setWasPlayingProgressiveQuiz(false);
 
+    // Small delay to allow React to re-render and show the loading screen
+    // before the long-running fetch blocks the main thread
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     try {
       console.log('[learn] Starting quiz generation...');
 
@@ -559,26 +563,26 @@ export default function CourseLearnPage() {
     }
   }, [isDemoId, courseId, course?.quiz_status, quizStream]);
 
-  // Fallback poll for quiz status (only if SSE is not working)
-  // This ensures the UI stays updated even if SSE connection fails
+  // Poll for quiz status during generation
+  // This ensures the UI stays updated with progress from the server
   useEffect(() => {
     if (isDemoId || !courseId) return;
 
-    // Only poll if quiz is generating AND SSE is not streaming
-    const shouldPoll = course?.quiz_status === 'generating' && !quizStream.isStreaming;
+    // Poll if quiz is generating (either locally started or server confirmed) AND SSE is not streaming
+    const shouldPoll = (isStartingGeneration || course?.quiz_status === 'generating') && !quizStream.isStreaming;
     if (!shouldPoll) return;
 
-    console.log('[quiz-poll] Starting fallback poll (SSE not streaming)');
+    console.log('[quiz-poll] Starting progress poll');
     const pollInterval = setInterval(async () => {
-      console.log('[quiz-poll] Fallback polling...');
+      console.log('[quiz-poll] Polling for progress...');
       await refetch();
-    }, 5000); // Poll every 5 seconds (less aggressive since it's a fallback)
+    }, 3000); // Poll every 3 seconds for responsive progress updates
 
     return () => {
-      console.log('[quiz-poll] Stopping fallback poll');
+      console.log('[quiz-poll] Stopping progress poll');
       clearInterval(pollInterval);
     };
-  }, [isDemoId, courseId, course?.quiz_status, quizStream.isStreaming, refetch]);
+  }, [isDemoId, courseId, isStartingGeneration, course?.quiz_status, quizStream.isStreaming, refetch]);
 
   // With fire-and-forget mode, quiz generation continues on the server
   // even if the user navigates away. The status 'generating' is valid.

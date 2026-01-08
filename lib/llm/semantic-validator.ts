@@ -113,10 +113,10 @@ ${truncatedText}`;
       async () => {
         return await mistralChatJSON<{ facts: any[] }>({
           model,
-          systemPrompt: 'You are an expert at extracting testable facts from educational content. Return valid JSON only.',
+          systemPrompt: 'You are an expert at extracting testable facts from educational content. Return valid JSON only. Keep responses concise.',
           userPrompt: prompt,
           temperature: LLM_CONFIG.temperatures.extraction,
-          maxTokens: 2000,
+          maxTokens: 4000, // Increased to prevent JSON truncation
         });
       },
       { maxRetries: 2 }

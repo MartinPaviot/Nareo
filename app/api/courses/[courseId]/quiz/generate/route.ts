@@ -618,19 +618,25 @@ export async function POST(
     }
 
     // Get all chapters with their text
-    const { data: chapters, error: chaptersError } = await supabase
+    // IMPORTANT: Use admin client for guests to bypass RLS
+    const chaptersClient = auth ? supabase : admin;
+    const { data: chapters, error: chaptersError } = await chaptersClient
       .from('chapters')
       .select('id, title, summary, order_index, difficulty, source_text, status')
       .eq('course_id', courseId)
       .order('order_index', { ascending: true });
 
     if (chaptersError || !chapters || chapters.length === 0) {
+      console.error('[quiz-generate] No chapters found:', chaptersError?.message);
       await admin.from('courses').update({ quiz_status: 'failed' }).eq('id', courseId);
       return NextResponse.json({ error: 'No chapters found' }, { status: 400 });
     }
 
+    console.log(`[quiz-generate] Found ${chapters.length} chapters for course`);
+
     // Get concepts for each chapter
-    const { data: concepts } = await supabase
+    // IMPORTANT: Use admin client for guests to bypass RLS
+    const { data: concepts } = await chaptersClient
       .from('concepts')
       .select('id, chapter_id, title, description, importance')
       .eq('course_id', courseId);

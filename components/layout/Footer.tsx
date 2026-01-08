@@ -7,11 +7,15 @@ import Image from 'next/image';
 import ContactModal from './ContactModal';
 import { useTheme } from '@/contexts/ThemeContext';
 
-// Pages where footer should be completely hidden (work screens)
-const NO_FOOTER_PATTERNS = [
+// Pages with integrated footer (hide global footer completely)
+const INTEGRATED_FOOTER_PATTERNS = [
+  /^\/courses\/[^/]+\/learn/, // Learn page has its own footer
+];
+
+// Pages where micro footer should be shown (work screens)
+const MICRO_FOOTER_PATTERNS = [
   /^\/courses\/[^/]+\/chapters\/[^/]+$/, // Quiz pages
   /^\/courses\/[^/]+\/chapters\/[^/]+\/result/, // Result pages
-  /^\/courses\/[^/]+\/learn/, // Learn/flashcard pages
   /^\/learn\//, // Concept learning
   /^\/recap\//, // Recap pages
   /^\/study-plan\//, // Study plan pages
@@ -19,6 +23,7 @@ const NO_FOOTER_PATTERNS = [
   /^\/compte/, // Account settings
   /^\/admin/, // Admin pages
   /^\/paywall/, // Paywall
+  /^\/defi\/[^/]+$/, // Challenge pages (specific challenge)
 ];
 
 export default function Footer() {
@@ -26,22 +31,28 @@ export default function Footer() {
   const pathname = usePathname();
   const { isDark } = useTheme();
 
-  const isWorkScreen = NO_FOOTER_PATTERNS.some(pattern => pattern.test(pathname));
+  // Pages with integrated footer - hide global footer completely
+  const hasIntegratedFooter = INTEGRATED_FOOTER_PATTERNS.some(pattern => pattern.test(pathname));
+  if (hasIntegratedFooter) {
+    return null;
+  }
+
+  const isWorkScreen = MICRO_FOOTER_PATTERNS.some(pattern => pattern.test(pathname));
 
   // Micro footer for work screens
   if (isWorkScreen) {
     return (
       <>
-        <footer className={`backdrop-blur-sm border-t ${
+        <footer className={`border-t ${
           isDark
-            ? 'bg-gray-900/80 border-gray-700'
-            : 'bg-white/80 border-gray-100'
+            ? 'bg-neutral-900/50 border-neutral-800'
+            : 'bg-gray-50/50 border-gray-100'
         }`}>
-          <div className={`max-w-5xl mx-auto px-4 py-2 flex items-center justify-center gap-4 text-xs ${
-            isDark ? 'text-gray-400' : 'text-gray-400'
+          <div className={`max-w-5xl mx-auto px-4 py-1.5 flex items-center justify-center gap-4 text-[10px] ${
+            isDark ? 'text-neutral-500' : 'text-gray-400'
           }`}>
             <span>© 2026 Nareo</span>
-            <span className={isDark ? 'text-gray-600' : 'text-gray-200'}>·</span>
+            <span className={isDark ? 'text-neutral-700' : 'text-gray-300'}>·</span>
             <button
               onClick={() => setShowContactModal(true)}
               className="hover:text-orange-500 transition-colors"

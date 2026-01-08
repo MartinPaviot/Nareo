@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Loader2, Download, Copy, Check, RotateCcw, Pencil, X, Save, UserPlus } from 'lucide-react';
@@ -9,8 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 import GenerationLoadingScreen from './GenerationLoadingScreen';
-import GenerationProgress from './GenerationProgress';
 import StreamingMarkdownView from './StreamingMarkdownView';
+import GenerationProgress from './GenerationProgress';
 import PersonnalisationScreen from './PersonnalisationScreen';
 import { PersonnalisationConfig } from '@/types/personnalisation';
 import ReactMarkdown from 'react-markdown';
@@ -36,76 +36,51 @@ interface ParsedNote {
   content: string;
 }
 
+interface NoteStatus {
+  status: 'pending' | 'generating' | 'ready' | 'failed';
+  progress: number;
+  currentStep: string | null;
+  sectionIndex: number | null;
+  totalSections: number | null;
+  errorMessage: string | null;
+  hasContent: boolean;
+  content: string | null;
+  partialContent: string | null;
+}
+
 // Map step keys to translation keys for note generation
 const STEP_TO_TRANSLATION_KEY: Record<string, string> = {
+  'starting': 'gen_step_analyzing_structure',
   'analyzing_document': 'gen_step_analyzing_structure',
   'extracting_chapter': 'gen_step_transcribing_sections',
   'verifying_content': 'gen_step_verifying_completeness',
   'generating_content': 'gen_step_generating_glossary',
   'finalizing': 'gen_step_saving_note',
+  'complete': 'gen_step_saving_note',
 };
 
-// Helper to translate progress messages from API
-function translateProgressMessage(
-  message: string | undefined,
-  step: string | undefined,
+// Helper to translate progress messages
+function getProgressMessage(
+  step: string | null,
   translate: (key: string) => string,
-  sectionIndex?: number,
-  totalSections?: number
+  sectionIndex?: number | null,
+  totalSections?: number | null
 ): string {
-  // If we have a step key, use it for translation
-  if (step) {
-    const translationKey = STEP_TO_TRANSLATION_KEY[step];
-    if (translationKey) {
-      let translated = translate(translationKey);
-      // Replace placeholders if we're transcribing sections
-      if (step === 'extracting_chapter' && sectionIndex !== undefined && totalSections !== undefined) {
-        translated = translate('aplus_note_progress_transcribing')
-          .replace('{current}', sectionIndex.toString())
-          .replace('{total}', totalSections.toString());
-      }
-      return translated;
+  if (!step) return translate('gen_step_analyzing_structure');
+
+  const translationKey = STEP_TO_TRANSLATION_KEY[step];
+  if (translationKey) {
+    let translated = translate(translationKey);
+    // Replace placeholders if we're transcribing sections
+    if (step === 'extracting_chapter' && sectionIndex && totalSections) {
+      translated = translate('aplus_note_progress_transcribing')
+        .replace('{current}', sectionIndex.toString())
+        .replace('{total}', totalSections.toString());
     }
+    return translated;
   }
 
-  // Fallback for legacy messages (backwards compatibility)
-  if (!message) return translate('gen_step_analyzing_structure');
-
-  // Map API messages to translation keys
-  if (message.includes('Analyzing document structure')) {
-    return translate('gen_step_analyzing_structure');
-  }
-  if (message.includes('Transcribing section') || message.includes('Transcribing')) {
-    // Extract numbers from "Transcribing section 3/6..." or "Transcribing 6 sections..."
-    const sectionMatch = message.match(/(\d+)\/(\d+)/);
-    if (sectionMatch) {
-      return translate('aplus_note_progress_transcribing')
-        .replace('{current}', sectionMatch[1])
-        .replace('{total}', sectionMatch[2]);
-    }
-    const countMatch = message.match(/Transcribing (\d+) sections/);
-    if (countMatch) {
-      return translate('aplus_note_progress_transcribing')
-        .replace('{current}', '1')
-        .replace('{total}', countMatch[1]);
-    }
-    return translate('aplus_note_progress_generating');
-  }
-  if (message.includes('Generating glossary')) {
-    return translate('gen_step_generating_glossary');
-  }
-  if (message.includes('Generating note')) {
-    return translate('aplus_note_progress_generating');
-  }
-  if (message.includes('Saving note')) {
-    return translate('gen_step_saving_note');
-  }
-  if (message.includes('Verifying completeness')) {
-    return translate('gen_step_verifying_completeness');
-  }
-
-  // Fallback: return as-is if no match
-  return message;
+  return translate('gen_step_analyzing_structure');
 }
 
 export default function APlusNoteView({ courseId, courseTitle, courseStatus, onModalStateChange }: APlusNoteViewProps) {
@@ -115,15 +90,8 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
   const { isDark } = useTheme();
   const { triggerRefresh } = useCoursesRefresh();
   const [noteContent, setNoteContent] = useState<string | null>(null);
-  const [streamingContent, setStreamingContent] = useState<string>(''); // Content being streamed
-  const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [generationMessage, setGenerationMessage] = useState('');
-  const [generationStep, setGenerationStep] = useState<string | undefined>();
-  const [currentSection, setCurrentSection] = useState<string | undefined>();
-  const [sectionIndex, setSectionIndex] = useState<number | undefined>();
-  const [totalSections, setTotalSections] = useState<number | undefined>();
+  const [loading, setLoading] = useState(true);
+  const [noteStatus, setNoteStatus] = useState<NoteStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -132,8 +100,16 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
   const [saving, setSaving] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showPersonnalisation, setShowPersonnalisation] = useState(false);
-  const [lastConfig, setLastConfig] = useState<PersonnalisationConfig | null>(null); // Config utilisée pour la dernière génération
+  const [lastConfig, setLastConfig] = useState<PersonnalisationConfig | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Derived state
+  const isGenerating = noteStatus?.status === 'generating';
+  const generationProgress = noteStatus?.progress ?? 0;
+  const sectionIndex = noteStatus?.sectionIndex;
+  const totalSections = noteStatus?.totalSections;
+  const currentStep = noteStatus?.currentStep;
+  const partialContent = noteStatus?.partialContent;
 
   // Parse the note content to extract title, topics, and main content
   const parsedNote = useMemo((): ParsedNote | null => {
@@ -143,28 +119,24 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     let topics: string[] = [];
     let content = noteContent;
 
-    // Extract title from first H1 (handles "for", "pour", "für", or ":")
+    // Extract title from first H1
     const titleMatch = noteContent.match(/^#\s*✦?\s*A\+ Note\s*(?:for|pour|für|:)?\s*(.+?)$/m);
     if (titleMatch) {
       title = titleMatch[1].trim();
-      // Remove the title line from content
       content = content.replace(titleMatch[0], '').trim();
     }
 
-    // Extract topics from the Course/Topics line or backtick tags (handles multiple languages)
+    // Extract topics
     const topicsLineMatch = content.match(/\*\*(?:Course|Cours|Kurs):\*\*.*?\|\s*\*\*(?:Topics|Sujets|Themen):\*\*\s*(.+?)$/m);
     if (topicsLineMatch) {
       const topicsStr = topicsLineMatch[1];
-      // Extract backtick-wrapped topics
       const backtickTopics = topicsStr.match(/`([^`]+)`/g);
       if (backtickTopics) {
         topics = backtickTopics.map(t => t.replace(/`/g, ''));
       }
-      // Remove the topics line from content
       content = content.replace(topicsLineMatch[0], '').trim();
     }
 
-    // Also try to extract standalone topics if not found in the line above
     if (topics.length === 0) {
       const standaloneTopics = content.match(/^`([^`]+)`\s*`([^`]+)`/m);
       if (standaloneTopics) {
@@ -178,24 +150,58 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     return { title, topics, content };
   }, [noteContent, courseTitle]);
 
-  // Check if note already exists and load saved config
+  // Fetch note and status
+  const fetchNoteStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/courses/${courseId}/note/status`, {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data: NoteStatus = await response.json();
+        setNoteStatus(data);
+
+        // If ready and has content, update note content
+        if (data.status === 'ready' && data.content) {
+          setNoteContent(data.content);
+          triggerRefresh();
+        }
+
+        // If failed, set error
+        if (data.status === 'failed' && data.errorMessage) {
+          setError(data.errorMessage);
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error('Error fetching note status:', err);
+    }
+    return null;
+  }, [courseId, triggerRefresh]);
+
+  // Initial fetch
   useEffect(() => {
-    const fetchNote = async () => {
+    const fetchInitial = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/courses/${courseId}/note`, {
-          credentials: 'include', // Ensure cookies are sent for guest users
+        // First try to get existing note
+        const noteResponse = await fetch(`/api/courses/${courseId}/note`, {
+          credentials: 'include',
         });
-        if (response.ok) {
-          const data = await response.json();
+
+        if (noteResponse.ok) {
+          const data = await noteResponse.json();
           if (data.content) {
             setNoteContent(data.content);
           }
-          // Restaurer la config sauvegardée pour la régénération
           if (data.config) {
             setLastConfig(data.config as PersonnalisationConfig);
           }
         }
+
+        // Then get status
+        await fetchNoteStatus();
       } catch (err) {
         console.error('Error fetching note:', err);
       } finally {
@@ -203,10 +209,30 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
       }
     };
 
-    fetchNote();
-  }, [courseId]);
+    fetchInitial();
+  }, [courseId, fetchNoteStatus]);
 
-  // Block body scroll and notify parent when modal is open
+  // Polling when generating
+  useEffect(() => {
+    if (!isGenerating) return;
+
+    console.log('[APlusNote] Starting poll for note generation status');
+
+    const pollInterval = setInterval(async () => {
+      const status = await fetchNoteStatus();
+      if (status && (status.status === 'ready' || status.status === 'failed')) {
+        console.log('[APlusNote] Generation complete, stopping poll');
+        clearInterval(pollInterval);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => {
+      console.log('[APlusNote] Stopping poll');
+      clearInterval(pollInterval);
+    };
+  }, [isGenerating, fetchNoteStatus]);
+
+  // Block body scroll when modal is open
   useEffect(() => {
     const isModalOpen = showSignupModal || showPersonnalisation;
     if (isModalOpen) {
@@ -222,7 +248,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
 
   // Show personnalisation screen before regenerating (requires account)
   const handleShowPersonnalisation = () => {
-    // For regeneration, require account
     if (!user) {
       setShowSignupModal(true);
       return;
@@ -261,128 +286,43 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     // Hide personnalisation screen
     setShowPersonnalisation(false);
 
-    // Sauvegarder la config pour la prochaine régénération
+    // Save config for next regeneration
     if (config) {
       setLastConfig(config);
     }
 
-    setGenerating(true);
-    setGenerationProgress(0);
-    setGenerationMessage('');
-    setGenerationStep(undefined);
-    setStreamingContent(''); // Reset streaming content
-    setCurrentSection(undefined);
-    setSectionIndex(undefined);
-    setTotalSections(undefined);
     setError(null);
 
-    // Accumulator for streaming content
-    let accumulatedContent = '';
-
     try {
+      // Call the API - it returns immediately (fire-and-forget)
       const response = await fetch(`/api/courses/${courseId}/note/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config }),
-        credentials: 'include', // Ensure cookies are sent for guest users
+        credentials: 'include',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate note');
+        throw new Error(errorData.error || 'Failed to start note generation');
       }
 
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response stream');
-      }
+      // Immediately fetch status to trigger polling
+      await fetchNoteStatus();
 
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        // Process complete SSE messages
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || ''; // Keep incomplete message in buffer
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              if (data.type === 'progress') {
-                setGenerationProgress(data.progress || 0);
-                setGenerationMessage(data.message || '');
-                setGenerationStep(data.step);
-                // Update section info if provided in progress event
-                if (data.sectionIndex !== undefined) setSectionIndex(data.sectionIndex);
-                if (data.totalSections !== undefined) setTotalSections(data.totalSections);
-              } else if (data.type === 'chunk') {
-                // Accumulate streaming content
-                accumulatedContent += data.content;
-                setStreamingContent(accumulatedContent);
-                // Update section info if provided
-                if (data.section) setCurrentSection(data.section);
-                if (data.sectionIndex) setSectionIndex(data.sectionIndex);
-                if (data.totalSections) setTotalSections(data.totalSections);
-              } else if (data.type === 'complete') {
-                // Use accumulated content or content from complete event
-                const finalContent = data.content || accumulatedContent;
-                setNoteContent(finalContent);
-                setStreamingContent('');
-                setGenerationProgress(100);
-                setGenerationMessage('');
-                // Trigger global refresh to update course cards
-                triggerRefresh();
-              } else if (data.type === 'error') {
-                throw new Error(data.message || 'Generation failed');
-              }
-            } catch (parseError) {
-              // Ignore parse errors for incomplete messages
-              if (parseError instanceof SyntaxError) continue;
-              throw parseError;
-            }
-          }
-        }
-      }
     } catch (err) {
       console.error('Generation error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
-      // If we have accumulated content, preserve it
-      if (accumulatedContent) {
-        setNoteContent(accumulatedContent);
-        setStreamingContent('');
-      }
-    } finally {
-      setGenerating(false);
-      setGenerationProgress(0);
-      setGenerationMessage('');
-      setGenerationStep(undefined);
-      setCurrentSection(undefined);
-      setSectionIndex(undefined);
-      setTotalSections(undefined);
     }
   };
 
   const handleCopy = async () => {
     if (!contentRef.current || !parsedNote) return;
     try {
-      // Get the HTML content for rich text paste (Word, Google Docs, etc.)
       const htmlContent = contentRef.current.innerHTML;
-
-      // Create a blob with HTML content
       const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
       const textBlob = new Blob([noteContent || ''], { type: 'text/plain' });
 
-      // Use ClipboardItem API for rich text copy
       const clipboardItem = new ClipboardItem({
         'text/html': htmlBlob,
         'text/plain': textBlob,
@@ -392,7 +332,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      // Fallback to plain text if ClipboardItem not supported
       console.error('Rich copy failed, falling back to plain text:', err);
       try {
         await navigator.clipboard.writeText(noteContent || '');
@@ -425,7 +364,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editContent }),
-        credentials: 'include', // Ensure cookies are sent for guest users
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -471,63 +410,64 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     );
   }
 
-  // Course still processing (text extraction) - show waiting message with mascot
+  // Course still processing (text extraction) - show waiting message
   if (courseStatus === 'pending' || courseStatus === 'processing') {
     return <GenerationLoadingScreen type="extraction" />;
   }
 
-  // No note yet - show personnalisation screen directly
-  if (!noteContent || !parsedNote) {
-    // Show generation in progress with streaming content
-    if (generating) {
+  // Note is being generated - show progress with live content streaming
+  if (isGenerating) {
+    // If we have partial content, show it in real-time like desktop
+    if (partialContent && partialContent.trim().length > 0) {
       return (
         <div className="space-y-4">
-          {/* Show GenerationLoadingScreen when no content yet */}
-          {!streamingContent && (
-            <GenerationLoadingScreen
+          {/* Progress bar at top */}
+          <div className={`rounded-2xl border shadow-sm p-4 transition-colors ${
+            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+          }`}>
+            <GenerationProgress
               type="note"
               progress={generationProgress}
-              progressMessage={translateProgressMessage(generationMessage, generationStep, translate, sectionIndex, totalSections)}
-              itemsGenerated={sectionIndex}
-              totalItems={totalSections}
+              message={getProgressMessage(currentStep ?? null, translate, sectionIndex, totalSections)}
+              itemsGenerated={sectionIndex ?? undefined}
+              totalItems={totalSections ?? undefined}
             />
-          )}
+          </div>
 
-          {/* Streaming content - shown once content starts arriving */}
-          {streamingContent && (
-            <div className={`rounded-2xl border shadow-sm transition-colors ${
-              isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-            }`}>
-              {/* Header with progress */}
-              <div className={`p-4 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
-                <GenerationProgress
-                  type="note"
-                  progress={generationProgress}
-                  message={translateProgressMessage(generationMessage, generationStep, translate, sectionIndex, totalSections)}
-                  chapterIndex={sectionIndex}
-                  totalChapters={totalSections}
-                  chapterTitle={currentSection}
-                  compact
-                />
-              </div>
-
-              {/* Streaming content */}
-              <div className="p-6">
-                <StreamingMarkdownView
-                  content={streamingContent}
-                  isStreaming={true}
-                  showCursor={true}
-                  autoScroll={true}
-                  maxHeight="60vh"
-                />
-              </div>
+          {/* Live streaming content */}
+          <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+          }`}>
+            <div className="p-4 sm:p-6 md:p-8">
+              <StreamingMarkdownView
+                content={partialContent}
+                isStreaming={true}
+                showCursor={true}
+                autoScroll={true}
+                maxHeight="60vh"
+              />
             </div>
-          )}
+          </div>
         </div>
       );
     }
 
-    // Show personnalisation screen directly (no intermediate button)
+    // No partial content yet - show loading screen
+    return (
+      <div className="space-y-4">
+        <GenerationLoadingScreen
+          type="note"
+          progress={generationProgress}
+          progressMessage={getProgressMessage(currentStep ?? null, translate, sectionIndex, totalSections)}
+          itemsGenerated={sectionIndex ?? undefined}
+          totalItems={totalSections ?? undefined}
+        />
+      </div>
+    );
+  }
+
+  // No note yet - show personnalisation screen directly
+  if (!noteContent || !parsedNote) {
     return (
       <>
         {error && (
@@ -546,10 +486,10 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
         <PersonnalisationScreen
           fileName={courseTitle}
           onGenerate={handleGenerate}
-          isGenerating={generating}
+          isGenerating={false}
         />
 
-        {/* Signup Modal - rendered via portal to escape transform context */}
+        {/* Signup Modal */}
         {showSignupModal && createPortal(
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[9999]">
             <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
@@ -593,7 +533,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
   // Show the note with structured header
   return (
     <>
-      {/* Signup Modal for anonymous users - rendered via portal to escape transform context */}
+      {/* Signup Modal */}
       {showSignupModal && createPortal(
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[9999]">
           <div className={`rounded-2xl max-w-md w-full p-6 shadow-xl ${
@@ -631,21 +571,19 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
         document.body
       )}
 
-      {/* Personnalisation Modal for regeneration - rendered via portal to escape transform context */}
+      {/* Personnalisation Modal for regeneration */}
       {showPersonnalisation && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowPersonnalisation(false)}
           />
-          {/* Modal content */}
           <div className="relative max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <PersonnalisationScreen
               fileName={courseTitle}
               onGenerate={handleGenerate}
               onCancel={() => setShowPersonnalisation(false)}
-              isGenerating={generating}
+              isGenerating={false}
               initialConfig={lastConfig ?? undefined}
             />
           </div>
@@ -653,216 +591,159 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
         document.body
       )}
 
-      {/* Regeneration streaming view - replaces note content during regeneration */}
-      {generating && noteContent && (
-        <div className="space-y-4 mb-4">
-          {/* Show GenerationLoadingScreen when no content yet */}
-          {!streamingContent && (
-            <GenerationLoadingScreen
-              type="note"
-              progress={generationProgress}
-              progressMessage={translateProgressMessage(generationMessage, generationStep, translate, sectionIndex, totalSections)}
-              itemsGenerated={sectionIndex}
-              totalItems={totalSections}
-            />
-          )}
-
-          {/* Streaming content - shown once content starts arriving */}
-          {streamingContent && (
-            <div className={`rounded-2xl border shadow-sm transition-colors ${
-              isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-            }`}>
-              {/* Header with progress */}
-              <div className={`p-4 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
-                <GenerationProgress
-                  type="note"
-                  progress={generationProgress}
-                  message={translateProgressMessage(generationMessage, generationStep, translate, sectionIndex, totalSections)}
-                  chapterIndex={sectionIndex}
-                  totalChapters={totalSections}
-                  chapterTitle={currentSection}
-                  compact
-                />
-              </div>
-
-              {/* Streaming content */}
-              <div className="p-6">
-                <StreamingMarkdownView
-                  content={streamingContent}
-                  isStreaming={true}
-                  showCursor={true}
-                  autoScroll={true}
-                  maxHeight="60vh"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Action bar - above the content (hidden during regeneration) */}
-      {!generating && (
-        <div className="flex items-center justify-end gap-1 mb-4">
-          <button
-            onClick={handleCopyWithAuth}
-            disabled={generating}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-            title={translate('copy')}
-          >
-            {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
-          </button>
-          <button
-            onClick={handleDownloadWithAuth}
-            disabled={downloading || generating}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-            title={translate('download')}
-          >
-            {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-          </button>
-          <button
-            onClick={handleEditWithAuth}
-            disabled={isEditing || generating}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-            title={translate('edit')}
-          >
-            <Pencil className="w-5 h-5" />
-          </button>
-          <button
-            onClick={handleShowPersonnalisation}
-            disabled={generating || isEditing}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/20' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
-            }`}
-            title={translate('regenerate')}
-          >
-            {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RotateCcw className="w-5 h-5" />}
-          </button>
-        </div>
-      )}
-
-      {/* Note content (hidden during regeneration) */}
-      {!generating && (
-        <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
-          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-        }`}>
-      <div className="p-4 sm:p-6 md:p-8">
-        {isEditing ? (
-          <div className="space-y-3 sm:space-y-4">
-            {/* Edit toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <p className={`text-xs sm:text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                {translate('aplus_note_edit_wysiwyg_hint')}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCancelEdit}
-                  disabled={saving}
-                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors ${
-                    isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-                  }`}
-                >
-                  <X className="w-4 h-4" />
-                  {translate('cancel')}
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={saving}
-                  className="inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 text-xs sm:text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
-                >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  {translate('save')}
-                </button>
-              </div>
-            </div>
-            {/* WYSIWYG Editor */}
-            <Suspense fallback={
-              <div className={`flex items-center justify-center h-[400px] sm:h-[500px] rounded-xl border ${
-                isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'
-              }`}>
-                <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
-              </div>
-            }>
-              <RevisionSheetEditor
-                initialContent={editContent}
-                onChange={setEditContent}
-                courseId={courseId}
-                isDark={isDark}
-                placeholder={translate('aplus_note_editor_placeholder')}
-              />
-            </Suspense>
-          </div>
-        ) : (
-          <div ref={contentRef} className={`golden-note-content ${isDark ? 'dark-mode' : ''}`}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                h1: ({children}) => <h1 className={`text-2xl font-bold mt-0 mb-6 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{children}</h1>,
-                h2: ({children}) => <h2 className={`text-xl font-bold mt-8 mb-4 pb-2 border-b-2 ${isDark ? 'text-neutral-50 border-neutral-700' : 'text-gray-900 border-gray-200'}`}>{children}</h2>,
-                h3: ({children}) => <h3 className={`text-lg font-semibold mt-6 mb-3 ${isDark ? 'text-neutral-100' : 'text-gray-800'}`}>{children}</h3>,
-                // Custom paragraph that handles images properly to avoid hydration errors
-                // In HTML, <figure> cannot be inside <p>, so we detect images and use <div> instead
-                p: ({children, node}) => {
-                  // Check if any child is an image element
-                  const hasImage = node?.children?.some((child: any) =>
-                    child.tagName === 'img' ||
-                    (child.type === 'element' && child.tagName === 'img')
-                  );
-
-                  if (hasImage) {
-                    // Use div instead of p when containing images to avoid hydration errors
-                    return <div className={`my-3 leading-relaxed ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>{children}</div>;
-                  }
-                  return <p className={`my-3 leading-relaxed ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>{children}</p>;
-                },
-                ul: ({children}) => <ul>{children}</ul>,
-                ol: ({children}) => <ol>{children}</ol>,
-                li: ({children}) => <li>{children}</li>,
-                strong: ({children}) => <strong className={`font-semibold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{children}</strong>,
-                em: ({children}) => <em className={`italic ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{children}</em>,
-                blockquote: ({children}) => <blockquote className={`border-l-4 border-orange-500 px-4 py-3 my-4 rounded-r-lg ${isDark ? 'bg-orange-500/10' : 'bg-orange-50'}`}>{children}</blockquote>,
-                code: ({children, className}) => {
-                  const isInline = !className;
-                  return isInline
-                    ? <code className={`px-1.5 py-0.5 rounded text-sm font-medium ${isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>{children}</code>
-                    : <code className={className}>{children}</code>;
-                },
-                pre: ({children}) => <pre className={`rounded-lg p-4 overflow-x-auto my-4 ${isDark ? 'bg-neutral-800 border border-neutral-700' : 'bg-gray-50 border border-gray-200'}`}>{children}</pre>,
-                // Render images as standalone figures, not inside paragraphs
-                img: ({src, alt}) => (
-                  <figure className="my-6 block">
-                    <img
-                      src={src}
-                      alt={alt || 'Figure'}
-                      className={`w-full max-w-2xl mx-auto rounded-xl shadow-lg border ${isDark ? 'border-neutral-700' : 'border-gray-200'}`}
-                      loading="lazy"
-                    />
-                    {alt && (
-                      <figcaption className={`text-center text-sm mt-2 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                        {alt}
-                      </figcaption>
-                    )}
-                  </figure>
-                ),
-              }}
-            >
-              {parsedNote.content}
-            </ReactMarkdown>
-          </div>
-        )}
+      {/* Action bar - above the content */}
+      <div className="flex items-center justify-end gap-1 mb-4">
+        <button
+          onClick={handleCopyWithAuth}
+          className={`p-2 rounded-lg transition-colors ${
+            isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+          title={translate('copy')}
+        >
+          {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+        </button>
+        <button
+          onClick={handleDownloadWithAuth}
+          disabled={downloading}
+          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+          title={translate('download')}
+        >
+          {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+        </button>
+        <button
+          onClick={handleEditWithAuth}
+          disabled={isEditing}
+          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+          title={translate('edit')}
+        >
+          <Pencil className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleShowPersonnalisation}
+          disabled={isEditing}
+          className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+            isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/20' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
+          }`}
+          title={translate('regenerate')}
+        >
+          <RotateCcw className="w-5 h-5" />
+        </button>
       </div>
-    </div>
-      )}
+
+      {/* Note content */}
+      <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+        isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+      }`}>
+        <div className="p-4 sm:p-6 md:p-8">
+          {isEditing ? (
+            <div className="space-y-3 sm:space-y-4">
+              {/* Edit toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p className={`text-xs sm:text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                  {translate('aplus_note_edit_wysiwyg_hint')}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                    className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors ${
+                      isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                    }`}
+                  >
+                    <X className="w-4 h-4" />
+                    {translate('cancel')}
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={saving}
+                    className="inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1.5 text-xs sm:text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    {translate('save')}
+                  </button>
+                </div>
+              </div>
+              {/* WYSIWYG Editor */}
+              <Suspense fallback={
+                <div className={`flex items-center justify-center h-[400px] sm:h-[500px] rounded-xl border ${
+                  isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
+                </div>
+              }>
+                <RevisionSheetEditor
+                  initialContent={editContent}
+                  onChange={setEditContent}
+                  courseId={courseId}
+                  isDark={isDark}
+                  placeholder={translate('aplus_note_editor_placeholder')}
+                />
+              </Suspense>
+            </div>
+          ) : (
+            <div ref={contentRef} className={`golden-note-content ${isDark ? 'dark-mode' : ''}`}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  h1: ({children}) => <h1 className={`text-2xl font-bold mt-0 mb-6 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{children}</h1>,
+                  h2: ({children}) => <h2 className={`text-xl font-bold mt-8 mb-4 pb-2 border-b-2 ${isDark ? 'text-neutral-50 border-neutral-700' : 'text-gray-900 border-gray-200'}`}>{children}</h2>,
+                  h3: ({children}) => <h3 className={`text-lg font-semibold mt-6 mb-3 ${isDark ? 'text-neutral-100' : 'text-gray-800'}`}>{children}</h3>,
+                  p: ({children, node}) => {
+                    const hasImage = node?.children?.some((child: any) =>
+                      child.tagName === 'img' ||
+                      (child.type === 'element' && child.tagName === 'img')
+                    );
+
+                    if (hasImage) {
+                      return <div className={`my-3 leading-relaxed ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>{children}</div>;
+                    }
+                    return <p className={`my-3 leading-relaxed ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>{children}</p>;
+                  },
+                  ul: ({children}) => <ul>{children}</ul>,
+                  ol: ({children}) => <ol>{children}</ol>,
+                  li: ({children}) => <li>{children}</li>,
+                  strong: ({children}) => <strong className={`font-semibold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{children}</strong>,
+                  em: ({children}) => <em className={`italic ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{children}</em>,
+                  blockquote: ({children}) => <blockquote className={`border-l-4 border-orange-500 px-4 py-3 my-4 rounded-r-lg ${isDark ? 'bg-orange-500/10' : 'bg-orange-50'}`}>{children}</blockquote>,
+                  code: ({children, className}) => {
+                    const isInline = !className;
+                    return isInline
+                      ? <code className={`px-1.5 py-0.5 rounded text-sm font-medium ${isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>{children}</code>
+                      : <code className={className}>{children}</code>;
+                  },
+                  pre: ({children}) => <pre className={`rounded-lg p-4 overflow-x-auto my-4 ${isDark ? 'bg-neutral-800 border border-neutral-700' : 'bg-gray-50 border border-gray-200'}`}>{children}</pre>,
+                  img: ({src, alt}) => (
+                    <figure className="my-6 block">
+                      <img
+                        src={src}
+                        alt={alt || 'Figure'}
+                        className={`w-full max-w-2xl mx-auto rounded-xl shadow-lg border ${isDark ? 'border-neutral-700' : 'border-gray-200'}`}
+                        loading="lazy"
+                      />
+                      {alt && (
+                        <figcaption className={`text-center text-sm mt-2 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                          {alt}
+                        </figcaption>
+                      )}
+                    </figure>
+                  ),
+                }}
+              >
+                {parsedNote.content}
+              </ReactMarkdown>
+            </div>
+          )}
+        </div>
+      </div>
     </>
   );
 }

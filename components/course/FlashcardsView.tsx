@@ -1138,6 +1138,19 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
     );
   }
 
+  // Show loading screen during regeneration
+  if (generating && flashcards.length > 0) {
+    return (
+      <GenerationLoadingScreen
+        type="flashcards"
+        progress={generationProgress}
+        progressMessage={translateStepMessage(generationStep, progressMessage)}
+        itemsGenerated={cardsGenerated}
+        totalItems={totalCards}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Progress indicator and points */}
@@ -1636,28 +1649,6 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
         document.body
       )}
 
-      {/* Toast de chargement pendant la régénération */}
-      {generating && flashcards.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
-          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border ${
-            isDark
-              ? 'bg-neutral-800 border-neutral-700 text-neutral-100'
-              : 'bg-white border-gray-200 text-gray-900'
-          }`}>
-            <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">
-                {translate('flashcards_regenerating') || 'Régénération des flashcards...'}
-              </span>
-              {cardsGenerated > 0 && (
-                <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                  {cardsGenerated}{totalCards ? ` / ${totalCards}` : ''} {translate('flashcards_cards_generated') || 'cartes générées'}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

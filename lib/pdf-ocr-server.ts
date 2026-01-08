@@ -117,6 +117,7 @@ import {
   llmLogger,
   LLM_CONFIG,
 } from './llm';
+import { extractTextWithMistralOCR, extractTextFromImageWithMistral } from './mistral-ocr';
 
 /**
  * Represents a corrupted formula zone in a PDF
@@ -202,12 +203,40 @@ Tables: use Markdown | Col1 | Col2 |
 Extract now:`;
 
 /**
- * Extract text from PDF using page-by-page OCR
+ * Extract text from PDF using Mistral OCR (primary) or page-by-page GPT-4 Vision (fallback)
+ *
+ * Mistral OCR is:
+ * - More reliable (no content refusals)
+ * - Cheaper (~$1/1000 pages vs ~$15-20/1000 pages)
+ * - Faster (processes entire PDF at once)
+ * - Better at math/LaTeX
+ *
  * @param buffer - PDF file buffer
  * @returns Extracted text from all pages
  */
 export async function extractTextFromPdfWithOCR(buffer: Buffer): Promise<string> {
-  console.log('🔬 Starting page-by-page OCR extraction...');
+  console.log('🔬 Starting OCR extraction...');
+
+  // Try Mistral OCR first (preferred)
+  if (process.env.MISTRAL) {
+    console.log('🔮 Using Mistral OCR (primary)...');
+    const mistralResult = await extractTextWithMistralOCR(buffer, 'document.pdf');
+
+    if (mistralResult.success && mistralResult.text.length > 0) {
+      console.log(`✅ Mistral OCR extracted ${mistralResult.text.length} characters from ${mistralResult.pages} pages`);
+      return mistralResult.text;
+    }
+
+    console.log('⚠️ Mistral OCR failed or returned empty, falling back to GPT-4 Vision...');
+    if (mistralResult.error) {
+      console.log(`⚠️ Mistral error: ${mistralResult.error}`);
+    }
+  } else {
+    console.log('⚠️ MISTRAL API key not configured, using GPT-4 Vision fallback...');
+  }
+
+  // Fallback to page-by-page GPT-4 Vision OCR
+  console.log('🔬 Starting page-by-page GPT-4 Vision OCR (fallback)...');
 
   try {
     // Convert Buffer to Uint8Array (pdfjs-dist requires Uint8Array, not Buffer)
@@ -233,7 +262,7 @@ export async function extractTextFromPdfWithOCR(buffer: Buffer): Promise<string>
         const base64Image = imageBuffer.toString('base64');
         const imageDataUrl = `data:image/png;base64,${base64Image}`;
 
-        // Extract text using specialized Math OCR
+        // Extract text using specialized Math OCR (GPT-4 Vision)
         const pageText = await extractTextWithMathOCR(imageDataUrl);
 
         if (pageText && pageText.trim().length > 0) {
@@ -307,7 +336,16 @@ export async function extractTextFromSpecificPages(
         const base64Image = imageBuffer.toString('base64');
         const imageDataUrl = `data:image/png;base64,${base64Image}`;
 
-        const pageText = await extractTextWithMathOCR(imageDataUrl);
+        // Try Mistral OCR first for images, fallback to GPT-4 Vision
+        let pageText = '';
+        if (process.env.MISTRAL) {
+          pageText = await extractTextFromImageWithMistral(imageDataUrl);
+        }
+
+        // Fallback to GPT-4 Vision if Mistral failed
+        if (!pageText || pageText.trim().length === 0) {
+          pageText = await extractTextWithMathOCR(imageDataUrl);
+        }
 
         if (pageText && pageText.trim().length > 0) {
           results.set(pageNum, pageText.trim());

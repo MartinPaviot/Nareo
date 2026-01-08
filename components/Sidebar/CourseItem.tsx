@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { FileText, Check, MoreHorizontal, FolderInput, Inbox, ChevronRight } from 'lucide-react';
+import { FileText, Check, MoreHorizontal, FolderInput, Inbox } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getMasteryColor } from '@/lib/courses/utils';
@@ -101,7 +101,7 @@ export default function CourseItem({
         }`} />
 
         {/* Course name and subtitle */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 text-left">
           <span className={`text-[10px] font-medium truncate block ${
             isActive
               ? 'text-orange-500'
@@ -135,17 +135,9 @@ export default function CourseItem({
           {masteredChapters}/{totalChapters}
         </span>
 
-        {/* Completed checkmark or chevron */}
-        {isCompleted ? (
+        {/* Completed checkmark */}
+        {isCompleted && (
           <Check className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-        ) : (
-          <ChevronRight className={`w-3.5 h-3.5 transition-transform flex-shrink-0 ${
-            isActive
-              ? 'text-orange-500'
-              : isDark
-                ? 'text-neutral-500 group-hover:text-neutral-400'
-                : 'text-gray-400 group-hover:text-gray-500'
-          } group-hover:translate-x-0.5`} />
         )}
       </button>
 
@@ -174,7 +166,7 @@ export default function CourseItem({
       {showMenu && canMove && (
         <div
           ref={menuRef}
-          className={`absolute right-0 top-8 z-50 w-48 rounded-lg shadow-lg border py-1 ${
+          className={`absolute right-0 top-8 z-50 w-36 rounded-lg shadow-lg border py-1 ${
             isDark
               ? 'bg-neutral-800 border-neutral-700'
               : 'bg-white border-gray-200'
@@ -198,14 +190,14 @@ export default function CourseItem({
                 handleMove(folder.id);
               }}
               disabled={isMoving}
-              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
                 isDark
                   ? 'hover:bg-neutral-700 text-neutral-200'
                   : 'hover:bg-gray-100 text-gray-700'
               } ${isMoving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span
-                className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                className="w-2 h-2 rounded-sm flex-shrink-0"
                 style={{ backgroundColor: folder.color }}
               />
               <span className="truncate">{folder.name}</span>
@@ -224,13 +216,13 @@ export default function CourseItem({
                   handleMove(null);
                 }}
                 disabled={isMoving}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+                className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
                   isDark
                     ? 'hover:bg-neutral-700 text-neutral-400'
                     : 'hover:bg-gray-100 text-gray-500'
                 } ${isMoving ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <Inbox className="w-3.5 h-3.5 flex-shrink-0" />
+                <Inbox className="w-3 h-3 flex-shrink-0" />
                 <span>{translate('sidebar_no_folder') || 'Sans dossier'}</span>
               </button>
             </>

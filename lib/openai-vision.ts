@@ -1931,19 +1931,6 @@ export async function generateMixedQuizParallel(
 ) {
   console.log('🎲 [PARALLEL] Generating mixed quiz for chapter:', chapterMetadata.title);
 
-  // Pre-extract facts once for all question types (this is shared)
-  let preExtractedFacts: VerifiableFact[] = options?.facts || [];
-  if (preExtractedFacts.length === 0) {
-    console.log('📚 Pre-extracting verifiable facts for mixed quiz...');
-    try {
-      preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
-      console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
-    } catch (factError: any) {
-      console.error(`❌ Failed to extract facts for "${chapterMetadata.title}":`, factError.message);
-      preExtractedFacts = [];
-    }
-  }
-
   const activeTypes = Object.entries(quizConfig.types).filter(([, active]) => active);
 
   if (activeTypes.length === 0) {
@@ -1981,10 +1968,31 @@ export async function generateMixedQuizParallel(
 
   console.log(`📊 [PARALLEL] Question distribution for ${totalQuestions} total:`, questionsPerType);
 
-  // Generate all question types IN PARALLEL
+  // OPTIMIZATION: Start fact extraction in parallel with question generation setup
+  // Facts are used to enrich prompts but generation can start without them
+  let factsPromise: Promise<VerifiableFact[]>;
+  if (options?.facts && options.facts.length > 0) {
+    factsPromise = Promise.resolve(options.facts);
+  } else {
+    console.log('📚 Starting parallel fact extraction for mixed quiz...');
+    factsPromise = extractVerifiableFacts(chapterText, chapterMetadata.title, language)
+      .then(facts => {
+        console.log(`📚 Extracted ${facts.length} verifiable facts`);
+        return facts;
+      })
+      .catch((factError: any) => {
+        console.error(`❌ Failed to extract facts for "${chapterMetadata.title}":`, factError.message);
+        return [] as VerifiableFact[];
+      });
+  }
+
+  // Generate all question types IN PARALLEL (facts will be awaited inside each generator)
   const generationPromises = activeTypes.map(async ([type]) => {
     const typeQuota = questionsPerType[type] || 0;
     if (typeQuota === 0) return [];
+
+    // Wait for facts to be ready (they're being extracted in parallel)
+    const extractedFacts = await factsPromise;
 
     const typeQuizConfig: QuizConfig = {
       ...quizConfig,
@@ -1993,7 +2001,7 @@ export async function generateMixedQuizParallel(
 
     const sharedOptions = {
       enableSemanticValidation: options?.enableSemanticValidation,
-      facts: preExtractedFacts,
+      facts: extractedFacts,
       quizConfig: typeQuizConfig,
     };
 

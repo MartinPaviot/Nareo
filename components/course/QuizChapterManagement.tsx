@@ -95,10 +95,12 @@ interface QuizChapterManagementProps {
   isGenerating?: boolean;
   generationProgress?: number; // Progress percentage (0-100)
   generationMessage?: string; // Current step message
-  /** Questions received from streaming during generation */
+  /** Questions received from streaming during generation (legacy, may be empty with fire-and-forget) */
   streamingQuestions?: StreamingQuestion[];
   /** Total expected questions from backend */
   totalExpectedQuestions?: number;
+  /** Number of questions generated so far (from polling) */
+  questionsGenerated?: number;
   /** Whether to show the interactive quiz view during generation */
   enableProgressiveQuiz?: boolean;
   hasFullAccess?: boolean;
@@ -125,6 +127,7 @@ export default function QuizChapterManagement({
   generationMessage = '',
   streamingQuestions = [],
   totalExpectedQuestions,
+  questionsGenerated = 0,
   enableProgressiveQuiz = false,
   hasFullAccess = false,
   isDemoId = false,
@@ -655,7 +658,7 @@ export default function QuizChapterManagement({
             type="quiz"
             progress={generationProgress || 0}
             progressMessage={generationMessage || translate('quiz_generation_in_progress', 'Génération en cours...')}
-            itemsGenerated={streamingQuestions.length}
+            itemsGenerated={questionsGenerated || streamingQuestions.length}
             totalItems={totalExpectedQuestions}
           />
         </div>
@@ -675,17 +678,17 @@ export default function QuizChapterManagement({
         }`}>
           {chapters.map((chapter, index) => {
             const isLocked = index > 0 && (!user || !hasFullAccess) && !isDemoId;
-            // During generation, consider chapter ready if it has streaming questions
+            // During generation, consider chapter ready if it has questions (from DB polling)
             const streamingChapterData = streamingQuestionsByChapter[chapter.id];
             const streamingCount = streamingChapterData?.questions.length || 0;
-            // During generation, ONLY show streaming questions (backend deletes old ones)
-            // After generation, show database count
-            const totalQuestionCount = isGenerating ? streamingCount : chapter.question_count;
+            // During generation, use DB count (updated via polling) since streaming isn't real-time
+            // After generation, also use DB count
+            const totalQuestionCount = chapter.question_count;
             // Chapter is "ready" (showing play button, not loader) if:
-            // During generation: chapter has streaming questions (questions are being added)
+            // During generation: chapter has questions in DB (from polling)
             // After generation: chapter has questions in DB
             const isChapterReady = isGenerating
-              ? streamingCount > 0  // During generation: ready only if it has streaming questions
+              ? chapter.question_count > 0  // During generation: ready if DB has questions
               : (chapter.status === 'ready' || chapter.question_count > 0); // After: check DB status
             const isExpanded = expandedChapter === chapter.id;
             const chapterQuestions = getChapterQuestions(chapter.id);
@@ -720,11 +723,11 @@ export default function QuizChapterManagement({
                       </div>
                       <div className={`flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs ${isDark ? 'text-neutral-500' : 'text-gray-600'}`}>
                         <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${
-                          isGenerating && streamingCount > 0
+                          isGenerating && totalQuestionCount > 0
                             ? isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
                             : isDark ? 'bg-neutral-800' : 'bg-gray-100'
                         }`}>
-                          {isGenerating && streamingCount > 0 && (
+                          {isGenerating && totalQuestionCount > 0 && (
                             <Loader2 className="w-3 h-3 animate-spin" />
                           )}
                           {(() => {

@@ -5,16 +5,20 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import GenerationProgress from './GenerationProgress';
 
-// Mascot images available in /public/chat/
-const MASCOT_IMAGES = [
-  '/chat/mascotte.png',
-  '/chat/Happy.png',
-  '/chat/Processing.png',
-  '/chat/Drag_and_Drop.png',
+// Animated GIFs available in /public/gifs/loading/
+const LOADING_GIFS = [
+  '/gifs/loading/giphy.gif',
+  '/gifs/loading/giphy (1).gif',
+  '/gifs/loading/giphy (2).gif',
+  '/gifs/loading/giphy (3).gif',
+  '/gifs/loading/giphy (4).gif',
+  '/gifs/loading/giphy (5).gif',
+  '/gifs/loading/giphy (6).gif',
+  '/gifs/loading/giphy (7).gif',
 ];
 
-// Rotation interval for mascot images (in milliseconds)
-const MASCOT_ROTATION_INTERVAL = 5000;
+// Rotation interval for GIFs (in milliseconds)
+const GIF_ROTATION_INTERVAL = 6000;
 
 // Rotation interval for messages (in milliseconds)
 const MESSAGE_ROTATION_INTERVAL = 8000;
@@ -63,19 +67,19 @@ export default function GenerationLoadingScreen({
   const { isDark } = useTheme();
 
   // Random starting index for variety
-  const [mascotIndex, setMascotIndex] = useState(() =>
-    Math.floor(Math.random() * MASCOT_IMAGES.length)
+  const [gifIndex, setGifIndex] = useState(() =>
+    Math.floor(Math.random() * LOADING_GIFS.length)
   );
   const [messageIndex, setMessageIndex] = useState(() =>
     Math.floor(Math.random() * LOADING_MESSAGE_KEYS.length)
   );
   const [fadeState, setFadeState] = useState<'in' | 'out'>('in');
 
-  // Rotate mascot images
+  // Rotate GIFs
   useEffect(() => {
     const timer = setInterval(() => {
-      setMascotIndex((prev) => (prev + 1) % MASCOT_IMAGES.length);
-    }, MASCOT_ROTATION_INTERVAL);
+      setGifIndex((prev) => (prev + 1) % LOADING_GIFS.length);
+    }, GIF_ROTATION_INTERVAL);
 
     return () => clearInterval(timer);
   }, []);
@@ -134,32 +138,21 @@ export default function GenerationLoadingScreen({
 
   const content = (
     <>
-      {/* Mascot with rotation */}
-      <div className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-4">
-        {MASCOT_IMAGES.map((src, index) => (
+      {/* Animated GIF with frame/border like ExtractionLoader */}
+      <div className={`relative w-full max-w-sm mx-auto h-48 sm:h-56 rounded-xl overflow-hidden mb-4 ${
+        isDark ? 'bg-neutral-800' : 'bg-gray-900'
+      }`}>
+        {LOADING_GIFS.map((src, index) => (
           <img
             key={src}
             src={src}
-            alt="Nareo"
+            alt="Loading animation"
             className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-500 ${
-              index === mascotIndex ? 'opacity-100' : 'opacity-0'
+              index === gifIndex ? 'opacity-100' : 'opacity-0'
             }`}
-            style={{
-              animation: index === mascotIndex ? 'gentle-bounce 2s ease-in-out infinite' : 'none'
-            }}
           />
         ))}
       </div>
-
-      {/* Title */}
-      <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-        {title}
-      </h3>
-
-      {/* Description */}
-      <p className={`text-sm mb-3 max-w-md mx-auto ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-        {description}
-      </p>
 
       {/* Generation progress with Claude-like animation */}
       {type !== 'extraction' && (
@@ -192,17 +185,6 @@ export default function GenerationLoadingScreen({
         <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isDark ? 'bg-orange-400' : 'bg-orange-500'}`} style={{ animationDelay: '200ms' }} />
         <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isDark ? 'bg-orange-400' : 'bg-orange-500'}`} style={{ animationDelay: '400ms' }} />
       </div>
-
-      <style jsx>{`
-        @keyframes gentle-bounce {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-8px);
-          }
-        }
-      `}</style>
     </>
   );
 

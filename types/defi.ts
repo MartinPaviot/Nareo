@@ -14,8 +14,8 @@ export type FriendshipStatus = 'pending' | 'accepted' | 'blocked';
 // ============================================
 
 export const TIME_OPTIONS = [
-  { value: 10, label: '10 secondes', description: 'Rapide' },
-  { value: 15, label: '15 secondes', description: 'Normal' },
+  { value: 10, label: '10 secondes', description: 'Rapide', descriptionKey: 'challenge_time_fast' },
+  { value: 15, label: '15 secondes', description: 'Normal', descriptionKey: 'challenge_time_normal' },
 ] as const;
 
 export const DEFAULT_TIME_PER_QUESTION = 10;

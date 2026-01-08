@@ -31,10 +31,10 @@ export default function LearnPageHeader({
   }[maxWidth];
 
   return (
-    <header className={`border-b transition-colors sticky top-0 z-30 backdrop-blur-xl h-[52px] ${
+    <header className={`border-b transition-colors sticky top-0 z-30 h-[52px] ${
       isDark
-        ? 'bg-neutral-900/95 border-neutral-800'
-        : 'bg-white/95 border-gray-200'
+        ? 'bg-neutral-900 border-neutral-800'
+        : 'bg-white border-gray-200'
     }`}>
       <div className={`${maxWidthClass} mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3`}>
         {/* Left side: Breadcrumb */}

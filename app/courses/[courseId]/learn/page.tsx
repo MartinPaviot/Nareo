@@ -6,8 +6,8 @@ import { AlertCircle, Loader2, BookOpen, Layers, FileText, RefreshCw } from 'luc
 import GenerationLoadingScreen from '@/components/course/GenerationLoadingScreen';
 import ExtractionLoader from '@/components/course/ExtractionLoader';
 import Image from 'next/image';
-import LearnPageHeader from '@/components/layout/LearnPageHeader';
-import { CourseSidebar } from '@/components/Sidebar';
+import TopBarActions from '@/components/layout/TopBarActions';
+import { CourseSidebar, CourseBreadcrumb } from '@/components/Sidebar';
 import ChapterScoreBadge from '@/components/course/ChapterScoreBadge';
 import PaywallModal from '@/components/course/PaywallModal';
 import FlashcardsView from '@/components/course/FlashcardsView';
@@ -24,6 +24,7 @@ import { loadDemoCourse } from '@/lib/demoCourse';
 import { useCourseChapters } from '@/hooks/useCourseChapters';
 import { useSidebarNavigation } from '@/hooks/useSidebarNavigation';
 import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
+import { useQuizProgressStream } from '@/hooks/useSSEStream';
 import { QuizConfig } from '@/types/quiz-personnalisation';
 
 interface Chapter {
@@ -46,6 +47,12 @@ interface CourseData {
   status: string;
   quiz_status?: 'pending' | 'generating' | 'ready' | 'partial' | 'failed';
   quiz_config?: QuizConfig | null;
+  // Quiz generation progress fields for polling
+  quiz_progress?: number;
+  quiz_questions_generated?: number;
+  quiz_total_questions?: number;
+  quiz_current_step?: string | null;
+  quiz_error_message?: string | null;
 }
 
 export default function CourseLearnPage() {
@@ -61,7 +68,6 @@ export default function CourseLearnPage() {
 
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
-  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [isChildModalOpen, setIsChildModalOpen] = useState(false);
 
   // Sidebar navigation state
@@ -78,11 +84,7 @@ export default function CourseLearnPage() {
     return null;
   }, [folders, courseId]);
   const [quizGenerationError, setQuizGenerationError] = useState<string | null>(null);
-  const [quizGenerationProgress, setQuizGenerationProgress] = useState(0);
-  const [quizGenerationMessage, setQuizGenerationMessage] = useState('');
-  const [quizGenerationStep, setQuizGenerationStep] = useState<string | undefined>();
   const [streamingQuestions, setStreamingQuestions] = useState<StreamingQuestion[]>([]);
-  const [totalExpectedQuestions, setTotalExpectedQuestions] = useState<number | undefined>(undefined);
 
   // Map step keys to translation keys for quiz generation
   const translateQuizStepMessage = useCallback((step: string | undefined, message: string | undefined): string => {
@@ -158,197 +160,89 @@ export default function CourseLearnPage() {
     useRealtime: true, // Use Supabase Realtime for instant updates
   });
 
-  // Function to generate quiz on demand - chapter by chapter for reliability
-  // Each chapter is generated independently, so timeouts on one don't affect others
+  // Quiz generation progress is now tracked via polling from the database
+  // These computed values come from the course data fetched by useCourseChapters
+  const quizGenerationProgress = apiCourse?.quiz_progress ?? 0;
+  const quizGenerationStep = apiCourse?.quiz_current_step ?? undefined;
+  const totalExpectedQuestions = apiCourse?.quiz_total_questions ?? undefined;
+  const questionsGenerated = apiCourse?.quiz_questions_generated ?? 0;
+
+  // isGeneratingQuiz is now derived from the server status
+  const isGeneratingQuiz = apiCourse?.quiz_status === 'generating';
+
+  // Generate a progress message based on the step
+  const quizGenerationMessage = useMemo(() => {
+    if (!quizGenerationStep) return '';
+    const STEP_TO_MESSAGE: Record<string, string> = {
+      'starting': 'Démarrage...',
+      'analyzing_document': 'Analyse du document...',
+      'extracting_chapter': 'Extraction du chapitre...',
+      'identifying_concepts': 'Identification des concepts...',
+      'generating_content': 'Génération des questions...',
+      'verifying_content': 'Vérification des doublons...',
+      'saving_content': 'Sauvegarde...',
+      'complete': 'Terminé !',
+      'error': 'Erreur',
+    };
+    return STEP_TO_MESSAGE[quizGenerationStep] || quizGenerationStep;
+  }, [quizGenerationStep]);
+
+  // Function to generate quiz on demand - fire-and-forget approach
+  // The backend handles all generation independently of the client connection
+  // Progress is tracked via polling from the database
   const handleGenerateQuiz = useCallback(async (config?: QuizConfig) => {
     console.log('[learn] handleGenerateQuiz called with config:', config);
-    if (isGeneratingQuiz || !courseId || isDemoId) {
-      console.log('[learn] handleGenerateQuiz aborted:', { isGeneratingQuiz, courseId, isDemoId });
+    if (!courseId || isDemoId) {
+      console.log('[learn] handleGenerateQuiz aborted:', { courseId, isDemoId });
       return;
     }
 
-    // Get chapters to process
-    const chaptersToGenerate = apiChapters.filter(ch =>
-      ch.source_text && ch.source_text.trim().length >= 100
-    );
-
-    if (chaptersToGenerate.length === 0) {
-      console.error('[learn] No chapters with sufficient content');
-      setQuizGenerationError('No chapters with content to generate questions from');
+    // Check if already generating on server
+    if (apiCourse?.quiz_status === 'generating') {
+      console.log('[learn] Quiz already generating on server, skipping');
       return;
     }
 
-    setIsGeneratingQuiz(true);
     setQuizGenerationError(null);
-    setQuizGenerationProgress(0);
-    setQuizGenerationMessage('');
-    setQuizGenerationStep(undefined);
     setStreamingQuestions([]); // Reset streaming questions
 
     // Clear sessionStorage to ensure clean state on regeneration
     sessionStorage.removeItem(`progressive_quiz_${courseId}`);
     setWasPlayingProgressiveQuiz(false);
 
-    // Calculate expected questions
-    const questionsPerChapter = config?.niveau === 'exhaustif' ? 50 : config?.niveau === 'synthetique' ? 5 : 10;
-    const totalExpected = chaptersToGenerate.length * questionsPerChapter;
-    setTotalExpectedQuestions(totalExpected);
-
-    let totalQuestionsGenerated = 0;
-    const failedChapters: string[] = [];
-
     try {
-      // First, clear all existing questions via the cleanup endpoint
-      console.log('[learn] Clearing existing questions...');
-      setQuizGenerationStep('analyzing_document');
-      setQuizGenerationMessage('Préparation...');
+      console.log('[learn] Starting quiz generation (fire-and-forget)...');
 
-      // Delete existing quiz data
-      await fetch(`/api/courses/${courseId}/quiz`, {
-        method: 'DELETE',
-      });
-
-      // Update course status to generating
-      await fetch(`/api/courses/${courseId}`, {
-        method: 'PATCH',
+      // Call the API - it will return immediately and continue generation in background
+      const response = await fetch(`/api/courses/${courseId}/quiz/generate`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quiz_status: 'generating', quiz_config: config }),
+        body: JSON.stringify({ config }),
       });
 
-      await refetch();
-
-      // Generate quiz for each chapter sequentially with retry
-      const MAX_RETRIES = 2;
-
-      for (let i = 0; i < chaptersToGenerate.length; i++) {
-        const chapter = chaptersToGenerate[i];
-        const chapterProgress = ((i / chaptersToGenerate.length) * 90) + 5; // 5-95%
-
-        console.log(`[learn] Generating quiz for chapter ${i + 1}/${chaptersToGenerate.length}: "${chapter.title}"`);
-
-        setQuizGenerationProgress(Math.round(chapterProgress));
-        setQuizGenerationStep('generating_content');
-        setQuizGenerationMessage(`Chapitre ${i + 1}/${chaptersToGenerate.length}: ${chapter.title}`);
-
-        let chapterSuccess = false;
-
-        for (let retry = 0; retry <= MAX_RETRIES && !chapterSuccess; retry++) {
-          try {
-            if (retry > 0) {
-              console.log(`[learn] Retry ${retry}/${MAX_RETRIES} for chapter "${chapter.title}"`);
-              setQuizGenerationMessage(`Chapitre ${i + 1}/${chaptersToGenerate.length}: ${chapter.title} (tentative ${retry + 1})`);
-              // Exponential backoff: 2s, 4s
-              await new Promise(resolve => setTimeout(resolve, 2000 * retry));
-            }
-
-            const response = await fetch(`/api/courses/${courseId}/chapters/${chapter.id}/quiz/generate`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                config,
-                clearExisting: false, // Already cleared above
-              }),
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}));
-              console.error(`[learn] Chapter "${chapter.title}" attempt ${retry + 1} failed:`, errorData);
-
-              // Don't retry on certain errors
-              if (errorData?.error?.includes('insufficient content') || response.status === 400) {
-                break; // Skip retries for content issues
-              }
-              continue; // Try again
-            }
-
-            const result = await response.json();
-            console.log(`[learn] Chapter "${chapter.title}" completed:`, result.questionsGenerated, 'questions');
-
-            totalQuestionsGenerated += result.questionsGenerated || 0;
-            chapterSuccess = true;
-
-            // Add generated questions to streaming view
-            if (result.questions && Array.isArray(result.questions)) {
-              const newQuestions: StreamingQuestion[] = result.questions.map((q: any, idx: number) => ({
-                id: q.id,
-                chapterId: chapter.id,
-                chapterTitle: chapter.title,
-                type: q.type,
-                questionText: q.questionText,
-                options: q.options,
-                correctOptionIndex: q.correctOptionIndex,
-                answerText: q.answerText,
-                explanation: q.explanation,
-                questionNumber: totalQuestionsGenerated - result.questions.length + idx + 1,
-              }));
-              setStreamingQuestions(prev => [...prev, ...newQuestions]);
-            }
-
-            // Refetch to update UI
-            await refetch();
-
-          } catch (chapterError: any) {
-            console.error(`[learn] Chapter "${chapter.title}" attempt ${retry + 1} error:`, chapterError);
-            // Continue to next retry
-          }
-        }
-
-        if (!chapterSuccess) {
-          failedChapters.push(chapter.title);
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error || 'Failed to start quiz generation');
       }
 
-      // Update course status
-      const finalStatus = failedChapters.length === 0 ? 'ready' :
-                          failedChapters.length === chaptersToGenerate.length ? 'failed' : 'partial';
+      const result = await response.json();
+      console.log('[learn] Quiz generation started:', result);
 
-      await fetch(`/api/courses/${courseId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quiz_status: finalStatus }),
-      });
-
-      setQuizGenerationProgress(100);
-      setQuizGenerationStep('finalizing');
-
-      // Final refetch
+      // Refetch to get the updated status (should be 'generating')
       await refetch();
-      triggerRefresh();
 
-      trackEvent('quiz_generated', {
+      trackEvent('quiz_generation_started', {
         userId: user?.id,
         courseId,
         config,
-        questionsGenerated: totalQuestionsGenerated,
-        failedChapters: failedChapters.length,
       });
 
-      if (failedChapters.length > 0) {
-        console.warn(`[learn] Quiz generation completed with ${failedChapters.length} failed chapters:`, failedChapters);
-      }
-
     } catch (err) {
-      console.error('Error generating quiz:', err);
-      setQuizGenerationError(err instanceof Error ? err.message : 'Failed to generate quiz');
-
-      // Update course status to failed
-      await fetch(`/api/courses/${courseId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quiz_status: 'failed' }),
-      }).catch(() => {});
-
-      await refetch();
-    } finally {
-      setIsGeneratingQuiz(false);
-      setQuizGenerationProgress(0);
-      setQuizGenerationMessage('');
-      setQuizGenerationStep(undefined);
-
-      // Final refetch
+      console.error('Error starting quiz generation:', err);
+      setQuizGenerationError(err instanceof Error ? err.message : 'Failed to start quiz generation');
       await refetch();
     }
-  }, [courseId, isDemoId, isGeneratingQuiz, apiChapters, refetch, triggerRefresh, user?.id]);
+  }, [courseId, isDemoId, apiCourse?.quiz_status, refetch, user?.id]);
 
   // Function to retry processing a stuck course
   const handleRetryProcessing = useCallback(async () => {
@@ -584,65 +478,96 @@ export default function CourseLearnPage() {
     }
   }, [course, chapters.length, isStuck, processingStartTime, jobStatus?.stage]);
 
-  // Poll for quiz status while generating (backup for Realtime and SSE disconnection)
-  // This ensures the UI stays updated even if SSE connection is lost
+  // SSE stream for quiz generation progress
+  // This replaces polling with real-time updates via Server-Sent Events
+  const quizStream = useQuizProgressStream(courseId || '', {
+    onEvent: (event) => {
+      console.log('[quiz-sse] Event received:', event.type);
+    },
+    onQuestion: (event) => {
+      // Add streaming question for progressive quiz view
+      // The event is SSEQuestionEvent which has a 'data' property
+      const questionEvent = event as { type: 'question'; data: { chapterId: string; chapterTitle: string; question: { id: string; questionText: string; type: string; options: string[] | null; correctOptionIndex: number | null; answerText: string | null; explanation: string | null; questionNumber: number } }; questionsGenerated: number; progress: number };
+      if (questionEvent.data) {
+        const { chapterId, chapterTitle, question } = questionEvent.data;
+        setStreamingQuestions(prev => {
+          // Avoid duplicates
+          if (prev.some(q => q.id === question.id)) return prev;
+          const newQuestion: StreamingQuestion = {
+            id: question.id,
+            chapterId,
+            chapterTitle: chapterTitle || '',
+            questionText: question.questionText,
+            type: question.type,
+            options: question.options,
+            correctOptionIndex: question.correctOptionIndex,
+            answerText: question.answerText,
+            explanation: question.explanation,
+            questionNumber: question.questionNumber || prev.length + 1,
+          };
+          return [...prev, newQuestion];
+        });
+      }
+    },
+    onComplete: async () => {
+      console.log('[quiz-sse] Generation complete');
+      // Refetch to get final state
+      await refetch();
+    },
+    onError: (error) => {
+      console.error('[quiz-sse] Stream error:', error);
+      setQuizGenerationError(error);
+    },
+  });
+
+  // SSE-based progress values (override polling values when streaming)
+  const sseProgress = quizStream.isStreaming ? quizStream.progress : quizGenerationProgress;
+  const sseQuestionsGenerated = quizStream.isStreaming
+    ? quizStream.events.filter(e => e.type === 'question').length
+    : questionsGenerated;
+
+  // Start SSE stream when quiz generation begins
   useEffect(() => {
     if (isDemoId || !courseId) return;
-    // Poll if quiz is generating on server OR if client thinks it's generating
-    const shouldPoll = course?.quiz_status === 'generating' || isGeneratingQuiz;
-    if (!shouldPoll) return;
 
-    console.log('[quiz-poll] Starting poll for quiz completion (quiz_status:', course?.quiz_status, ', isGeneratingQuiz:', isGeneratingQuiz, ')');
-    const pollInterval = setInterval(async () => {
-      console.log('[quiz-poll] Polling...');
-      await refetch();
-    }, 3000); // Poll every 3 seconds
+    const shouldStream = course?.quiz_status === 'generating';
 
-    return () => {
-      console.log('[quiz-poll] Stopping poll');
-      clearInterval(pollInterval);
-    };
-  }, [isDemoId, courseId, course?.quiz_status, isGeneratingQuiz, refetch]);
-
-  // Detect stuck 'generating' status when user returns to page
-  // If quiz_status is 'generating' but we're not actively generating locally,
-  // the generation was likely interrupted. Reset to 'partial' after checking chapter status.
-  useEffect(() => {
-    if (isDemoId || !courseId || !course) return;
-    if (course.quiz_status !== 'generating') return;
-    if (isGeneratingQuiz) return; // We are actively generating
-
-    // Quiz status is 'generating' but we're not generating locally
-    // This means the user navigated away during generation or the page was refreshed
-    console.log('[quiz-status] Detected stuck "generating" status, checking chapter states...');
-
-    // Count chapters with questions to determine actual status
-    const chaptersWithQuestions = chapters.filter(ch => ch.question_count > 0);
-    const totalChapters = chapters.length;
-
-    // Determine correct status based on chapters
-    let correctStatus: string;
-    if (chaptersWithQuestions.length === 0) {
-      correctStatus = 'pending'; // No questions generated yet
-    } else if (chaptersWithQuestions.length === totalChapters) {
-      correctStatus = 'ready'; // All chapters have questions
-    } else {
-      correctStatus = 'partial'; // Some chapters have questions
+    if (shouldStream && !quizStream.isStreaming && !quizStream.isComplete) {
+      console.log('[quiz-sse] Starting SSE stream for quiz progress');
+      quizStream.startListening();
     }
 
-    console.log(`[quiz-status] Resetting from 'generating' to '${correctStatus}' (${chaptersWithQuestions.length}/${totalChapters} chapters have questions)`);
+    // Reset stream when generation completes
+    if (!shouldStream && quizStream.isComplete) {
+      quizStream.reset();
+    }
+  }, [isDemoId, courseId, course?.quiz_status, quizStream]);
 
-    // Reset the quiz status
-    fetch(`/api/courses/${courseId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quiz_status: correctStatus }),
-    }).then(() => {
-      refetch();
-    }).catch(err => {
-      console.error('[quiz-status] Failed to reset quiz status:', err);
-    });
-  }, [isDemoId, courseId, course?.quiz_status, isGeneratingQuiz, chapters, refetch, course]);
+  // Fallback poll for quiz status (only if SSE is not working)
+  // This ensures the UI stays updated even if SSE connection fails
+  useEffect(() => {
+    if (isDemoId || !courseId) return;
+
+    // Only poll if quiz is generating AND SSE is not streaming
+    const shouldPoll = course?.quiz_status === 'generating' && !quizStream.isStreaming;
+    if (!shouldPoll) return;
+
+    console.log('[quiz-poll] Starting fallback poll (SSE not streaming)');
+    const pollInterval = setInterval(async () => {
+      console.log('[quiz-poll] Fallback polling...');
+      await refetch();
+    }, 5000); // Poll every 5 seconds (less aggressive since it's a fallback)
+
+    return () => {
+      console.log('[quiz-poll] Stopping fallback poll');
+      clearInterval(pollInterval);
+    };
+  }, [isDemoId, courseId, course?.quiz_status, quizStream.isStreaming, refetch]);
+
+  // With fire-and-forget mode, quiz generation continues on the server
+  // even if the user navigates away. The status 'generating' is valid.
+  // We only consider it stuck if progress hasn't changed in a long time (server might have crashed).
+  // The server handles this automatically by updating quiz_status when done.
 
   const handleChapterClick = (chapter: Chapter, index: number) => {
     // Chapter 1 is always accessible (even without account)
@@ -717,7 +642,7 @@ export default function CourseLearnPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-neutral-900' : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'}`}>
         <div className="text-center">
           <Image
             src="/chat/mascotte.png"
@@ -734,7 +659,7 @@ export default function CourseLearnPage() {
 
   if (!course || error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-neutral-900' : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'}`}>
         <div className="text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4" style={{ color: '#d91a1c' }} />
           <p className="text-gray-600">{error || translate('course_detail_error')}</p>
@@ -765,7 +690,7 @@ export default function CourseLearnPage() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors ${
+    <div className={`min-h-screen flex flex-col ${
       isDark
         ? 'bg-neutral-900'
         : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
@@ -786,22 +711,39 @@ export default function CourseLearnPage() {
         />
       )}
 
-      {/* Content wrapper - shifts right based on sidebar state */}
+      {/* Content wrapper - pushes right when sidebar is open */}
       <div
-        className={`transition-transform duration-300 ease-out ${!isDemoId && user ? 'ml-[72px]' : ''}`}
-        style={{
-          transform: !isDemoId && user && sidebar.isOpen ? 'translateX(208px)' : 'translateX(0)',
-        }}
+        className={`flex-1 flex flex-col transition-[margin] duration-300 ease-out ${
+          !isDemoId && user
+            ? sidebar.isOpen
+              ? 'md:ml-[250px]'  /* Sidebar width when open */
+              : 'md:ml-[72px]'   /* Toggle button width when closed */
+            : ''
+        }`}
       >
-        <LearnPageHeader
-          courseName={course.title}
-          folderName={currentCourseFolder?.name || null}
-          folderId={currentCourseFolder?.id || null}
-          onFolderClick={handleBreadcrumbFolderClick}
-          maxWidth="4xl"
-        />
+        {/* Header */}
+        <header
+          className={`border-b sticky top-0 z-30 h-[52px] ${
+            isDark
+              ? 'bg-neutral-900 border-neutral-800'
+              : 'bg-white border-gray-200'
+          }`}
+        >
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <CourseBreadcrumb
+                folderName={currentCourseFolder?.name || null}
+                courseName={course.title}
+                onFolderClick={handleBreadcrumbFolderClick}
+              />
+            </div>
+            <div className="flex-shrink-0">
+              <TopBarActions showDarkModeToggle />
+            </div>
+          </div>
+        </header>
 
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4 flex-1 w-full">
         {/* Tabs - Study Sheet / Quiz / Flashcards (logical learning order) */}
         <div className={`flex gap-2 rounded-2xl border shadow-sm p-2 transition-colors ${
           isDark
@@ -986,10 +928,11 @@ export default function CourseLearnPage() {
                 onChapterClick={handleChapterClick}
                 onRegenerateQuiz={handleGenerateQuiz}
                 isGenerating={isGeneratingQuiz || course?.quiz_status === 'generating'}
-                generationProgress={quizGenerationProgress}
+                generationProgress={sseProgress}
                 generationMessage={translateQuizStepMessage(quizGenerationStep, quizGenerationMessage)}
                 streamingQuestions={streamingQuestions}
                 totalExpectedQuestions={totalExpectedQuestions}
+                questionsGenerated={sseQuestionsGenerated}
                 enableProgressiveQuiz={true}
                 hasFullAccess={hasFullAccess}
                 isDemoId={isDemoId}
@@ -1042,6 +985,23 @@ export default function CourseLearnPage() {
         )}
 
       </main>
+
+        {/* Footer - integrated in content wrapper for proper margin */}
+        <footer className={`border-t mt-auto ${
+          isDark
+            ? 'bg-neutral-900/50 border-neutral-800'
+            : 'bg-gray-50/50 border-gray-100'
+        }`}>
+          <div className={`max-w-4xl mx-auto px-4 py-1.5 flex items-center justify-center gap-4 text-[10px] ${
+            isDark ? 'text-neutral-500' : 'text-gray-400'
+          }`}>
+            <span>© 2026 Nareo</span>
+            <span className={isDark ? 'text-neutral-700' : 'text-gray-300'}>·</span>
+            <span className="hover:text-orange-500 transition-colors cursor-pointer">
+              Contact
+            </span>
+          </div>
+        </footer>
       </div>
 
       {showSignupModal && (

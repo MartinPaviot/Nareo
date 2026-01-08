@@ -275,7 +275,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
 }
 
 /**
- * Helper hook for consuming streaming quiz generation
+ * Helper hook for consuming streaming quiz generation (legacy - POST to generate)
  */
 export function useQuizStream(courseId: string, options: UseSSEStreamOptions = {}) {
   const stream = useSSEStream(options);
@@ -291,6 +291,26 @@ export function useQuizStream(courseId: string, options: UseSSEStreamOptions = {
   return {
     ...stream,
     startGeneration,
+  };
+}
+
+/**
+ * Helper hook for subscribing to quiz generation progress via SSE
+ * This connects to the /quiz/stream endpoint which streams progress updates
+ * from the database while generation runs in the background.
+ */
+export function useQuizProgressStream(courseId: string, options: UseSSEStreamOptions = {}) {
+  const stream = useSSEStream(options);
+
+  const startListening = useCallback(async () => {
+    await stream.startStream(`/api/courses/${courseId}/quiz/stream`, {
+      method: 'GET',
+    });
+  }, [courseId, stream]);
+
+  return {
+    ...stream,
+    startListening,
   };
 }
 

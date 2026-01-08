@@ -62,7 +62,7 @@ export default function CourseActionsMenu({
   return (
     <div
       ref={containerRef}
-      className="relative"
+      className={`relative ${showMenu ? 'z-[100]' : ''}`}
       onClick={(e) => e.stopPropagation()}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

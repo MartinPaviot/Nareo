@@ -24,6 +24,12 @@ interface CourseData {
   status: string; // 'pending' | 'processing' | 'ready' | 'failed'
   quiz_status?: 'pending' | 'generating' | 'ready' | 'partial' | 'failed'; // Quiz generation status
   quiz_config?: QuizConfig | null; // Saved quiz config for regeneration
+  // Quiz generation progress fields for polling
+  quiz_progress?: number;
+  quiz_questions_generated?: number;
+  quiz_total_questions?: number;
+  quiz_current_step?: string | null;
+  quiz_error_message?: string | null;
 }
 
 interface CourseChaptersResponse {
@@ -100,6 +106,7 @@ export function useCourseChapters({
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   // Determine if we should poll based on current state (used only in polling mode)
+  // Note: Quiz generation polling is now handled via SSE in learn/page.tsx
   const shouldPoll = useCallback((currentCourse: CourseData | null, currentChapters: Chapter[]) => {
     if (!currentCourse) return false;
 
@@ -161,13 +168,15 @@ export function useCourseChapters({
       courseRef.current = data.course;
       chaptersRef.current = data.chapters;
 
-      // Check if course is processing and we need to start/continue polling
+      // Check if course is processing - we need to poll for course extraction
+      // Note: Quiz generation polling is now handled via SSE in learn/page.tsx
       const isProcessing = data.course.status === 'pending' || data.course.status === 'processing';
+      const needsPolling = isProcessing;
 
-      if (isProcessing && !pollingActiveRef.current) {
+      if (needsPolling && !pollingActiveRef.current) {
         // Start aggressive polling if not already active
         startAggressivePolling();
-      } else if (!isProcessing && pollingActiveRef.current) {
+      } else if (!needsPolling && pollingActiveRef.current) {
         // Course finished processing, stop polling
         console.log('Course processing complete, stopping polling');
         stopPolling();

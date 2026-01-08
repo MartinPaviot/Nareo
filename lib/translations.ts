@@ -1480,6 +1480,19 @@ export const translations: Record<Language, Translations> = {
     challenge_true: 'True',
     challenge_false: 'False',
 
+    // Challenge Creation Modal
+    challenge_time_per_question: 'Time per question',
+    challenge_time_fast: 'Fast',
+    challenge_time_normal: 'Normal',
+    challenge_time_other: 'Other',
+    challenge_select_course: 'Select a course',
+    challenge_select_course_first: 'Select a course first',
+    challenge_all_course: 'Entire course',
+    challenge_chapter_optional: 'Chapter (optional)',
+    challenge_generating_quiz: 'Generating quiz...',
+    challenge_creating: 'Creating...',
+    challenge_generate_and_create: 'Generate & Create',
+
     // Challenge Final Results
     challenge_final_victory: 'Victory!',
     challenge_final_place: '{rank}th place!',
@@ -3185,6 +3198,19 @@ export const translations: Record<Language, Translations> = {
     challenge_true: 'Vrai',
     challenge_false: 'Faux',
 
+    // Challenge Creation Modal
+    challenge_time_per_question: 'Temps par question',
+    challenge_time_fast: 'Rapide',
+    challenge_time_normal: 'Normal',
+    challenge_time_other: 'Autre',
+    challenge_select_course: 'Selectionner un cours',
+    challenge_select_course_first: 'Selectionne un cours',
+    challenge_all_course: 'Tout le cours',
+    challenge_chapter_optional: 'Chapitre (optionnel)',
+    challenge_generating_quiz: 'Generation du quiz...',
+    challenge_creating: 'Creation...',
+    challenge_generate_and_create: 'Generer & Creer',
+
     // Challenge Final Results
     challenge_final_victory: 'Victoire !',
     challenge_final_place: '{rank}ème place !',
@@ -4889,6 +4915,19 @@ export const translations: Record<Language, Translations> = {
     // Challenge Game - True/False
     challenge_true: 'Wahr',
     challenge_false: 'Falsch',
+
+    // Challenge Creation Modal
+    challenge_time_per_question: 'Zeit pro Frage',
+    challenge_time_fast: 'Schnell',
+    challenge_time_normal: 'Normal',
+    challenge_time_other: 'Andere',
+    challenge_select_course: 'Kurs auswahlen',
+    challenge_select_course_first: 'Wahle zuerst einen Kurs',
+    challenge_all_course: 'Ganzer Kurs',
+    challenge_chapter_optional: 'Kapitel (optional)',
+    challenge_generating_quiz: 'Quiz wird generiert...',
+    challenge_creating: 'Erstellen...',
+    challenge_generate_and_create: 'Generieren & Erstellen',
 
     // Challenge Final Results
     challenge_final_victory: 'Sieg!',

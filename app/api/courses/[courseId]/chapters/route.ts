@@ -275,6 +275,12 @@ export async function GET(
         quiz_status: course.quiz_status || 'pending', // Quiz generation status
         quiz_config: course.quiz_config || null, // Saved quiz config for regeneration
         content_language: course.content_language || course.language || 'en',
+        // Quiz generation progress fields for polling
+        quiz_progress: course.quiz_progress || 0,
+        quiz_questions_generated: course.quiz_questions_generated || 0,
+        quiz_total_questions: course.quiz_total_questions || 0,
+        quiz_current_step: course.quiz_current_step || null,
+        quiz_error_message: course.quiz_error_message || null,
       },
       chapters: chaptersWithAccess,
       access_tier: accessTier,

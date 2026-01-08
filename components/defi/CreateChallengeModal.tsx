@@ -363,7 +363,7 @@ export default function CreateChallengeModal({
                     isDark ? 'text-neutral-300' : 'text-gray-700'
                   }`}
                 >
-                  {translate('course', 'Cours')}
+                  {translate('nav_courses', 'Cours')}
                 </label>
                 <div className="relative" ref={courseDropdownRef}>
                   <button
@@ -378,7 +378,7 @@ export default function CreateChallengeModal({
                     }`}
                   >
                     <span className={!selectedCourse ? (isDark ? 'text-neutral-500' : 'text-gray-400') : ''}>
-                      {selectedCourse?.title || translate('select_course', 'Sélectionner un cours')}
+                      {selectedCourse?.title || translate('challenge_select_course', 'Selectionner un cours')}
                     </span>
                     <ChevronDown
                       className={`w-5 h-5 transition-transform ${
@@ -441,7 +441,7 @@ export default function CreateChallengeModal({
                     isDark ? 'text-neutral-300' : 'text-gray-700'
                   }`}
                 >
-                  {translate('chapter', 'Chapitre')} ({translate('optional', 'optionnel')})
+                  {translate('challenge_chapter_optional', 'Chapitre (optionnel)')}
                 </label>
                 <div className="relative" ref={chapterDropdownRef}>
                   <button
@@ -464,8 +464,8 @@ export default function CreateChallengeModal({
                   >
                     <span>
                       {!selectedCourse
-                        ? translate('select_course_first', 'Sélectionne un cours')
-                        : selectedChapter?.title || translate('all_course', 'Tout le cours')
+                        ? translate('challenge_select_course_first', 'Selectionne un cours')
+                        : selectedChapter?.title || translate('challenge_all_course', 'Tout le cours')
                       }
                     </span>
                     <ChevronDown
@@ -496,7 +496,7 @@ export default function CreateChallengeModal({
                               : 'hover:bg-gray-50 text-gray-900'
                         }`}
                       >
-                        <span>{translate('all_course', 'Tout le cours')}</span>
+                        <span>{translate('challenge_all_course', 'Tout le cours')}</span>
                         {!selectedChapterId && <Check className="w-4 h-4" />}
                       </button>
                       {selectedCourse.chapters.map((chapter) => (
@@ -535,7 +535,7 @@ export default function CreateChallengeModal({
                   }`}
                 >
                   <Clock className="w-4 h-4" />
-                  {translate('time_per_question', 'Temps par question')}
+                  {translate('challenge_time_per_question', 'Temps par question')}
                 </label>
 
                 <div className="grid grid-cols-3 gap-2">
@@ -567,7 +567,7 @@ export default function CreateChallengeModal({
                           isDark ? 'text-neutral-400' : 'text-gray-500'
                         }`}
                       >
-                        {option.description}
+                        {translate(option.descriptionKey, option.description)}
                       </div>
                     </button>
                   ))}
@@ -596,7 +596,7 @@ export default function CreateChallengeModal({
                         isDark ? 'text-neutral-400' : 'text-gray-500'
                       }`}
                     >
-                      {translate('other', 'Autre')}
+                      {translate('challenge_time_other', 'Autre')}
                     </div>
                   </button>
                 </div>
@@ -665,19 +665,19 @@ export default function CreateChallengeModal({
               {generatingQuiz ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {translate('generating_quiz', 'Génération du quiz...')}
+                  {translate('challenge_generating_quiz', 'Generation du quiz...')}
                 </>
               ) : creating ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {translate('creating', 'Création...')}
+                  {translate('challenge_creating', 'Creation...')}
                 </>
               ) : (
                 <>
                   <Target className="w-5 h-5" />
                   {needsQuizGeneration
-                    ? translate('generate_and_create', 'Générer & Créer')
-                    : translate('challenge_create', 'Créer le défi')
+                    ? translate('challenge_generate_and_create', 'Generer & Creer')
+                    : translate('challenge_create', 'Creer le defi')
                   }
                 </>
               )}

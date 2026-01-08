@@ -7,10 +7,9 @@ import { generateMixedQuiz } from '@/lib/openai-vision';
 import { CourseDeduplicationTracker } from '@/lib/llm';
 import { QuizConfig, DEFAULT_QUIZ_CONFIG, getAdjustedQuestionCount } from '@/types/quiz-personnalisation';
 
-// Increase max duration for quiz generation (requires Vercel Pro plan for > 60s)
-// This is needed because generating questions for multiple chapters takes time
-// 10 minutes for courses with many chapters (7-10+) to avoid timeout on later chapters
-export const maxDuration = 600; // 10 minutes max
+// Max duration for quiz generation
+// Vercel Hobby plan limit is 60 seconds
+export const maxDuration = 60;
 
 // Helper to extract guestSessionId from cookies
 function getGuestSessionIdFromRequest(request: NextRequest): string | null {

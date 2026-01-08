@@ -17,6 +17,7 @@ import {
   type MCQQuestion,
   type VerifiableFact,
 } from './llm';
+import { mistralChatJSON, MISTRAL_MODELS, isMistralAvailable } from './mistral-chat';
 import {
   type QuizConfig,
   type NiveauQuantite,
@@ -894,51 +895,22 @@ SOURCE TEXT:
 ${truncatedText}`;
 
   try {
-    const response = await withCircuitBreaker(
-      openaiCircuitBreaker,
-      () => withRetry(
-        async () => {
-          const result = await openai.chat.completions.create({
-            model: LLM_CONFIG.models.questionGeneration,
-            messages: [
-              {
-                role: 'system',
-                content: `Expert quiz creator. Return valid JSON only. ${languageInstruction}`,
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: LLM_CONFIG.temperatures.questionGeneration,
-            response_format: { type: 'json_object' },
-            max_tokens: LLM_CONFIG.maxTokens.questionGeneration,
-          });
-          return result;
-        },
-        { maxRetries: 3 } // Increased from 2 to compensate for gpt-4o-mini
-      ),
+    // MIGRATED TO MISTRAL: Use mistral-small-latest for question generation
+    const parsed = await withRetry(
       async () => {
-        logContext.setFallbackUsed();
-        return null;
-      }
+        return await mistralChatJSON<{ questions: any[] }>({
+          model: MISTRAL_MODELS.small,
+          systemPrompt: `Expert quiz creator. Return valid JSON only. ${languageInstruction}`,
+          userPrompt: prompt,
+          temperature: LLM_CONFIG.temperatures.questionGeneration,
+          maxTokens: LLM_CONFIG.maxTokens.questionGeneration,
+        });
+      },
+      { maxRetries: 3 }
     );
 
-    if (!response) {
-      // Circuit breaker is open
-      console.log('⚠️ Circuit breaker open, using contextual question fallback...');
-      const fallbackQuestions = generateContextualQuestions(chapterMetadata.title, chapterText, language, 8);
-      logContext.setFallbackUsed().success();
-      return fallbackQuestions;
-    }
-
-    const content = response.choices[0].message.content;
-    const parsed = JSON.parse(content || '{}');
     let questions: MCQQuestion[] = parsed.questions || [];
-
-    if (response.usage) {
-      logContext.setTokens(response.usage);
-    }
+    console.log(`📝 [Mistral] Generated ${questions.length} raw questions for "${chapterMetadata.title}"`);
 
     // Validate and fix questions
     const validationResult = validateQuestionBatch(questions);
@@ -1549,49 +1521,22 @@ IMPORTANT: Each statement's source_reference MUST be one of these verified facts
   );
 
   try {
-    const response = await withCircuitBreaker(
-      openaiCircuitBreaker,
-      () => withRetry(
-        async () => {
-          const result = await openai.chat.completions.create({
-            model: LLM_CONFIG.models.questionGeneration,
-            messages: [
-              {
-                role: 'system',
-                content: `Expert quiz creator for true/false questions. Return valid JSON only. ${languageInstruction}`,
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: LLM_CONFIG.temperatures.questionGeneration,
-            response_format: { type: 'json_object' },
-            max_tokens: LLM_CONFIG.maxTokens.questionGeneration,
-          });
-          return result;
-        },
-        { maxRetries: 3 }
-      ),
+    // MIGRATED TO MISTRAL: Use mistral-small-latest for true/false question generation
+    const parsed = await withRetry(
       async () => {
-        logContext.setFallbackUsed();
-        return null;
-      }
+        return await mistralChatJSON<{ questions: any[] }>({
+          model: MISTRAL_MODELS.small,
+          systemPrompt: `Expert quiz creator for true/false questions. Return valid JSON only. ${languageInstruction}`,
+          userPrompt: prompt,
+          temperature: LLM_CONFIG.temperatures.questionGeneration,
+          maxTokens: LLM_CONFIG.maxTokens.questionGeneration,
+        });
+      },
+      { maxRetries: 3 }
     );
 
-    if (!response) {
-      console.log('⚠️ Circuit breaker open for true/false generation');
-      logContext.setFallbackUsed().success();
-      return [];
-    }
-
-    const content = response.choices[0].message.content;
-    const parsed = JSON.parse(content || '{}');
     let questions = parsed.questions || [];
-
-    if (response.usage) {
-      logContext.setTokens(response.usage);
-    }
+    console.log(`📝 [Mistral] Generated ${questions.length} raw true/false questions`);
 
     // Limit to adjustedCount (respect niveau setting)
     if (questions.length > adjustedCount) {
@@ -1599,11 +1544,11 @@ IMPORTANT: Each statement's source_reference MUST be one of these verified facts
       questions = questions.slice(0, adjustedCount);
     }
 
-    console.log('✅ Generated', questions.length, 'true/false questions');
+    console.log('✅ [Mistral] Generated', questions.length, 'true/false questions');
     logContext.success();
     return questions;
   } catch (error: any) {
-    console.error('❌ Error generating true/false questions:', error);
+    console.error('❌ [Mistral] Error generating true/false questions:', error);
     logContext.setFallbackUsed().failure(error, error?.status);
     return [];
   }
@@ -1697,49 +1642,22 @@ IMPORTANT: Each question's source_reference MUST be one of these verified facts.
   );
 
   try {
-    const response = await withCircuitBreaker(
-      openaiCircuitBreaker,
-      () => withRetry(
-        async () => {
-          const result = await openai.chat.completions.create({
-            model: LLM_CONFIG.models.questionGeneration,
-            messages: [
-              {
-                role: 'system',
-                content: `Expert quiz creator for fill-in-the-blank questions. Return valid JSON only. ${languageInstruction}`,
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: LLM_CONFIG.temperatures.questionGeneration,
-            response_format: { type: 'json_object' },
-            max_tokens: LLM_CONFIG.maxTokens.questionGeneration,
-          });
-          return result;
-        },
-        { maxRetries: 3 }
-      ),
+    // MIGRATED TO MISTRAL: Use mistral-small-latest for fill-blank question generation
+    const parsed = await withRetry(
       async () => {
-        logContext.setFallbackUsed();
-        return null;
-      }
+        return await mistralChatJSON<{ questions: any[] }>({
+          model: MISTRAL_MODELS.small,
+          systemPrompt: `Expert quiz creator for fill-in-the-blank questions. Return valid JSON only. ${languageInstruction}`,
+          userPrompt: prompt,
+          temperature: LLM_CONFIG.temperatures.questionGeneration,
+          maxTokens: LLM_CONFIG.maxTokens.questionGeneration,
+        });
+      },
+      { maxRetries: 3 }
     );
 
-    if (!response) {
-      console.log('⚠️ Circuit breaker open for fill-blank generation');
-      logContext.setFallbackUsed().success();
-      return [];
-    }
-
-    const content = response.choices[0].message.content;
-    const parsed = JSON.parse(content || '{}');
     let questions = parsed.questions || [];
-
-    if (response.usage) {
-      logContext.setTokens(response.usage);
-    }
+    console.log(`📝 [Mistral] Generated ${questions.length} raw fill-blank questions`);
 
     // Limit to adjustedCount (respect niveau setting)
     if (questions.length > adjustedCount) {
@@ -1747,11 +1665,11 @@ IMPORTANT: Each question's source_reference MUST be one of these verified facts.
       questions = questions.slice(0, adjustedCount);
     }
 
-    console.log('✅ Generated', questions.length, 'fill-blank questions');
+    console.log('✅ [Mistral] Generated', questions.length, 'fill-blank questions');
     logContext.success();
     return questions;
   } catch (error: any) {
-    console.error('❌ Error generating fill-blank questions:', error);
+    console.error('❌ [Mistral] Error generating fill-blank questions:', error);
     logContext.setFallbackUsed().failure(error, error?.status);
     return [];
   }

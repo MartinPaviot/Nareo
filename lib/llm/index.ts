@@ -117,20 +117,34 @@ export {
 // Configuration constants
 export const LLM_CONFIG = {
   // Model selections
-  // Cost optimization: Most tasks use gpt-4o-mini (~16x cheaper than gpt-4o)
-  // Only vision/OCR requires gpt-4o (vision capabilities)
+  // MIGRATED TO MISTRAL: Quiz generation, fact extraction, structuring
+  // STILL OPENAI: Vision/OCR (gpt-4o has best vision capabilities)
   models: {
     primary: 'gpt-4o',
     fast: 'gpt-4o-mini',
     vision: 'gpt-4o',
-    // Fact extraction: gpt-4o-mini for cost savings
-    factExtraction: 'gpt-4o-mini',
+    // Fact extraction: Mistral small for cost savings
+    factExtraction: 'gpt-4o-mini', // Legacy, now using Mistral
     // Chapter structuring: gpt-4o-mini (structured JSON output)
     structuring: 'gpt-4o-mini',
     // Question generation: gpt-4o-mini (validated by semantic validator)
-    questionGeneration: 'gpt-4o-mini',
+    questionGeneration: 'gpt-4o-mini', // Legacy, now using Mistral
     // Answer evaluation: gpt-4o-mini (rule-based grading)
     evaluation: 'gpt-4o-mini',
+  },
+
+  // Mistral model selections
+  mistralModels: {
+    // High quality model for complex tasks (similar to GPT-4)
+    large: 'mistral-large-latest',
+    // Fast model for simpler tasks (similar to GPT-4o-mini)
+    small: 'mistral-small-latest',
+    // OCR model
+    ocr: 'mistral-ocr-latest',
+    // Question generation: mistral-small for quiz
+    questionGeneration: 'mistral-small-latest',
+    // Fact extraction: mistral-small for semantic validation
+    factExtraction: 'mistral-small-latest',
   },
 
   // Optimized temperatures for each task type

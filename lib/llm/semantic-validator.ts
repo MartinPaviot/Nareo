@@ -5,16 +5,15 @@
  * 1. Extracting verifiable facts from source text
  * 2. Validating questions against these facts
  * 3. Checking that answers are explicitly supported by the source
+ *
+ * MIGRATED TO MISTRAL: Uses Mistral for fact extraction and validation
  */
 
-import OpenAI from 'openai';
+import { mistralChatJSON, MISTRAL_MODELS } from '../mistral-chat';
 import { LLM_CONFIG } from './index';
 import { withRetry } from './retry';
-import { withCircuitBreaker, openaiCircuitBreaker } from './circuit-breaker';
 import { llmLogger } from './logger';
 import type { MCQQuestion } from './question-validator';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 /**
  * A verifiable fact extracted from source text
@@ -43,15 +42,15 @@ export interface SemanticValidationResult {
 /**
  * Extract verifiable facts from source text
  * This creates a "fact bank" that questions can be validated against
+ *
+ * MIGRATED TO MISTRAL: Uses mistral-small-latest for fact extraction
  */
 export async function extractVerifiableFacts(
   sourceText: string,
   chapterTitle: string,
   language: 'EN' | 'FR' | 'DE' = 'EN'
 ): Promise<VerifiableFact[]> {
-  // Use configurable model for fact extraction (default: gpt-4o-mini for cost savings)
-  // Change LLM_CONFIG.models.factExtraction to 'gpt-4o' if quality drops
-  const model = LLM_CONFIG.models.factExtraction;
+  const model = MISTRAL_MODELS.small;
   const logContext = llmLogger.createContext('extractVerifiableFacts', model);
 
   const truncatedText = sourceText.substring(0, LLM_CONFIG.truncation.chapterText);
@@ -110,48 +109,18 @@ SOURCE TEXT:
 ${truncatedText}`;
 
   try {
-    const response = await withCircuitBreaker(
-      openaiCircuitBreaker,
-      () => withRetry(
-        async () => {
-          const result = await openai.chat.completions.create({
-            model, // Uses LLM_CONFIG.models.factExtraction (configurable)
-            messages: [
-              {
-                role: 'system',
-                content: 'You are an expert at extracting testable facts from educational content. Return valid JSON only.',
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: LLM_CONFIG.temperatures.extraction,
-            response_format: { type: 'json_object' },
-            max_tokens: 2000, // Reduced from 4000 - facts don't need as many tokens
-          });
-          return result;
-        },
-        { maxRetries: 2 }
-      ),
+    const parsed = await withRetry(
       async () => {
-        logContext.setFallbackUsed();
-        return null;
-      }
+        return await mistralChatJSON<{ facts: any[] }>({
+          model,
+          systemPrompt: 'You are an expert at extracting testable facts from educational content. Return valid JSON only.',
+          userPrompt: prompt,
+          temperature: LLM_CONFIG.temperatures.extraction,
+          maxTokens: 2000,
+        });
+      },
+      { maxRetries: 2 }
     );
-
-    if (!response) {
-      console.log('⚠️ Circuit breaker open for fact extraction, returning empty facts');
-      logContext.setFallbackUsed().success();
-      return [];
-    }
-
-    const content = response.choices[0].message.content;
-    const parsed = JSON.parse(content || '{}');
-
-    if (response.usage) {
-      logContext.setTokens(response.usage);
-    }
 
     const facts: VerifiableFact[] = (parsed.facts || []).map((f: any, index: number) => ({
       id: `fact_${index}`,
@@ -162,11 +131,11 @@ ${truncatedText}`;
       keywords: f.keywords || [],
     }));
 
-    console.log(`📚 Extracted ${facts.length} verifiable facts from chapter`);
+    console.log(`📚 [Mistral] Extracted ${facts.length} verifiable facts from chapter`);
     logContext.success();
     return facts;
   } catch (error: any) {
-    console.error('❌ Error extracting verifiable facts:', error);
+    console.error('❌ [Mistral] Error extracting verifiable facts:', error);
     logContext.failure(error, error?.status);
     return [];
   }
@@ -174,6 +143,8 @@ ${truncatedText}`;
 
 /**
  * Validate a question semantically against extracted facts
+ *
+ * MIGRATED TO MISTRAL: Uses mistral-small-latest for validation
  */
 export async function validateQuestionSemantically(
   question: MCQQuestion,
@@ -182,7 +153,8 @@ export async function validateQuestionSemantically(
   sourceText: string,
   language: 'EN' | 'FR' | 'DE' = 'EN'
 ): Promise<SemanticValidationResult> {
-  const logContext = llmLogger.createContext('validateQuestionSemantically', LLM_CONFIG.models.fast);
+  const model = MISTRAL_MODELS.small;
+  const logContext = llmLogger.createContext('validateQuestionSemantically', model);
 
   // If no facts available, skip semantic validation
   if (facts.length === 0) {
@@ -262,53 +234,23 @@ Return JSON:
 ${languageInstruction}`;
 
   try {
-    const response = await withCircuitBreaker(
-      openaiCircuitBreaker,
-      () => withRetry(
-        async () => {
-          const result = await openai.chat.completions.create({
-            model: LLM_CONFIG.models.fast, // Use faster model for validation
-            messages: [
-              {
-                role: 'system',
-                content: 'You are a quality assurance expert validating educational quiz questions. Return valid JSON only.',
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.1, // Very low temperature for consistent validation
-            response_format: { type: 'json_object' },
-            max_tokens: 500,
-          });
-          return result;
-        },
-        { maxRetries: 1 }
-      ),
+    const parsed = await withRetry(
       async () => {
-        logContext.setFallbackUsed();
-        return null;
-      }
+        return await mistralChatJSON<{
+          is_valid?: boolean;
+          confidence?: number;
+          issues?: string[];
+          suggestion?: string;
+        }>({
+          model,
+          systemPrompt: 'You are a quality assurance expert validating educational quiz questions. Return valid JSON only.',
+          userPrompt: prompt,
+          temperature: 0.1, // Very low temperature for consistent validation
+          maxTokens: 500,
+        });
+      },
+      { maxRetries: 1 }
     );
-
-    if (!response) {
-      // Fallback: trust the question if it has a source reference
-      return {
-        questionIndex,
-        isValid: sourceRef.length > 15,
-        confidence: 0.5,
-        matchedFacts,
-        issues: ['Validation service unavailable'],
-      };
-    }
-
-    const content = response.choices[0].message.content;
-    const parsed = JSON.parse(content || '{}');
-
-    if (response.usage) {
-      logContext.setTokens(response.usage);
-    }
 
     logContext.success();
 
@@ -321,7 +263,7 @@ ${languageInstruction}`;
       suggestion: parsed.suggestion,
     };
   } catch (error: any) {
-    console.error('❌ Error in semantic validation:', error);
+    console.error('❌ [Mistral] Error in semantic validation:', error);
     logContext.failure(error, error?.status);
 
     // Fallback: trust the question if it has a source reference

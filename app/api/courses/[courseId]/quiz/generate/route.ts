@@ -18,9 +18,12 @@ function getGuestSessionIdFromRequest(request: NextRequest): string | null {
   return cookies.get('guestSessionId')?.value || null;
 }
 
-// Parallel processing configuration - 5 chapters in parallel for faster generation
-// Increased from 2 to 5 for ~2.5x speedup on multi-chapter courses
-const MAX_CONCURRENT_CHAPTERS = 5;
+// Hybrid processing strategy:
+// 1. First chapter processed alone (so user can start practicing quickly)
+// 2. Remaining chapters processed in parallel batches of 2
+// Batch of 2 = 6 API calls max (2 chapters × 3 question types)
+// This stays under Mistral Tier 1 limit (5 RPS) with minimal retries
+const PARALLEL_CHAPTER_BATCH_SIZE = 2;
 
 function toModelLanguageCode(language: string): 'EN' | 'FR' | 'DE' {
   const lower = (language || '').toLowerCase();
@@ -440,17 +443,48 @@ async function runQuizGeneration(
       currentStep: 'generating_content',
     });
 
-    // Process chapters in parallel batches
+    // HYBRID PROCESSING: First chapter alone, then parallel batches
+    // This allows the first chapter to be ready quickly so users can start practicing
+    // while remaining chapters are processed faster in parallel
     // Progress range: GENERATING_START (20) to VALIDATING (88) = 68 points distributed across chapters
     const progressPerChapter = (PROGRESS_MILESTONES.VALIDATING - PROGRESS_MILESTONES.GENERATING_START) / Math.max(1, chaptersToProcess.length);
 
-    for (let i = 0; i < chaptersToProcess.length; i += MAX_CONCURRENT_CHAPTERS) {
-      const batch = chaptersToProcess.slice(i, i + MAX_CONCURRENT_CHAPTERS);
-      const batchStartIndex = i;
+    // PHASE 1: Process first chapter alone (for fast UX)
+    if (chaptersToProcess.length > 0) {
+      const firstChapter = chaptersToProcess[0];
 
-      // Calculate progress based on chapter index
-      // Start at GENERATING_START, end before VALIDATING
-      const batchProgress = Math.round(PROGRESS_MILESTONES.GENERATING_START + (i * progressPerChapter));
+      await updateQuizProgress(admin, courseId, {
+        progress: PROGRESS_MILESTONES.GENERATING_START,
+        currentStep: 'generating_content',
+        questionsGenerated: totalQuestionsGenerated,
+      });
+
+      try {
+        const result = await processChapter(firstChapter, 1);
+        totalQuestionsGenerated += result.questionsGenerated;
+        console.log(`[quiz-generate] Chapter 1/${chaptersToProcess.length} complete: "${firstChapter.title}" with ${result.questionsGenerated} questions (FIRST - user can start playing!)`);
+      } catch (error) {
+        console.error(`[quiz-generate] Chapter ${firstChapter.id} failed:`, error);
+        admin.from('chapters').update({ status: 'failed' }).eq('id', firstChapter.id).then(() => {});
+      }
+
+      currentProgress = Math.round(PROGRESS_MILESTONES.GENERATING_START + progressPerChapter);
+      await updateQuizProgress(admin, courseId, {
+        progress: currentProgress,
+        questionsGenerated: totalQuestionsGenerated,
+        currentStep: 'generating_content',
+      });
+    }
+
+    // PHASE 2: Process remaining chapters in parallel batches
+    const remainingChapters = chaptersToProcess.slice(1);
+
+    for (let i = 0; i < remainingChapters.length; i += PARALLEL_CHAPTER_BATCH_SIZE) {
+      const batch = remainingChapters.slice(i, i + PARALLEL_CHAPTER_BATCH_SIZE);
+      const globalStartIndex = i + 1; // +1 because first chapter already done
+
+      // Calculate progress
+      const batchProgress = Math.round(PROGRESS_MILESTONES.GENERATING_START + ((globalStartIndex + 1) * progressPerChapter));
       currentProgress = Math.max(currentProgress, batchProgress);
 
       await updateQuizProgress(admin, courseId, {
@@ -459,12 +493,11 @@ async function runQuizGeneration(
         questionsGenerated: totalQuestionsGenerated,
       });
 
-      // Process all chapters in this batch IN PARALLEL
+      // Process batch in parallel
       const batchResults = await Promise.all(
         batch.map((chapter, idx) =>
-          processChapter(chapter, batchStartIndex + idx + 1).catch(error => {
+          processChapter(chapter, globalStartIndex + idx + 1).catch(error => {
             console.error(`[quiz-generate] Chapter ${chapter.id} failed:`, error);
-            // Mark chapter as failed (fire-and-forget)
             admin.from('chapters').update({ status: 'failed' }).eq('id', chapter.id).then(() => {});
             return { questionsGenerated: 0, chapterId: chapter.id };
           })
@@ -476,8 +509,8 @@ async function runQuizGeneration(
         totalQuestionsGenerated += result.questionsGenerated;
       }
 
-      // Update progress after batch completion
-      const completedChapters = i + batch.length;
+      // Update progress after batch
+      const completedChapters = globalStartIndex + batch.length + 1; // +1 for first chapter
       currentProgress = Math.round(PROGRESS_MILESTONES.GENERATING_START + (completedChapters * progressPerChapter));
       currentProgress = Math.min(currentProgress, PROGRESS_MILESTONES.VALIDATING - 1);
 
@@ -487,7 +520,55 @@ async function runQuizGeneration(
         currentStep: 'generating_content',
       });
 
-      console.log(`[quiz-generate] Batch complete: ${batchResults.length} chapters, ${totalQuestionsGenerated} total questions, progress: ${currentProgress}%`);
+      console.log(`[quiz-generate] Batch complete: ${batch.length} chapters in parallel, ${totalQuestionsGenerated} total questions`);
+    }
+
+    // RETRY LOOP: Keep retrying chapters with 0 questions until all succeed
+    const MAX_RETRY_PASSES = 3;
+    const RETRY_DELAYS = [3000, 5000, 8000]; // Increasing delays between passes
+
+    for (let retryPass = 0; retryPass < MAX_RETRY_PASSES; retryPass++) {
+      const { data: chaptersWithQuestions } = await admin
+        .from('questions')
+        .select('chapter_id')
+        .in('chapter_id', chaptersToProcess.map(ch => ch.id));
+
+      const chapterIdsWithQuestions = new Set((chaptersWithQuestions || []).map(q => q.chapter_id));
+      const failedChapters = chaptersToProcess.filter(ch => !chapterIdsWithQuestions.has(ch.id));
+
+      if (failedChapters.length === 0) {
+        console.log(`[quiz-generate] All chapters have questions, no retry needed`);
+        break;
+      }
+
+      console.log(`[quiz-generate] RETRY PASS ${retryPass + 1}/${MAX_RETRY_PASSES}: ${failedChapters.length} chapters have 0 questions`);
+
+      // Wait before retry with increasing delay
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[retryPass]));
+
+      await updateQuizProgress(admin, courseId, {
+        progress: currentProgress,
+        currentStep: 'retrying_failed',
+      });
+
+      // Retry failed chapters sequentially to avoid rate limits
+      for (const chapter of failedChapters) {
+        console.log(`[quiz-generate] RETRY ${retryPass + 1}: Processing chapter "${chapter.title}"...`);
+
+        try {
+          const result = await processChapter(chapter, chaptersToProcess.indexOf(chapter) + 1);
+          totalQuestionsGenerated += result.questionsGenerated;
+
+          if (result.questionsGenerated > 0) {
+            console.log(`[quiz-generate] RETRY SUCCESS: Chapter "${chapter.title}" now has ${result.questionsGenerated} questions`);
+          }
+        } catch (error) {
+          console.error(`[quiz-generate] RETRY ERROR for chapter "${chapter.title}":`, error);
+        }
+
+        // Delay between chapters within a retry pass
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
     }
 
     // VALIDATING phase
@@ -505,6 +586,20 @@ async function runQuizGeneration(
       currentStep: 'saving_content',
       questionsGenerated: totalQuestionsGenerated,
     });
+
+    // Final check: log any chapters still missing questions (should be rare after 3 retry passes)
+    const { data: finalQuestionCheck } = await admin
+      .from('questions')
+      .select('chapter_id')
+      .in('chapter_id', chaptersToProcess.map(ch => ch.id));
+
+    const finalChapterIdsWithQuestions = new Set((finalQuestionCheck || []).map(q => q.chapter_id));
+    const stillFailedChapters = chaptersToProcess.filter(ch => !finalChapterIdsWithQuestions.has(ch.id));
+
+    if (stillFailedChapters.length > 0) {
+      const failedNames = stillFailedChapters.map(ch => ch.title).join(', ');
+      console.warn(`[quiz-generate] WARNING: ${stillFailedChapters.length} chapters still have 0 questions after ${MAX_RETRY_PASSES} retries: ${failedNames}`);
+    }
 
     // Update course quiz status
     const { data: readyChapters } = await admin

@@ -2,5 +2,23 @@
 User-agent: *
 Allow: /
 
+# Block private/authenticated pages
+Disallow: /dashboard
+Disallow: /courses/
+Disallow: /flashcards/
+Disallow: /compte
+Disallow: /admin
+Disallow: /defi/
+Disallow: /classement
+Disallow: /amis
+Disallow: /learn/
+Disallow: /recap/
+Disallow: /study-plan/
+Disallow: /paywall
+
+# Allow auth pages for SEO
+Allow: /auth/signin
+Allow: /auth/signup
+
 # Sitemap
 Sitemap: https://www.usenareo.com/sitemap.xml

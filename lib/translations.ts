@@ -785,6 +785,9 @@ export const translations: Record<Language, Translations> = {
     newsletter_already_subscribed: 'This email is already subscribed',
     newsletter_privacy_note: 'You can unsubscribe at any time.',
     blog_featured: 'Featured',
+    blog_share_article: 'Did you enjoy this article? Share it!',
+    blog_copy_link: 'Copy link',
+    blog_link_copied: 'Link copied!',
     blog_cta_title: 'Ready to study more effectively?',
     blog_cta_description: 'Nareo automatically transforms your PDF courses into optimized flashcards and quizzes. Start studying in 30 seconds.',
     blog_cta_button: 'Try Nareo for free',
@@ -861,7 +864,7 @@ export const translations: Record<Language, Translations> = {
 
     // Progressive generation steps
     gen_step_analyzing_document: 'Analyzing document...',
-    gen_step_extracting_chapter: 'Extracting chapter {current}/{total}: {title}',
+    gen_step_extracting_chapter: 'Extracting chapter content...',
     gen_step_identifying_concepts: 'Identifying key concepts...',
     gen_step_generating_questions: 'Generating questions...',
     gen_step_generating_flashcards: 'Generating flashcards...',
@@ -938,6 +941,11 @@ export const translations: Record<Language, Translations> = {
     results_review_correct_answer: 'Correct answer',
     results_review_back_to_results: 'Back to results',
     results_review_back_to_dashboard: 'Back to dashboard',
+    results_review_filter_all: 'All',
+    results_review_filter_errors: 'Errors only',
+    results_review_explanation: 'Explanation',
+    results_review_source: 'Source',
+    results_review_no_errors: 'No errors to show!',
 
     paywall_title: 'Unlock all chapters for this course',
     paywall_subtitle: 'Keep your progress saved and repeat quizzes anytime.',
@@ -1599,6 +1607,25 @@ export const translations: Record<Language, Translations> = {
     stats_xp_next_level: 'Next level',
     stats_xp_remaining: '{count} XP remaining',
 
+    // Welcome Action Section
+    welcome_greeting: "Hello {name}, what do you want to study today?",
+    welcome_default_name: 'there',
+    welcome_action_review: "Today's Review",
+    welcome_action_upload: 'Upload Course',
+    welcome_action_challenge: 'Challenge',
+    welcome_action_courses: 'My Courses',
+    welcome_question: "What do you want to study today?",
+    welcome_review_subtitle: "{count} cards waiting for you",
+    welcome_no_cards: 'Nothing to review!',
+    welcome_new_badge: 'New!',
+    welcome_view_courses: 'View all my courses',
+
+    // Challenge Modal
+    challenge_modal_title: 'Challenge Mode',
+    challenge_modal_subtitle: 'Challenge your friends and progress together!',
+    challenge_create_desc: 'Challenge your friends',
+    challenge_join_desc: 'Enter an invite code',
+
     // Mastery Levels
     mastery_not_started: 'Not started',
     mastery_discovery: 'Discovery',
@@ -1687,10 +1714,12 @@ export const translations: Record<Language, Translations> = {
     quiz_regenerating: 'Generating quiz...',
     quiz_please_wait: 'Please wait...',
     quiz_exit_title: 'Leave the quiz?',
-    quiz_exit_message: 'You have {count} unanswered question(s).',
+    quiz_exit_message_singular: 'You have {count} unanswered question.',
+    quiz_exit_message_plural: 'You have {count} unanswered questions.',
     quiz_exit_continue: 'Continue',
     quiz_exit_leave: 'Leave',
-    quiz_remaining_questions: '{count} remaining question(s)',
+    quiz_remaining_question: '{count} remaining question',
+    quiz_remaining_questions: '{count} remaining questions',
     quiz_finish: 'Finish the quiz',
     quiz_correct_answer_was: 'The correct answer was:',
     quiz_correct_answer_is: 'The correct answer is:',
@@ -2502,6 +2531,9 @@ export const translations: Record<Language, Translations> = {
     newsletter_already_subscribed: 'Cet email est déjà inscrit',
     newsletter_privacy_note: 'Vous pouvez vous désinscrire à tout moment.',
     blog_featured: 'En vedette',
+    blog_share_article: 'Vous avez aimé cet article ? Partagez-le !',
+    blog_copy_link: 'Copier le lien',
+    blog_link_copied: 'Lien copié !',
     blog_cta_title: 'Prêt à réviser plus efficacement ?',
     blog_cta_description: 'Nareo transforme automatiquement tes cours PDF en flashcards et quiz optimisés. Commence à réviser en 30 secondes.',
     blog_cta_button: 'Essayer Nareo gratuitement',
@@ -2586,7 +2618,7 @@ export const translations: Record<Language, Translations> = {
 
     // Progressive generation steps
     gen_step_analyzing_document: 'Analyse du document...',
-    gen_step_extracting_chapter: 'Extraction du chapitre {current}/{total} : {title}',
+    gen_step_extracting_chapter: 'Extraction du contenu des chapitres...',
     gen_step_identifying_concepts: 'Identification des concepts clés...',
     gen_step_generating_questions: 'Génération des questions...',
     gen_step_generating_flashcards: 'Génération des flashcards...',
@@ -2663,6 +2695,11 @@ export const translations: Record<Language, Translations> = {
     results_review_correct_answer: 'Bonne réponse',
     results_review_back_to_results: 'Retour aux résultats',
     results_review_back_to_dashboard: 'Retour au tableau de bord',
+    results_review_filter_all: 'Toutes',
+    results_review_filter_errors: 'Erreurs',
+    results_review_explanation: 'Explication',
+    results_review_source: 'Source',
+    results_review_no_errors: 'Aucune erreur à afficher !',
 
     paywall_title: 'Débloquer tous les chapitres de ce cours',
     paywall_subtitle: 'Sauvegarde tes progrès et rejoue les quiz à volonté.',
@@ -3324,6 +3361,24 @@ export const translations: Record<Language, Translations> = {
     stats_xp_next_level: 'Prochain niveau',
     stats_xp_remaining: '{count} XP restants',
 
+    // Welcome Action Section
+    welcome_greeting: "Hello {name}, qu'est-ce que tu veux réviser aujourd'hui ?",
+    welcome_default_name: 'toi',
+    welcome_action_review: 'Révision du jour',
+    welcome_action_upload: 'Déposer un cours',
+    welcome_action_challenge: 'Lancer un défi',
+    welcome_action_courses: 'Mes cours',
+    welcome_question: "Qu'est-ce qu'on révise aujourd'hui ?",
+    welcome_review_subtitle: "{count} cartes t'attendent",
+    welcome_no_cards: 'Rien à réviser !',
+    welcome_new_badge: 'Nouveau !',
+
+    // Challenge Modal
+    challenge_modal_title: 'Mode Défi',
+    challenge_modal_subtitle: 'Défie tes amis et progresse ensemble !',
+    challenge_create_desc: 'Défie tes amis',
+    challenge_join_desc: "Entre un code d'invitation",
+
     // Mastery Levels
     mastery_not_started: 'Non commencé',
     mastery_discovery: 'Découverte',
@@ -3412,10 +3467,12 @@ export const translations: Record<Language, Translations> = {
     quiz_regenerating: 'Génération du quiz...',
     quiz_please_wait: 'Veuillez patienter...',
     quiz_exit_title: 'Quitter le quiz ?',
-    quiz_exit_message: 'Tu as {count} question(s) non répondue(s).',
+    quiz_exit_message_singular: 'Tu as {count} question non répondue.',
+    quiz_exit_message_plural: 'Tu as {count} questions non répondues.',
     quiz_exit_continue: 'Continuer',
     quiz_exit_leave: 'Quitter',
-    quiz_remaining_questions: '{count} question(s) restante(s)',
+    quiz_remaining_question: '{count} question restante',
+    quiz_remaining_questions: '{count} questions restantes',
     quiz_finish: 'Terminer le quiz',
     quiz_correct_answer_was: 'La bonne réponse était :',
     quiz_correct_answer_is: 'La bonne réponse est :',
@@ -4235,6 +4292,9 @@ export const translations: Record<Language, Translations> = {
     newsletter_already_subscribed: 'Diese E-Mail ist bereits angemeldet',
     newsletter_privacy_note: 'Du kannst dich jederzeit abmelden.',
     blog_featured: 'Empfohlen',
+    blog_share_article: 'Hat dir dieser Artikel gefallen? Teile ihn!',
+    blog_copy_link: 'Link kopieren',
+    blog_link_copied: 'Link kopiert!',
     blog_cta_title: 'Bereit, effektiver zu lernen?',
     blog_cta_description: 'Nareo verwandelt automatisch deine PDF-Kurse in optimierte Karteikarten und Quiz. Beginne in 30 Sekunden mit dem Lernen.',
     blog_cta_button: 'Nareo kostenlos testen',
@@ -4311,7 +4371,7 @@ export const translations: Record<Language, Translations> = {
 
     // Progressive generation steps
     gen_step_analyzing_document: 'Dokument wird analysiert...',
-    gen_step_extracting_chapter: 'Kapitel {current}/{total} wird extrahiert: {title}',
+    gen_step_extracting_chapter: 'Kapitelinhalt wird extrahiert...',
     gen_step_identifying_concepts: 'Schlüsselkonzepte werden identifiziert...',
     gen_step_generating_questions: 'Fragen werden generiert...',
     gen_step_generating_flashcards: 'Karteikarten werden generiert...',
@@ -4388,6 +4448,11 @@ export const translations: Record<Language, Translations> = {
     results_review_correct_answer: 'Richtige Antwort',
     results_review_back_to_results: 'Zurück zu den Ergebnissen',
     results_review_back_to_dashboard: 'Zurück zum Dashboard',
+    results_review_filter_all: 'Alle',
+    results_review_filter_errors: 'Nur Fehler',
+    results_review_explanation: 'Erklärung',
+    results_review_source: 'Quelle',
+    results_review_no_errors: 'Keine Fehler anzuzeigen!',
 
     paywall_title: 'Alle Kapitel dieses Kurses freischalten',
     paywall_subtitle: 'Speichere deinen Fortschritt und wiederhole Quiz beliebig oft.',
@@ -5049,6 +5114,19 @@ export const translations: Record<Language, Translations> = {
     stats_xp_next_level: 'Nächste Stufe',
     stats_xp_remaining: '{count} XP übrig',
 
+    // Welcome Action Section
+    welcome_greeting: 'Hallo {name}, was möchtest du heute lernen?',
+    welcome_default_name: 'du',
+    welcome_action_review: 'Tägliche Wiederholung',
+    welcome_action_upload: 'Kurs hochladen',
+    welcome_action_challenge: 'Herausforderung',
+    welcome_action_courses: 'Meine Kurse',
+
+    // Challenge Modal
+    challenge_modal_title: 'Herausforderungsmodus',
+    challenge_create_desc: 'Fordere deine Freunde heraus',
+    challenge_join_desc: 'Einladungscode eingeben',
+
     // Mastery Levels
     mastery_not_started: 'Nicht begonnen',
     mastery_discovery: 'Entdeckung',
@@ -5137,10 +5215,12 @@ export const translations: Record<Language, Translations> = {
     quiz_regenerating: 'Quiz wird generiert...',
     quiz_please_wait: 'Bitte warten...',
     quiz_exit_title: 'Quiz verlassen?',
-    quiz_exit_message: 'Du hast noch {count} unbeantwortete Frage(n).',
+    quiz_exit_message_singular: 'Du hast noch {count} unbeantwortete Frage.',
+    quiz_exit_message_plural: 'Du hast noch {count} unbeantwortete Fragen.',
     quiz_exit_continue: 'Weiter',
     quiz_exit_leave: 'Verlassen',
-    quiz_remaining_questions: '{count} verbleibende Frage(n)',
+    quiz_remaining_question: '{count} verbleibende Frage',
+    quiz_remaining_questions: '{count} verbleibende Fragen',
     quiz_finish: 'Quiz beenden',
     quiz_correct_answer_was: 'Die richtige Antwort war:',
     quiz_correct_answer_is: 'Die richtige Antwort ist:',

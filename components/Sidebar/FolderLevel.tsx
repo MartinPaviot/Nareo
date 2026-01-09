@@ -21,6 +21,8 @@ interface FolderLevelProps {
   onUploadCourse: () => void;
   onContactClick: () => void;
   onMoveCourse?: (courseId: string, folderId: string | null) => Promise<boolean>;
+  onFolderDeleted?: () => void;
+  onCourseDeleted?: () => void;
 }
 
 export default function FolderLevel({
@@ -34,6 +36,8 @@ export default function FolderLevel({
   onUploadCourse,
   onContactClick,
   onMoveCourse,
+  onFolderDeleted,
+  onCourseDeleted,
 }: FolderLevelProps) {
   const { isDark } = useTheme();
   const { translate } = useLanguage();
@@ -174,6 +178,7 @@ export default function FolderLevel({
                         icon={folder.icon}
                         isActive={folder.id === activeFolderId}
                         onClick={() => onFolderClick(folder.id, folder.name)}
+                        onFolderDeleted={onFolderDeleted}
                       />
                     ))}
                   </div>
@@ -213,6 +218,7 @@ export default function FolderLevel({
                         folders={folders}
                         currentFolderId={courseFolderId}
                         onMoveCourse={onMoveCourse}
+                        onCourseDeleted={onCourseDeleted}
                       />
                     );
                   })}
@@ -266,6 +272,7 @@ export default function FolderLevel({
                         folders={folders}
                         currentFolderId={null}
                         onMoveCourse={onMoveCourse}
+                        onCourseDeleted={onCourseDeleted}
                       />
                     ))}
                   </div>

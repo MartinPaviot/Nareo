@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { FileText, Check, MoreHorizontal, FolderInput, Inbox } from 'lucide-react';
+import { FileText, Check, MoreHorizontal, FolderInput, Inbox, Trash2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getMasteryColor } from '@/lib/courses/utils';
 import type { Folder } from '@/lib/courses/types';
+import DeleteCourseDialog from '@/components/course-management/DeleteCourseDialog';
 
 interface CourseItemProps {
   id: string;
@@ -19,6 +19,7 @@ interface CourseItemProps {
   folders?: Folder[];
   currentFolderId?: string | null;
   onMoveCourse?: (courseId: string, folderId: string | null) => Promise<boolean>;
+  onCourseDeleted?: () => void;
 }
 
 export default function CourseItem({
@@ -33,13 +34,14 @@ export default function CourseItem({
   folders = [],
   currentFolderId,
   onMoveCourse,
+  onCourseDeleted,
 }: CourseItemProps) {
   const { isDark } = useTheme();
   const { translate } = useLanguage();
   const isCompleted = masteryPercentage >= 100;
-  const masteryColor = getMasteryColor(masteryPercentage);
 
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -76,6 +78,7 @@ export default function CourseItem({
   const availableFolders = folders.filter(f => f.id !== currentFolderId);
 
   const canMove = onMoveCourse && (availableFolders.length > 0 || currentFolderId);
+  const showMenuButton = canMove || onCourseDeleted;
 
   return (
     <div className="relative group">
@@ -141,8 +144,8 @@ export default function CourseItem({
         )}
       </button>
 
-      {/* Move menu button - appears on hover */}
-      {canMove && (
+      {/* Menu button - appears on hover */}
+      {showMenuButton && (
         <button
           ref={buttonRef}
           onClick={(e) => {
@@ -163,7 +166,7 @@ export default function CourseItem({
       )}
 
       {/* Dropdown menu */}
-      {showMenu && canMove && (
+      {showMenu && showMenuButton && (
         <div
           ref={menuRef}
           className={`absolute right-0 top-8 z-50 w-36 rounded-lg shadow-lg border py-1 ${
@@ -172,63 +175,98 @@ export default function CourseItem({
               : 'bg-white border-gray-200'
           }`}
         >
-          <div className={`px-3 py-1.5 text-xs font-medium ${
-            isDark ? 'text-neutral-500' : 'text-gray-500'
-          }`}>
-            <div className="flex items-center gap-1.5">
-              <FolderInput className="w-3 h-3" />
-              {translate('sidebar_move_to') || 'Déplacer vers'}
-            </div>
-          </div>
-
-          {/* Folder options */}
-          {availableFolders.map((folder) => (
-            <button
-              key={folder.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMove(folder.id);
-              }}
-              disabled={isMoving}
-              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
-                isDark
-                  ? 'hover:bg-neutral-700 text-neutral-200'
-                  : 'hover:bg-gray-100 text-gray-700'
-              } ${isMoving ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <span
-                className="w-2 h-2 rounded-sm flex-shrink-0"
-                style={{ backgroundColor: folder.color }}
-              />
-              <span className="truncate">{folder.name}</span>
-            </button>
-          ))}
-
-          {/* Move to uncategorized (if currently in a folder) */}
-          {currentFolderId && (
+          {canMove && (
             <>
-              {availableFolders.length > 0 && (
+              <div className={`px-3 py-1.5 text-xs font-medium ${
+                isDark ? 'text-neutral-500' : 'text-gray-500'
+              }`}>
+                <div className="flex items-center gap-1.5">
+                  <FolderInput className="w-3 h-3" />
+                  {translate('sidebar_move_to') || 'Déplacer vers'}
+                </div>
+              </div>
+
+              {/* Folder options */}
+              {availableFolders.map((folder) => (
+                <button
+                  key={folder.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMove(folder.id);
+                  }}
+                  disabled={isMoving}
+                  className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                    isDark
+                      ? 'hover:bg-neutral-700 text-neutral-200'
+                      : 'hover:bg-gray-100 text-gray-700'
+                  } ${isMoving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <span
+                    className="w-2 h-2 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: folder.color }}
+                  />
+                  <span className="truncate">{folder.name}</span>
+                </button>
+              ))}
+
+              {/* Move to uncategorized (if currently in a folder) */}
+              {currentFolderId && (
+                <>
+                  {availableFolders.length > 0 && (
+                    <div className={`border-t my-1 ${isDark ? 'border-neutral-700' : 'border-gray-200'}`} />
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMove(null);
+                    }}
+                    disabled={isMoving}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                      isDark
+                        ? 'hover:bg-neutral-700 text-neutral-400'
+                        : 'hover:bg-gray-100 text-gray-500'
+                    } ${isMoving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Inbox className="w-3 h-3 flex-shrink-0" />
+                    <span>{translate('sidebar_no_folder') || 'Sans dossier'}</span>
+                  </button>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Delete option */}
+          {onCourseDeleted && (
+            <>
+              {canMove && (
                 <div className={`border-t my-1 ${isDark ? 'border-neutral-700' : 'border-gray-200'}`} />
               )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleMove(null);
+                  setShowMenu(false);
+                  setShowDeleteDialog(true);
                 }}
-                disabled={isMoving}
-                className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
-                  isDark
-                    ? 'hover:bg-neutral-700 text-neutral-400'
-                    : 'hover:bg-gray-100 text-gray-500'
-                } ${isMoving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors text-red-500 hover:bg-red-500/10"
               >
-                <Inbox className="w-3 h-3 flex-shrink-0" />
-                <span>{translate('sidebar_no_folder') || 'Sans dossier'}</span>
+                <Trash2 className="w-3 h-3 flex-shrink-0" />
+                <span>{translate('delete_course_button') || 'Supprimer'}</span>
               </button>
             </>
           )}
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <DeleteCourseDialog
+        courseId={id}
+        courseTitle={name}
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onDeleted={() => {
+          onCourseDeleted?.();
+        }}
+      />
     </div>
   );
 }

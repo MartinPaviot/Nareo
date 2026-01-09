@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import ArticleHeader from '@/components/blog/ArticleHeader';
 import ArticleContent from '@/components/blog/ArticleContent';
 import ArticleCTA from '@/components/blog/ArticleCTA';
+import ShareButtons from '@/components/blog/ShareButtons';
 import type { BlogArticle } from '@/types/blog';
 import { getLocalizedTitle, getLocalizedContent } from '@/types/blog';
 
@@ -166,19 +167,7 @@ export default function BlogArticlePage() {
           <ArticleCTA />
 
           {/* Share Section */}
-          <div
-            className={`mt-12 pt-8 border-t text-center ${
-              isDark ? 'border-neutral-800' : 'border-gray-200'
-            }`}
-          >
-            <p
-              className={`text-sm ${
-                isDark ? 'text-neutral-400' : 'text-gray-600'
-              }`}
-            >
-              Tu as trouvé cet article utile ? Partage-le avec tes amis !
-            </p>
-          </div>
+          <ShareButtons title={title} slug={slug} />
         </div>
       </main>
     </div>

@@ -10,6 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 // Pages with integrated footer (hide global footer completely)
 const INTEGRATED_FOOTER_PATTERNS = [
   /^\/courses\/[^/]+\/learn/, // Learn page has its own footer
+  /^\/flashcards\/review\//, // Flashcard review page has its own footer
 ];
 
 // Pages where micro footer should be shown (work screens)

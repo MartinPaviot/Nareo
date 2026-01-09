@@ -10,6 +10,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { trackEvent } from '@/lib/posthog';
 import { loadDemoCourse } from '@/lib/demoCourse';
 import { getLocalizedChapterTitleAsync } from '@/lib/content-translator';
+import { CourseSidebar, CourseBreadcrumb } from '@/components/Sidebar';
+import TopBarActions from '@/components/layout/TopBarActions';
+import { useSidebarNavigation } from '@/hooks/useSidebarNavigation';
+import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
 
 // Types for quiz answers storage
 interface QuizAnswers {
@@ -39,9 +43,9 @@ function QuizProgressDots({ total, current, answers, questionIds, onNavigate, is
   if (total > 15) {
     const answeredCount = questionIds.filter(id => answers[id]?.selectedAnswer).length;
     return (
-      <div className="flex items-center justify-center gap-2 py-2">
-        <span className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{current + 1}/{total}</span>
-        <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>({answeredCount} {translate('dashboard_answered_label')})</span>
+      <div className="flex items-center justify-center gap-2 py-1">
+        <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>{current + 1}/{total}</span>
+        <span className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>({answeredCount} {translate('dashboard_answered_label')})</span>
       </div>
     );
   }
@@ -49,7 +53,7 @@ function QuizProgressDots({ total, current, answers, questionIds, onNavigate, is
   return (
     <div
       ref={dotsContainerRef}
-      className="flex items-center justify-center gap-1 py-3 overflow-x-auto"
+      className="flex items-center justify-center gap-0.5 py-1.5 overflow-x-auto"
       style={{ WebkitOverflowScrolling: 'touch' }}
     >
       {Array.from({ length: total }).map((_, idx) => {
@@ -61,17 +65,17 @@ function QuizProgressDots({ total, current, answers, questionIds, onNavigate, is
           <button
             key={idx}
             onClick={() => onNavigate(idx)}
-            className="p-2 -m-1 focus:outline-none group"
+            className="p-1.5 -m-0.5 focus:outline-none group"
             aria-label={`Question ${idx + 1}${hasAnswer ? ' (répondue)' : ''}`}
           >
             <span
               className={`
-                block w-3 h-3 rounded-full transition-all duration-150
+                block w-2.5 h-2.5 rounded-full transition-all duration-150
                 ${hasAnswer
                   ? isDark ? 'bg-neutral-400' : 'bg-gray-700'
-                  : isDark ? 'border-2 border-neutral-600 bg-transparent' : 'border-2 border-gray-300 bg-transparent'
+                  : isDark ? 'border-[1.5px] border-neutral-600 bg-transparent' : 'border-[1.5px] border-gray-300 bg-transparent'
                 }
-                ${isCurrent ? `ring-2 ring-orange-500 ${isDark ? 'ring-offset-neutral-800' : 'ring-offset-white'} ring-offset-2` : ''}
+                ${isCurrent ? `ring-[1.5px] ring-orange-500 ${isDark ? 'ring-offset-neutral-800' : 'ring-offset-white'} ring-offset-1` : ''}
                 group-hover:scale-125
               `}
             />
@@ -147,7 +151,7 @@ function ExitConfirmModal({ remainingCount, onConfirm, onCancel, isDark, transla
       }`}>
         <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{translate('quiz_exit_title')}</h3>
         <p className={`mb-4 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-          {translate('quiz_exit_message').replace('{count}', String(remainingCount))}
+          {translate(remainingCount === 1 ? 'quiz_exit_message_singular' : 'quiz_exit_message_plural').replace('{count}', String(remainingCount))}
         </p>
         <div className="flex gap-3">
           <button
@@ -188,6 +192,13 @@ interface Question {
   page_source?: string | null;
 }
 
+interface ReviewOption {
+  label: string;
+  value: string;
+  isSelected: boolean;
+  isCorrect: boolean;
+}
+
 interface ReviewItem {
   index: number;
   question: string;
@@ -196,6 +207,8 @@ interface ReviewItem {
   correct_answer: string;
   explanation?: string;
   page_source?: string | null;
+  question_type: 'mcq' | 'open';
+  options?: ReviewOption[];
 }
 
 interface ExplanationCardProps {
@@ -248,49 +261,43 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
   const shouldTruncate = remappedExplanation && remappedExplanation.length > 150;
 
   return (
-    <div className={`rounded-xl border-2 p-4 ${
+    <div className={`rounded-lg border px-2.5 py-1.5 ${
       isCorrect
         ? isDark ? 'bg-green-500/15 border-green-500/40' : 'bg-green-50 border-green-200'
         : isDark ? 'bg-[#d91a1c]/15 border-[#d91a1c]/40' : 'bg-[#d91a1c]/5 border-[#d91a1c]/20'
     }`}>
-      {/* Badge result */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      {/* Badge result + correct answer inline */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
           {isCorrect ? (
-            <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
+            <CheckCircle2 className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
           ) : (
-            <XCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#d91a1c' }} />
+            <XCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d91a1c' }} />
           )}
-          <span className={`font-semibold text-sm ${
+          <span className={`font-semibold text-[11px] ${
             isCorrect
               ? isDark ? 'text-green-400' : 'text-green-800'
               : isDark ? 'text-[#f87171]' : 'text-[#991b1b]'
           }`}>
             {isCorrect ? translate('quiz_feedback_correct') : 'Incorrect'}
+            {!isCorrect && correctAnswer && ` — ${correctAnswer}`}
           </span>
         </div>
         {points > 0 && (
-          <span className={`text-xs font-medium ${isDark ? 'text-green-400' : 'text-green-700'}`}>+{points} {translate('learn_pts')}</span>
+          <span className={`text-[11px] font-medium ${isDark ? 'text-green-400' : 'text-green-700'}`}>+{points} pts</span>
         )}
       </div>
 
-      {/* Correct answer if incorrect */}
-      {!isCorrect && correctAnswer && (
-        <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
-          {translate('quiz_correct_answer_was')} {correctAnswer}
-        </p>
-      )}
-
-      {/* Explanation */}
+      {/* Explanation - collapsed by default */}
       {remappedExplanation && (
-        <div className={`text-sm leading-relaxed ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-          <p className={shouldTruncate && !expanded ? 'line-clamp-3' : ''}>
+        <div className={`text-[11px] leading-snug mt-1 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+          <p className={!expanded ? 'line-clamp-1' : ''}>
             {remappedExplanation}
           </p>
-          {shouldTruncate && (
+          {remappedExplanation.length > 80 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className={`font-medium mt-1 text-xs hover:underline ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
+              className={`font-medium text-[11px] hover:underline ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
             >
               {expanded ? translate('show_less') : translate('show_more')}
             </button>
@@ -298,13 +305,12 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
         </div>
       )}
 
-      {/* Source excerpt */}
-      {sourceExcerpt && (
-        <div className={`mt-3 p-3 rounded-lg border-l-4 ${
+      {/* Source excerpt - only show when expanded */}
+      {sourceExcerpt && expanded && (
+        <div className={`mt-1.5 px-2 py-1 rounded border-l-2 ${
           isDark ? 'bg-neutral-800 border-neutral-600' : 'bg-gray-100 border-gray-300'
         }`}>
-          <p className={`text-xs mb-1 font-medium ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>{translate('quiz_source_excerpt')}</p>
-          <p className={`text-sm italic leading-relaxed ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>&ldquo;{sourceExcerpt}&rdquo;</p>
+          <p className={`text-[10px] italic leading-snug ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>&ldquo;{sourceExcerpt}&rdquo;</p>
         </div>
       )}
     </div>
@@ -321,6 +327,20 @@ export default function ChapterQuizPage() {
   const courseId = params?.courseId as string;
   const chapterId = params?.chapterId as string;
   const isDemoId = courseId?.startsWith('demo-');
+
+  // Sidebar navigation state
+  const sidebar = useSidebarNavigation();
+  const { folders } = useCoursesOrganized();
+
+  // Find the folder containing the current course (for breadcrumb)
+  const currentCourseFolder = useMemo(() => {
+    for (const folder of folders) {
+      if (folder.courses.some((c) => c.id === courseId)) {
+        return { id: folder.id, name: folder.name };
+      }
+    }
+    return null;
+  }, [folders, courseId]);
 
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -759,6 +779,16 @@ export default function ChapterQuizPage() {
           setScore((prev) => prev + (result.points || 0));
           setCorrectCount((prev) => prev + (result.isCorrect ? 1 : 0));
         }
+        // Build options for review (for MCQ)
+        const reviewOptions: ReviewOption[] | undefined = currentQuestion.type === 'mcq' && currentQuestion.optionsList
+          ? currentQuestion.optionsList.map(opt => ({
+              label: opt.label,
+              value: opt.value,
+              isSelected: opt.label === answerToValidate,
+              isCorrect: opt.index === (currentQuestion.correct_option_index ?? 0),
+            }))
+          : undefined;
+
         setReviewItems((prev) => {
           // Avoid duplicates when re-answering
           const filtered = prev.filter(r => r.index !== currentIndex + 1);
@@ -772,6 +802,8 @@ export default function ChapterQuizPage() {
               correct_answer: currentQuestion.answer_text || '',
               explanation: currentQuestion.explanation || result.message,
               page_source: currentQuestion.page_source || null,
+              question_type: currentQuestion.type === 'mcq' ? 'mcq' : 'open',
+              options: reviewOptions,
             },
           ];
         });
@@ -858,6 +890,16 @@ export default function ChapterQuizPage() {
         setScore((prev) => prev + (data.pointsEarned || 0));
         setCorrectCount((prev) => prev + (data.isCorrect ? 1 : 0));
       }
+      // Build options for review (for MCQ)
+      const reviewOptionsApi: ReviewOption[] | undefined = currentQuestion.type === 'mcq' && currentQuestion.optionsList
+        ? currentQuestion.optionsList.map(opt => ({
+            label: opt.label,
+            value: opt.value,
+            isSelected: opt.label === answerToValidate,
+            isCorrect: opt.originalIndex === data.correctOptionIndex,
+          }))
+        : undefined;
+
       setReviewItems((prev) => {
         // Avoid duplicates when re-answering
         const filtered = prev.filter(r => r.index !== currentIndex + 1);
@@ -878,6 +920,8 @@ export default function ChapterQuizPage() {
               '',
             explanation: data.explanation || data.feedback,
             page_source: currentQuestion.page_source || null,
+            question_type: currentQuestion.type === 'mcq' ? 'mcq' : 'open',
+            options: reviewOptionsApi,
           },
         ];
       });
@@ -932,6 +976,13 @@ export default function ChapterQuizPage() {
     setShowExitModal(false);
   };
 
+  // Handle folder click from breadcrumb - open sidebar to that folder's courses
+  const handleBreadcrumbFolderClick = useCallback(() => {
+    if (currentCourseFolder) {
+      sidebar.openToFolder(currentCourseFolder.id, currentCourseFolder.name);
+    }
+  }, [currentCourseFolder, sidebar]);
+
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center transition-colors ${
@@ -982,7 +1033,7 @@ export default function ChapterQuizPage() {
   }
 
   return (
-    <div className={`min-h-screen p-3 sm:p-6 transition-colors ${
+    <div className={`min-h-screen flex flex-col ${
       isDark ? 'bg-neutral-900' : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
     }`}>
       {showExitModal && (
@@ -994,60 +1045,110 @@ export default function ChapterQuizPage() {
           translate={translate}
         />
       )}
-      <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4">
-        <div className={`rounded-2xl border p-4 sm:p-5 shadow-sm transition-colors ${
-          isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
-        }`}>
-          <div className="flex items-center gap-3 mb-3">
-            <Image
-              src="/chat/mascotte.png"
-              alt="Nareo"
-              width={80}
-              height={80}
-              className="rounded-2xl flex-shrink-0"
-            />
-            <div className="min-w-0 flex-1">
-              <p className={`text-xs uppercase tracking-wide font-semibold ${
-                isDark ? 'text-orange-400' : 'text-orange-600'
-              }`}>{courseTitle}</p>
-              <h1 className={`text-xl sm:text-2xl font-bold truncate ${
-                isDark ? 'text-neutral-50' : 'text-gray-900'
-              }`}>{chapterTitle}</h1>
-            </div>
-            <KeyboardHelpTooltip isDark={isDark} />
-          </div>
-          <div className={`flex items-center justify-between mt-2 text-sm ${
-            isDark ? 'text-neutral-400' : 'text-gray-600'
-          }`}>
-            <span className={isDark ? 'text-neutral-500' : 'text-gray-500'}>
-              {translate('quiz_progress').replace('{current}', String(currentIndex + 1)).replace('{total}', String(questions.length))}
-            </span>
-            <span className={`font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-              {score} / {totalPossiblePoints} {translate('learn_pts')}
-            </span>
-          </div>
-        </div>
 
-        <div
+      {/* Sidebar navigation */}
+      {!isDemoId && user && (
+        <CourseSidebar
+          isOpen={sidebar.isOpen}
+          level={sidebar.level}
+          selectedFolderId={sidebar.selectedFolderId}
+          selectedFolderName={sidebar.selectedFolderName}
+          currentCourseId={courseId}
+          onClose={sidebar.closeSidebar}
+          onOpen={sidebar.openSidebar}
+          onGoToFolderLevel={sidebar.goToFolderLevel}
+          onGoToCourseLevel={sidebar.goToCourseLevel}
+          disabled={showExitModal}
+        />
+      )}
+
+      {/* Content wrapper - pushes right when sidebar is open */}
+      <div
+        className={`flex-1 flex flex-col transition-[margin] duration-300 ease-out ${
+          !isDemoId && user
+            ? sidebar.isOpen
+              ? 'md:ml-[250px]'  /* Sidebar width when open */
+              : 'md:ml-[72px]'   /* Toggle button width when closed */
+            : ''
+        }`}
+      >
+        {/* Header */}
+        <header
+          className={`border-b sticky top-0 z-30 h-[52px] relative ${
+            isDark
+              ? 'bg-neutral-900 border-neutral-800 before:bg-neutral-900'
+              : 'bg-white border-gray-200 before:bg-white'
+          } before:absolute before:top-0 before:right-full before:w-[250px] before:h-full before:hidden md:before:block`}
+        >
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <CourseBreadcrumb
+                folderName={currentCourseFolder?.name || null}
+                courseName={courseTitle}
+                onFolderClick={handleBreadcrumbFolderClick}
+              />
+            </div>
+            <div className="flex-shrink-0">
+              <TopBarActions showDarkModeToggle />
+            </div>
+          </div>
+        </header>
+
+        {/* Main content */}
+        <main className="max-w-3xl mx-auto px-2 sm:px-4 py-4 space-y-2 sm:space-y-3 flex-1 w-full">
+          <div className={`rounded-xl border px-3 py-2 sm:px-4 sm:py-3 shadow-sm transition-colors ${
+            isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+          }`}>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Image
+                src="/chat/mascotte.png"
+                alt="Nareo"
+                width={48}
+                height={48}
+                className="rounded-xl flex-shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <p className={`text-[10px] sm:text-xs uppercase tracking-wide font-semibold ${
+                  isDark ? 'text-orange-400' : 'text-orange-600'
+                }`}>{courseTitle}</p>
+                <h1 className={`text-base sm:text-lg font-bold truncate ${
+                  isDark ? 'text-neutral-50' : 'text-gray-900'
+                }`}>{chapterTitle}</h1>
+              </div>
+              <div className="text-right">
+                <span className={`block text-sm font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                  {score}/{totalPossiblePoints} pts
+                </span>
+                <span className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
+                  {translate('quiz_progress').replace('{current}', String(currentIndex + 1)).replace('{total}', String(questions.length))}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div
           ref={containerRef}
-          className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 shadow-lg space-y-3 sm:space-y-4 transition-colors ${
+          className={`rounded-xl border p-3 sm:p-4 shadow-lg space-y-2 sm:space-y-3 transition-colors ${
             isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
           }`}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <p className={`text-sm sm:text-lg font-semibold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{currentQuestion?.question_text}</p>
+          <div className="flex items-start justify-between gap-2">
+            <p className={`text-sm sm:text-base font-semibold leading-snug ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>{currentQuestion?.question_text}</p>
+            <KeyboardHelpTooltip isDark={isDark} />
+          </div>
           {currentQuestion?.type === 'mcq' && currentQuestion.optionsList ? (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {currentQuestion.optionsList.map((opt) => {
                 const isSelected = answer === opt.label;
                 const isCorrect = correctOptionId === opt.label;
                 const isSelectedAndWrong = hasAnswered && isSelected && !isCorrect;
 
-                let buttonClasses = 'w-full text-left p-2.5 sm:p-3 rounded-xl border-2 transition-all ';
-                let labelClasses = 'font-semibold mr-2 text-sm sm:text-base ';
-                let textClasses = 'text-sm sm:text-base ';
+                let buttonClasses = 'w-full text-left px-2.5 py-1.5 rounded-md border transition-all ';
+                let labelClasses = 'font-semibold mr-1.5 text-[13px] ';
+                let textClasses = 'text-[13px] ';
 
                 if (hasAnswered) {
                   // After answering: show green for correct, red for selected wrong
@@ -1056,19 +1157,19 @@ export default function ChapterQuizPage() {
                       ? 'border-green-500 bg-green-500/90 '
                       : 'border-green-500 bg-green-500 ';
                     labelClasses += 'text-white ';
-                    textClasses = 'text-white font-medium';
+                    textClasses = 'text-white font-medium text-[13px]';
                   } else if (isSelectedAndWrong) {
                     buttonClasses += isDark
                       ? 'border-[#d91a1c] bg-[#d91a1c]/90 '
                       : 'border-[#d91a1c] bg-[#d91a1c] ';
                     labelClasses += 'text-white ';
-                    textClasses = 'text-white';
+                    textClasses = 'text-white text-[13px]';
                   } else {
                     buttonClasses += isDark
                       ? 'border-neutral-700 bg-neutral-700/50 opacity-60 '
                       : 'border-gray-200 bg-gray-50 opacity-60 ';
                     labelClasses += isDark ? 'text-neutral-500 ' : 'text-gray-400 ';
-                    textClasses = isDark ? 'text-neutral-400' : 'text-gray-600';
+                    textClasses = isDark ? 'text-neutral-400 text-[13px]' : 'text-gray-600 text-[13px]';
                   }
                   buttonClasses += 'cursor-not-allowed';
                 } else {
@@ -1078,13 +1179,13 @@ export default function ChapterQuizPage() {
                       ? 'border-orange-500 bg-orange-500/20 '
                       : 'border-orange-500 bg-orange-50 ';
                     labelClasses += isDark ? 'text-orange-400 ' : 'text-orange-600 ';
-                    textClasses = isDark ? 'text-neutral-100' : 'text-gray-900';
+                    textClasses = isDark ? 'text-neutral-100 text-[13px]' : 'text-gray-900 text-[13px]';
                   } else {
                     buttonClasses += isDark
                       ? 'border-neutral-600 hover:border-orange-500/50 '
                       : 'border-gray-200 hover:border-orange-300 ';
                     labelClasses += isDark ? 'text-orange-400 ' : 'text-orange-600 ';
-                    textClasses = isDark ? 'text-neutral-200' : 'text-gray-900';
+                    textClasses = isDark ? 'text-neutral-200 text-[13px]' : 'text-gray-900 text-[13px]';
                   }
                 }
 
@@ -1143,19 +1244,19 @@ export default function ChapterQuizPage() {
             <button
               onClick={() => handleValidate()}
               disabled={!answer.trim()}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white text-sm sm:text-base font-semibold hover:bg-orange-600 disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-60"
             >
               {translate('quiz_validate')}
             </button>
           )}
 
           {/* Navigation and finish buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {/* Previous button */}
             <button
               onClick={goToPrevious}
               disabled={currentIndex === 0}
-              className={`px-4 py-3 rounded-xl border font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+              className={`px-2.5 py-1.5 rounded-md border text-[13px] font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
                 isDark
                   ? 'border-neutral-600 text-neutral-300 hover:bg-neutral-700'
                   : 'border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -1169,14 +1270,14 @@ export default function ChapterQuizPage() {
             {feedback && currentIndex < questions.length - 1 && (
               <button
                 onClick={goToNext}
-                className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm sm:text-base font-semibold transition-colors ${
+                className={`flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-colors ${
                   isDark
                     ? 'bg-neutral-700 text-neutral-100 hover:bg-neutral-600'
                     : 'bg-gray-900 text-white hover:bg-black'
                 }`}
               >
                 {translate('quiz_next_question')}
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-3 h-3" />
               </button>
             )}
 
@@ -1185,13 +1286,13 @@ export default function ChapterQuizPage() {
               allAnswered ? (
                 <button
                   onClick={handleFinishClick}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white text-sm sm:text-base font-semibold hover:bg-orange-600"
+                  className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-orange-500 text-white text-[13px] font-semibold hover:bg-orange-600"
                 >
                   {translate('quiz_finish')}
                 </button>
               ) : (
-                <span className={`flex-1 text-center text-sm ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-                  {translate('quiz_remaining_questions').replace('{count}', String(remainingCount))}
+                <span className={`flex-1 text-center text-[11px] ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
+                  {translate(remainingCount === 1 ? 'quiz_remaining_question' : 'quiz_remaining_questions').replace('{count}', String(remainingCount))}
                 </span>
               )
             )}
@@ -1200,7 +1301,7 @@ export default function ChapterQuizPage() {
             <button
               onClick={goToNext}
               disabled={currentIndex === questions.length - 1}
-              className={`px-4 py-3 rounded-xl border font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+              className={`px-2.5 py-1.5 rounded-md border text-[13px] font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
                 isDark
                   ? 'border-neutral-600 text-neutral-300 hover:bg-neutral-700'
                   : 'border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -1222,6 +1323,7 @@ export default function ChapterQuizPage() {
             translate={translate}
           />
         </div>
+        </main>
       </div>
     </div>
   );

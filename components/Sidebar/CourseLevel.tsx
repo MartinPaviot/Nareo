@@ -16,6 +16,7 @@ interface CourseLevelProps {
   onCourseClick: (courseId: string) => void;
   onAddCourse?: () => void;
   onMoveCourse?: (courseId: string, folderId: string | null) => Promise<boolean>;
+  onCourseDeleted?: () => void;
 }
 
 export default function CourseLevel({
@@ -28,6 +29,7 @@ export default function CourseLevel({
   onCourseClick,
   onAddCourse,
   onMoveCourse,
+  onCourseDeleted,
 }: CourseLevelProps) {
   const { isDark } = useTheme();
   const { translate } = useLanguage();
@@ -87,6 +89,7 @@ export default function CourseLevel({
                   folders={folders}
                   currentFolderId={folderId}
                   onMoveCourse={onMoveCourse}
+                  onCourseDeleted={onCourseDeleted}
                 />
               ))}
             </div>

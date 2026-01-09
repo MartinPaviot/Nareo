@@ -211,7 +211,10 @@ export function useCourseChapters({
       // ===== REALTIME MODE =====
       const supabase = createSupabaseBrowserClient();
 
-      // Create subscription to BOTH chapters AND courses tables
+      // Track chapter IDs for questions subscription
+      let chapterIds: string[] = chaptersRef.current.map(ch => ch.id);
+
+      // Create subscription to chapters, courses, AND questions tables
       const channel = supabase
         .channel(`course-${courseId}-updates`)
         .on(
@@ -224,6 +227,10 @@ export function useCourseChapters({
           },
           (payload) => {
             console.log('Chapter change detected:', payload);
+            // Update chapter IDs list
+            if (payload.eventType === 'INSERT' && payload.new) {
+              chapterIds = [...chapterIds, (payload.new as { id: string }).id];
+            }
             // Refetch all data when any chapter changes
             fetchCourseData();
           }
@@ -241,6 +248,30 @@ export function useCourseChapters({
             // Refetch all data when course status changes
             fetchCourseData();
           }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT', // Listen to new questions being added
+            schema: 'public',
+            table: 'questions',
+          },
+          (() => {
+            // Debounce question inserts to avoid too many refetches
+            let debounceTimer: NodeJS.Timeout | null = null;
+            return (payload: { new: { chapter_id?: string } | null }) => {
+              const questionChapterId = payload.new?.chapter_id;
+              if (questionChapterId && chapterIds.includes(questionChapterId)) {
+                // Clear existing timer
+                if (debounceTimer) clearTimeout(debounceTimer);
+                // Set new timer - refetch after 500ms of no new questions
+                debounceTimer = setTimeout(() => {
+                  console.log('Questions batch inserted, refreshing...');
+                  fetchCourseData();
+                }, 500);
+              }
+            };
+          })()
         )
         .subscribe((status) => {
           console.log('Realtime subscription status:', status);

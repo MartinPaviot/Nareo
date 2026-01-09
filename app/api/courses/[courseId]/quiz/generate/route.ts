@@ -20,10 +20,10 @@ function getGuestSessionIdFromRequest(request: NextRequest): string | null {
 
 // Hybrid processing strategy:
 // 1. First chapter processed alone (so user can start practicing quickly)
-// 2. Remaining chapters processed in parallel batches of 2
-// Batch of 2 = 6 API calls max (2 chapters × 3 question types)
-// This stays under Mistral Tier 1 limit (5 RPS) with minimal retries
-const PARALLEL_CHAPTER_BATCH_SIZE = 2;
+// 2. Remaining chapters processed in parallel batches of 5
+// Batch of 5 = 15 API calls max (5 chapters × 3 question types)
+// Vercel Pro allows 300s timeout, retry mechanism handles rate limits
+const PARALLEL_CHAPTER_BATCH_SIZE = 5;
 
 function toModelLanguageCode(language: string): 'EN' | 'FR' | 'DE' {
   const lower = (language || '').toLowerCase();

@@ -586,7 +586,7 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors ${
+    <div className={`min-h-screen flex flex-col ${
       isDark
         ? 'bg-neutral-900'
         : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
@@ -606,12 +606,15 @@ export default function ReviewPage() {
         />
       )}
 
-      {/* Content wrapper - shifts right based on sidebar state */}
+      {/* Content wrapper - pushes right when sidebar is open */}
       <div
-        className={`transition-transform duration-300 ease-out ${user ? 'ml-[72px]' : ''}`}
-        style={{
-          transform: user && sidebar.isOpen ? 'translateX(208px)' : 'translateX(0)',
-        }}
+        className={`flex-1 flex flex-col transition-[margin] duration-300 ease-out ${
+          user
+            ? sidebar.isOpen
+              ? 'md:ml-[250px]'  /* Sidebar width when open */
+              : 'md:ml-[72px]'   /* Toggle button width when closed */
+            : ''
+        }`}
       >
         <LearnPageHeader
           courseName={currentCourseInfo.title}
@@ -621,7 +624,7 @@ export default function ReviewPage() {
           maxWidth="4xl"
         />
 
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
           {/* Session completed - show recap */}
           {sessionState === 'completed' && sessionStats ? (
             <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
@@ -641,16 +644,7 @@ export default function ReviewPage() {
             /* Playing session */
             <div className="space-y-4">
               {/* Progress indicator and points */}
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
-                <button
-                  onClick={() => router.back()}
-                  className={`flex items-center gap-2 font-medium transition-colors ${
-                    isDark ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  {translate('back', 'Retour')}
-                </button>
+              <div className="flex flex-wrap items-center justify-end gap-2 text-xs sm:text-sm">
                 <div className="flex items-center gap-1">
                   {sessionPoints > 0 && (
                     <span className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full font-semibold text-xs sm:text-sm ${
@@ -775,6 +769,23 @@ export default function ReviewPage() {
             </div>
           )}
         </main>
+
+        {/* Footer - integrated in content wrapper for proper margin */}
+        <footer className={`border-t mt-auto ${
+          isDark
+            ? 'bg-neutral-900/50 border-neutral-800'
+            : 'bg-gray-50/50 border-gray-100'
+        }`}>
+          <div className={`max-w-4xl mx-auto px-4 py-1.5 flex items-center justify-center gap-4 text-[10px] ${
+            isDark ? 'text-neutral-500' : 'text-gray-400'
+          }`}>
+            <span>© 2026 Nareo</span>
+            <span className={isDark ? 'text-neutral-700' : 'text-gray-300'}>·</span>
+            <span className="hover:text-orange-500 transition-colors cursor-pointer">
+              Contact
+            </span>
+          </div>
+        </footer>
       </div>
     </div>
   );

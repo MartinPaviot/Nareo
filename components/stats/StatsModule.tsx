@@ -12,7 +12,7 @@ import { getPrecision } from '@/lib/stats/utils';
 import StreakCard from './StreakCard';
 import DailyGoalCard from './DailyGoalCard';
 import XPDisplay from './XPDisplay';
-import MasteryPreview from './MasteryPreview';
+import WelcomeActionSection from './WelcomeActionSection';
 import MilestoneModal from './MilestoneModal';
 import StatsModuleSkeleton from './StatsModuleSkeleton';
 
@@ -115,7 +115,10 @@ export default function StatsModule() {
         />
       </div>
 
-      {/* Row 2: Stats secondaires */}
+      {/* Row 2: Welcome Action Section */}
+      <WelcomeActionSection />
+
+      {/* Row 3: Stats secondaires */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <StatCard
           icon={BookOpen}
@@ -141,9 +144,6 @@ export default function StatsModule() {
           isDark={isDark}
         />
       </div>
-
-      {/* Row 4: Mastery Preview */}
-      <MasteryPreview />
     </div>
   );
 }

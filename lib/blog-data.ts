@@ -1378,6 +1378,588 @@ Ein Pomodoro = ein komplettes Quiz zu einem Kapitel. Einfach, messbar, effektiv.
     created_at: '2025-12-24T10:00:00Z',
     updated_at: '2025-12-24T10:00:00Z',
   },
+  {
+    id: '4',
+    slug: 'transformer-pdf-cours-quiz-interactif-30-secondes',
+    title_fr: 'Comment transformer un PDF de cours en Quiz interactif en 30 secondes',
+    title_en: 'How to Turn a Course PDF into an Interactive Quiz in 30 Seconds',
+    title_de: 'Wie du ein Kurs-PDF in 30 Sekunden in ein interaktives Quiz verwandelst',
+    excerpt_fr: "Découvrez comment l'IA de Nareo transforme instantanément vos PDF de cours en quiz et flashcards pour des révisions ultra-efficaces.",
+    excerpt_en: 'Discover how Nareo AI instantly transforms your course PDFs into quizzes and flashcards for ultra-effective studying.',
+    excerpt_de: 'Entdecke, wie Nareos KI deine Kurs-PDFs sofort in Quiz und Karteikarten für ultra-effektives Lernen verwandelt.',
+    content_fr: `*Tu as un partiel dans trois jours. Sur ton bureau (ou ton bureau virtuel), un PDF de 60 pages de cours magistraux. Ta première réaction ? Relire frénétiquement en espérant que ça rentre. Spoiler : c'est la méthode la moins efficace selon les neurosciences. Et si tu pouvais transformer ce pavé indigeste en un quiz interactif pour tester tes connaissances instantanément ?*
+
+---
+
+## Pourquoi transformer ses cours en quiz est la meilleure stratégie
+
+Avant de passer à la pratique, comprenons pourquoi c'est vital pour tes notes.
+
+### La science de l'apprentissage en deux piliers
+
+La recherche en sciences cognitives a identifié deux mécanismes fondamentaux pour une mémorisation durable : l'**Active Recall** (rappel actif) et la **Spaced Repetition** (répétition espacée).
+
+**Le problème avec la relecture :**
+
+Relire un PDF est **passif**. Ton cerveau s'endort littéralement. Pire : tu as l'illusion de connaître le cours parce qu'il te semble "familier". C'est ce que les chercheurs appellent la **fluence illusoire** – tu reconnais les mots, donc tu penses les maîtriser.
+
+**La puissance du quiz :**
+
+Répondre à un quiz est **actif**. Ton cerveau doit aller chercher l'information dans tes neurones. C'est cet effort de récupération qui crée une mémorisation durable. Chaque fois que tu te forces à te rappeler quelque chose, tu renforces les connexions neuronales associées.
+
+> **Le testing effect** : Des études montrent que les étudiants qui se testent régulièrement retiennent **50% de plus** que ceux qui relisent simplement leurs cours (Karpicke & Roediger, 2008).
+
+### Pourquoi l'IA change la donne
+
+Le problème historique du quiz comme méthode de révision ? **Le temps de création**. Rédiger des questions pertinentes prend des heures. Des heures que tu n'as pas à trois jours de ton exam.
+
+C'est là que l'intelligence artificielle entre en jeu. L'IA peut analyser un document, identifier les concepts clés, et générer des questions en quelques secondes. Ce qui prenait 3-4 heures se fait désormais en 30 secondes.
+
+---
+
+## Étape par étape : Créer un quiz à partir d'un PDF avec Nareo
+
+L'époque où tu passais 3 heures à rédiger tes propres questions est révolue. Voici comment faire avec Nareo :
+
+### 1. Prépare ton document
+
+Peu importe le format original :
+- Un cours de droit en PDF
+- Un chapitre de médecine scanné
+- Tes propres notes exportées depuis Notion
+- Un document Word converti en PDF
+- Des slides PowerPoint
+
+**Une seule condition** : le texte doit être lisible (pas une photo floue de ton cours prise à 3 mètres du tableau).
+
+### 2. Upload sur Nareo
+
+Glisse ton fichier sur la plateforme. L'algorithme de Nareo va alors :
+
+1. **Analyser la structure** du document (titres, sous-titres, paragraphes)
+2. **Identifier les concepts clés** et leur hiérarchie
+3. **Repérer les éléments mémorisables** : dates importantes, définitions, formules, relations de cause à effet
+4. **Comprendre le contexte** pour générer des questions pertinentes
+
+### 3. Génération automatique des questions
+
+En quelques secondes, l'outil génère un arsenal complet de révision :
+
+**Des QCM pour tester ta compréhension globale**
+- Questions à choix multiples sur les concepts principaux
+- Distracteurs intelligents (les mauvaises réponses sont plausibles, pas ridicules)
+- Explication de la bonne réponse pour chaque question
+
+**Des Flashcards pour mémoriser les termes techniques**
+- Recto : le terme ou la question
+- Verso : la définition ou la réponse
+- Parfait pour le vocabulaire spécifique de ta matière
+
+**Des questions ouvertes pour approfondir**
+- Questions de réflexion sur les liens entre concepts
+- Cas pratiques générés à partir de ta matière
+- Idéal pour les matières qui demandent de l'analyse
+
+### 4. Révise et ajuste
+
+Tu gardes le contrôle total :
+- **Filtre** les questions par difficulté ou par thème
+- **Supprime** celles qui te semblent trop évidentes
+- **Ajoute** tes propres questions si tu repères un point manquant
+- **Modifie** le libellé si la formulation ne te convient pas
+
+Ton quiz personnalisé est prêt. Temps total : moins d'une minute.
+
+---
+
+## Les avantages d'utiliser une IA pour tes fiches de révision
+
+Utiliser un générateur de quiz IA comme Nareo ne te fait pas seulement gagner du temps. Cela **améliore la qualité** de tes révisions :
+
+### Objectivité totale
+
+Quand tu crées tes propres questions, tu as un biais naturel : tu poses des questions sur ce que tu connais déjà bien (parce que c'est plus facile à formuler) et tu évites inconsciemment les zones floues.
+
+L'IA n'a pas ce biais. Elle va te poser des questions sur **tout** le contenu, y compris les points que tu aurais ignorés par flemme, par oubli, ou simplement parce que tu pensais "ça ne tombera pas".
+
+### Format interactif et engageant
+
+Réviser sur son téléphone ou son ordinateur sous forme de quiz :
+- **Réduit le stress** : c'est plus proche d'un jeu que d'une torture
+- **Diminue la fatigue mentale** : l'aspect interactif maintient l'engagement
+- **S'adapte à ton rythme** : 5 minutes dans le métro ou 1 heure à la bibliothèque, c'est toi qui décides
+
+### Suivi de progression intelligent
+
+Nareo ne se contente pas de générer des questions. L'algorithme :
+- **Analyse tes erreurs** pour identifier tes points faibles
+- **Te repropose les questions ratées** au moment idéal (Spaced Repetition)
+- **Track ta progression** pour que tu saches exactement où tu en es
+- **Ajuste la difficulté** en fonction de tes performances
+
+> **Le bon timing** : Revoir une question juste avant de l'oublier maximise la rétention. C'est le principe de la répétition espacée, et l'IA calcule ce timing pour toi.
+
+---
+
+## Comparatif : Création manuelle vs Automatisation IA
+
+| Méthode | Temps passé | Efficacité mémorisation | Fatigue mentale |
+|---------|-------------|------------------------|-----------------|
+| Relire le PDF | 2h (passif) | Faible (~10% de rétention) | Élevée (ennui) |
+| Créer ses quiz à la main | 4h (actif mais épuisant) | Très élevée | Très élevée |
+| Nareo (IA) | 30 secondes | Maximale (Active Recall) | Faible |
+
+### Analyse détaillée
+
+**La relecture** : Tu passes 2 heures les yeux rivés sur ton PDF. Ton cerveau reconnaît vaguement les informations, ce qui te donne l'illusion de les connaître. Une semaine plus tard ? Tu as oublié 90% de ce que tu as "révisé".
+
+**La création manuelle** : Excellente pour la mémorisation (tu apprends en créant), mais irréaliste. Qui a 4 heures à consacrer à la création de questions quand il reste 3 jours avant l'exam ?
+
+**Nareo** : Tu combines le meilleur des deux mondes. Des quiz de qualité, générés instantanément, que tu peux commencer à utiliser immédiatement. Le temps économisé sur la création, tu l'investis dans la révision active.
+
+---
+
+## Les cas d'usage concrets
+
+### Étudiant en médecine
+
+Tu as 200 pages d'anatomie à réviser. Upload le PDF → Nareo génère des flashcards sur les muscles, les os, les nerfs. Des QCM sur les relations anatomiques. Des cas cliniques simplifiés pour tester ton raisonnement.
+
+### Étudiant en droit
+
+Tes cours de droit constitutionnel font 80 pages de doctrine dense. Nareo identifie les arrêts importants, les principes juridiques, les exceptions. Les quiz testent ta capacité à associer jurisprudence et principes.
+
+### Étudiant en école de commerce
+
+Marketing, finance, stratégie... Chaque matière a son vocabulaire. Nareo crée des flashcards sur les concepts clés et des QCM sur leur application pratique.
+
+### Prépa concours
+
+Tu bachottes pour un concours ? Import tes fiches de culture générale. Nareo transforme tes dates, tes auteurs, tes événements en un quiz jouable sur ton téléphone dans les transports.
+
+---
+
+## Le secret des majors de promo
+
+Spoiler : ce n'est pas de travailler plus. C'est de **travailler mieux**.
+
+Les étudiants qui réussissent ont compris un truc fondamental : le temps passé à réviser compte moins que la **qualité** de ce temps. Une heure d'Active Recall vaut mieux que 4 heures de relecture passive.
+
+En transformant tes PDF en quiz interactifs, tu passes du statut de **spectateur** de ton cours (tu lis, tu surligne, tu t'ennuies) à celui d'**acteur** de ta réussite (tu te testes, tu échoues, tu apprends, tu progresses).
+
+### La méthode en 3 étapes
+
+1. **Import** : Uploade ton cours sur Nareo
+2. **Test** : Réponds aux quiz générés
+3. **Révise** : Concentre-toi sur les questions ratées
+
+Répète ce cycle jusqu'à l'exam. Simple, efficace, scientifiquement prouvé.
+
+---
+
+## Conclusion : Arrête de relire, commence à te tester
+
+Le secret n'est pas dans le nombre d'heures passées sur tes cours. Il est dans ce que tu **fais** pendant ces heures.
+
+Relire passivement = illusion de travail.
+Se tester activement = apprentissage réel.
+
+L'IA n'est pas là pour faire le travail à ta place. Elle est là pour **éliminer les tâches fastidieuses** (créer des questions pendant des heures) et te permettre de te concentrer sur ce qui compte vraiment : **apprendre**.
+
+> Prêt à transformer ton prochain cours ?
+
+---
+
+## Passe à l'action avec Nareo
+
+Tu veux appliquer cette méthode dès aujourd'hui ? **Nareo transforme automatiquement tes PDF en quiz et flashcards** optimisés pour l'Active Recall et la répétition espacée.
+
+Importe ton premier cours et commence à te tester en 30 secondes. Gratuitement.`,
+    content_en: `*You have an exam in three days. On your desk (or virtual desktop), a 60-page PDF of lecture notes. Your first reaction? Frantically re-read hoping it'll stick. Spoiler: it's the least effective method according to neuroscience. What if you could transform that indigestible brick into an interactive quiz to test your knowledge instantly?*
+
+---
+
+## Why Turning Your Courses into Quizzes Is the Best Strategy
+
+Before we get practical, let's understand why this is vital for your grades.
+
+### The Science of Learning in Two Pillars
+
+Cognitive science research has identified two fundamental mechanisms for lasting memorization: **Active Recall** and **Spaced Repetition**.
+
+**The problem with re-reading:**
+
+Re-reading a PDF is **passive**. Your brain literally falls asleep. Worse: you have the illusion of knowing the material because it seems "familiar." Researchers call this **illusion of fluency** – you recognize the words, so you think you've mastered them.
+
+**The power of quizzes:**
+
+Answering a quiz is **active**. Your brain has to retrieve the information from your neurons. It's this retrieval effort that creates lasting memorization. Each time you force yourself to remember something, you strengthen the associated neural connections.
+
+> **The testing effect**: Studies show that students who test themselves regularly retain **50% more** than those who simply re-read their notes (Karpicke & Roediger, 2008).
+
+### Why AI Is a Game-Changer
+
+The historical problem with quizzes as a study method? **Creation time**. Writing relevant questions takes hours. Hours you don't have three days before your exam.
+
+This is where artificial intelligence comes in. AI can analyze a document, identify key concepts, and generate questions in seconds. What used to take 3-4 hours now happens in 30 seconds.
+
+---
+
+## Step by Step: Creating a Quiz from a PDF with Nareo
+
+The era of spending 3 hours writing your own questions is over. Here's how to do it with Nareo:
+
+### 1. Prepare Your Document
+
+No matter the original format:
+- A law course in PDF
+- A scanned medical chapter
+- Your own notes exported from Notion
+- A Word document converted to PDF
+- PowerPoint slides
+
+**One condition**: the text must be readable (not a blurry photo of your lecture taken from 10 feet away from the board).
+
+### 2. Upload to Nareo
+
+Drag your file onto the platform. Nareo's algorithm will then:
+
+1. **Analyze the structure** of the document (titles, subtitles, paragraphs)
+2. **Identify key concepts** and their hierarchy
+3. **Spot memorizable elements**: important dates, definitions, formulas, cause-and-effect relationships
+4. **Understand the context** to generate relevant questions
+
+### 3. Automatic Question Generation
+
+In seconds, the tool generates a complete study arsenal:
+
+**Multiple choice questions to test your overall understanding**
+- MCQs on main concepts
+- Smart distractors (wrong answers are plausible, not ridiculous)
+- Explanation of the correct answer for each question
+
+**Flashcards to memorize technical terms**
+- Front: the term or question
+- Back: the definition or answer
+- Perfect for your subject's specific vocabulary
+
+**Open questions for deeper learning**
+- Reflection questions on links between concepts
+- Practice cases generated from your material
+- Ideal for subjects requiring analysis
+
+### 4. Review and Adjust
+
+You keep total control:
+- **Filter** questions by difficulty or theme
+- **Delete** those that seem too obvious
+- **Add** your own questions if you spot a missing point
+- **Modify** the wording if the formulation doesn't suit you
+
+Your personalized quiz is ready. Total time: less than a minute.
+
+---
+
+## The Advantages of Using AI for Your Study Materials
+
+Using an AI quiz generator like Nareo doesn't just save you time. It **improves the quality** of your studying:
+
+### Total Objectivity
+
+When you create your own questions, you have a natural bias: you ask questions about what you already know well (because it's easier to formulate) and you unconsciously avoid unclear areas.
+
+AI doesn't have this bias. It will ask you questions about **all** the content, including points you would have ignored out of laziness, forgetfulness, or simply because you thought "that won't be on the test."
+
+### Interactive and Engaging Format
+
+Studying on your phone or computer in quiz format:
+- **Reduces stress**: it's more like a game than torture
+- **Decreases mental fatigue**: the interactive aspect maintains engagement
+- **Adapts to your rhythm**: 5 minutes on the subway or 1 hour at the library, you decide
+
+### Intelligent Progress Tracking
+
+Nareo doesn't just generate questions. The algorithm:
+- **Analyzes your mistakes** to identify your weak points
+- **Brings back missed questions** at the ideal time (Spaced Repetition)
+- **Tracks your progress** so you know exactly where you stand
+- **Adjusts difficulty** based on your performance
+
+> **The right timing**: Reviewing a question just before you forget it maximizes retention. This is the principle of spaced repetition, and AI calculates this timing for you.
+
+---
+
+## Comparison: Manual Creation vs AI Automation
+
+| Method | Time Spent | Memorization Efficiency | Mental Fatigue |
+|--------|------------|------------------------|----------------|
+| Re-reading PDF | 2h (passive) | Low (~10% retention) | High (boredom) |
+| Creating quizzes manually | 4h (active but exhausting) | Very high | Very high |
+| Nareo (AI) | 30 seconds | Maximum (Active Recall) | Low |
+
+### Detailed Analysis
+
+**Re-reading**: You spend 2 hours staring at your PDF. Your brain vaguely recognizes the information, giving you the illusion of knowing it. A week later? You've forgotten 90% of what you "studied."
+
+**Manual creation**: Excellent for memorization (you learn while creating), but unrealistic. Who has 4 hours to dedicate to creating questions when there are 3 days until the exam?
+
+**Nareo**: You combine the best of both worlds. Quality quizzes, generated instantly, that you can start using immediately. The time saved on creation, you invest in active studying.
+
+---
+
+## Concrete Use Cases
+
+### Medical Student
+
+You have 200 pages of anatomy to review. Upload the PDF → Nareo generates flashcards on muscles, bones, nerves. MCQs on anatomical relationships. Simplified clinical cases to test your reasoning.
+
+### Law Student
+
+Your constitutional law notes are 80 pages of dense doctrine. Nareo identifies important cases, legal principles, exceptions. Quizzes test your ability to associate case law and principles.
+
+### Business School Student
+
+Marketing, finance, strategy... Each subject has its vocabulary. Nareo creates flashcards on key concepts and MCQs on their practical application.
+
+### Competitive Exam Prep
+
+Cramming for a competitive exam? Import your general knowledge sheets. Nareo transforms your dates, authors, events into a playable quiz on your phone during commute.
+
+---
+
+## The Secret of Top Students
+
+Spoiler: it's not working more. It's **working smarter**.
+
+Successful students understand something fundamental: the time spent studying matters less than the **quality** of that time. One hour of Active Recall is worth more than 4 hours of passive re-reading.
+
+By transforming your PDFs into interactive quizzes, you go from being a **spectator** of your course (you read, you highlight, you get bored) to being an **actor** in your success (you test yourself, you fail, you learn, you progress).
+
+### The 3-Step Method
+
+1. **Import**: Upload your course to Nareo
+2. **Test**: Answer the generated quizzes
+3. **Review**: Focus on missed questions
+
+Repeat this cycle until the exam. Simple, effective, scientifically proven.
+
+---
+
+## Conclusion: Stop Re-reading, Start Testing
+
+The secret isn't in the number of hours spent on your courses. It's in what you **do** during those hours.
+
+Passive re-reading = illusion of work.
+Active self-testing = real learning.
+
+AI isn't here to do the work for you. It's here to **eliminate tedious tasks** (creating questions for hours) and allow you to focus on what really matters: **learning**.
+
+> Ready to transform your next course?
+
+---
+
+## Take Action with Nareo
+
+Want to apply this method today? **Nareo automatically transforms your PDFs into quizzes and flashcards** optimized for Active Recall and spaced repetition.
+
+Import your first course and start testing yourself in 30 seconds. For free.`,
+    content_de: `*Du hast in drei Tagen eine Prüfung. Auf deinem Schreibtisch (oder virtuellen Desktop) liegt ein 60-seitiges PDF mit Vorlesungsnotizen. Deine erste Reaktion? Hektisch wiederlesen in der Hoffnung, dass es hängen bleibt. Spoiler: Es ist laut Neurowissenschaft die am wenigsten effektive Methode. Was wäre, wenn du diesen unverdaulichen Brocken in ein interaktives Quiz verwandeln könntest, um dein Wissen sofort zu testen?*
+
+---
+
+## Warum es die beste Strategie ist, deine Kurse in Quiz zu verwandeln
+
+Bevor wir praktisch werden, lass uns verstehen, warum das entscheidend für deine Noten ist.
+
+### Die Wissenschaft des Lernens auf zwei Säulen
+
+Die kognitive Wissenschaft hat zwei grundlegende Mechanismen für dauerhaftes Einprägen identifiziert: **Active Recall** (aktives Erinnern) und **Spaced Repetition** (verteiltes Wiederholen).
+
+**Das Problem mit dem Wiederlesen:**
+
+Ein PDF wiederzulesen ist **passiv**. Dein Gehirn schläft buchstäblich ein. Schlimmer noch: Du hast die Illusion, den Stoff zu kennen, weil er dir "vertraut" vorkommt. Forscher nennen das die **Flüssigkeitsillusion** – du erkennst die Wörter wieder, also denkst du, du beherrschst sie.
+
+**Die Kraft des Quiz:**
+
+Ein Quiz zu beantworten ist **aktiv**. Dein Gehirn muss die Information aus deinen Neuronen abrufen. Diese Abrufanstrengung schafft dauerhaftes Einprägen. Jedes Mal, wenn du dich zwingst, dich an etwas zu erinnern, stärkst du die zugehörigen neuronalen Verbindungen.
+
+> **Der Testing-Effekt**: Studien zeigen, dass Studenten, die sich regelmäßig testen, **50% mehr** behalten als die, die einfach ihre Notizen wiederlesen (Karpicke & Roediger, 2008).
+
+### Warum KI alles verändert
+
+Das historische Problem mit Quiz als Lernmethode? **Die Erstellungszeit**. Relevante Fragen zu schreiben dauert Stunden. Stunden, die du drei Tage vor der Prüfung nicht hast.
+
+Hier kommt künstliche Intelligenz ins Spiel. KI kann ein Dokument analysieren, Schlüsselkonzepte identifizieren und Fragen in Sekunden generieren. Was früher 3-4 Stunden dauerte, passiert jetzt in 30 Sekunden.
+
+---
+
+## Schritt für Schritt: Ein Quiz aus einem PDF mit Nareo erstellen
+
+Die Ära, in der du 3 Stunden mit dem Schreiben eigener Fragen verbracht hast, ist vorbei. So geht's mit Nareo:
+
+### 1. Bereite dein Dokument vor
+
+Egal welches Originalformat:
+- Ein Jura-Kurs als PDF
+- Ein eingescanntes Medizin-Kapitel
+- Deine eigenen Notizen, exportiert aus Notion
+- Ein Word-Dokument, konvertiert zu PDF
+- PowerPoint-Folien
+
+**Eine Bedingung**: Der Text muss lesbar sein (kein verschwommenes Foto deiner Vorlesung, aufgenommen aus 3 Metern Entfernung von der Tafel).
+
+### 2. Upload auf Nareo
+
+Ziehe deine Datei auf die Plattform. Nareos Algorithmus wird dann:
+
+1. **Die Struktur analysieren** des Dokuments (Titel, Untertitel, Absätze)
+2. **Schlüsselkonzepte identifizieren** und ihre Hierarchie
+3. **Einprägbare Elemente erkennen**: wichtige Daten, Definitionen, Formeln, Ursache-Wirkungs-Beziehungen
+4. **Den Kontext verstehen**, um relevante Fragen zu generieren
+
+### 3. Automatische Fragengenerierung
+
+In Sekunden generiert das Tool ein komplettes Lern-Arsenal:
+
+**Multiple-Choice-Fragen zum Testen deines Gesamtverständnisses**
+- MCQs zu den Hauptkonzepten
+- Intelligente Distraktoren (falsche Antworten sind plausibel, nicht lächerlich)
+- Erklärung der richtigen Antwort für jede Frage
+
+**Karteikarten zum Einprägen technischer Begriffe**
+- Vorderseite: der Begriff oder die Frage
+- Rückseite: die Definition oder Antwort
+- Perfekt für das spezifische Vokabular deines Fachs
+
+**Offene Fragen für tieferes Lernen**
+- Reflexionsfragen zu Verbindungen zwischen Konzepten
+- Praxisfälle, generiert aus deinem Material
+- Ideal für Fächer, die Analyse erfordern
+
+### 4. Überprüfen und Anpassen
+
+Du behältst die volle Kontrolle:
+- **Filtere** Fragen nach Schwierigkeit oder Thema
+- **Lösche** die, die dir zu offensichtlich erscheinen
+- **Füge** deine eigenen Fragen hinzu, wenn du einen fehlenden Punkt entdeckst
+- **Ändere** den Wortlaut, wenn die Formulierung dir nicht passt
+
+Dein personalisiertes Quiz ist fertig. Gesamtzeit: weniger als eine Minute.
+
+---
+
+## Die Vorteile von KI für deine Lernmaterialien
+
+Einen KI-Quiz-Generator wie Nareo zu nutzen, spart dir nicht nur Zeit. Es **verbessert die Qualität** deines Lernens:
+
+### Totale Objektivität
+
+Wenn du deine eigenen Fragen erstellst, hast du eine natürliche Voreingenommenheit: Du stellst Fragen über das, was du bereits gut kennst (weil es einfacher zu formulieren ist) und vermeidest unbewusst unklare Bereiche.
+
+KI hat diese Voreingenommenheit nicht. Sie stellt dir Fragen über **den gesamten** Inhalt, einschließlich Punkte, die du aus Faulheit, Vergesslichkeit oder einfach weil du dachtest "das kommt nicht dran" ignoriert hättest.
+
+### Interaktives und ansprechendes Format
+
+Auf dem Handy oder Computer in Quiz-Form zu lernen:
+- **Reduziert Stress**: Es ist mehr wie ein Spiel als Folter
+- **Verringert mentale Erschöpfung**: Der interaktive Aspekt erhält das Engagement
+- **Passt sich deinem Rhythmus an**: 5 Minuten in der U-Bahn oder 1 Stunde in der Bibliothek, du entscheidest
+
+### Intelligente Fortschrittsverfolgung
+
+Nareo generiert nicht nur Fragen. Der Algorithmus:
+- **Analysiert deine Fehler**, um deine Schwachpunkte zu identifizieren
+- **Bringt verfehlte Fragen zurück** zum idealen Zeitpunkt (Spaced Repetition)
+- **Verfolgt deinen Fortschritt**, damit du genau weißt, wo du stehst
+- **Passt die Schwierigkeit an** basierend auf deiner Leistung
+
+> **Das richtige Timing**: Eine Frage kurz vor dem Vergessen zu wiederholen maximiert die Behaltensleistung. Das ist das Prinzip der verteilten Wiederholung, und KI berechnet dieses Timing für dich.
+
+---
+
+## Vergleich: Manuelle Erstellung vs KI-Automatisierung
+
+| Methode | Zeitaufwand | Einprägungseffizienz | Mentale Erschöpfung |
+|---------|-------------|---------------------|---------------------|
+| PDF wiederlesen | 2h (passiv) | Gering (~10% Behaltensleistung) | Hoch (Langeweile) |
+| Quiz manuell erstellen | 4h (aktiv aber erschöpfend) | Sehr hoch | Sehr hoch |
+| Nareo (KI) | 30 Sekunden | Maximum (Active Recall) | Gering |
+
+### Detaillierte Analyse
+
+**Wiederlesen**: Du verbringst 2 Stunden damit, auf dein PDF zu starren. Dein Gehirn erkennt die Informationen vage, was dir die Illusion gibt, sie zu kennen. Eine Woche später? Du hast 90% von dem vergessen, was du "gelernt" hast.
+
+**Manuelle Erstellung**: Exzellent für das Einprägen (du lernst beim Erstellen), aber unrealistisch. Wer hat 4 Stunden, um Fragen zu erstellen, wenn noch 3 Tage bis zur Prüfung sind?
+
+**Nareo**: Du kombinierst das Beste aus beiden Welten. Qualitäts-Quiz, sofort generiert, die du sofort nutzen kannst. Die bei der Erstellung gesparte Zeit investierst du in aktives Lernen.
+
+---
+
+## Konkrete Anwendungsfälle
+
+### Medizinstudent
+
+Du hast 200 Seiten Anatomie zu wiederholen. Lade das PDF hoch → Nareo generiert Karteikarten zu Muskeln, Knochen, Nerven. MCQs zu anatomischen Beziehungen. Vereinfachte klinische Fälle, um dein Denken zu testen.
+
+### Jurastudent
+
+Deine Verfassungsrecht-Notizen sind 80 Seiten dichte Doktrin. Nareo identifiziert wichtige Fälle, Rechtsprinzipien, Ausnahmen. Quiz testen deine Fähigkeit, Rechtsprechung und Prinzipien zu verbinden.
+
+### BWL-Student
+
+Marketing, Finanzen, Strategie... Jedes Fach hat sein Vokabular. Nareo erstellt Karteikarten zu Schlüsselkonzepten und MCQs zu ihrer praktischen Anwendung.
+
+### Prüfungsvorbereitung
+
+Du büffelst für eine Prüfung? Importiere deine Allgemeinwissen-Blätter. Nareo verwandelt deine Daten, Autoren, Ereignisse in ein spielbares Quiz auf deinem Handy für unterwegs.
+
+---
+
+## Das Geheimnis der Besten
+
+Spoiler: Es ist nicht mehr arbeiten. Es ist **klüger arbeiten**.
+
+Erfolgreiche Studenten haben etwas Fundamentales verstanden: Die Zeit, die mit Lernen verbracht wird, zählt weniger als die **Qualität** dieser Zeit. Eine Stunde Active Recall ist mehr wert als 4 Stunden passives Wiederlesen.
+
+Indem du deine PDFs in interaktive Quiz verwandelst, gehst du vom **Zuschauer** deines Kurses (du liest, markierst, langweilst dich) zum **Akteur** deines Erfolgs (du testest dich, scheiterst, lernst, machst Fortschritte).
+
+### Die 3-Schritte-Methode
+
+1. **Importieren**: Lade deinen Kurs auf Nareo hoch
+2. **Testen**: Beantworte die generierten Quiz
+3. **Wiederholen**: Konzentriere dich auf verfehlte Fragen
+
+Wiederhole diesen Zyklus bis zur Prüfung. Einfach, effektiv, wissenschaftlich bewiesen.
+
+---
+
+## Fazit: Hör auf zu lesen, fang an zu testen
+
+Das Geheimnis liegt nicht in der Anzahl der Stunden, die du mit deinen Kursen verbringst. Es liegt darin, was du **während** dieser Stunden **machst**.
+
+Passives Wiederlesen = Illusion von Arbeit.
+Aktives Selbsttesten = echtes Lernen.
+
+KI ist nicht da, um die Arbeit für dich zu erledigen. Sie ist da, um **mühsame Aufgaben zu eliminieren** (stundenlang Fragen erstellen) und dir zu ermöglichen, dich auf das zu konzentrieren, was wirklich zählt: **Lernen**.
+
+> Bereit, deinen nächsten Kurs zu transformieren?
+
+---
+
+## Handle mit Nareo
+
+Willst du diese Methode heute anwenden? **Nareo verwandelt automatisch deine PDFs in Quiz und Karteikarten**, optimiert für Active Recall und verteiltes Wiederholen.
+
+Importiere deinen ersten Kurs und beginne in 30 Sekunden mit dem Testen. Kostenlos.`,
+    category: 'Tutoriel',
+    read_time: 6,
+    image_url: '/images/article de blog 1.png',
+    published: true,
+    featured: true,
+    author: "L'équipe Nareo",
+    created_at: '2026-01-09T10:00:00Z',
+    updated_at: '2026-01-09T10:00:00Z',
+  },
 ];
 
 export function getArticleBySlug(slug: string): BlogArticle | undefined {

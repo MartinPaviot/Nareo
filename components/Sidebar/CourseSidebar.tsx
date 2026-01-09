@@ -258,6 +258,8 @@ export default function CourseSidebar({
                     onUploadCourse={handleUploadClick}
                     onContactClick={() => setShowContactModal(true)}
                     onMoveCourse={moveCourse}
+                    onFolderDeleted={refetch}
+                    onCourseDeleted={refetch}
                   />
                 </motion.div>
               ) : (
@@ -279,6 +281,7 @@ export default function CourseSidebar({
                     onCourseClick={handleCourseClick}
                     onMoveCourse={moveCourse}
                     onAddCourse={selectedFolderId ? () => handleUploadToFolder(selectedFolderId) : undefined}
+                    onCourseDeleted={refetch}
                   />
                 </motion.div>
               )}
@@ -340,6 +343,8 @@ export default function CourseSidebar({
                         onUploadCourse={handleUploadClick}
                         onContactClick={() => setShowContactModal(true)}
                         onMoveCourse={moveCourse}
+                        onFolderDeleted={refetch}
+                        onCourseDeleted={refetch}
                       />
                     </motion.div>
                   ) : (
@@ -361,6 +366,7 @@ export default function CourseSidebar({
                         onCourseClick={handleCourseClick}
                         onMoveCourse={moveCourse}
                         onAddCourse={selectedFolderId ? () => handleUploadToFolder(selectedFolderId) : undefined}
+                        onCourseDeleted={refetch}
                       />
                     </motion.div>
                   )}

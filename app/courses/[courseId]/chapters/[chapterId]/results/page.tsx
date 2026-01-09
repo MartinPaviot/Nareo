@@ -1,15 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle2, ArrowLeft, RotateCcw, Sparkles, Gift, X, Loader2, TrendingUp, TrendingDown, Minus, Star, Eye, XCircle, Home } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, RotateCcw, Sparkles, Gift, X, Loader2, TrendingUp, TrendingDown, Minus, Star, Eye, XCircle, Home, ChevronLeft, ChevronRight, Filter, FileText } from 'lucide-react';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 import { useGamification } from '@/hooks/useGamification';
+import { useSidebarNavigation } from '@/hooks/useSidebarNavigation';
+import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
 import { trackEvent } from '@/lib/posthog';
 import { saveAnonymousContext } from '@/lib/anonymous-session';
+import { CourseSidebar, CourseBreadcrumb } from '@/components/Sidebar';
+import TopBarActions from '@/components/layout/TopBarActions';
 
 interface ConceptFeedback {
   concept: string;
@@ -35,6 +40,13 @@ interface BadgeEarned {
   };
 }
 
+interface ReviewOption {
+  label: string;
+  value: string;
+  isSelected: boolean;
+  isCorrect: boolean;
+}
+
 interface ReviewItem {
   index: number;
   question: string;
@@ -43,6 +55,8 @@ interface ReviewItem {
   correct_answer: string;
   explanation?: string;
   page_source?: string | null;
+  question_type?: 'mcq' | 'open';
+  options?: ReviewOption[];
 }
 
 // Color schemes based on score
@@ -221,8 +235,27 @@ export default function QuizResultsPage() {
   const searchParams = useSearchParams();
   const { translate, currentLanguage } = useLanguage();
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const { triggerRefresh } = useCoursesRefresh();
   const { recordActivity } = useGamification();
+
+  const courseId = params?.courseId as string;
+  const chapterId = params?.chapterId as string;
+  const isDemoId = courseId?.startsWith('demo-');
+
+  // Sidebar navigation state
+  const sidebar = useSidebarNavigation();
+  const { folders } = useCoursesOrganized();
+
+  // Find the folder containing the current course (for breadcrumb)
+  const currentCourseFolder = useMemo(() => {
+    for (const folder of folders) {
+      if (folder.courses.some((c) => c.id === courseId)) {
+        return { id: folder.id, name: folder.name };
+      }
+    }
+    return null;
+  }, [folders, courseId]);
 
   const [newBadges, setNewBadges] = useState<BadgeEarned[]>([]);
   const [showBadgeCelebration, setShowBadgeCelebration] = useState(false);
@@ -234,9 +267,9 @@ export default function QuizResultsPage() {
   const [isFirstCourse, setIsFirstCourse] = useState(true);
   const [previousPercentage, setPreviousPercentage] = useState<number | null>(null);
   const [showReviewMode, setShowReviewMode] = useState(false);
-
-  const courseId = params?.courseId as string;
-  const chapterId = params?.chapterId as string;
+  const [reviewCurrentIndex, setReviewCurrentIndex] = useState(0);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'errors'>('all');
+  const [courseTitle, setCourseTitle] = useState('');
 
   const score = parseInt(searchParams?.get('score') || '0');
   const total = parseInt(searchParams?.get('total') || '0');
@@ -445,14 +478,89 @@ export default function QuizResultsPage() {
     return '/chat/Happy.png';
   };
 
+  // Fetch course title for breadcrumb
+  useEffect(() => {
+    const fetchCourseTitle = async () => {
+      if (!courseId || isDemoId) return;
+      try {
+        const response = await fetch(`/api/courses/${courseId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCourseTitle(data.course?.title || '');
+        }
+      } catch (error) {
+        console.error('Error fetching course title:', error);
+      }
+    };
+    fetchCourseTitle();
+  }, [courseId, isDemoId]);
+
+  // Handle folder click from breadcrumb - open sidebar to that folder's courses
+  const handleBreadcrumbFolderClick = useCallback(() => {
+    if (currentCourseFolder) {
+      sidebar.openToFolder(currentCourseFolder.id, currentCourseFolder.name);
+    }
+  }, [currentCourseFolder, sidebar]);
+
   // Split review items into mastered and to-review
   const masteredItems = reviewItems.filter(item => item.is_correct);
   const toReviewItems = reviewItems.filter(item => !item.is_correct);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 p-3 sm:p-4">
-      <div className="max-w-2xl mx-auto space-y-3">
-        {/* Badge Celebration Modal */}
+    <div className={`min-h-screen flex flex-col ${
+      isDark ? 'bg-neutral-900' : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+    }`}>
+      {/* Sidebar navigation */}
+      {!isDemoId && user && (
+        <CourseSidebar
+          isOpen={sidebar.isOpen}
+          level={sidebar.level}
+          selectedFolderId={sidebar.selectedFolderId}
+          selectedFolderName={sidebar.selectedFolderName}
+          currentCourseId={courseId}
+          onClose={sidebar.closeSidebar}
+          onOpen={sidebar.openSidebar}
+          onGoToFolderLevel={sidebar.goToFolderLevel}
+          onGoToCourseLevel={sidebar.goToCourseLevel}
+          disabled={showBadgeCelebration || showSignupModal || showReviewMode}
+        />
+      )}
+
+      {/* Content wrapper - pushes right when sidebar is open */}
+      <div
+        className={`flex-1 flex flex-col transition-[margin] duration-300 ease-out ${
+          !isDemoId && user
+            ? sidebar.isOpen
+              ? 'md:ml-[250px]'  /* Sidebar width when open */
+              : 'md:ml-[72px]'   /* Toggle button width when closed */
+            : ''
+        }`}
+      >
+        {/* Header */}
+        <header
+          className={`border-b sticky top-0 z-30 h-[52px] relative ${
+            isDark
+              ? 'bg-neutral-900 border-neutral-800 before:bg-neutral-900'
+              : 'bg-white border-gray-200 before:bg-white'
+          } before:absolute before:top-0 before:right-full before:w-[250px] before:h-full before:hidden md:before:block`}
+        >
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <CourseBreadcrumb
+                folderName={currentCourseFolder?.name || null}
+                courseName={courseTitle}
+                onFolderClick={handleBreadcrumbFolderClick}
+              />
+            </div>
+            <div className="flex-shrink-0">
+              <TopBarActions showDarkModeToggle />
+            </div>
+          </div>
+        </header>
+
+        {/* Main content */}
+        <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 space-y-3 flex-1 w-full">
+          {/* Badge Celebration Modal */}
         {showBadgeCelebration && newBadges.length > 0 && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
             <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl text-center space-y-6 animate-in zoom-in duration-300">
@@ -742,121 +850,252 @@ export default function QuizResultsPage() {
             {translate('results_back_to_course')}
           </button>
         </div>
-      </div>
 
-      {/* Review Answers Modal */}
-      {showReviewMode && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-            {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">
-                {translate('results_review_title')}
-              </h2>
-              <button
-                onClick={() => setShowReviewMode(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Review Answers Modal - Question by Question Navigation */}
+      {showReviewMode && (() => {
+        const filteredItems = reviewFilter === 'errors'
+          ? reviewItems.filter(item => !item.is_correct)
+          : reviewItems;
+        const currentItem = filteredItems[reviewCurrentIndex];
+        const errorCount = reviewItems.filter(item => !item.is_correct).length;
 
-            {/* Scrollable content */}
-            <div className="overflow-y-auto max-h-[calc(90vh-140px)] p-4 space-y-4">
-              {reviewItems.map((item, idx) => (
-                <div
-                  key={item.index}
-                  className={`rounded-xl p-4 border ${
-                    item.is_correct
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-red-50 border-red-200'
-                  }`}
-                >
-                  {/* Question header */}
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
-                      item.is_correct ? 'bg-green-500' : 'bg-red-500'
-                    }`}>
-                      {item.is_correct ? (
-                        <CheckCircle2 className="w-4 h-4 text-white" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-white" />
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col">
+              {/* Header with filter */}
+              <div className="bg-white border-b border-gray-100 px-3 py-2">
+                <div className="flex items-center justify-between mb-1.5">
+                  <h2 className="text-sm font-bold text-gray-900">
+                    {translate('results_review_title')}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowReviewMode(false);
+                      setReviewCurrentIndex(0);
+                      setReviewFilter('all');
+                    }}
+                    className="p-1 text-gray-400 hover:text-gray-600 transition-colors rounded hover:bg-gray-100"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Filter toggle */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      setReviewFilter('all');
+                      setReviewCurrentIndex(0);
+                    }}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                      reviewFilter === 'all'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {translate('results_review_filter_all')} ({reviewItems.length})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setReviewFilter('errors');
+                      setReviewCurrentIndex(0);
+                    }}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1 ${
+                      reviewFilter === 'errors'
+                        ? 'bg-red-500 text-white'
+                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                    }`}
+                    disabled={errorCount === 0}
+                  >
+                    <Filter className="w-2.5 h-2.5" />
+                    {translate('results_review_filter_errors')} ({errorCount})
+                  </button>
+                </div>
+              </div>
+
+              {/* Question content */}
+              {currentItem ? (
+                <div className="flex-1 overflow-y-auto px-3 py-2">
+                  {/* Question number and status */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                        currentItem.is_correct ? 'bg-green-500' : 'bg-red-500'
+                      }`}>
+                        {currentItem.is_correct ? (
+                          <CheckCircle2 className="w-3 h-3 text-white" />
+                        ) : (
+                          <XCircle className="w-3 h-3 text-white" />
+                        )}
+                      </div>
+                      <span className="text-xs font-medium text-gray-500">
+                        {translate('results_review_question')} {currentItem.index}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-gray-400">
+                      {reviewCurrentIndex + 1} / {filteredItems.length}
+                    </span>
+                  </div>
+
+                  {/* Question text */}
+                  <p className="text-[13px] font-medium text-gray-900 mb-2.5">
+                    {currentItem.question}
+                  </p>
+
+                  {/* MCQ Options Display */}
+                  {currentItem.question_type === 'mcq' && currentItem.options && currentItem.options.length > 0 ? (
+                    <div className="space-y-1 mb-2.5">
+                      {currentItem.options.map((option) => {
+                        const isSelected = option.isSelected;
+                        const isCorrectOption = option.isCorrect;
+
+                        let bgColor = 'bg-gray-50 border-gray-200';
+                        let textColor = 'text-gray-600';
+                        let labelBg = 'bg-gray-200 text-gray-600';
+
+                        if (isCorrectOption) {
+                          bgColor = 'bg-green-50 border-green-300';
+                          textColor = 'text-green-800';
+                          labelBg = 'bg-green-500 text-white';
+                        } else if (isSelected && !isCorrectOption) {
+                          bgColor = 'bg-red-50 border-red-300';
+                          textColor = 'text-red-800';
+                          labelBg = 'bg-red-500 text-white';
+                        }
+
+                        return (
+                          <div
+                            key={option.label}
+                            className={`flex items-start gap-2 px-2 py-1.5 rounded-md border ${bgColor}`}
+                          >
+                            <span className={`flex-shrink-0 w-5 h-5 rounded flex items-center justify-center text-[11px] font-bold ${labelBg}`}>
+                              {option.label}
+                            </span>
+                            <span className={`text-[12px] leading-snug ${textColor}`}>
+                              {option.value}
+                            </span>
+                            {isCorrectOption && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 ml-auto flex-shrink-0" />
+                            )}
+                            {isSelected && !isCorrectOption && (
+                              <XCircle className="w-3.5 h-3.5 text-red-500 ml-auto flex-shrink-0" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Open question - show student answer and correct answer */
+                    <div className="space-y-1.5 mb-2.5">
+                      <div className={`rounded-md px-2 py-1.5 ${
+                        currentItem.is_correct ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                      }`}>
+                        <span className={`text-[10px] font-medium ${
+                          currentItem.is_correct ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {translate('results_review_your_answer')}
+                        </span>
+                        <p className={`text-[12px] mt-0.5 ${
+                          currentItem.is_correct ? 'text-green-800' : 'text-red-800'
+                        }`}>
+                          {currentItem.student_answer || '-'}
+                        </p>
+                      </div>
+
+                      {!currentItem.is_correct && (
+                        <div className="rounded-md px-2 py-1.5 bg-green-50 border border-green-200">
+                          <span className="text-[10px] font-medium text-green-600">
+                            {translate('results_review_correct_answer')}
+                          </span>
+                          <p className="text-[12px] text-green-800 mt-0.5">
+                            {currentItem.correct_answer}
+                          </p>
+                        </div>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <span className="text-xs font-medium text-gray-500">
-                        {translate('results_review_question')} {idx + 1}
+                  )}
+
+                  {/* Explanation */}
+                  {currentItem.explanation && (
+                    <div className="rounded-md px-2 py-1.5 bg-blue-50 border border-blue-100 mb-2">
+                      <span className="text-[10px] font-medium text-blue-600 block">
+                        {translate('results_review_explanation')}
                       </span>
-                      <p className="text-sm font-medium text-gray-900 mt-1">
-                        {item.question}
+                      <p className="text-[11px] text-blue-700 leading-snug mt-0.5">
+                        {currentItem.explanation}
                       </p>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Answers */}
-                  <div className="ml-9 space-y-2">
-                    {/* Student answer */}
-                    <div className={`rounded-lg p-2.5 ${
-                      item.is_correct ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
-                      <span className={`text-xs font-medium ${
-                        item.is_correct ? 'text-green-700' : 'text-red-700'
-                      }`}>
-                        {translate('results_review_your_answer')}
-                      </span>
-                      <p className={`text-sm mt-0.5 ${
-                        item.is_correct ? 'text-green-800' : 'text-red-800'
-                      }`}>
-                        {item.student_answer || '-'}
-                      </p>
-                    </div>
-
-                    {/* Correct answer (only show if wrong) */}
-                    {!item.is_correct && (
-                      <div className="rounded-lg p-2.5 bg-green-100">
-                        <span className="text-xs font-medium text-green-700">
-                          {translate('results_review_correct_answer')}
+                  {/* Page source */}
+                  {currentItem.page_source && (
+                    <div className="rounded-md px-2 py-1.5 bg-amber-50 border border-amber-100">
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <FileText className="w-3 h-3 text-amber-600" />
+                        <span className="text-[10px] font-medium text-amber-600">
+                          {translate('results_review_source')}
                         </span>
-                        <p className="text-sm text-green-800 mt-0.5">
-                          {item.correct_answer}
-                        </p>
                       </div>
-                    )}
-
-                    {/* Explanation if available */}
-                    {item.explanation && (
-                      <div className="rounded-lg p-2.5 bg-blue-50 border border-blue-100">
-                        <p className="text-xs text-blue-700">
-                          {item.explanation}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                      <p className="text-[11px] text-amber-700 italic leading-snug">
+                        {currentItem.page_source}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center p-4">
+                  <p className="text-gray-500 text-center text-sm">
+                    {translate('results_review_no_errors')}
+                  </p>
+                </div>
+              )}
 
-            {/* Footer with actions */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2">
-              <button
-                onClick={() => setShowReviewMode(false)}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium bg-white hover:bg-gray-50 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                {translate('results_review_back_to_results')}
-              </button>
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium transition-colors hover:opacity-90"
-                style={{ backgroundColor: colors.primary }}
-              >
-                <Home className="w-4 h-4" />
-                {translate('results_review_back_to_dashboard')}
-              </button>
+              {/* Navigation footer */}
+              <div className="bg-white border-t border-gray-100 px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => setReviewCurrentIndex(prev => Math.max(0, prev - 1))}
+                    disabled={reviewCurrentIndex === 0}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                    {translate('previous')}
+                  </button>
+
+                  {/* Progress dots */}
+                  <div className="flex items-center gap-0.5 overflow-x-auto max-w-[180px]">
+                    {filteredItems.map((item, idx) => (
+                      <button
+                        key={item.index}
+                        onClick={() => setReviewCurrentIndex(idx)}
+                        className={`w-2 h-2 rounded-full flex-shrink-0 transition-all ${
+                          idx === reviewCurrentIndex
+                            ? 'ring-[1.5px] ring-offset-1 ring-orange-500'
+                            : ''
+                        } ${
+                          item.is_correct
+                            ? 'bg-green-400'
+                            : 'bg-red-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setReviewCurrentIndex(prev => Math.min(filteredItems.length - 1, prev + 1))}
+                    disabled={reviewCurrentIndex >= filteredItems.length - 1}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  >
+                    {translate('next')}
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+        </main>
+      </div>
     </div>
   );
 }

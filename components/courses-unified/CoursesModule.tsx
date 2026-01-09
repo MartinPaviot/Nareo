@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Search, X, Target, Users, ArrowUpDown, Check } from 'lucide-react';
+import { Plus, Search, X, ArrowUpDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -27,8 +27,6 @@ import SearchResults from './SearchResults';
 import CreateFolderModal from './CreateFolderModal';
 import CoursesModuleSkeleton from './CoursesModuleSkeleton';
 import DragOverlayCard from './DragOverlayCard';
-import CreateChallengeModal from '../defi/CreateChallengeModal';
-import JoinChallengeModal from '../defi/JoinChallengeModal';
 
 export default function CoursesModule() {
   const { isDark } = useTheme();
@@ -38,8 +36,6 @@ export default function CoursesModule() {
   const { searchQuery, setSearchQuery, searchResults, isSearching, clearSearch } = useCourseSearch();
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [activeCourse, setActiveCourse] = useState<Course | null>(null);
-  const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
-  const [showJoinChallengeModal, setShowJoinChallengeModal] = useState(false);
   const [folderSort, setFolderSort] = useState<FolderSortOption>('recent');
   const [showSortMenu, setShowSortMenu] = useState(false);
 
@@ -133,30 +129,6 @@ export default function CoursesModule() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-1.5">
-          {/* Challenge buttons */}
-          <button
-            onClick={() => setShowCreateChallengeModal(true)}
-            className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-white"
-            style={{ backgroundColor: '#ff751f' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
-          >
-            <Target className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{translate('challenge_create', 'Créer un défi')}</span>
-          </button>
-
-          <button
-            onClick={() => setShowJoinChallengeModal(true)}
-            className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-              isDark
-                ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
-                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{translate('challenge_join', 'Rejoindre')}</span>
-          </button>
-
           {/* Sort folders button */}
           <div
             className="relative"
@@ -300,13 +272,6 @@ export default function CoursesModule() {
         onClose={() => setIsCreateFolderOpen(false)}
       />
 
-      {/* Challenge modals */}
-      {showCreateChallengeModal && (
-        <CreateChallengeModal onClose={() => setShowCreateChallengeModal(false)} />
-      )}
-      {showJoinChallengeModal && (
-        <JoinChallengeModal onClose={() => setShowJoinChallengeModal(false)} />
-      )}
     </div>
   );
 }

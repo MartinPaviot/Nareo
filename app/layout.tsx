@@ -13,6 +13,36 @@ import ConditionalGTM from '@/components/analytics/ConditionalGTM';
 
 const inter = Inter({ subsets: ['latin'] });
 
+// JSON-LD Structured Data for Organization - helps Google display favicon
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Nareo',
+  url: 'https://www.usenareo.com',
+  logo: 'https://www.usenareo.com/images/favicon-512x512.png',
+  sameAs: [],
+  description: 'Nareo transforme vos PDF et documents en quiz personnalisés, flashcards et résumés grâce à l\'IA.',
+};
+
+// JSON-LD for WebSite with SearchAction - improves search presence
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Nareo',
+  url: 'https://www.usenareo.com',
+  description: 'Transformez vos cours en quiz interactifs avec l\'IA',
+  publisher: {
+    '@type': 'Organization',
+    name: 'Nareo',
+    logo: {
+      '@type': 'ImageObject',
+      url: 'https://www.usenareo.com/images/favicon-512x512.png',
+      width: 512,
+      height: 512,
+    },
+  },
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.usenareo.com'),
   title: {
@@ -51,6 +81,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '48x48' },
+      { url: '/images/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       { url: '/images/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
       { url: '/images/favicon-192x192.png', sizes: '192x192', type: 'image/png' },
       { url: '/images/favicon-512x512.png', sizes: '512x512', type: 'image/png' },
@@ -59,6 +90,9 @@ export const metadata: Metadata = {
       { url: '/images/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
     shortcut: '/favicon.ico',
+    other: [
+      { rel: 'mask-icon', url: '/favicon.ico', color: '#000000' },
+    ],
   },
   manifest: '/manifest.json',
   openGraph: {
@@ -100,7 +134,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="light">
-      <head />
+      <head>
+        {/* JSON-LD Structured Data for better SEO and favicon display */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body className={inter.className}>
         <Suspense fallback={null}>
           <PosthogProvider>

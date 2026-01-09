@@ -807,7 +807,7 @@ Only create questions that can be directly answered using one of these facts.`
   1. States which option letter (A, B, C, or D) is correct and why (cite/paraphrase the course)
   2. Explains WHY each wrong option is incorrect using their letter (not just "it's wrong")
   Use the option letters (A, B, C, D) based on the order in the "options" array (index 0 = A, 1 = B, 2 = C, 3 = D).
-  Example: "La bonne réponse est B. Le cours indique que le WACC se calcule en pondérant le coût des fonds propres et de la dette. L'option A confond avec le MEDAF. L'option C omet la pondération. L'option D décrit un autre concept."
+  Example: "The correct answer is B. The course states that WACC is calculated by weighting the cost of equity and debt. Option A confuses it with CAPM. Option C omits the weighting. Option D describes a different concept."
 - "source_reference": REQUIRED - The EXACT quote from the source text (15-50 words) that justifies the correct answer. Copy verbatim from the provided text.
 - "cognitive_level": One of "remember" (recall facts), "understand" (explain concepts), "apply" (use knowledge in new situations)
 - "concept_tested": Which key concept or learning objective this question tests
@@ -876,7 +876,7 @@ Example with GOOD distractors:
         "Regulatory changes in antitrust policy"
       ],
       "correct_option_index": 1,
-      "explanation": "La bonne réponse est B. Le texte indique que l'hypothèse néoclassique attribue les vagues de fusions aux chocs économiques affectant la structure industrielle. L'option A (surconfiance managériale) et l'option C (surévaluation boursière) décrivent plutôt l'hypothèse comportementale. L'option D (changements réglementaires) est un facteur mais pas le moteur principal selon cette théorie.",
+      "explanation": "The correct answer is B. The text states that the neoclassical hypothesis attributes merger waves to economic shocks affecting industry structure. Option A (managerial overconfidence) and Option C (stock market overvaluation) describe the behavioral hypothesis instead. Option D (regulatory changes) is a factor but not the primary driver according to this theory.",
       "source_reference": "The neoclassical hypothesis posits that merger waves occur in response to economic shocks that affect industry structure.",
       "cognitive_level": "understand",
       "concept_tested": "Neoclassical hypothesis definition"

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
+
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
 
 // Admin emails that always have premium access
 const ADMIN_EMAILS = ['contact@usenareo.com'];
@@ -101,8 +108,10 @@ export async function GET(
   try {
     const resolvedParams = "then" in context.params ? await context.params : context.params;
     const auth = await authenticateRequest(request); // optional auth
+    const guestSessionId = getGuestSessionIdFromRequest(request);
 
     const supabase = await createSupabaseServerClient();
+    const admin = getServiceSupabase();
     const userId = auth?.user.id || null;
     const courseId = resolvedParams.courseId;
 
@@ -220,17 +229,32 @@ export async function GET(
           hasAccess = true;
         }
 
-        // Get quiz attempts for this chapter
-        const { data: attempt } = userId
-          ? await supabase
-              .from('quiz_attempts')
-              .select('*')
-              .eq('chapter_id', chapter.id)
-              .eq('user_id', userId)
-              .order('started_at', { ascending: false })
-              .limit(1)
-              .single()
-          : { data: null };
+        // Get quiz attempts for this chapter (for authenticated users or guests)
+        let attempt = null;
+        if (userId) {
+          // Authenticated user: query by user_id
+          const { data } = await supabase
+            .from('quiz_attempts')
+            .select('*')
+            .eq('chapter_id', chapter.id)
+            .eq('user_id', userId)
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .single();
+          attempt = data;
+        } else if (guestSessionId) {
+          // Guest user: query by guest_session_id using admin client to bypass RLS
+          const { data } = await admin
+            .from('quiz_attempts')
+            .select('*')
+            .eq('chapter_id', chapter.id)
+            .is('user_id', null)
+            .eq('guest_session_id', guestSessionId)
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .single();
+          attempt = data;
+        }
 
         // Get question count
         const { count: questionCount } = await supabase

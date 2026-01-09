@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle2, ArrowLeft, RotateCcw, Sparkles, Gift, X, Loader2, TrendingUp, TrendingDown, Minus, Star } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, RotateCcw, Sparkles, Gift, X, Loader2, TrendingUp, TrendingDown, Minus, Star, Eye, XCircle, Home } from 'lucide-react';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -233,6 +233,7 @@ export default function QuizResultsPage() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [isFirstCourse, setIsFirstCourse] = useState(true);
   const [previousPercentage, setPreviousPercentage] = useState<number | null>(null);
+  const [showReviewMode, setShowReviewMode] = useState(false);
 
   const courseId = params?.courseId as string;
   const chapterId = params?.chapterId as string;
@@ -710,14 +711,28 @@ export default function QuizResultsPage() {
 
         {/* Actions */}
         <div className="space-y-2">
-          <button
-            onClick={() => router.push(`/courses/${courseId}/chapters/${chapterId}`)}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white text-sm font-semibold shadow-md transition-colors hover:opacity-90"
-            style={{ backgroundColor: colors.primary }}
-          >
-            <RotateCcw className="w-4 h-4" />
-            {translate('results_retry')}
-          </button>
+          {/* Primary action buttons row */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push(`/courses/${courseId}/chapters/${chapterId}`)}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white text-sm font-semibold shadow-md transition-colors hover:opacity-90"
+              style={{ backgroundColor: colors.primary }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              {translate('results_retry')}
+            </button>
+
+            {reviewItems.length > 0 && (
+              <button
+                onClick={() => setShowReviewMode(true)}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-semibold transition-colors hover:opacity-90"
+                style={{ borderColor: colors.primary, color: colors.primary, backgroundColor: colors.bg }}
+              >
+                <Eye className="w-4 h-4" />
+                {translate('results_view_answers')}
+              </button>
+            )}
+          </div>
 
           <button
             onClick={() => router.push(`/courses/${courseId}/learn?tab=quiz`)}
@@ -728,6 +743,120 @@ export default function QuizResultsPage() {
           </button>
         </div>
       </div>
+
+      {/* Review Answers Modal */}
+      {showReviewMode && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">
+                {translate('results_review_title')}
+              </h2>
+              <button
+                onClick={() => setShowReviewMode(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable content */}
+            <div className="overflow-y-auto max-h-[calc(90vh-140px)] p-4 space-y-4">
+              {reviewItems.map((item, idx) => (
+                <div
+                  key={item.index}
+                  className={`rounded-xl p-4 border ${
+                    item.is_correct
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
+                  {/* Question header */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                      item.is_correct ? 'bg-green-500' : 'bg-red-500'
+                    }`}>
+                      {item.is_correct ? (
+                        <CheckCircle2 className="w-4 h-4 text-white" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-xs font-medium text-gray-500">
+                        {translate('results_review_question')} {idx + 1}
+                      </span>
+                      <p className="text-sm font-medium text-gray-900 mt-1">
+                        {item.question}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Answers */}
+                  <div className="ml-9 space-y-2">
+                    {/* Student answer */}
+                    <div className={`rounded-lg p-2.5 ${
+                      item.is_correct ? 'bg-green-100' : 'bg-red-100'
+                    }`}>
+                      <span className={`text-xs font-medium ${
+                        item.is_correct ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        {translate('results_review_your_answer')}
+                      </span>
+                      <p className={`text-sm mt-0.5 ${
+                        item.is_correct ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {item.student_answer || '-'}
+                      </p>
+                    </div>
+
+                    {/* Correct answer (only show if wrong) */}
+                    {!item.is_correct && (
+                      <div className="rounded-lg p-2.5 bg-green-100">
+                        <span className="text-xs font-medium text-green-700">
+                          {translate('results_review_correct_answer')}
+                        </span>
+                        <p className="text-sm text-green-800 mt-0.5">
+                          {item.correct_answer}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Explanation if available */}
+                    {item.explanation && (
+                      <div className="rounded-lg p-2.5 bg-blue-50 border border-blue-100">
+                        <p className="text-xs text-blue-700">
+                          {item.explanation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer with actions */}
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2">
+              <button
+                onClick={() => setShowReviewMode(false)}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium bg-white hover:bg-gray-50 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {translate('results_review_back_to_results')}
+              </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium transition-colors hover:opacity-90"
+                style={{ backgroundColor: colors.primary }}
+              >
+                <Home className="w-4 h-4" />
+                {translate('results_review_back_to_dashboard')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

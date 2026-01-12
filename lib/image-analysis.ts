@@ -454,37 +454,64 @@ export async function analyzeGraphic(
 }
 
 /**
- * Batch analyze multiple graphics
+ * Batch analyze multiple graphics with parallel processing
+ *
+ * Uses the configured vision provider (OpenAI or Anthropic) and processes
+ * images in parallel batches for faster throughput.
  *
  * @param images - Array of { pageNum, imageId, base64Data }
+ * @param concurrency - Number of parallel requests (default: 10 for speed)
  * @returns Map of imageId -> GraphicAnalysis
  */
 export async function analyzeGraphicsBatch(
-  images: Array<{ pageNum: number; imageId: string; base64Data: string }>
+  images: Array<{ pageNum: number; imageId: string; base64Data: string }>,
+  concurrency: number = 10
 ): Promise<Map<string, GraphicAnalysis>> {
-  console.log(`\n🔍 Starting batch analysis of ${images.length} graphics...\n`);
+  const provider = LLM_CONFIG.models.visionProvider || 'openai';
+  console.log(`\n🔍 Starting batch analysis of ${images.length} graphics (concurrency: ${concurrency}, provider: ${provider})...\n`);
 
   const results = new Map<string, GraphicAnalysis>();
 
-  for (let i = 0; i < images.length; i++) {
-    const img = images[i];
-    console.log(`[${i + 1}/${images.length}] Analyzing ${img.imageId} (page ${img.pageNum})...`);
+  // Process in parallel batches
+  for (let i = 0; i < images.length; i += concurrency) {
+    const batch = images.slice(i, i + concurrency);
+    const batchNum = Math.floor(i / concurrency) + 1;
+    const totalBatches = Math.ceil(images.length / concurrency);
 
-    const analysis = await analyzeGraphicWithClaude(img.base64Data);
+    console.log(`[Batch ${batchNum}/${totalBatches}] Processing ${batch.length} graphics in parallel...`);
 
-    if (analysis) {
-      results.set(img.imageId, analysis);
-      console.log(`   ✅ ${analysis.type} (${analysis.elements.length} elements)\n`);
-    } else {
-      console.log(`   ⚠️ Analysis failed or skipped\n`);
+    const batchPromises = batch.map(async (img, batchIndex) => {
+      const globalIndex = i + batchIndex + 1;
+      console.log(`  [${globalIndex}/${images.length}] Analyzing ${img.imageId} (page ${img.pageNum})...`);
+
+      // Use the configured vision provider (respects LLM_CONFIG.models.visionProvider)
+      const analysis = await analyzeGraphic(img.base64Data);
+
+      if (analysis) {
+        console.log(`  [${globalIndex}/${images.length}] ✅ ${analysis.type} (${analysis.elements?.length || 0} elements)`);
+        return { imageId: img.imageId, analysis };
+      } else {
+        console.log(`  [${globalIndex}/${images.length}] ⚠️ Analysis failed or skipped`);
+        return { imageId: img.imageId, analysis: null };
+      }
+    });
+
+    // Wait for all in batch to complete
+    const batchResults = await Promise.all(batchPromises);
+
+    // Store results
+    for (const { imageId, analysis } of batchResults) {
+      if (analysis) {
+        results.set(imageId, analysis);
+      }
     }
 
-    // Small delay to avoid rate limiting
-    if (i < images.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // Small delay between batches to avoid rate limiting (only if more batches remain)
+    if (i + concurrency < images.length) {
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
-  console.log(`✅ Batch analysis complete: ${results.size}/${images.length} graphics analyzed`);
+  console.log(`\n✅ Batch analysis complete: ${results.size}/${images.length} graphics analyzed`);
   return results;
 }

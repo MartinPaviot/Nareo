@@ -103,13 +103,26 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
   const [lastConfig, setLastConfig] = useState<PersonnalisationConfig | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Derived state
-  const isGenerating = noteStatus?.status === 'generating';
-  const generationProgress = noteStatus?.progress ?? 0;
-  const sectionIndex = noteStatus?.sectionIndex;
-  const totalSections = noteStatus?.totalSections;
-  const currentStep = noteStatus?.currentStep;
-  const partialContent = noteStatus?.partialContent;
+  // Track if we're regenerating (had content before, now generating new)
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [previousContent, setPreviousContent] = useState<string | null>(null);
+
+  // SSE streaming state
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState<string>('');
+  const [streamProgress, setStreamProgress] = useState(0);
+  const [streamStep, setStreamStep] = useState<string | null>(null);
+  const [streamSectionIndex, setStreamSectionIndex] = useState<number | null>(null);
+  const [streamTotalSections, setStreamTotalSections] = useState<number | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Derived state - use streaming state when streaming, otherwise use polling state
+  const isGenerating = isStreaming || noteStatus?.status === 'generating';
+  const generationProgress = isStreaming ? streamProgress : (noteStatus?.progress ?? 0);
+  const sectionIndex = isStreaming ? streamSectionIndex : noteStatus?.sectionIndex;
+  const totalSections = isStreaming ? streamTotalSections : noteStatus?.totalSections;
+  const currentStep = isStreaming ? streamStep : noteStatus?.currentStep;
+  const partialContent = isStreaming ? streamingContent : noteStatus?.partialContent;
 
   // Parse the note content to extract title, topics, and main content
   const parsedNote = useMemo((): ParsedNote | null => {
@@ -164,12 +177,23 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
         // If ready and has content, update note content
         if (data.status === 'ready' && data.content) {
           setNoteContent(data.content);
+          // Clear regeneration state
+          setIsRegenerating(false);
+          setPreviousContent(null);
           triggerRefresh();
         }
 
-        // If failed, set error
-        if (data.status === 'failed' && data.errorMessage) {
-          setError(data.errorMessage);
+        // If failed, set error and restore previous content if regenerating
+        if (data.status === 'failed') {
+          if (data.errorMessage) {
+            setError(data.errorMessage);
+          }
+          // Restore previous content on failure
+          if (previousContent) {
+            setNoteContent(previousContent);
+            setIsRegenerating(false);
+            setPreviousContent(null);
+          }
         }
 
         return data;
@@ -178,7 +202,7 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
       console.error('Error fetching note status:', err);
     }
     return null;
-  }, [courseId, triggerRefresh]);
+  }, [courseId, triggerRefresh, previousContent]);
 
   // Initial fetch
   useEffect(() => {
@@ -212,11 +236,14 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     fetchInitial();
   }, [courseId, fetchNoteStatus]);
 
-  // Polling when generating
+  // Polling when generating (only if NOT using SSE streaming)
   useEffect(() => {
-    if (!isGenerating) return;
+    // Don't poll if we're using SSE streaming
+    if (isStreaming) return;
+    // Only poll if noteStatus indicates generating (not our local isGenerating which includes streaming)
+    if (noteStatus?.status !== 'generating') return;
 
-    console.log('[APlusNote] Starting poll for note generation status');
+    console.log('[APlusNote] Starting poll for note generation status (fallback mode)');
 
     const pollInterval = setInterval(async () => {
       const status = await fetchNoteStatus();
@@ -230,7 +257,17 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
       console.log('[APlusNote] Stopping poll');
       clearInterval(pollInterval);
     };
-  }, [isGenerating, fetchNoteStatus]);
+  }, [isStreaming, noteStatus?.status, fetchNoteStatus]);
+
+  // Cleanup event source on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
 
   // Block body scroll when modal is open
   useEffect(() => {
@@ -291,11 +328,31 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
       setLastConfig(config);
     }
 
+    // If we have existing content, save it and mark as regenerating
+    if (noteContent) {
+      setPreviousContent(noteContent);
+      setIsRegenerating(true);
+    }
+
     setError(null);
 
+    // Clean up any existing event source
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    // Reset streaming state
+    setStreamingContent('');
+    setStreamProgress(0);
+    setStreamStep('starting');
+    setStreamSectionIndex(null);
+    setStreamTotalSections(null);
+    setIsStreaming(true);
+
     try {
-      // Call the API - it returns immediately (fire-and-forget)
-      const response = await fetch(`/api/courses/${courseId}/note/generate`, {
+      // Use SSE streaming endpoint
+      const response = await fetch(`/api/courses/${courseId}/note/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config }),
@@ -307,12 +364,81 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
         throw new Error(errorData.error || 'Failed to start note generation');
       }
 
-      // Immediately fetch status to trigger polling
-      await fetchNoteStatus();
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      // Read the SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE events from buffer
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        let eventType = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith('data: ') && eventType) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              switch (eventType) {
+                case 'content':
+                  fullContent += data.text;
+                  setStreamingContent(fullContent);
+                  break;
+
+                case 'progress':
+                  setStreamProgress(data.progress || 0);
+                  if (data.step) setStreamStep(data.step);
+                  if (data.sectionIndex !== undefined) setStreamSectionIndex(data.sectionIndex);
+                  if (data.totalSections !== undefined) setStreamTotalSections(data.totalSections);
+                  break;
+
+                case 'complete':
+                  console.log('[APlusNote] Stream complete');
+                  setNoteContent(fullContent);
+                  setIsStreaming(false);
+                  setIsRegenerating(false);
+                  setPreviousContent(null);
+                  setStreamingContent('');
+                  triggerRefresh();
+                  break;
+
+                case 'error':
+                  throw new Error(data.message || 'Generation failed');
+              }
+            } catch (parseErr) {
+              // Ignore JSON parse errors for incomplete data
+              if (eventType === 'error' || eventType === 'complete') {
+                console.error('Failed to parse SSE data:', parseErr);
+              }
+            }
+            eventType = '';
+          }
+        }
+      }
 
     } catch (err) {
       console.error('Generation error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
+      setIsStreaming(false);
+      // On error, restore previous content if we were regenerating
+      if (previousContent) {
+        setNoteContent(previousContent);
+        setIsRegenerating(false);
+        setPreviousContent(null);
+      }
     }
   };
 
@@ -415,53 +541,103 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     return <GenerationLoadingScreen type="extraction" />;
   }
 
-  // Note is being generated - show progress with live content streaming
+  // Note is being generated - show progress with professional hydration
   if (isGenerating) {
-    // If we have partial content, show it in real-time like desktop
-    if (partialContent && partialContent.trim().length > 0) {
-      return (
-        <div className="space-y-4">
-          {/* Progress bar at top */}
-          <div className={`rounded-2xl border shadow-sm p-4 transition-colors ${
-            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-          }`}>
-            <GenerationProgress
-              type="note"
-              progress={generationProgress}
-              message={getProgressMessage(currentStep ?? null, translate, sectionIndex, totalSections)}
-              itemsGenerated={sectionIndex ?? undefined}
-              totalItems={totalSections ?? undefined}
-            />
-          </div>
+    const hasPartialContent = partialContent && partialContent.trim().length > 0;
+    const showPreviousAsBackground = isRegenerating && previousContent;
 
-          {/* Live streaming content */}
-          <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
-            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-          }`}>
-            <div className="p-4 sm:p-6 md:p-8">
+    // Parse previous content for display
+    const previousParsed = showPreviousAsBackground ? (() => {
+      let content = previousContent;
+      const titleMatch = previousContent.match(/^#\s*✦?\s*A\+ Note\s*(?:for|pour|für|:)?\s*(.+?)$/m);
+      if (titleMatch) {
+        content = content.replace(titleMatch[0], '').trim();
+      }
+      return { content };
+    })() : null;
+
+    // Calculate min height based on previous content to prevent layout shift
+    const minContentHeight = showPreviousAsBackground ? 'auto' : '400px';
+
+    return (
+      <div className="space-y-4">
+        {/* Progress bar at top */}
+        <div className={`rounded-2xl border shadow-sm p-4 transition-colors ${
+          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+        }`}>
+          <GenerationProgress
+            type="note"
+            progress={generationProgress}
+            message={getProgressMessage(currentStep ?? null, translate, sectionIndex, totalSections)}
+            itemsGenerated={sectionIndex ?? undefined}
+            totalItems={totalSections ?? undefined}
+          />
+        </div>
+
+        {/* Content area with hydration */}
+        <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors relative ${
+          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+        }`} style={{ minHeight: minContentHeight }}>
+
+          {/* LAYER 1: Previous content as background (hydration) */}
+          {showPreviousAsBackground && !hasPartialContent && (
+            <>
+              {/* Semi-transparent overlay */}
+              <div className={`absolute inset-0 z-10 pointer-events-none transition-opacity duration-300 ${
+                isDark ? 'bg-neutral-900/70' : 'bg-white/70'
+              }`}>
+                {/* Centered loading indicator */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className={`px-6 py-4 rounded-2xl shadow-lg backdrop-blur-sm ${
+                    isDark ? 'bg-neutral-800/90 border border-neutral-700' : 'bg-white/90 border border-gray-200'
+                  }`}>
+                    <Loader2 className="w-6 h-6 animate-spin text-orange-500 mx-auto mb-2" />
+                    <p className={`text-sm font-medium ${isDark ? 'text-neutral-300' : 'text-gray-600'}`}>
+                      {translate('aplus_note_regenerating') || 'Regenerating your sheet...'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Previous content - visible but dimmed */}
+              <div className="p-4 sm:p-6 md:p-8 transition-opacity duration-300 opacity-40">
+                <div className={`golden-note-content ${isDark ? 'dark-mode' : ''}`}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {previousParsed?.content || ''}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* LAYER 2: New streaming content (appears on top) */}
+          {hasPartialContent && (
+            <div className="p-4 sm:p-6 md:p-8 animate-fadeIn">
               <StreamingMarkdownView
                 content={partialContent}
                 isStreaming={true}
                 showCursor={true}
                 autoScroll={true}
-                maxHeight="60vh"
+                maxHeight="none"
               />
             </div>
-          </div>
-        </div>
-      );
-    }
+          )}
 
-    // No partial content yet - show loading screen
-    return (
-      <div className="space-y-4">
-        <GenerationLoadingScreen
-          type="note"
-          progress={generationProgress}
-          progressMessage={getProgressMessage(currentStep ?? null, translate, sectionIndex, totalSections)}
-          itemsGenerated={sectionIndex ?? undefined}
-          totalItems={totalSections ?? undefined}
-        />
+          {/* LAYER 3: Empty state - first generation (no previous content) */}
+          {!showPreviousAsBackground && !hasPartialContent && (
+            <div className="p-4 sm:p-6 md:p-8 flex items-center justify-center" style={{ minHeight: '350px' }}>
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-3" />
+                <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                  {translate('aplus_note_preparing') || 'Preparing your revision sheet...'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

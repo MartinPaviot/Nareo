@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test PDF Simple</title>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+  <h1>Test PDF Simple - Une seule image</h1>
+
+  <canvas id="testCanvas" width="500" height="500" style="border: 1px solid black;"></canvas>
+  <br><br>
+  <button onclick="generatePDF()">Télécharger PDF Test</button>
+
+  <script>
+    // Dessiner quelque chose sur le canvas
+    const canvas = document.getElementById('testCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Fond blanc
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, 500, 500);
+
+    // Rectangle rouge
+    ctx.fillStyle = 'red';
+    ctx.fillRect(50, 50, 200, 200);
+
+    // Texte noir
+    ctx.fillStyle = 'black';
+    ctx.font = '30px Arial';
+    ctx.fillText('TEST PDF', 100, 150);
+
+    async function generatePDF() {
+      console.log('[TEST] Starting PDF generation...');
+
+      const { PDFDocument } = PDFLib;
+
+      // Convertir canvas en PNG
+      const pngUrl = canvas.toDataURL('image/png');
+      console.log('[TEST] PNG created, length:', pngUrl.length);
+
+      // Créer PDF
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([595, 842]);
+
+      // Charger l'image
+      const pngData = await fetch(pngUrl).then(r => r.arrayBuffer());
+      console.log('[TEST] PNG data size:', pngData.byteLength);
+
+      const pngImage = await pdfDoc.embedPng(pngData);
+      console.log('[TEST] PNG embedded, dimensions:', pngImage.width, 'x', pngImage.height);
+
+      // Dessiner l'image
+      page.drawImage(pngImage, {
+        x: 50,
+        y: 200,
+        width: 400,
+        height: 400,
+      });
+
+      console.log('[TEST] Image drawn on page');
+
+      // Sauvegarder
+      const pdfBytes = await pdfDoc.save();
+      console.log('[TEST] PDF saved, size:', pdfBytes.length);
+
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'test-simple.pdf';
+      a.click();
+
+      console.log('[TEST] PDF downloaded');
+    }
+  </script>
+</body>
+</html>

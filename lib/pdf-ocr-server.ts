@@ -109,6 +109,91 @@ async function renderPageToImage(pdfDoc: any, pageNum: number, scale: number = 2
   return canvasAndContext.canvas.toBuffer('image/png');
 }
 
+/**
+ * Extract images from a PDF page using Mistral-provided bounding boxes
+ *
+ * @param buffer - PDF file buffer
+ * @param pageNum - Page number (1-indexed)
+ * @param imageMetadata - Image locations from Mistral OCR
+ * @returns Array of cropped image buffers
+ */
+export async function extractImagesFromPage(
+  buffer: Buffer,
+  pageNum: number,
+  imageMetadata: MistralImageMetadata[]
+): Promise<{ id: string; imageBuffer: Buffer }[]> {
+  console.log(`🖼️ Extracting ${imageMetadata.length} images from page ${pageNum}...`);
+
+  if (imageMetadata.length === 0) {
+    return [];
+  }
+
+  try {
+    const uint8Array = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    const pdfDoc = await loadPdfDocument(uint8Array);
+
+    // Render the full page at high resolution (scale=2.0)
+    const scale = 2.0;
+    const page = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale });
+
+    const NodeCanvasFactory = await createNodeCanvasFactory();
+    const canvasFactory = new NodeCanvasFactory();
+    const canvasAndContext = canvasFactory.create(
+      Math.floor(viewport.width),
+      Math.floor(viewport.height)
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (page.render as any)({
+      canvasContext: canvasAndContext.context,
+      viewport,
+      canvasFactory,
+    }).promise;
+
+    const fullCanvas = canvasAndContext.canvas;
+    const canvasModule = await getCanvas();
+
+    // Extract each image using its bounding box
+    const extractedImages: { id: string; imageBuffer: Buffer }[] = [];
+
+    for (const img of imageMetadata) {
+      try {
+        // Mistral coordinates are in PDF points (72 DPI), need to scale to canvas pixels
+        const x = Math.floor(img.topLeftX * scale);
+        const y = Math.floor(img.topLeftY * scale);
+        const width = Math.floor((img.bottomRightX - img.topLeftX) * scale);
+        const height = Math.floor((img.bottomRightY - img.topLeftY) * scale);
+
+        // Create a new canvas for the cropped image
+        const croppedCanvas = canvasModule.createCanvas(width, height);
+        const croppedContext = croppedCanvas.getContext('2d');
+
+        // Copy the image region from the full page
+        croppedContext.drawImage(
+          fullCanvas,
+          x, y, width, height,  // Source rectangle
+          0, 0, width, height   // Destination rectangle
+        );
+
+        const imageBuffer = croppedCanvas.toBuffer('image/png');
+        extractedImages.push({ id: img.id, imageBuffer });
+
+        console.log(`  ✅ Extracted ${img.id}: ${width}x${height}px, ${(imageBuffer.length / 1024).toFixed(1)}KB`);
+      } catch (imgError: any) {
+        console.error(`  ❌ Failed to extract ${img.id}:`, imgError.message);
+      }
+    }
+
+    console.log(`✅ Extracted ${extractedImages.length}/${imageMetadata.length} images from page ${pageNum}`);
+    return extractedImages;
+
+  } catch (error: any) {
+    console.error(`❌ Error extracting images from page ${pageNum}:`, error.message);
+    return [];
+  }
+}
+
 import { openai } from './openai-vision';
 import {
   withRetry,
@@ -117,7 +202,13 @@ import {
   llmLogger,
   LLM_CONFIG,
 } from './llm';
-import { extractTextWithMistralOCR, extractTextFromImageWithMistral } from './mistral-ocr';
+import {
+  extractTextWithMistralOCR,
+  extractTextFromImageWithMistral,
+  extractImagesFromMistralResult,
+  MistralImageMetadata,
+  MistralPageData,
+} from './mistral-ocr';
 
 /**
  * Represents a corrupted formula zone in a PDF
@@ -292,16 +383,166 @@ export async function extractTextFromPdfWithOCR(buffer: Buffer): Promise<string>
 
 
 /**
+ * Extracted image with metadata
+ */
+export interface ExtractedImage {
+  pageNum: number;
+  imageId: string;
+  imageBuffer: Buffer;
+  width: number;
+  height: number;
+}
+
+/**
+ * Extract images from PDF using Mistral OCR
+ *
+ * This function:
+ * 1. Calls Mistral OCR with includeImageBase64: true
+ * 2. Extracts images directly from the Mistral response (as base64)
+ * 3. Converts base64 to Buffer for saving
+ *
+ * This is much faster than rendering PDF pages because Mistral does all the work!
+ *
+ * @param buffer - PDF file buffer
+ * @param filename - Original PDF filename (for logging)
+ * @param onlyPages - Optional: only extract from these page numbers (0-indexed)
+ * @returns Array of extracted images with metadata
+ */
+export async function extractImagesFromPDF(
+  buffer: Buffer,
+  filename: string = 'document.pdf',
+  onlyPages?: Set<number>
+): Promise<ExtractedImage[]> {
+  console.log(`🖼️ Starting image extraction from: ${filename}`);
+
+  // Step 1: Use Mistral OCR to extract both text AND images
+  const mistralResult = await extractTextWithMistralOCR(buffer, filename);
+
+  if (!mistralResult.success) {
+    console.log('⚠️ Mistral OCR failed, no images to extract');
+    return [];
+  }
+
+  // Step 2: Extract images directly from Mistral result (much faster than PDF rendering!)
+  const images = extractImagesFromMistralResult(mistralResult, onlyPages);
+
+  if (images.length === 0) {
+    console.log('✅ No images found in PDF');
+    return [];
+  }
+
+  // Step 3: Convert base64 images to Buffer format
+  const extractedImages: ExtractedImage[] = [];
+
+  for (const img of images) {
+    try {
+      // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+      const base64Data = img.base64Data.includes(',')
+        ? img.base64Data.split(',')[1]
+        : img.base64Data;
+
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+
+      extractedImages.push({
+        pageNum: img.pageNum,
+        imageId: img.imageId,
+        imageBuffer,
+        width: 0,  // Could calculate from image buffer if needed
+        height: 0,
+      });
+    } catch (error: any) {
+      console.error(`❌ Error converting image ${img.imageId}:`, error.message);
+    }
+  }
+
+  console.log(`✅ Extracted ${extractedImages.length} images from PDF (via Mistral)`);
+  return extractedImages;
+}
+
+/**
+ * Extract images from an already-loaded PDF document (internal helper)
+ * This avoids the "detached ArrayBuffer" issue when processing multiple pages
+ */
+async function extractImagesFromLoadedPDF(
+  pdfDoc: any,
+  pageNum: number,
+  imageMetadata: MistralImageMetadata[]
+): Promise<{ id: string; imageBuffer: Buffer }[]> {
+  if (imageMetadata.length === 0) {
+    return [];
+  }
+
+  // Render the full page at high resolution (scale=2.0)
+  const scale = 2.0;
+  const page = await pdfDoc.getPage(pageNum);
+  const viewport = page.getViewport({ scale });
+
+  const NodeCanvasFactory = await createNodeCanvasFactory();
+  const canvasFactory = new NodeCanvasFactory();
+  const canvasAndContext = canvasFactory.create(
+    Math.floor(viewport.width),
+    Math.floor(viewport.height)
+  );
+
+  await page.render({
+    canvasContext: canvasAndContext.context,
+    viewport,
+    canvasFactory,
+  }).promise;
+
+  const fullCanvas = canvasAndContext.canvas;
+  const canvasModule = await getCanvas();
+
+  // Extract each image using its bounding box
+  const extractedImages: { id: string; imageBuffer: Buffer }[] = [];
+
+  for (const img of imageMetadata) {
+    try {
+      // Mistral coordinates are in PDF points (72 DPI), need to scale to canvas pixels
+      const x = Math.floor(img.topLeftX * scale);
+      const y = Math.floor(img.topLeftY * scale);
+      const width = Math.floor((img.bottomRightX - img.topLeftX) * scale);
+      const height = Math.floor((img.bottomRightY - img.topLeftY) * scale);
+
+      // Create a new canvas for the cropped image
+      const croppedCanvas = canvasModule.createCanvas(width, height);
+      const croppedContext = croppedCanvas.getContext('2d');
+
+      // Copy the image region from the full page
+      croppedContext.drawImage(
+        fullCanvas,
+        x, y, width, height,  // Source rectangle
+        0, 0, width, height   // Destination rectangle
+      );
+
+      const imageBuffer = croppedCanvas.toBuffer('image/png');
+      extractedImages.push({ id: img.id, imageBuffer });
+
+      console.log(`  ✅ Extracted ${img.id}: ${width}x${height}px, ${(imageBuffer.length / 1024).toFixed(1)}KB`);
+    } catch (imgError: any) {
+      console.error(`  ❌ Failed to extract ${img.id}:`, imgError.message);
+    }
+  }
+
+  return extractedImages;
+}
+
+/**
  * Extract text from ONLY specific pages that have corrupted formulas
  * This is much faster than full-document OCR as it only processes affected pages
  *
+ * Enhanced with optional image extraction for poor/graphics pages
+ *
  * @param buffer - PDF file buffer
  * @param corruptedPages - Set of page numbers (1-indexed) with corrupted formulas
+ * @param imageOptions - Optional image extraction configuration
  * @returns Map of pageNum -> OCR text for each processed page
  */
 export async function extractTextFromSpecificPages(
   buffer: Buffer,
-  corruptedPages: Set<number>
+  corruptedPages: Set<number>,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _imageOptions?: Record<string, unknown>
 ): Promise<Map<number, string>> {
   console.log(`🎯 Starting TARGETED OCR on ${corruptedPages.size} pages: [${Array.from(corruptedPages).join(', ')}]`);
 

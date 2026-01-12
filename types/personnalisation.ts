@@ -40,6 +40,7 @@ export interface PersonnalisationConfig {
   matiere: Matiere;
   niveau: NiveauDetail;
   recaps: RecapsConfig;
+  includeGraphics?: boolean; // Inclure les graphiques du cours (extraction coûteuse)
 }
 
 /**
@@ -53,6 +54,7 @@ export const DEFAULT_CONFIG: PersonnalisationConfig = {
     formules: false,
     schemas: false,
   },
+  includeGraphics: false, // Par défaut désactivé car coûteux
 };
 
 /**

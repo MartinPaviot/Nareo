@@ -14,10 +14,6 @@ export function shouldGenerateRecaps(recaps: RecapsConfig): boolean {
 export const RECAPS_HEADER = `
 
 ---
-
-─────────────────────────────────────────────
-📚 RÉCAPS POUR RÉVISER VITE
-─────────────────────────────────────────────
 `;
 
 // ============================================================================
@@ -53,7 +49,7 @@ Format tableau Markdown :
 
 | Nom | Formule | Variables |
 |-----|---------|-----------|
-| [Nom 1] | $formule$ | $var_1$ = ..., $var_2$ = ... |
+| [Nom 1] | $formule$ | $var1$ = ..., $var2$ = ... |
 | [Nom 2] | $formule$ | ... |
 ...
 
@@ -142,11 +138,13 @@ Ils doivent être exhaustifs : extraire TOUS les éléments du type demandé pr�
 
 ${blocksToGenerate.join('\n\n')}
 
-=== FORMAT DE SORTIE ===
+FORMAT DE SORTIE:
 
 Commence directement par le premier bloc demandé (pas d'introduction).
 Utilise exactement les titres et formats spécifiés ci-dessus.
 Sépare chaque bloc par une ligne "---".
+Tout le texte doit être aligné à gauche (pas de centrage).
+Pas de séparateurs décoratifs ou de boîtes ASCII.
 
 Génère en ${languageName}.`;
 }

@@ -108,13 +108,75 @@ export async function generatePDFWithTextLayer(
   const contentWidthPt = PAGE_WIDTH_PT - 2 * marginPt;
   const contentHeightPt = PAGE_HEIGHT_PT - 2 * marginPt;
 
-  // Get element dimensions and extract text
+  // Get element dimensions
   const elementRect = element.getBoundingClientRect();
   const elementWidth = elementRect.width;
   const elementHeight = elementRect.height;
-  const textRects = extractTextRects(element);
 
-  // Clone for rendering
+  // Step 1: Convert images to base64 using API proxy
+  console.log('[PDF] Step 1: Converting images to base64...');
+  const originalImages = Array.from(element.getElementsByTagName('img'));
+  const imageDataMap = new Map<string, string>();
+
+  console.log(`[PDF] Found ${originalImages.length} images total`);
+
+  for (let i = 0; i < originalImages.length; i++) {
+    const img = originalImages[i];
+    const src = img.src;
+
+    // Skip if already base64
+    if (src.startsWith('data:')) {
+      console.log(`[PDF] Image ${i + 1}: Already base64, skipping`);
+      continue;
+    }
+
+    try {
+      // Use API proxy to load image without CORS issues
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(src)}`;
+
+      const corsImage = new Image();
+      corsImage.crossOrigin = 'anonymous';
+
+      // Wait for image to load via proxy
+      await new Promise<void>((resolve, reject) => {
+        corsImage.onload = () => resolve();
+        corsImage.onerror = () => reject(new Error('Failed to load via proxy'));
+        corsImage.src = proxyUrl;
+      });
+
+      // Create a canvas to convert to base64
+      const canvas = document.createElement('canvas');
+      canvas.width = corsImage.naturalWidth || corsImage.width;
+      canvas.height = corsImage.naturalHeight || corsImage.height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
+
+      // Draw the proxied image
+      ctx.drawImage(corsImage, 0, 0);
+
+      // Convert to base64
+      const base64 = canvas.toDataURL('image/jpeg', 0.95);
+
+      imageDataMap.set(src, base64);
+      console.log(`[PDF] Image ${i + 1}: ✓ Converted via proxy`);
+    } catch (error: any) {
+      console.error(`[PDF] Image ${i + 1}: Failed -`, error.message);
+    }
+  }
+
+  console.log(`[PDF] Converted ${imageDataMap.size}/${originalImages.length} images to base64`);
+
+  if (imageDataMap.size === 0 && originalImages.length > 0) {
+    console.error('[PDF] ❌ ERREUR: Aucune image n\'a pu être convertie!');
+    alert('Erreur: Impossible de charger les images pour le PDF');
+    return;
+  }
+
+  // Step 2: Clone and replace image sources with base64
+  console.log('[PDF] Step 2: Cloning element...');
   const clone = element.cloneNode(true) as HTMLElement;
   clone.style.cssText = `
     position: absolute;
@@ -125,85 +187,141 @@ export async function generatePDFWithTextLayer(
     color: #374151;
   `;
   clone.classList.remove('dark-mode');
+
+  // Replace all image sources with base64 versions
+  const cloneImages = Array.from(clone.getElementsByTagName('img'));
+  for (const img of cloneImages) {
+    const base64 = imageDataMap.get(img.src);
+    if (base64) {
+      img.src = base64;
+      img.removeAttribute('crossorigin');
+    }
+  }
+
   document.body.appendChild(clone);
 
+  // Wait for images to render
+  console.log('[PDF] Waiting 500ms for images to render...');
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   try {
-    const canvas = await html2canvas(clone, {
-      scale,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      width: elementWidth,
-      height: elementHeight,
-    });
+    // Calculate number of pages needed
+    // Each page is contentHeightPt in PDF points
+    // Convert to element pixels: contentHeightPt / (contentWidthPt / elementWidth)
+    const pageHeightPx = (contentHeightPt * elementWidth) / contentWidthPt;
+    const numPages = Math.ceil(elementHeight / pageHeightPx);
 
-    const canvasWidthPx = canvas.width;
-    const canvasHeightPx = canvas.height;
-
-    // Scale factor: canvas pixels -> PDF points
-    const pxToPt = contentWidthPt / canvasWidthPx;
-    const totalHeightPt = canvasHeightPx * pxToPt;
-    const numPages = Math.ceil(totalHeightPt / contentHeightPt);
-    const canvasPxPerPage = contentHeightPt / pxToPt;
+    console.log(`[PDF] Element: ${elementWidth}x${elementHeight}px`);
+    console.log(`[PDF] Page height: ${Math.round(pageHeightPx)}px`);
+    console.log(`[PDF] Total pages: ${numPages}`);
 
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
+    // Generate PDF page by page
     for (let pageIdx = 0; pageIdx < numPages; pageIdx++) {
+      console.log(`[PDF] Generating page ${pageIdx + 1}/${numPages}...`);
+
+      // Calculate the Y position and height for this page slice
+      const sliceY = pageIdx * pageHeightPx;
+      const sliceH = Math.min(pageHeightPx, elementHeight - sliceY);
+
+      // Create a wrapper div that will show only this page's content
+      const pageWrapper = document.createElement('div');
+      pageWrapper.style.cssText = `
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        width: ${elementWidth}px;
+        height: ${sliceH}px;
+        overflow: hidden;
+        background-color: #ffffff;
+      `;
+
+      // Clone the content again and offset it
+      const pageContent = clone.cloneNode(true) as HTMLElement;
+      pageContent.style.cssText = `
+        position: absolute;
+        left: 0;
+        top: ${-sliceY}px;
+        width: ${elementWidth}px;
+      `;
+
+      pageWrapper.appendChild(pageContent);
+      document.body.appendChild(pageWrapper);
+
+      // Wait a tiny bit for the DOM to update
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Capture this page with html2canvas
+      const pageCanvas = await html2canvas(pageWrapper, {
+        scale,
+        useCORS: false,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: elementWidth,
+        height: sliceH,
+      });
+
+      // Remove the temporary wrapper
+      document.body.removeChild(pageWrapper);
+
+      console.log(`[PDF] Page ${pageIdx + 1}: Canvas ${pageCanvas.width}x${pageCanvas.height}px`);
+
+      // Convert to JPEG
+      const jpegUrl = pageCanvas.toDataURL('image/jpeg', 0.92);
+      const jpegData = await fetch(jpegUrl).then(r => r.arrayBuffer());
+      const jpegImage = await pdfDoc.embedJpg(jpegData);
+
+      // Add page to PDF
       const page = pdfDoc.addPage([PAGE_WIDTH_PT, PAGE_HEIGHT_PT]);
 
-      // Canvas slice for this page
-      const sliceY = pageIdx * canvasPxPerPage;
-      const sliceH = Math.min(canvasPxPerPage, canvasHeightPx - sliceY);
-
-      // Create slice canvas
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvasWidthPx;
-      sliceCanvas.height = Math.ceil(sliceH);
-      const ctx = sliceCanvas.getContext('2d')!;
-      ctx.drawImage(canvas, 0, sliceY, canvasWidthPx, sliceH, 0, 0, canvasWidthPx, sliceH);
-
-      // Embed as PNG
-      const pngUrl = sliceCanvas.toDataURL('image/png');
-      const pngData = await fetch(pngUrl).then(r => r.arrayBuffer());
-      const pngImage = await pdfDoc.embedPng(pngData);
-
-      // Image dimensions and position
+      // Calculate image dimensions in PDF points
       const imgW = contentWidthPt;
-      const imgH = sliceH * pxToPt;
+      const imgH = (sliceH * scale * contentWidthPt) / (elementWidth * scale);
       const imgX = marginPt;
       const imgY = PAGE_HEIGHT_PT - marginPt - imgH;
 
-      // Draw image
-      page.drawImage(pngImage, { x: imgX, y: imgY, width: imgW, height: imgH });
+      // Draw the image
+      page.drawImage(jpegImage, { x: imgX, y: imgY, width: imgW, height: imgH });
 
-      // Add text layer (invisible, for selection)
-      const elemSliceStartY = sliceY / scale;
-      const elemSliceEndY = (sliceY + sliceH) / scale;
+      console.log(`[PDF] Page ${pageIdx + 1}: ✓ Added to PDF`);
+    }
 
+    // Extract text for the entire document (for text layer)
+    console.log('[PDF] Extracting text layer...');
+    const textRects = extractTextRects(clone);
+    console.log(`[PDF] Found ${textRects.length} text rects`);
+
+    // Add invisible text layer to each page
+    const pages = pdfDoc.getPages();
+    for (let pageIdx = 0; pageIdx < numPages; pageIdx++) {
+      const page = pages[pageIdx];
+      const sliceY = pageIdx * pageHeightPx;
+      const sliceH = Math.min(pageHeightPx, elementHeight - sliceY);
+
+      let textCount = 0;
       for (const tr of textRects) {
         const trTop = tr.top;
         const trBottom = tr.top + tr.height;
 
         // Check if text is on this page
-        if (trBottom <= elemSliceStartY || trTop >= elemSliceEndY) continue;
+        if (trBottom <= sliceY || trTop >= sliceY + sliceH) continue;
 
         // Sanitize text for PDF encoding
         const cleanText = sanitizeForPDF(tr.text);
         if (!cleanText) continue;
 
-        const relTop = tr.top - elemSliceStartY;
+        const relTop = tr.top - sliceY;
 
         // Convert to PDF coordinates
+        const pxToPt = contentWidthPt / (elementWidth * scale);
         const textXPt = marginPt + (tr.left * scale * pxToPt);
         const textTopPt = relTop * scale * pxToPt;
         const targetHeightPt = tr.height * scale * pxToPt;
 
-        // Position text at baseline (approximately 75-80% down from top)
         const textYPt = PAGE_HEIGHT_PT - marginPt - textTopPt - (targetHeightPt * 0.78);
-
-        // Font size based on line height
         const pdfFontSize = Math.max(4, targetHeightPt * 0.8);
 
         try {
@@ -213,15 +331,19 @@ export async function generatePDFWithTextLayer(
             size: pdfFontSize,
             font,
             color: rgb(0, 0, 0),
-            opacity: 0, // Invisible but selectable
+            opacity: 0,
           });
+          textCount++;
         } catch {
           // Skip text that fails to render
         }
       }
+
+      console.log(`[PDF] Page ${pageIdx + 1}: Added ${textCount} text elements`);
     }
 
     // Download
+    console.log('[PDF] Saving PDF...');
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
@@ -232,6 +354,8 @@ export async function generatePDFWithTextLayer(
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    console.log('[PDF] ✓ PDF downloaded successfully!');
 
   } finally {
     document.body.removeChild(clone);

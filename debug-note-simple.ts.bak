@@ -1,0 +1,113 @@
+/**
+ * Simple debug script: Check graphics in generated note
+ */
+
+import { config } from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+
+// Load .env.local
+config({ path: '.env.local' });
+
+const courseId = process.argv[2] || 'bcdaa409-c65c-426d-83a3-3a098cb5c611';
+
+async function debugNoteGraphics() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('❌ Missing environment variables!');
+    console.error('   NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'OK' : 'MISSING');
+    console.error('   SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? 'OK' : 'MISSING');
+    return;
+  }
+
+  const admin = createClient(supabaseUrl, supabaseKey);
+
+  console.log(`\n🔍 Debugging graphics in note for course: ${courseId}\n`);
+
+  // 1. Get the generated note
+  const { data: course, error: courseError } = await admin
+    .from('courses')
+    .select('aplus_note')
+    .eq('id', courseId)
+    .single();
+
+  if (courseError || !course?.aplus_note) {
+    console.error('❌ Error fetching note:', courseError?.message || 'No note found');
+    return;
+  }
+
+  const note = course.aplus_note;
+  console.log(`📝 Note length: ${note.length} characters\n`);
+
+  // 2. Extract graphic references from the note (both formats)
+  const regex = /!\[GRAPHIC-([a-f0-9-]+)\]\((?:#loading|graphic)\)/gi;
+  const matches = note.matchAll(regex);
+  const graphicIds: string[] = [];
+
+  for (const match of matches) {
+    graphicIds.push(match[1]);
+  }
+
+  console.log(`🖼️  Graphic references found in note: ${graphicIds.length}`);
+  if (graphicIds.length > 0) {
+    console.log(`   First 5 IDs: ${graphicIds.slice(0, 5).join(', ')}\n`);
+  }
+
+  // 3. Check what's in the database
+  const { data: dbGraphics, error: dbError } = await admin
+    .from('course_graphics')
+    .select('id, page_number, graphic_type, description, confidence')
+    .eq('course_id', courseId)
+    .not('graphic_type', 'is', null)
+    .not('description', 'is', null)
+    .gte('confidence', 0.7)
+    .order('page_number', { ascending: true });
+
+  if (dbError) {
+    console.error('❌ Error fetching graphics:', dbError);
+    return;
+  }
+
+  console.log(`💾 High-confidence graphics in DB (>= 0.7): ${dbGraphics?.length || 0}`);
+  if (dbGraphics && dbGraphics.length > 0) {
+    console.log('\nDatabase graphics:');
+    dbGraphics.forEach((g, i) => {
+      const used = graphicIds.includes(g.id) ? '✅ USED' : '❌ NOT USED';
+      console.log(`  ${i+1}. ${used} - Page ${g.page_number}: ${g.graphic_type} (conf: ${(g.confidence * 100).toFixed(0)}%)`);
+      console.log(`     ${g.description?.substring(0, 80)}...`);
+    });
+  }
+
+  // 4. Search for any GRAPHIC mentions in the note
+  const graphicMentions = note.match(/!\[GRAPHIC-[^\]]+\]\([^\)]+\)/gi) || [];
+  console.log(`\n🔍 Raw GRAPHIC mentions in note: ${graphicMentions.length}`);
+  if (graphicMentions.length > 0) {
+    console.log('\nFirst 5 mentions:');
+    graphicMentions.slice(0, 5).forEach(mention => {
+      console.log(`  - ${mention}`);
+    });
+  }
+
+  // 5. Check for actual image URLs (already replaced)
+  const imageUrls = note.match(/!\[[^\]]*\]\(https:\/\/[^\)]+supabase[^\)]+\)/gi) || [];
+  console.log(`\n📷 Actual Supabase image URLs in note: ${imageUrls.length}`);
+  if (imageUrls.length > 0) {
+    console.log('\nFirst 3 images:');
+    imageUrls.slice(0, 3).forEach(img => {
+      console.log(`  - ${img.substring(0, 100)}...`);
+    });
+  }
+
+  // 6. Summary
+  console.log(`\n📊 SUMMARY:`);
+  console.log(`   - Graphics in DB (high confidence): ${dbGraphics?.length || 0}`);
+  console.log(`   - GRAPHIC placeholders in note: ${graphicIds.length}`);
+  console.log(`   - Replaced images (Supabase URLs): ${imageUrls.length}`);
+
+  if (graphicIds.length < (dbGraphics?.length || 0)) {
+    console.log(`\n⚠️  WARNING: ${(dbGraphics?.length || 0) - graphicIds.length} graphics were NOT included by GPT-4 in the note!`);
+  }
+}
+
+debugNoteGraphics().catch(console.error);

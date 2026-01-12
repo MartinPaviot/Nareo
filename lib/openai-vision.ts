@@ -31,9 +31,23 @@ import {
   shuffleArray,
 } from './prompts/quiz-types';
 
-// Configuration pour utiliser l'API OpenAI directement
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Lazy-initialize OpenAI client (to ensure API key is loaded from env)
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openaiClient;
+}
+
+// Export for backward compatibility
+export const openai = new Proxy({} as OpenAI, {
+  get(target, prop) {
+    return (getOpenAIClient() as any)[prop];
+  },
 });
 
 /**

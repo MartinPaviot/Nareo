@@ -37,3 +37,98 @@ RETOURNE UN JSON VALIDE :
 
 Réponds en ${languageName}.`;
 }
+
+/**
+ * Interface pour les graphiques attendus dans la vérification
+ */
+export interface ExpectedGraphic {
+  id: string;
+  description: string;
+  type: string;
+  pageNumber: number;
+}
+
+/**
+ * Génère le prompt de vérification spécifique aux graphiques (V2)
+ * Vérifie que tous les graphiques sont correctement intégrés
+ */
+export function getGraphicsVerificationPrompt(
+  generatedContent: string,
+  expectedGraphics: ExpectedGraphic[],
+  languageName: string
+): string {
+  const expectedList = expectedGraphics
+    .map((g, i) => `${i + 1}. [GRAPHIC-${g.id}] - ${g.description || g.type} (Page ${g.pageNumber})`)
+    .join('\n');
+
+  return `Tu es un vérificateur qualité pour fiches de révision.
+
+═══════════════════════════════════════════════════════════════════════════════
+                              MISSION
+═══════════════════════════════════════════════════════════════════════════════
+
+Vérifie que TOUS les graphiques requis sont correctement intégrés dans la fiche générée.
+
+═══════════════════════════════════════════════════════════════════════════════
+                         GRAPHIQUES ATTENDUS
+═══════════════════════════════════════════════════════════════════════════════
+
+${expectedGraphics.length} graphiques doivent être présents :
+
+${expectedList}
+
+═══════════════════════════════════════════════════════════════════════════════
+                         FICHE À VÉRIFIER
+═══════════════════════════════════════════════════════════════════════════════
+
+${generatedContent.length > 20000 ? generatedContent.substring(0, 20000) + '\n...[tronqué pour vérification]' : generatedContent}
+
+═══════════════════════════════════════════════════════════════════════════════
+                         VÉRIFICATIONS À EFFECTUER
+═══════════════════════════════════════════════════════════════════════════════
+
+Pour CHAQUE graphique attendu, vérifie :
+
+1. **PRÉSENCE** : Le placeholder ![GRAPHIC-{id}](#loading) ou l'URL finale est-il présent ?
+
+2. **CONTEXTE AVANT** : Y a-t-il 2-3 phrases d'introduction AVANT le graphique ?
+   - Mauvais : le graphique apparaît sans contexte
+   - Bon : "Le concept X est illustré par le graphique suivant..."
+
+3. **ANALYSE APRÈS** : Y a-t-il 3-5 phrases d'analyse APRÈS le graphique ?
+   - Mauvais : rien après le graphique
+   - Bon : "On observe sur ce graphique que... L'intersection représente..."
+
+4. **PLACEMENT** : Le graphique est-il dans la bonne section thématique ?
+   - Un graphique sur l'élasticité doit être dans la section élasticité
+
+═══════════════════════════════════════════════════════════════════════════════
+                         FORMAT DE RÉPONSE (JSON)
+═══════════════════════════════════════════════════════════════════════════════
+
+{
+  "totalExpected": ${expectedGraphics.length},
+  "totalFound": [nombre],
+  "allPresent": [true/false],
+  "details": [
+    {
+      "graphicId": "[id]",
+      "found": [true/false],
+      "hasIntroduction": [true/false],
+      "hasAnalysis": [true/false],
+      "correctSection": [true/false],
+      "issues": ["problème 1", "problème 2"],
+      "suggestedFix": "[correction suggérée]"
+    }
+  ],
+  "overallScore": [0-100],
+  "criticalIssues": ["issue grave 1"],
+  "recommendations": ["recommandation 1"]
+}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Langue : ${languageName}
+
+Retourne UNIQUEMENT le JSON.`;
+}

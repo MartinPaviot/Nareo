@@ -21,7 +21,9 @@ export type AnalyticsEventName =
   | 'guest_courses_linked'
   | 'guest_courses_link_failed'
   | 'flashcards_generated'
-  | 'flashcards_generation_failed';
+  | 'flashcards_generation_failed'
+  | 'graphics_extracted'
+  | 'graphics_extraction_failed';
 
 interface LogPayload {
   userId?: string;

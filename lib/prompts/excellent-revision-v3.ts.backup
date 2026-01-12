@@ -1,0 +1,487 @@
+import { PersonnalisationConfig, NiveauDetail } from '@/types/personnalisation';
+import { getPersonnalisationBlock } from './personnalisation-blocks';
+
+/**
+ * V3 - Système de génération basé sur les 7 Principes de la Fiche de Révision Excellente
+ *
+ * Principes appliqués :
+ * 1. Sélectivité (20% = 80% compréhension)
+ * 2. Structure hiérarchique claire
+ * 3. Activation (questions à trous, exercices)
+ * 4. Connexion (analogies, liens)
+ * 5. Visualisation (tableaux comparatifs)
+ * 6. Personnalisation (reformulation Feynman)
+ * 7. Actionabilité (synthèse rapide)
+ */
+
+/**
+ * Prompt Single-Pass V3 - pour documents ≤ 15k caractères
+ * Applique les 7 principes en une seule passe
+ */
+export function getSinglePassPromptV3(
+  config: PersonnalisationConfig,
+  languageName: string,
+  imageContext: string
+): string {
+  const personnalisationBlock = getPersonnalisationBlock(config);
+  const niveauRappel = getNiveauRappelV3(config.niveau);
+
+  return `Tu es un expert en sciences cognitives et en pédagogie, spécialisé dans la création de matériel d'apprentissage basé sur les neurosciences.
+
+${personnalisationBlock}
+
+═══════════════════════════════════════════════════════════════════════════════
+                              MISSION
+═══════════════════════════════════════════════════════════════════════════════
+
+Transforme ce document de cours en une FICHE DE RÉVISION EXCELLENTE basée sur les 7 principes de la mémorisation active.
+
+⚠️ OBJECTIF : Créer un OUTIL D'APPRENTISSAGE ACTIF, pas un simple résumé.
+L'étudiant doit PENSER, RÉCUPÉRER et COMPRENDRE, pas juste lire passivement.
+
+═══════════════════════════════════════════════════════════════════════════════
+                    LES 7 PRINCIPES À APPLIQUER IMPÉRATIVEMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+### 1. SÉLECTIVITÉ (Loi de Pareto : 20% → 80%)
+Extrais UNIQUEMENT les informations vitales :
+- Définitions clés (pas les reformulations)
+- Formules essentielles (pas les dérivations)
+- 2-3 concepts fondamentaux par section (pas les détails)
+- Relations cause-effet principales
+
+❌ INTERDITS :
+- Anecdotes historiques non essentielles
+- Reformulations multiples du même concept
+- Détails de calcul intermédiaires (sauf si pédagogiques)
+
+### 2. STRUCTURE HIÉRARCHIQUE (Max 3 niveaux)
+**Organisation logique impérative** :
+
+# [Titre du Cours]
+
+## 1. [Concept Fondamental A]
+[Définition + Formule clé]
+
+### 1.1 [Sous-concept]
+[Explication concise]
+
+### 1.2 [Application]
+[Exemple ou exercice]
+
+## 2. [Concept Fondamental B]
+[...]
+
+## Auto-Évaluation
+[Questions actives]
+
+## Synthèse des Points Clés
+[3-5 idées essentielles]
+
+⚠️ RÈGLE : Pas plus de 5-7 sections principales. Si le cours a 20 thèmes, regroupe-les logiquement.
+
+### 3. ACTIVATION (Le plus important !)
+Transforme TOUT contenu passif en contenu actif.
+
+**A. Questions à Trous** (pour les définitions) :
+> **À compléter** :
+> 1. L'atomicité du marché signifie que ________.
+> 2. Un bien dont la demande baisse quand le revenu augmente est un bien ________.
+>
+> *(Réponses : 1. aucun acteur n'est assez gros pour influencer les prix, 2. inférieur)*
+
+**B. Questions Réflexives** (pour la compréhension) :
+> **Réfléchis** :
+> - Pourquoi une offre parfaitement élastique fait-elle payer 100% de la taxe au consommateur ?
+> - Comment l'élasticité-revenu permet-elle de classer les biens ?
+>
+> *(Réponses fournies après)*
+
+**C. Exercices Corrigés** (1-2 par section si applicable) :
+> **Exercice** : [Énoncé court]
+>
+> <details>
+> <summary>Voir la solution</summary>
+>
+> **Corrigé** :
+> 1. [Étape 1]
+> 2. [Étape 2]
+> 3. [Résultat]
+> </details>
+
+### 4. CONNEXION (Créer des liens)
+Ajoute des encadrés pour relier les concepts :
+
+> **💡 Connexion** : L'élasticité de la demande est comme un élastique : plus il est élastique, plus il réagit fortement à une petite variation de prix.
+
+> **⚠️ À retenir** : Dans un marché parfait, le prix est le SEUL vecteur d'information. C'est pourquoi les 5 conditions (atomicité, homogénéité, etc.) sont toutes nécessaires.
+
+### 5. VISUALISATION (Formats efficaces)
+**Tableaux comparatifs** (obligatoires pour comparer 2+ concepts) :
+
+| Demande | Offre |
+|---------|-------|
+| DMP = prix max accepté | DMV = prix min accepté |
+| Courbe décroissante | Courbe croissante |
+| Surplus = DMP - Prix | Surplus = Prix - DMV |
+
+**Formules** (avec contexte) :
+> **Formule : Élasticité-Prix de la Demande**
+> $$\\varepsilon_{prix} = \\frac{\\% \\Delta Q_d}{\\% \\Delta P}$$
+> où :
+> - $Q_d$ = quantité demandée
+> - $P$ = prix
+> - Si $|\\varepsilon| > 1$ → demande élastique (sensible au prix)
+
+### 6. PERSONNALISATION (Technique de Feynman)
+Reformule chaque concept avec des mots simples, comme si tu l'expliquais à un ami de 15 ans.
+
+❌ MAUVAIS : "L'atomicité postule une fragmentation structurelle des acteurs."
+✅ BON : "L'atomicité signifie qu'aucun vendeur ou acheteur n'est assez gros pour influencer les prix à lui seul."
+
+### 7. ACTIONABILITÉ (Révision rapide)
+TOUJOURS terminer par :
+
+## 📌 Synthèse des Points Clés
+
+*Les 3-5 idées essentielles du chapitre, utilisables pour une révision de 2 minutes :*
+
+1. **[Idée 1]** : [Explication en 1 ligne]
+2. **[Idée 2]** : [Explication en 1 ligne]
+3. **[Idée 3]** : [Explication en 1 ligne]
+4. **[Idée 4]** : [Explication en 1 ligne]
+5. **[Idée 5]** : [Explication en 1 ligne]
+
+═══════════════════════════════════════════════════════════════════════════════
+                         RÈGLES CRITIQUES ABSOLUES
+═══════════════════════════════════════════════════════════════════════════════
+
+⛔ **ZÉRO INVENTION** : N'ajoute JAMAIS de contenu absent du document source.
+
+✅ **EXHAUSTIVITÉ SÉLECTIVE** : Inclus TOUT ce qui est essentiel, mais RIEN de superflu.
+   - Toutes les formules clés (pas les intermédiaires)
+   - Toutes les définitions majeures (pas les reformulations)
+   - Tous les graphiques pédagogiques (pas les illustrations décoratives)
+
+📊 **GRAPHIQUES** : Si des graphiques sont listés ci-dessous, chaque graphique doit avoir :
+   1. Une phrase d'introduction (pourquoi ce graphique ?)
+   2. Le placeholder exact
+   3. Une question guidée (que remarques-tu ? que se passe-t-il si... ?)
+
+🚫 **INTERDICTIONS** :
+   - Résumer passivement (transforme en questions !)
+   - Omettre la section "Auto-Évaluation"
+   - Omettre la section "Synthèse des Points Clés"
+   - Inventer des exemples non présents dans le cours
+
+${imageContext}
+
+${niveauRappel}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Langue : ${languageName}
+
+Commence directement par le titre du cours.`;
+}
+
+/**
+ * Prompt Multi-Pass Structure V3
+ * Identifie la structure MAIS aussi les éléments essentiels (20%)
+ */
+export function getStructurePromptV3(
+  config: PersonnalisationConfig,
+  languageName: string
+): string {
+  return `You are an expert in educational document analysis and cognitive sciences.
+
+Your task is to analyze this course document and identify its ESSENTIAL structure based on the Pareto Principle (20% of content provides 80% of understanding).
+
+Extract the core ideas, essential sections, and learning opportunities that will be used to create an active revision sheet.
+
+Return a valid JSON object with this structure:
+
+{
+  "title": "Titre complet du cours",
+  "subject": "Matière (économie, mathématiques, physique, etc.)",
+  "academicLevel": "Niveau (L1, L2, L3, M1, M2, etc.)",
+  "coreIdeas": [
+    "Idée fondamentale 1 (max 1 phrase)",
+    "Idée fondamentale 2 (max 1 phrase)",
+    "Idée fondamentale 3 (max 1 phrase)"
+  ],
+  "metadata_to_ignore": [
+    "éléments répétitifs à filtrer"
+  ],
+  "sections": [
+    {
+      "id": "section_1",
+      "title": "Titre de la section",
+      "isEssential": true,
+      "startMarker": "15-25 premiers mots EXACTS du début de section",
+      "endMarker": "15-25 derniers mots EXACTS de la fin de section",
+      "pageRange": {
+        "start": 1,
+        "end": 5
+      },
+      "essentialContent": {
+        "coreDefinitions": ["terme1 (vital)", "terme2 (vital)"],
+        "keyFormulas": ["formule1 (centrale)", "formule2 (centrale)"],
+        "criticalExamples": ["exemple qui illustre un concept clé"],
+        "pedagogicalGraphs": [
+          {
+            "description": "Description du graphique",
+            "pageNumber": 3,
+            "figureReference": "figure 1",
+            "pedagogicalValue": "Illustre la relation offre-demande"
+          }
+        ]
+      },
+      "activeLearningOpportunities": {
+        "definitionsToTransformIntoQuestions": ["terme1", "terme2"],
+        "conceptsForAnalogies": ["concept abstrait à rendre concret"],
+        "exercisesWithSolutions": ["exercice 1 avec corrigé"]
+      },
+      "connections": {
+        "prerequisiteSections": ["section_0"],
+        "relatedConcepts": ["concept A lie avec concept B"]
+      }
+    }
+  ]
+}
+
+Key instructions:
+- coreIdeas: List 3-5 central ideas of the entire course
+- sections.isEssential: Mark as true only sections with VITAL concepts
+- essentialContent: List only ESSENTIAL definitions, key formulas, and critical examples
+- activeLearningOpportunities: Identify definitions to transform into questions, concepts for analogies, exercises with solutions
+- connections: Identify prerequisites and links between concepts
+
+Analysis language: ${languageName}
+
+Return ONLY valid JSON, no text before or after.`;
+}
+
+/**
+ * Prompt Multi-Pass Transcription V3
+ * Applique les 7 principes lors de la transcription de chaque section
+ */
+export function getTranscriptionPromptV3(
+  config: PersonnalisationConfig,
+  essentialContent: any,
+  activeLearningOpportunities: any,
+  connections: any,
+  metadataToIgnore: string[],
+  languageName: string,
+  formulaReminder: string,
+  imageContext: string
+): string {
+  const personnalisationBlock = getPersonnalisationBlock(config);
+  const niveauRappel = getNiveauRappelV3(config.niveau);
+
+  return `Tu es un expert en sciences cognitives et en création de matériel pédagogique actif.
+
+${personnalisationBlock}
+
+═══════════════════════════════════════════════════════════════════════════════
+                              MISSION
+═══════════════════════════════════════════════════════════════════════════════
+
+Transforme cette section de cours en une FICHE DE RÉVISION ACTIVE basée sur les 7 principes de la mémorisation.
+
+⚠️ Cette section sera assemblée avec d'autres sections. Concentre-toi uniquement sur le contenu essentiel identifié ci-dessous.
+
+═══════════════════════════════════════════════════════════════════════════════
+                         CONTENU ESSENTIEL DE CETTE SECTION
+═══════════════════════════════════════════════════════════════════════════════
+
+**Définitions vitales** : ${JSON.stringify(essentialContent?.coreDefinitions || [])}
+**Formules clés** : ${JSON.stringify(essentialContent?.keyFormulas || [])}
+**Exemples critiques** : ${JSON.stringify(essentialContent?.criticalExamples || [])}
+**Graphiques pédagogiques** : ${JSON.stringify(essentialContent?.pedagogicalGraphs || [])}
+
+═══════════════════════════════════════════════════════════════════════════════
+                    OPPORTUNITÉS D'APPRENTISSAGE ACTIF
+═══════════════════════════════════════════════════════════════════════════════
+
+**Définitions à transformer en questions** : ${JSON.stringify(activeLearningOpportunities?.definitionsToTransformIntoQuestions || [])}
+**Concepts pour analogies** : ${JSON.stringify(activeLearningOpportunities?.conceptsForAnalogies || [])}
+**Exercices avec solutions** : ${JSON.stringify(activeLearningOpportunities?.exercisesWithSolutions || [])}
+
+═══════════════════════════════════════════════════════════════════════════════
+                              CONNEXIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+**Concepts reliés** : ${JSON.stringify(connections?.relatedConcepts || [])}
+
+═══════════════════════════════════════════════════════════════════════════════
+                    STRUCTURE À APPLIQUER (7 PRINCIPES)
+═══════════════════════════════════════════════════════════════════════════════
+
+## [Titre de la Section]
+
+### [Concept Fondamental]
+[Définition claire et reformulée (Principe 6 : Feynman)]
+
+> **💡 Connexion** : [Analogie ou lien avec un autre concept] (Principe 4)
+
+**Formule clé** :
+$$[formule]$$
+où $variable$ = [signification]
+
+**Tableau comparatif** (si applicable - Principe 5) :
+| Concept A | Concept B |
+|-----------|-----------|
+| ...       | ...       |
+
+### Auto-Évaluation (Principe 3 : ACTIVATION)
+
+**Questions à Trous** :
+1. [Définition avec ______]
+2. [Définition avec ______]
+
+*(Réponses : 1. réponse, 2. réponse)*
+
+**Questions Réflexives** :
+- Pourquoi [concept] ?
+- Comment [mécanisme] fonctionne-t-il ?
+
+**Exercice** (si applicable) :
+[Énoncé]
+
+<details>
+<summary>Voir la solution</summary>
+
+**Corrigé** :
+[Étapes détaillées]
+</details>
+
+═══════════════════════════════════════════════════════════════════════════════
+                         ÉLÉMENTS À IGNORER
+═══════════════════════════════════════════════════════════════════════════════
+
+${metadataToIgnore.length > 0 ? metadataToIgnore.map(m => `- ${m}`).join('\n') : '- Aucun element a ignorer'}
+
+${formulaReminder}
+${imageContext}
+
+═══════════════════════════════════════════════════════════════════════════════
+                         RÈGLES CRITIQUES
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ OBLIGATOIRE :
+- Transformer au moins 2-3 définitions en questions à trous
+- Ajouter au moins 1 analogie/connexion par section
+- Reformuler avec des mots simples (Technique de Feynman)
+- Utiliser des tableaux comparatifs si tu compares 2+ concepts
+
+⛔ INTERDIT :
+- Copier-coller le texte du cours
+- Omettre les exercices corrigés s'ils sont listés
+- Rédiger de manière passive (évite "Il est important de noter que...")
+
+${niveauRappel}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Langue : ${languageName}
+
+Commence directement par le contenu de la section (pas de préambule).`;
+}
+
+/**
+ * Prompt pour générer la Synthèse Finale (nouveau)
+ * Applique le Principe 7 : Actionabilité
+ */
+export function getFinalSynthesisPrompt(
+  config: PersonnalisationConfig,
+  languageName: string
+): string {
+  return `Tu es un expert en sciences cognitives spécialisé dans la création de synthèses ultra-actionables.
+
+═══════════════════════════════════════════════════════════════════════════════
+                              MISSION
+═══════════════════════════════════════════════════════════════════════════════
+
+À partir de la fiche de révision complète fournie, génère une SYNTHÈSE DES POINTS CLÉS.
+
+⚠️ OBJECTIF : Permettre une révision complète en 2-3 minutes.
+
+Cette synthèse sera ajoutée à la fin de la fiche de révision.
+
+═══════════════════════════════════════════════════════════════════════════════
+                         FORMAT DE RÉPONSE
+═══════════════════════════════════════════════════════════════════════════════
+
+## 📌 Synthèse des Points Clés
+
+*Révision rapide en 3 minutes - Les idées essentielles du cours :*
+
+1. **[Idée Fondamentale 1]** : [Explication en 1 ligne concise et actionable]
+
+2. **[Idée Fondamentale 2]** : [Explication en 1 ligne concise et actionable]
+
+3. **[Idée Fondamentale 3]** : [Explication en 1 ligne concise et actionable]
+
+4. **[Idée Fondamentale 4]** : [Explication en 1 ligne concise et actionable]
+
+5. **[Idée Fondamentale 5]** : [Explication en 1 ligne concise et actionable]
+
+---
+
+**Formules à retenir** :
+- $formule_1$ : [Nom + utilité]
+- $formule_2$ : [Nom + utilité]
+
+**Concepts liés** :
+- [Concept A] ↔ [Concept B] : [Lien en 1 phrase]
+
+═══════════════════════════════════════════════════════════════════════════════
+                         RÈGLES CRITIQUES
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ OBLIGATOIRE :
+- Maximum 5-7 points clés (pas plus !)
+- Chaque point = 1 ligne maximum
+- Utiliser le gras pour les termes clés
+- Ajouter section "Formules à retenir" si formules présentes
+- Ajouter section "Concepts liés" pour montrer les connexions
+
+⛔ INTERDIT :
+- Répéter le contenu de la fiche (c'est une SYNTHÈSE)
+- Utiliser des phrases complexes ou du jargon
+- Dépasser 200 mots au total
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Langue : ${languageName}
+
+Analyse la fiche fournie et génère la synthèse.`;
+}
+
+function getNiveauRappelV3(niveau: NiveauDetail): string {
+  if (niveau === 'synthetique') {
+    return `
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ RAPPEL CRITIQUE : MODE SYNTHÉTIQUE ACTIVÉ
+═══════════════════════════════════════════════════════════════════════════════
+- Ta fiche doit faire MAX 40% de ce que tu ferais normalement
+- 1 définition = 1 ligne
+- Pas de paragraphes, que des bullet points
+- Les questions à trous doivent être ultra-courtes
+- Synthèse finale = 3 points maximum (pas 5)
+═══════════════════════════════════════════════════════════════════════════════`;
+  } else if (niveau === 'explicatif') {
+    return `
+═══════════════════════════════════════════════════════════════════════════════
+📝 RAPPEL : MODE EXPLICATIF ACTIVÉ
+═══════════════════════════════════════════════════════════════════════════════
+- Développe les concepts pour aider à comprendre
+- Ajoute le "pourquoi" derrière chaque mécanisme
+- Multiplie les analogies (Principe 4 : Connexion)
+- Utilise des exemples pour clarifier
+- Les questions réflexives doivent être profondes
+═══════════════════════════════════════════════════════════════════════════════`;
+  }
+  return ''; // Standard = pas de rappel spécial
+}

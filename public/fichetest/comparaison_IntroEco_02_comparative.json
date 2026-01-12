@@ -1,0 +1,209 @@
+{
+  "generatedAt": "2026-01-12T18:13:41.552Z",
+  "courseFile": "public/Test/IntroEco-02.pdf",
+  "results": [
+    {
+      "label": "(27)",
+      "fichePath": "public/fichetest/IntroEco_02_pdf_Study_Sheet (27).pdf",
+      "overallScore": 59,
+      "grade": "F - Insuffisant",
+      "zone5": {
+        "overallScore": 50,
+        "principles": {
+          "selectivity": {
+            "score": 70,
+            "compressionRatio": 0.52,
+            "ficheWords": 741,
+            "courseWords": 1419,
+            "definitionCount": 1
+          },
+          "structure": {
+            "score": 85,
+            "mainSections": 0,
+            "maxNestingDepth": 1
+          },
+          "activation": {
+            "score": 46,
+            "questionCount": 3,
+            "blanksCount": 0,
+            "reflectiveCount": 0,
+            "totalActiveElements": 3
+          },
+          "connection": {
+            "score": 25,
+            "connectionCount": 0
+          },
+          "visualization": {
+            "score": 35,
+            "tableLines": 0,
+            "hasTable": false,
+            "formulaCount": 17,
+            "contextualFormulas": 0
+          },
+          "personalization": {
+            "score": 94,
+            "simplificationRatio": 1.12,
+            "copyPasteRatio": 0,
+            "analogyCount": 1
+          },
+          "actionability": {
+            "score": 0,
+            "hasSummary": false,
+            "bulletPoints": 0,
+            "reviewMinutes": 0
+          }
+        },
+        "additionalChecks": {
+          "hasInitialSummary": false,
+          "hasKeyDefinitions": false,
+          "hasEssentialPoints": false,
+          "hasFormulas": true,
+          "hasCommonErrors": false,
+          "hasSelfAssessment": false,
+          "hasExamples": true,
+          "hasPedagogicalVisuals": true
+        }
+      }
+    },
+    {
+      "label": "(26)",
+      "fichePath": "public/fichetest/IntroEco_02_pdf_Study_Sheet (26).pdf",
+      "overallScore": 57,
+      "grade": "F - Insuffisant",
+      "zone5": {
+        "overallScore": 54,
+        "principles": {
+          "selectivity": {
+            "score": 26,
+            "compressionRatio": 1.11,
+            "ficheWords": 1577,
+            "courseWords": 1419,
+            "definitionCount": 2
+          },
+          "structure": {
+            "score": 85,
+            "mainSections": 0,
+            "maxNestingDepth": 1
+          },
+          "activation": {
+            "score": 100,
+            "questionCount": 16,
+            "blanksCount": 8,
+            "reflectiveCount": 4,
+            "totalActiveElements": 24
+          },
+          "connection": {
+            "score": 25,
+            "connectionCount": 0
+          },
+          "visualization": {
+            "score": 35,
+            "tableLines": 0,
+            "hasTable": false,
+            "formulaCount": 20,
+            "contextualFormulas": 0
+          },
+          "personalization": {
+            "score": 100,
+            "simplificationRatio": 1.28,
+            "copyPasteRatio": 0,
+            "analogyCount": 4
+          },
+          "actionability": {
+            "score": 0,
+            "hasSummary": false,
+            "bulletPoints": 0,
+            "reviewMinutes": 0
+          }
+        },
+        "additionalChecks": {
+          "hasInitialSummary": false,
+          "hasKeyDefinitions": false,
+          "hasEssentialPoints": false,
+          "hasFormulas": true,
+          "hasCommonErrors": false,
+          "hasSelfAssessment": true,
+          "hasExamples": true,
+          "hasPedagogicalVisuals": true
+        }
+      }
+    },
+    {
+      "label": "(25)",
+      "fichePath": "public/fichetest/IntroEco_02_pdf_Study_Sheet (25).pdf",
+      "overallScore": 57,
+      "grade": "F - Insuffisant",
+      "zone5": {
+        "overallScore": 55,
+        "principles": {
+          "selectivity": {
+            "score": 29,
+            "compressionRatio": 3.92,
+            "ficheWords": 5565,
+            "courseWords": 1419,
+            "definitionCount": 3
+          },
+          "structure": {
+            "score": 85,
+            "mainSections": 0,
+            "maxNestingDepth": 1
+          },
+          "activation": {
+            "score": 100,
+            "questionCount": 60,
+            "blanksCount": 0,
+            "reflectiveCount": 6,
+            "totalActiveElements": 60
+          },
+          "connection": {
+            "score": 25,
+            "connectionCount": 0
+          },
+          "visualization": {
+            "score": 35,
+            "tableLines": 0,
+            "hasTable": false,
+            "formulaCount": 20,
+            "contextualFormulas": 0
+          },
+          "personalization": {
+            "score": 100,
+            "simplificationRatio": 1.26,
+            "copyPasteRatio": 0,
+            "analogyCount": 6
+          },
+          "actionability": {
+            "score": 0,
+            "hasSummary": false,
+            "bulletPoints": 0,
+            "reviewMinutes": 0
+          }
+        },
+        "additionalChecks": {
+          "hasInitialSummary": false,
+          "hasKeyDefinitions": true,
+          "hasEssentialPoints": false,
+          "hasFormulas": true,
+          "hasCommonErrors": false,
+          "hasSelfAssessment": true,
+          "hasExamples": true,
+          "hasPedagogicalVisuals": true
+        }
+      }
+    }
+  ],
+  "ranking": [
+    {
+      "label": "(27)",
+      "score": 59
+    },
+    {
+      "label": "(26)",
+      "score": 57
+    },
+    {
+      "label": "(25)",
+      "score": 57
+    }
+  ]
+}

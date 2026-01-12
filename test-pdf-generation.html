@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PDF Generation Test</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .test-content {
+      width: 600px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      background: white;
+    }
+    .log {
+      background: #f0f0f0;
+      padding: 10px;
+      margin: 10px 0;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #ddd;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>PDF Generation Diagnostic Test</h1>
+
+  <div class="test-content" id="testContent">
+    <h2>Test Content</h2>
+    <p>This is a simple paragraph with <strong>bold text</strong>.</p>
+    <img src="https://wwvrpevcznyqwlxyomvc.supabase.co/storage/v1/object/public/course-graphics/b9d16196-96db-4b41-98fb-91f0bedfb1ea/9343e220-c833-4879-ad4c-dea9e3359753/img-0.jpeg" alt="Test Image 1" />
+    <p>Another paragraph after the image.</p>
+  </div>
+
+  <button onclick="testFetch()">Test 1: Fetch Image</button>
+  <button onclick="testBase64Conversion()">Test 2: Convert to Base64</button>
+  <button onclick="testHtml2Canvas()">Test 3: html2canvas</button>
+  <button onclick="testFullPipeline()">Test 4: Full Pipeline</button>
+  <button onclick="clearLogs()">Clear Logs</button>
+
+  <div class="log" id="log"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString();
+      const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+      logDiv.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message);
+    }
+
+    function clearLogs() {
+      document.getElementById('log').innerHTML = '';
+    }
+
+    async function testFetch() {
+      log('=== TEST 1: Fetching Supabase Image ===');
+      const img = document.querySelector('#testContent img');
+      const src = img.src;
+
+      log(`Fetching: ${src}`);
+
+      try {
+        const response = await fetch(src, { mode: 'cors', credentials: 'omit' });
+        log(`Response status: ${response.status} ${response.statusText}`, 'success');
+        log(`Response headers:`, 'info');
+        response.headers.forEach((value, key) => {
+          log(`  ${key}: ${value}`, 'info');
+        });
+
+        const blob = await response.blob();
+        log(`Blob size: ${blob.size} bytes (${Math.round(blob.size / 1024)}KB)`, 'success');
+        log(`Blob type: ${blob.type}`, 'success');
+
+      } catch (error) {
+        log(`FETCH FAILED: ${error.message}`, 'error');
+        log(`This means Supabase CORS is blocking the request`, 'error');
+      }
+    }
+
+    async function testBase64Conversion() {
+      log('=== TEST 2: Converting to Base64 ===');
+      const img = document.querySelector('#testContent img');
+      const src = img.src;
+
+      try {
+        const response = await fetch(src, { mode: 'cors', credentials: 'omit' });
+        const blob = await response.blob();
+
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        log(`Base64 length: ${base64.length} chars`, 'success');
+        log(`Base64 prefix: ${base64.substring(0, 50)}...`, 'success');
+
+        // Test if base64 works as img src
+        const testImg = new Image();
+        testImg.onload = () => log(`Base64 image loads successfully!`, 'success');
+        testImg.onerror = () => log(`Base64 image failed to load`, 'error');
+        testImg.src = base64;
+
+      } catch (error) {
+        log(`CONVERSION FAILED: ${error.message}`, 'error');
+      }
+    }
+
+    async function testHtml2Canvas() {
+      log('=== TEST 3: html2canvas Capture ===');
+      const content = document.getElementById('testContent');
+
+      log('Testing with ORIGINAL images...');
+      try {
+        const canvas1 = await html2canvas(content, {
+          scale: 1,
+          useCORS: true,
+          allowTaint: true,
+          logging: true,
+        });
+
+        log(`Canvas created: ${canvas1.width}x${canvas1.height}`, 'success');
+
+        // Check if canvas is blank
+        const ctx = canvas1.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas1.width, canvas1.height);
+        const data = imageData.data;
+        let isBlank = true;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] !== 255 || data[i+1] !== 255 || data[i+2] !== 255) {
+            isBlank = false;
+            break;
+          }
+        }
+
+        if (isBlank) {
+          log('⚠️ CANVAS IS COMPLETELY BLANK (all white pixels)', 'error');
+        } else {
+          log('✓ Canvas contains non-white pixels', 'success');
+        }
+
+        // Display canvas
+        document.body.appendChild(canvas1);
+
+      } catch (error) {
+        log(`html2canvas FAILED: ${error.message}`, 'error');
+      }
+    }
+
+    async function testFullPipeline() {
+      log('=== TEST 4: Full Pipeline (Base64 + html2canvas) ===');
+      const content = document.getElementById('testContent');
+
+      // Step 1: Convert images to base64
+      log('Step 1: Converting images to base64...');
+      const images = Array.from(content.getElementsByTagName('img'));
+      const imageMap = new Map();
+
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const src = img.src;
+
+        try {
+          const response = await fetch(src, { mode: 'cors', credentials: 'omit' });
+          const blob = await response.blob();
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+
+          imageMap.set(src, base64);
+          log(`  Image ${i+1}: ✓ Converted`, 'success');
+        } catch (error) {
+          log(`  Image ${i+1}: ✗ Failed - ${error.message}`, 'error');
+        }
+      }
+
+      // Step 2: Clone and replace
+      log('Step 2: Cloning content and replacing images...');
+      const clone = content.cloneNode(true);
+      clone.style.position = 'absolute';
+      clone.style.left = '-9999px';
+      clone.style.backgroundColor = '#ffffff';
+      document.body.appendChild(clone);
+
+      const cloneImages = Array.from(clone.getElementsByTagName('img'));
+      for (const img of cloneImages) {
+        const base64 = imageMap.get(img.src);
+        if (base64) {
+          img.src = base64;
+          log(`  Replaced image src with base64`, 'success');
+        }
+      }
+
+      // Step 3: html2canvas
+      log('Step 3: Running html2canvas...');
+      try {
+        const canvas = await html2canvas(clone, {
+          scale: 1,
+          useCORS: false,
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: true,
+        });
+
+        log(`Canvas created: ${canvas.width}x${canvas.height}`, 'success');
+
+        // Check if blank
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        let isBlank = true;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] !== 255 || data[i+1] !== 255 || data[i+2] !== 255) {
+            isBlank = false;
+            break;
+          }
+        }
+
+        if (isBlank) {
+          log('⚠️ CANVAS IS BLANK - Pipeline failed', 'error');
+        } else {
+          log('✓ CANVAS HAS CONTENT - Pipeline successful!', 'success');
+        }
+
+        document.body.appendChild(canvas);
+
+      } catch (error) {
+        log(`html2canvas FAILED: ${error.message}`, 'error');
+      } finally {
+        document.body.removeChild(clone);
+      }
+    }
+  </script>
+</body>
+</html>

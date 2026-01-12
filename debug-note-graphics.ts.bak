@@ -1,0 +1,83 @@
+/**
+ * Debug script: Check graphics in generated note
+ */
+
+import { createClient } from '@supabase/supabase-js';
+import { extractGraphicReferences } from './lib/backend/graphics-enricher';
+
+const courseId = process.argv[2] || 'bcdaa409-c65c-426d-83a3-3a098cb5c611';
+
+async function debugNoteGraphics() {
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  console.log(`\n🔍 Debugging graphics in note for course: ${courseId}\n`);
+
+  // 1. Get the generated note
+  const { data: course, error: courseError } = await admin
+    .from('courses')
+    .select('aplus_note')
+    .eq('id', courseId)
+    .single();
+
+  if (courseError || !course?.aplus_note) {
+    console.error('❌ Error fetching note:', courseError?.message || 'No note found');
+    return;
+  }
+
+  const note = course.aplus_note;
+  console.log(`📝 Note length: ${note.length} characters\n`);
+
+  // 2. Extract graphic references from the note
+  const graphicIds = extractGraphicReferences(note);
+  console.log(`🖼️  Graphic references found in note: ${graphicIds.length}`);
+  console.log(`   IDs: ${graphicIds.join(', ')}\n`);
+
+  // 3. Check what's in the database
+  const { data: dbGraphics, error: dbError } = await admin
+    .from('course_graphics')
+    .select('id, page_number, graphic_type, description, confidence')
+    .eq('course_id', courseId)
+    .not('graphic_type', 'is', null)
+    .not('description', 'is', null)
+    .gte('confidence', 0.7)
+    .order('page_number', { ascending: true });
+
+  if (dbError) {
+    console.error('❌ Error fetching graphics:', dbError);
+    return;
+  }
+
+  console.log(`💾 High-confidence graphics in DB: ${dbGraphics?.length || 0}`);
+  if (dbGraphics && dbGraphics.length > 0) {
+    console.log('\nDatabase graphics:');
+    dbGraphics.forEach(g => {
+      const used = graphicIds.includes(g.id) ? '✅ USED' : '❌ NOT USED';
+      console.log(`  ${used} - ${g.id.substring(0, 8)}... (page ${g.page_number}): ${g.graphic_type} (conf: ${g.confidence})`);
+    });
+  }
+
+  // 4. Search for any GRAPHIC mentions in the note
+  const graphicMentions = note.match(/!\[GRAPHIC-[^\]]+\]\([^\)]+\)/gi) || [];
+  console.log(`\n🔍 Raw GRAPHIC mentions in note: ${graphicMentions.length}`);
+  if (graphicMentions.length > 0) {
+    console.log('\nFirst 5 mentions:');
+    graphicMentions.slice(0, 5).forEach(mention => {
+      console.log(`  - ${mention}`);
+    });
+  }
+
+  // 5. Check for actual image URLs
+  const imageUrls = note.match(/!\[[^\]]*\]\(https:\/\/[^\)]+\)/gi) || [];
+  console.log(`\n📷 Actual image URLs in note: ${imageUrls.length}`);
+  if (imageUrls.length > 0) {
+    console.log('\nFirst 3 images:');
+    imageUrls.slice(0, 3).forEach(img => {
+      console.log(`  - ${img.substring(0, 100)}...`);
+    });
+  }
+}
+
+debugNoteGraphics().catch(console.error);

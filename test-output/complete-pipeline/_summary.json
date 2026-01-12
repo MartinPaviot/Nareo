@@ -1,0 +1,379 @@
+[
+  {
+    "imageId": "img-0.jpeg",
+    "pageNum": 3,
+    "filename": "page-3-img-0.jpeg.jpg",
+    "analysis": {
+      "type": "courbe_offre_demande",
+      "confidence": 0.95,
+      "description": "Courbe d'offre et de demande avec point d'équilibre marqué.",
+      "elements": [
+        {
+          "id": "courbe_offre",
+          "type": "courbe",
+          "label": "Offre",
+          "coords": {
+            "x": 0.1,
+            "y": 0.9
+          }
+        },
+        {
+          "id": "courbe_demande",
+          "type": "courbe",
+          "label": "Demande",
+          "coords": {
+            "x": 0.9,
+            "y": 0.1
+          }
+        },
+        {
+          "id": "P_equilibre",
+          "type": "point",
+          "label": "P*",
+          "coords": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "details": {
+            "equilibre": true
+          }
+        },
+        {
+          "id": "axe_prix",
+          "type": "texte",
+          "label": "Prix",
+          "coords": {
+            "x": 0.05,
+            "y": 0.1
+          }
+        },
+        {
+          "id": "axe_quantite",
+          "type": "texte",
+          "label": "Quantité",
+          "coords": {
+            "x": 0.9,
+            "y": 0.95
+          }
+        }
+      ],
+      "suggestions": {
+        "affichage": "SVG",
+        "annotations": [
+          "Expliciter le déplacement de l'équilibre si la demande augmente"
+        ]
+      }
+    }
+  },
+  {
+    "imageId": "img-1.jpeg",
+    "pageNum": 4,
+    "filename": "page-4-img-1.jpeg.jpg",
+    "analysis": {
+      "type": "courbe_offre_demande",
+      "confidence": 0.95,
+      "description": "Courbe d'offre et de demande avec déplacement de l'équilibre.",
+      "elements": [
+        {
+          "id": "axe_prix",
+          "type": "axe",
+          "label": "Prix",
+          "coords": {
+            "x": 0.05,
+            "y": 0.1
+          }
+        },
+        {
+          "id": "axe_quantite",
+          "type": "axe",
+          "label": "Quantité",
+          "coords": {
+            "x": 0.9,
+            "y": 0.95
+          }
+        },
+        {
+          "id": "courbe_offre_initiale",
+          "type": "courbe",
+          "label": "Offre initiale",
+          "coords": {
+            "x": 0.8,
+            "y": 0.2
+          }
+        },
+        {
+          "id": "courbe_demande_initiale",
+          "type": "courbe",
+          "label": "Demande initiale",
+          "coords": {
+            "x": 0.2,
+            "y": 0.8
+          }
+        },
+        {
+          "id": "courbe_offre_deplacee",
+          "type": "courbe",
+          "label": "Offre déplacée",
+          "coords": {
+            "x": 0.8,
+            "y": 0.3
+          }
+        },
+        {
+          "id": "P_equilibre_initial",
+          "type": "point",
+          "label": "P* initial",
+          "coords": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "details": {
+            "equilibre": true
+          }
+        },
+        {
+          "id": "P_equilibre_deplace",
+          "type": "point",
+          "label": "P* déplacé",
+          "coords": {
+            "x": 0.6,
+            "y": 0.4
+          },
+          "details": {
+            "equilibre": true
+          }
+        },
+        {
+          "id": "delta_P",
+          "type": "texte",
+          "label": "ΔP",
+          "coords": {
+            "x": 0.1,
+            "y": 0.4
+          }
+        },
+        {
+          "id": "delta_Q",
+          "type": "texte",
+          "label": "ΔQ",
+          "coords": {
+            "x": 0.6,
+            "y": 0.9
+          }
+        }
+      ],
+      "suggestions": {
+        "affichage": "SVG",
+        "annotations": [
+          "Illustrer le déplacement de l'équilibre avec les variations de ΔP et ΔQ"
+        ]
+      }
+    }
+  },
+  {
+    "imageId": "img-2.jpeg",
+    "pageNum": 10,
+    "filename": "page-10-img-2.jpeg.jpg",
+    "analysis": {
+      "type": "autre",
+      "confidence": 0.9,
+      "description": "Graphique en barres représentant la disposition marginale à payer par unités achetées.",
+      "elements": [
+        {
+          "id": "axe_y",
+          "type": "texte",
+          "label": "Disposition marginale à payer",
+          "coords": {
+            "x": 0.05,
+            "y": 0.5
+          },
+          "details": {}
+        },
+        {
+          "id": "axe_x",
+          "type": "texte",
+          "label": "Unités achetées",
+          "coords": {
+            "x": 0.5,
+            "y": 0.95
+          },
+          "details": {}
+        },
+        {
+          "id": "barre_1",
+          "type": "barre",
+          "label": "Barre 1",
+          "coords": {
+            "x": 0.1,
+            "y": 0.9
+          },
+          "details": {
+            "hauteur": 0.9
+          }
+        },
+        {
+          "id": "barre_2",
+          "type": "barre",
+          "label": "Barre 2",
+          "coords": {
+            "x": 0.15,
+            "y": 0.85
+          },
+          "details": {
+            "hauteur": 0.85
+          }
+        },
+        {
+          "id": "barre_3",
+          "type": "barre",
+          "label": "Barre 3",
+          "coords": {
+            "x": 0.2,
+            "y": 0.8
+          },
+          "details": {
+            "hauteur": 0.8
+          }
+        },
+        {
+          "id": "barre_4",
+          "type": "barre",
+          "label": "Barre 4",
+          "coords": {
+            "x": 0.25,
+            "y": 0.75
+          },
+          "details": {
+            "hauteur": 0.75
+          }
+        },
+        {
+          "id": "barre_5",
+          "type": "barre",
+          "label": "Barre 5",
+          "coords": {
+            "x": 0.3,
+            "y": 0.7
+          },
+          "details": {
+            "hauteur": 0.7
+          }
+        },
+        {
+          "id": "barre_6",
+          "type": "barre",
+          "label": "Barre 6",
+          "coords": {
+            "x": 0.35,
+            "y": 0.65
+          },
+          "details": {
+            "hauteur": 0.65
+          }
+        },
+        {
+          "id": "barre_7",
+          "type": "barre",
+          "label": "Barre 7",
+          "coords": {
+            "x": 0.4,
+            "y": 0.6
+          },
+          "details": {
+            "hauteur": 0.6
+          }
+        },
+        {
+          "id": "barre_8",
+          "type": "barre",
+          "label": "Barre 8",
+          "coords": {
+            "x": 0.45,
+            "y": 0.55
+          },
+          "details": {
+            "hauteur": 0.55
+          }
+        },
+        {
+          "id": "barre_9",
+          "type": "barre",
+          "label": "Barre 9",
+          "coords": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "details": {
+            "hauteur": 0.5
+          }
+        },
+        {
+          "id": "barre_10",
+          "type": "barre",
+          "label": "Barre 10",
+          "coords": {
+            "x": 0.55,
+            "y": 0.45
+          },
+          "details": {
+            "hauteur": 0.45
+          }
+        },
+        {
+          "id": "barre_11",
+          "type": "barre",
+          "label": "Barre 11",
+          "coords": {
+            "x": 0.6,
+            "y": 0.4
+          },
+          "details": {
+            "hauteur": 0.4
+          }
+        },
+        {
+          "id": "barre_12",
+          "type": "barre",
+          "label": "Barre 12",
+          "coords": {
+            "x": 0.65,
+            "y": 0.35
+          },
+          "details": {
+            "hauteur": 0.35
+          }
+        },
+        {
+          "id": "barre_13",
+          "type": "barre",
+          "label": "Barre 13",
+          "coords": {
+            "x": 0.7,
+            "y": 0.3
+          },
+          "details": {
+            "hauteur": 0.3
+          }
+        },
+        {
+          "id": "barre_14",
+          "type": "barre",
+          "label": "Barre 14",
+          "coords": {
+            "x": 0.75,
+            "y": 0.25
+          },
+          "details": {
+            "hauteur": 0.25
+          }
+        }
+      ],
+      "suggestions": {
+        "affichage": "SVG",
+        "annotations": [
+          "Ajouter des annotations pour chaque barre indiquant la valeur de la disposition marginale."
+        ]
+      }
+    }
+  }
+]

@@ -1669,6 +1669,12 @@ export const translations: Record<Language, Translations> = {
     recap_glossary: 'Glossary',
     recap_formulas: 'Formula recap',
 
+    // Study Sheet Graphics
+    study_sheet_graphics_label: 'Diagrams / Graphics',
+    study_sheet_graphics_enabled: 'Included',
+    study_sheet_graphics_disabled: 'Not included',
+    study_sheet_graphics_hint: 'Extract and integrate diagrams from your course (slower generation)',
+
     // Quiz Chapter Management
     quiz_question_type_label: 'Question type',
     quiz_question_type_mcq: 'MCQ',
@@ -3422,6 +3428,12 @@ export const translations: Record<Language, Translations> = {
     recap_glossary: 'Glossaire',
     recap_formulas: 'Récap formules',
 
+    // Study Sheet Graphics
+    study_sheet_graphics_label: 'Schémas / Graphiques',
+    study_sheet_graphics_enabled: 'Inclus',
+    study_sheet_graphics_disabled: 'Non inclus',
+    study_sheet_graphics_hint: 'Extrait et intègre les schémas de ton cours (génération plus longue)',
+
     // Quiz Chapter Management
     quiz_question_type_label: 'Type de question',
     quiz_question_type_mcq: 'QCM',
@@ -5169,6 +5181,12 @@ export const translations: Record<Language, Translations> = {
     // Study Sheet Recaps
     recap_glossary: 'Glossar',
     recap_formulas: 'Formelzusammenfassung',
+
+    // Study Sheet Graphics
+    study_sheet_graphics_label: 'Diagramme / Grafiken',
+    study_sheet_graphics_enabled: 'Eingeschlossen',
+    study_sheet_graphics_disabled: 'Nicht eingeschlossen',
+    study_sheet_graphics_hint: 'Extrahiert und integriert Diagramme aus deinem Kurs (längere Generierung)',
 
     // Quiz Chapter Management
     quiz_question_type_label: 'Fragetyp',

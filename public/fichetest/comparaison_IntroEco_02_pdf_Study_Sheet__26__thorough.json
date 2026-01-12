@@ -1,0 +1,246 @@
+{
+  "meta": {
+    "generatedAt": "2026-01-12T18:13:41.552Z",
+    "scriptVersion": "1.0.0",
+    "courseFile": "public/Test/IntroEco-02.pdf",
+    "ficheFile": "public/fichetest/IntroEco_02_pdf_Study_Sheet (26).pdf"
+  },
+  "zones": {
+    "zone1_extraction": {
+      "extractionQuality": 100,
+      "pageCount": 12,
+      "poorPages": [],
+      "ocrUsageRatio": 0,
+      "totalChars": 18106,
+      "readableChars": 18106
+    },
+    "zone2_images": {
+      "score": 79,
+      "markdownImages": 0,
+      "imageMentions": 37,
+      "exampleCount": 6,
+      "imageNearExampleCount": 4,
+      "totalImages": 18
+    },
+    "zone3_structure": {
+      "score": 70,
+      "headingLevels": {
+        "level1": 0,
+        "level2": 0,
+        "level3": 0,
+        "deeper": 0
+      },
+      "mainSections": 0,
+      "maxNestingDepth": 1,
+      "sectionLengths": {
+        "min": 0,
+        "max": 283,
+        "avg": 283,
+        "variance": 0
+      },
+      "titleParagraphBalance": 0,
+      "issues": [
+        "Trop peu de sections principales (0, idéal: 5-7)",
+        "Manque de structure hiérarchique (peu de titres)"
+      ]
+    },
+    "zone4_duplicates": {
+      "score": 0,
+      "exactDuplicates": [
+        {
+          "text": "Questions reflexives :",
+          "count": 2
+        },
+        {
+          "text": "Graphiques Pedagogiques",
+          "count": 2
+        },
+        {
+          "text": "Jeanne : Prete a travailler pour 64 par jour, peut faire 16 reparations (8 heures a 0,5 heure par",
+          "count": 2
+        },
+        {
+          "text": "Cout total de production : T TC C = = 100 100 + + 14 14 Q Q",
+          "count": 2
+        },
+        {
+          "text": "Calculer le nouvel equilibre apres l'application de la taxe.",
+          "count": 2
+        },
+        {
+          "text": "Questions reflexives :",
+          "count": 2
+        },
+        {
+          "text": "Graphiques Pedagogiques",
+          "count": 2
+        },
+        {
+          "text": "ssante. Le point d'intersection indique le prix et la quantite d'equilibre.",
+          "count": 2
+        },
+        {
+          "text": "la disposition a payer a mesure que les unites achetees augmentent",
+          "count": 2
+        },
+        {
+          "text": "une unite supplementaire, essentiel pour comprendre la demande.",
+          "count": 2
+        }
+      ],
+      "semanticDuplicates": [
+        {
+          "pair": [
+            "P Fonction de demande : Q Q = = 24 24 P",
+            "Fonction de demande : Q Q = = 30 30 P P"
+          ],
+          "similarity": 1
+        },
+        {
+          "pair": [
+            "Cout total de production : T TC C = = 10 10 + + Q 2 2",
+            "Cout total de production : T TC C = = 100 100 + + 14 14 Q Q"
+          ],
+          "similarity": 0.78
+        },
+        {
+          "pair": [
+            "Cout total de production : T TC C = = 10 10 + + Q 2 2",
+            "Cout total de production : T TC C = = 100 100 + + 14 14 Q Q"
+          ],
+          "similarity": 0.78
+        },
+        {
+          "pair": [
+            "Fonction de demande inverse : P P = = 48 48 2 2 Q Q",
+            "Fonction de demande inverse : P P = = 30 30 Q Q"
+          ],
+          "similarity": 1
+        },
+        {
+          "pair": [
+            "Cout marginal : C C m m = = Q Q",
+            "Cout marginal : C C m m = = 14 14"
+          ],
+          "similarity": 1
+        },
+        {
+          "pair": [
+            "u par les consommateurs.",
+            "e par les consommateurs."
+          ],
+          "similarity": 1
+        }
+      ],
+      "repeatedTrigrams": [
+        {
+          "gram": "disposition marginale payer",
+          "count": 12
+        },
+        {
+          "gram": "chaque couleur represente",
+          "count": 6
+        },
+        {
+          "gram": "couleur represente consommateur",
+          "count": 6
+        },
+        {
+          "gram": "represente consommateur different",
+          "count": 6
+        },
+        {
+          "gram": "consommateur pret payer",
+          "count": 5
+        },
+        {
+          "gram": "marginale payer plusieurs",
+          "count": 5
+        },
+        {
+          "gram": "payer plusieurs consommateurs",
+          "count": 5
+        },
+        {
+          "gram": "plusieurs consommateurs unites",
+          "count": 5
+        },
+        {
+          "gram": "consommateurs unites successives",
+          "count": 5
+        },
+        {
+          "gram": "unites successives bien",
+          "count": 5
+        }
+      ],
+      "duplicateRatio": 0.13
+    },
+    "zone5_rubric": {
+      "overallScore": 54,
+      "principles": {
+        "selectivity": {
+          "score": 26,
+          "compressionRatio": 1.11,
+          "ficheWords": 1577,
+          "courseWords": 1419,
+          "definitionCount": 2
+        },
+        "structure": {
+          "score": 85,
+          "mainSections": 0,
+          "maxNestingDepth": 1
+        },
+        "activation": {
+          "score": 100,
+          "questionCount": 16,
+          "blanksCount": 8,
+          "reflectiveCount": 4,
+          "totalActiveElements": 24
+        },
+        "connection": {
+          "score": 25,
+          "connectionCount": 0
+        },
+        "visualization": {
+          "score": 35,
+          "tableLines": 0,
+          "hasTable": false,
+          "formulaCount": 20,
+          "contextualFormulas": 0
+        },
+        "personalization": {
+          "score": 100,
+          "simplificationRatio": 1.28,
+          "copyPasteRatio": 0,
+          "analogyCount": 4
+        },
+        "actionability": {
+          "score": 0,
+          "hasSummary": false,
+          "bulletPoints": 0,
+          "reviewMinutes": 0
+        }
+      },
+      "additionalChecks": {
+        "hasInitialSummary": false,
+        "hasKeyDefinitions": false,
+        "hasEssentialPoints": false,
+        "hasFormulas": true,
+        "hasCommonErrors": false,
+        "hasSelfAssessment": true,
+        "hasExamples": true,
+        "hasPedagogicalVisuals": true
+      }
+    }
+  },
+  "overallScore": 57,
+  "grade": "F - Insuffisant",
+  "recommendations": [
+    "Ajouter 2-3 boîtes \"> CONNEXION:\" pour créer des liens entre concepts",
+    "Ajouter une section \"## Synthèse des Points Clés\" en fin de fiche",
+    "Ajouter une section \"Erreurs courantes à éviter\"",
+    "Supprimer 10 doublon(s) exact(s) détecté(s)",
+    "Ajouter au moins 1 tableau comparatif pour les concepts opposés"
+  ]
+}

@@ -11,7 +11,8 @@ import {
   Lightbulb,
   FileText,
   Calculator,
-  Layers
+  Layers,
+  Image
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -55,6 +56,7 @@ export default function PersonnalisationScreen({
   // Utiliser initialConfig si fournie (régénération), sinon les défauts
   const [niveau, setNiveau] = useState<NiveauDetail>(initialConfig?.niveau ?? DEFAULT_CONFIG.niveau);
   const [recaps, setRecaps] = useState<RecapsConfig>(initialConfig?.recaps ?? DEFAULT_CONFIG.recaps);
+  const [includeGraphics, setIncludeGraphics] = useState<boolean>(initialConfig?.includeGraphics ?? DEFAULT_CONFIG.includeGraphics ?? false);
 
   // Accordion states - un seul ouvert à la fois
   const [openSection, setOpenSection] = useState<'niveau' | 'recaps' | null>(null);
@@ -64,7 +66,7 @@ export default function PersonnalisationScreen({
   };
 
   const handleGenerate = () => {
-    onGenerate({ matiere: DEFAULT_CONFIG.matiere, niveau, recaps });
+    onGenerate({ matiere: DEFAULT_CONFIG.matiere, niveau, recaps, includeGraphics });
   };
 
   const toggleSection = (section: 'niveau' | 'recaps') => {
@@ -238,6 +240,43 @@ export default function PersonnalisationScreen({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Section Graphiques */}
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => setIncludeGraphics(!includeGraphics)}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+            includeGraphics
+              ? isDark ? 'bg-neutral-800 border border-orange-500/50' : 'bg-orange-50/50 border border-orange-200'
+              : isDark ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600' : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              isDark ? 'bg-neutral-700' : 'bg-white shadow-sm border border-gray-100'
+            }`}>
+              <Image className={`w-[18px] h-[18px] ${includeGraphics ? 'text-orange-500' : isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
+            </div>
+            <div className="flex flex-col items-start">
+              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('study_sheet_graphics_label')}</span>
+              <span className={`text-sm font-semibold ${isDark ? 'text-neutral-100' : 'text-gray-900'}`}>
+                {includeGraphics ? translate('study_sheet_graphics_enabled') : translate('study_sheet_graphics_disabled')}
+              </span>
+            </div>
+          </div>
+          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+            includeGraphics
+              ? 'bg-orange-500 border-orange-500'
+              : isDark ? 'border-neutral-500 bg-transparent' : 'border-gray-300 bg-transparent'
+          }`}>
+            {includeGraphics && <Check className="w-3 h-3 text-white" />}
+          </div>
+        </button>
+        <p className={`mt-1 px-4 text-xs ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
+          {translate('study_sheet_graphics_hint')}
+        </p>
       </div>
 
       {/* Buttons */}

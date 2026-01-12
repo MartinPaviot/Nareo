@@ -9,16 +9,55 @@
 
 import { Mistral } from '@mistralai/mistralai';
 
-// Initialize Mistral client
-const mistral = new Mistral({
-  apiKey: process.env.MISTRAL || '',
-});
+// Lazy-initialize Mistral client (to ensure API key is loaded from env)
+let mistral: Mistral | null = null;
+
+function getMistralClient(): Mistral {
+  if (!mistral) {
+    mistral = new Mistral({
+      apiKey: process.env.MISTRAL || '',
+    });
+  }
+  return mistral;
+}
+
+/**
+ * Image metadata detected by Mistral OCR
+ * Note: imageBase64 is only populated if includeImageBase64: true is set in the request
+ */
+export interface MistralImageMetadata {
+  id: string;
+  topLeftX: number;
+  topLeftY: number;
+  bottomRightX: number;
+  bottomRightY: number;
+  imageBase64: string | null; // Base64 data URL (e.g., "data:image/jpeg;base64,...")
+  imageAnnotation: any | null;
+}
+
+/**
+ * Page data from Mistral OCR
+ */
+export interface MistralPageData {
+  index: number;
+  markdown: string;
+  images?: MistralImageMetadata[];
+  tables?: any[];
+  hyperlinks?: any[];
+  header?: string;
+  footer?: string;
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+}
 
 export interface MistralOCRResult {
   text: string;
   pages: number;
   success: boolean;
   error?: string;
+  pagesData?: MistralPageData[]; // Raw page data including image locations
 }
 
 /**
@@ -51,13 +90,15 @@ export async function extractTextWithMistralOCR(
 
     console.log(`📄 [Mistral OCR] PDF size: ${(pdfBuffer.length / 1024).toFixed(1)} KB`);
 
-    // Call Mistral OCR API
-    const response = await mistral.ocr.process({
+    // Call Mistral OCR API with image extraction enabled
+    const client = getMistralClient();
+    const response = await client.ocr.process({
       model: 'mistral-ocr-latest',
       document: {
         type: 'document_url',
         documentUrl: dataUrl,
       },
+      includeImageBase64: true, // ← CRITICAL: Extract images as base64
     });
 
     // Extract text from all pages
@@ -78,6 +119,7 @@ export async function extractTextWithMistralOCR(
       text: fullText,
       pages: pages.length,
       success: true,
+      pagesData: pages as MistralPageData[], // Include raw page data with image locations
     };
   } catch (error: any) {
     console.error('❌ [Mistral OCR] Error:', error.message);
@@ -103,6 +145,55 @@ export async function extractTextWithMistralOCR(
  * @param imageDataUrl - Base64 encoded image data URL (data:image/png;base64,...)
  * @returns Extracted text
  */
+/**
+ * Extract images from Mistral OCR result
+ * This uses the imageBase64 field directly from Mistral (much faster than rendering PDF)
+ *
+ * @param mistralResult - Result from extractTextWithMistralOCR
+ * @param onlyPages - Optional: only extract from these page numbers (0-indexed)
+ * @returns Array of { pageNum, imageId, base64Data }
+ */
+export function extractImagesFromMistralResult(
+  mistralResult: MistralOCRResult,
+  onlyPages?: Set<number>
+): Array<{ pageNum: number; imageId: string; base64Data: string }> {
+  if (!mistralResult.success || !mistralResult.pagesData) {
+    return [];
+  }
+
+  const extractedImages: Array<{ pageNum: number; imageId: string; base64Data: string }> = [];
+
+  for (const page of mistralResult.pagesData) {
+    // Filter by onlyPages if specified
+    if (onlyPages && !onlyPages.has(page.index)) {
+      continue;
+    }
+
+    if (!page.images || page.images.length === 0) {
+      continue;
+    }
+
+    for (const img of page.images) {
+      if (img.imageBase64) {
+        extractedImages.push({
+          pageNum: page.index + 1, // Convert to 1-indexed
+          imageId: img.id,
+          base64Data: img.imageBase64,
+        });
+      }
+    }
+  }
+
+  console.log(`✅ Extracted ${extractedImages.length} images from Mistral OCR result`);
+  return extractedImages;
+}
+
+/**
+ * Extract text from a single image using Mistral OCR
+ *
+ * @param imageDataUrl - Base64 encoded image data URL (data:image/png;base64,...)
+ * @returns Extracted text
+ */
 export async function extractTextFromImageWithMistral(
   imageDataUrl: string
 ): Promise<string> {
@@ -115,12 +206,14 @@ export async function extractTextFromImageWithMistral(
 
   try {
     // Mistral OCR accepts images too
-    const response = await mistral.ocr.process({
+    const client = getMistralClient();
+    const response = await client.ocr.process({
       model: 'mistral-ocr-latest',
       document: {
         type: 'image_url',
         imageUrl: imageDataUrl,
       },
+      includeImageBase64: true, // Extract embedded images
     });
 
     const pages = response.pages || [];

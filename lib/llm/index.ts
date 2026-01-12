@@ -118,11 +118,14 @@ export {
 export const LLM_CONFIG = {
   // Model selections
   // MIGRATED TO MISTRAL: Quiz generation, fact extraction, structuring
-  // STILL OPENAI: Vision/OCR (gpt-4o has best vision capabilities)
+  // VISION: Configurable between OpenAI (gpt-4o) and Anthropic (Claude)
   models: {
     primary: 'gpt-4o',
     fast: 'gpt-4o-mini',
     vision: 'gpt-4o',
+    // Vision provider: 'openai' (GPT-4o) or 'anthropic' (Claude Vision)
+    // Using Claude 3 Haiku: 88% cost savings vs GPT-4o, similar quality
+    visionProvider: 'anthropic' as 'openai' | 'anthropic',
     // Fact extraction: Mistral small for cost savings
     factExtraction: 'gpt-4o-mini', // Legacy, now using Mistral
     // Chapter structuring: gpt-4o-mini (structured JSON output)

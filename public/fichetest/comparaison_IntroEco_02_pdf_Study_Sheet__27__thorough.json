@@ -1,0 +1,202 @@
+{
+  "meta": {
+    "generatedAt": "2026-01-12T18:13:41.552Z",
+    "scriptVersion": "1.0.0",
+    "courseFile": "public/Test/IntroEco-02.pdf",
+    "ficheFile": "public/fichetest/IntroEco_02_pdf_Study_Sheet (27).pdf"
+  },
+  "zones": {
+    "zone1_extraction": {
+      "extractionQuality": 100,
+      "pageCount": 6,
+      "poorPages": [],
+      "ocrUsageRatio": 0,
+      "totalChars": 8307,
+      "readableChars": 8307
+    },
+    "zone2_images": {
+      "score": 72,
+      "markdownImages": 0,
+      "imageMentions": 15,
+      "exampleCount": 7,
+      "imageNearExampleCount": 1,
+      "totalImages": 7
+    },
+    "zone3_structure": {
+      "score": 70,
+      "headingLevels": {
+        "level1": 0,
+        "level2": 0,
+        "level3": 0,
+        "deeper": 0
+      },
+      "mainSections": 0,
+      "maxNestingDepth": 1,
+      "sectionLengths": {
+        "min": 0,
+        "max": 143,
+        "avg": 143,
+        "variance": 0
+      },
+      "titleParagraphBalance": 0,
+      "issues": [
+        "Trop peu de sections principales (0, idéal: 5-7)",
+        "Manque de structure hiérarchique (peu de titres)"
+      ]
+    },
+    "zone4_duplicates": {
+      "score": 48,
+      "exactDuplicates": [
+        {
+          "text": "be illustre comment la demande diminue a mesure que le prix augmente.",
+          "count": 2
+        },
+        {
+          "text": "ssante. Le point d'intersection indique le prix et la quantite d'equilibre.",
+          "count": 2
+        }
+      ],
+      "semanticDuplicates": [
+        {
+          "pair": [
+            "be illustre comment la demande diminue a mesure que le prix augmente.",
+            "la demande diminue a mesure que le prix augmente."
+          ],
+          "similarity": 0.75
+        },
+        {
+          "pair": [
+            "be illustre comment la demande diminue a mesure que le prix augmente.",
+            "la demande diminue a mesure que le prix augmente."
+          ],
+          "similarity": 0.75
+        },
+        {
+          "pair": [
+            "ssante. Le point d'intersection indique le prix et la quantite d'equilibre.",
+            ". Le point d'intersection des deux courbes indique le prix et la quantite d'equilibre."
+          ],
+          "similarity": 0.75
+        },
+        {
+          "pair": [
+            ". Le point d'intersection des deux courbes indique le prix et la quantite d'equilibre.",
+            "ssante. Le point d'intersection indique le prix et la quantite d'equilibre."
+          ],
+          "similarity": 0.75
+        }
+      ],
+      "repeatedTrigrams": [
+        {
+          "gram": "prix quantite equilibre",
+          "count": 7
+        },
+        {
+          "gram": "relation prix bien",
+          "count": 6
+        },
+        {
+          "gram": "prix bien quantite",
+          "count": 6
+        },
+        {
+          "gram": "represente relation prix",
+          "count": 5
+        },
+        {
+          "gram": "illustrant equilibre marche",
+          "count": 5
+        },
+        {
+          "gram": "indique prix quantite",
+          "count": 5
+        },
+        {
+          "gram": "mesure que prix",
+          "count": 4
+        },
+        {
+          "gram": "que prix augmente",
+          "count": 4
+        },
+        {
+          "gram": "point intersection indique",
+          "count": 4
+        },
+        {
+          "gram": "intersection indique prix",
+          "count": 4
+        }
+      ],
+      "duplicateRatio": 0.09
+    },
+    "zone5_rubric": {
+      "overallScore": 50,
+      "principles": {
+        "selectivity": {
+          "score": 70,
+          "compressionRatio": 0.52,
+          "ficheWords": 741,
+          "courseWords": 1419,
+          "definitionCount": 1
+        },
+        "structure": {
+          "score": 85,
+          "mainSections": 0,
+          "maxNestingDepth": 1
+        },
+        "activation": {
+          "score": 46,
+          "questionCount": 3,
+          "blanksCount": 0,
+          "reflectiveCount": 0,
+          "totalActiveElements": 3
+        },
+        "connection": {
+          "score": 25,
+          "connectionCount": 0
+        },
+        "visualization": {
+          "score": 35,
+          "tableLines": 0,
+          "hasTable": false,
+          "formulaCount": 17,
+          "contextualFormulas": 0
+        },
+        "personalization": {
+          "score": 94,
+          "simplificationRatio": 1.12,
+          "copyPasteRatio": 0,
+          "analogyCount": 1
+        },
+        "actionability": {
+          "score": 0,
+          "hasSummary": false,
+          "bulletPoints": 0,
+          "reviewMinutes": 0
+        }
+      },
+      "additionalChecks": {
+        "hasInitialSummary": false,
+        "hasKeyDefinitions": false,
+        "hasEssentialPoints": false,
+        "hasFormulas": true,
+        "hasCommonErrors": false,
+        "hasSelfAssessment": false,
+        "hasExamples": true,
+        "hasPedagogicalVisuals": true
+      }
+    }
+  },
+  "overallScore": 59,
+  "grade": "F - Insuffisant",
+  "recommendations": [
+    "Ajouter 2+ questions actives (pourquoi?, comment?, blancs à remplir) pour atteindre le minimum de 5",
+    "Ajouter 2-3 boîtes \"> CONNEXION:\" pour créer des liens entre concepts",
+    "Ajouter une section \"## Synthèse des Points Clés\" en fin de fiche",
+    "Ajouter une section \"Erreurs courantes à éviter\"",
+    "Ajouter une section \"Auto-évaluation\" avec exercices",
+    "Supprimer 2 doublon(s) exact(s) détecté(s)",
+    "Ajouter au moins 1 tableau comparatif pour les concepts opposés"
+  ]
+}

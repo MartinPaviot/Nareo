@@ -10,6 +10,14 @@ import { getGlossairePrompt } from '@/lib/prompts/multi-pass/glossaire';
 import { getVerificationPrompt } from '@/lib/prompts/multi-pass/verification';
 import { getSinglePassPrompt } from '@/lib/prompts/single-pass';
 import { getRecapsPrompt, RECAPS_HEADER } from '@/lib/prompts/recaps';
+// V3: Nouveau système basé sur les 7 principes de la fiche de révision excellente
+import {
+  getSinglePassPromptV3,
+  getStructurePromptV3,
+  getTranscriptionPromptV3,
+  getFinalSynthesisPrompt
+} from '@/lib/prompts/excellent-revision-v3';
+import { formatGraphicsContext, getCourseGraphicsSummaries, replaceGraphicPlaceholders, extractGraphicReferences } from '@/lib/backend/graphics-enricher';
 
 // Max duration for note generation
 export const maxDuration = 300;
@@ -68,18 +76,49 @@ interface ContentTypes {
   exercises: string[];
 }
 
+// V3: Extended structure for excellent revision sheet
+interface EssentialContent {
+  coreDefinitions?: string[];
+  keyFormulas?: string[];
+  criticalExamples?: string[];
+  pedagogicalGraphs?: Array<{
+    description: string;
+    pageNumber: number;
+    figureReference?: string;
+    pedagogicalValue?: string;
+  }>;
+}
+
+interface ActiveLearningOpportunities {
+  definitionsToTransformIntoQuestions?: string[];
+  conceptsForAnalogies?: string[];
+  exercisesWithSolutions?: string[];
+}
+
+interface Connections {
+  prerequisiteSections?: string[];
+  relatedConcepts?: string[];
+}
+
 interface Section {
   title: string;
   startMarker: string;
   endMarker: string;
   contentTypes: ContentTypes;
   keyTopics: string[];
+  // V3 additions
+  isEssential?: boolean;
+  essentialContent?: EssentialContent;
+  activeLearningOpportunities?: ActiveLearningOpportunities;
+  connections?: Connections;
 }
 
 interface DocumentStructure {
   title: string;
   metadata_to_ignore: string[];
   sections: Section[];
+  // V3 additions
+  coreIdeas?: string[];
 }
 
 interface VerificationResult {
@@ -125,26 +164,32 @@ async function updateNoteProgress(
 
 /**
  * Extract document structure (Pass 1)
+ * V3: Uses the new structure prompt based on the 7 principles
  */
 async function extractStructure(
   sourceText: string,
   language: string,
-  config: PersonnalisationConfig
+  config: PersonnalisationConfig,
+  useV3: boolean = true
 ): Promise<DocumentStructure> {
   const languageName = getLanguageName(language);
   const textForStructure = sourceText.substring(0, 20000);
-  const structurePrompt = getStructurePrompt(config, languageName);
+
+  // V3: Use new prompt focused on essential content and active learning
+  const structurePrompt = useV3
+    ? getStructurePromptV3(config, languageName)
+    : getStructurePrompt(config, languageName);
 
   return withRetry(async () => {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: structurePrompt },
-        { role: 'user', content: textForStructure },
+        { role: 'user', content: `Analyze the following course text and return ONLY a valid JSON object (no other text):\n\n${textForStructure}` },
       ],
       temperature: 0.2,
       response_format: { type: 'json_object' },
-      max_tokens: 2000,
+      max_tokens: 3000, // Increased for V3's richer structure
     });
 
     const content = response.choices[0].message.content;
@@ -196,6 +241,7 @@ function findSectionText(
 
 /**
  * Transcribe a single section (Pass 2)
+ * V3: Uses the new transcription prompt with active learning focus
  */
 async function transcribeSection(
   sectionText: string,
@@ -204,7 +250,9 @@ async function transcribeSection(
   contentTypes: ContentTypes,
   metadataToIgnore: string[],
   config: PersonnalisationConfig,
-  imageContext: string = ''
+  imageContext: string = '',
+  section?: Section,
+  useV3: boolean = true
 ): Promise<string> {
   const languageName = getLanguageName(language);
 
@@ -212,14 +260,31 @@ async function transcribeSection(
     ? '\n\nATTENTION : Cette section contient des formules. Utilise OBLIGATOIREMENT $$ pour les formules centrées et $ pour les formules en ligne.'
     : '';
 
-  const transcriptionPrompt = getTranscriptionPrompt(
-    config,
-    contentTypes,
-    metadataToIgnore,
-    languageName,
-    formulaReminder,
-    imageContext
-  );
+  let transcriptionPrompt: string;
+
+  if (useV3 && section) {
+    // V3: Use new prompt with essential content, active learning, and connections
+    transcriptionPrompt = getTranscriptionPromptV3(
+      config,
+      section.essentialContent || {},
+      section.activeLearningOpportunities || {},
+      section.connections || {},
+      metadataToIgnore,
+      languageName,
+      formulaReminder,
+      imageContext
+    );
+  } else {
+    // Legacy prompt
+    transcriptionPrompt = getTranscriptionPrompt(
+      config,
+      contentTypes,
+      metadataToIgnore,
+      languageName,
+      formulaReminder,
+      imageContext
+    );
+  }
 
   return withRetry(async () => {
     const response = await openai.chat.completions.create({
@@ -229,7 +294,7 @@ async function transcribeSection(
         { role: 'user', content: `Section : ${sectionTitle}\n\n${sectionText}` },
       ],
       temperature: 0.3,
-      max_tokens: 4000,
+      max_tokens: 5000, // Increased for V3's richer content (questions, analogies, exercises)
     });
 
     return response.choices[0].message.content || '';
@@ -328,15 +393,21 @@ async function verifyCompleteness(
 
 /**
  * Single-pass generation for short documents
+ * V3: Uses the new single-pass prompt based on the 7 principles
  */
 async function singlePassGeneration(
   sourceText: string,
   language: string,
   config: PersonnalisationConfig,
-  imageContext: string = ''
+  imageContext: string = '',
+  useV3: boolean = true
 ): Promise<string> {
   const languageName = getLanguageName(language);
-  const singlePassPrompt = getSinglePassPrompt(config, languageName, imageContext);
+
+  // V3: Use new prompt focused on active learning and the 7 principles
+  const singlePassPrompt = useV3
+    ? getSinglePassPromptV3(config, languageName, imageContext)
+    : getSinglePassPrompt(config, languageName, imageContext);
 
   return withRetry(async () => {
     const response = await openai.chat.completions.create({
@@ -347,6 +418,38 @@ async function singlePassGeneration(
       ],
       temperature: 0.3,
       max_tokens: 16000,
+    });
+
+    return response.choices[0].message.content || '';
+  });
+}
+
+/**
+ * Generate final synthesis section (V3)
+ * Applies Principle 7: Actionability
+ */
+async function generateFinalSynthesis(
+  noteContent: string,
+  language: string,
+  config: PersonnalisationConfig
+): Promise<string> {
+  const languageName = getLanguageName(language);
+  const synthesisPrompt = getFinalSynthesisPrompt(config, languageName);
+
+  // Use last 20k chars for synthesis (most relevant content)
+  const contentForSynthesis = noteContent.length > 20000
+    ? noteContent.substring(noteContent.length - 20000)
+    : noteContent;
+
+  return withRetry(async () => {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: synthesisPrompt },
+        { role: 'user', content: contentForSynthesis },
+      ],
+      temperature: 0.2,
+      max_tokens: 1500,
     });
 
     return response.choices[0].message.content || '';
@@ -394,16 +497,27 @@ async function runNoteGeneration(
   const admin = getServiceSupabase();
 
   try {
-    console.log(`[A+ Note] Starting generation for course ${courseId}`);
-    console.log(`[A+ Note] Source text length: ${sourceText.length} characters`);
-    console.log(`[A+ Note] Config: matiere=${config.matiere}, niveau=${config.niveau}`);
+    console.log(`[A+ Note V3] Starting generation for course ${courseId}`);
+    console.log(`[A+ Note V3] Source text length: ${sourceText.length} characters`);
+    console.log(`[A+ Note V3] Config: matiere=${config.matiere}, niveau=${config.niveau}, includeGraphics=${config.includeGraphics ?? false}`);
+    console.log(`[A+ Note V3] Using 7-Principles Excellent Revision Sheet System`);
 
-    const imageContext = '';
+    // Fetch available graphics for this course ONLY if includeGraphics is enabled
+    let graphics: Awaited<ReturnType<typeof getCourseGraphicsSummaries>> = [];
+    if (config.includeGraphics) {
+      graphics = await getCourseGraphicsSummaries(courseId);
+      console.log(`[A+ Note V3] Found ${graphics.length} high-confidence graphics to include`);
+    } else {
+      console.log(`[A+ Note V3] Graphics extraction disabled by user preference`);
+    }
+
+    const imageContext = config.includeGraphics ? formatGraphicsContext(graphics) : '';
     let noteContent: string;
+    const USE_V3 = true; // Enable V3 by default
 
     // Decision: Use multi-pass for documents > 15k chars
     if (sourceText.length > 15000) {
-      console.log('[A+ Note] Using MULTI-PASS generation (document > 15k chars)');
+      console.log('[A+ Note V3] Using MULTI-PASS generation (document > 15k chars)');
 
       // Pass 1: Extract structure (0-20%)
       await updateNoteProgress(admin, courseId, {
@@ -411,8 +525,11 @@ async function runNoteGeneration(
         currentStep: 'analyzing_document',
       });
 
-      const structure = await extractStructure(sourceText, language, config);
-      console.log(`[A+ Note] Found ${structure.sections.length} sections`);
+      const structure = await extractStructure(sourceText, language, config, USE_V3);
+      console.log(`[A+ Note V3] Found ${structure.sections.length} sections`);
+      if (USE_V3 && structure.coreIdeas) {
+        console.log(`[A+ Note V3] Identified ${structure.coreIdeas.length} core ideas:`, structure.coreIdeas);
+      }
 
       await updateNoteProgress(admin, courseId, {
         progress: 20,
@@ -424,6 +541,9 @@ async function runNoteGeneration(
       const sectionCount = structure.sections.length;
       const metadataToIgnore = structure.metadata_to_ignore || [];
       const transcribedSections: string[] = [];
+
+      // Track graphics already placed to prevent duplicates across sections
+      const usedGraphicIds = new Set<string>();
 
       // Initialize partial content with title
       let partialContent = `# ${structure.title || courseTitle}\n\n`;
@@ -447,7 +567,16 @@ async function runNoteGeneration(
         });
 
         const sectionSourceText = findSectionText(sourceText, section, structure.sections, i);
-        console.log(`[A+ Note] Processing section ${i + 1}/${sectionCount}: ${section.title}`);
+        console.log(`[A+ Note V3] Processing section ${i + 1}/${sectionCount}: ${section.title}`);
+        if (USE_V3 && section.isEssential) {
+          console.log(`[A+ Note V3]   → Essential section with active learning opportunities`);
+        }
+
+        // Generate image context excluding already-used graphics (only if graphics enabled)
+        const sectionImageContext = config.includeGraphics ? formatGraphicsContext(graphics, usedGraphicIds) : '';
+        if (config.includeGraphics) {
+          console.log(`[A+ Note V3]   → ${graphics.length - usedGraphicIds.size} graphics available (${usedGraphicIds.size} already placed)`);
+        }
 
         const sectionContent = await transcribeSection(
           sectionSourceText,
@@ -456,8 +585,19 @@ async function runNoteGeneration(
           section.contentTypes || { definitions: [], formulas: [], numerical_examples: [], graphs_or_visuals: [], exercises: [] },
           metadataToIgnore,
           config,
-          imageContext
+          sectionImageContext, // Use filtered context instead of full imageContext
+          section, // Pass full section for V3
+          USE_V3
         );
+
+        // Extract graphics used in this section and add to tracking set (only if graphics enabled)
+        if (config.includeGraphics) {
+          const sectionGraphicIds = extractGraphicReferences(sectionContent);
+          sectionGraphicIds.forEach(id => usedGraphicIds.add(id));
+          if (sectionGraphicIds.length > 0) {
+            console.log(`[A+ Note V3]   → Placed ${sectionGraphicIds.length} graphic(s) in this section`);
+          }
+        }
 
         transcribedSections.push(sectionContent);
 
@@ -471,6 +611,10 @@ async function runNoteGeneration(
           totalSections: sectionCount,
           partialContent,
         });
+      }
+
+      if (config.includeGraphics) {
+        console.log(`[A+ Note V3] Total graphics placed: ${usedGraphicIds.size}/${graphics.length}`);
       }
 
       // Assemble content
@@ -499,10 +643,30 @@ async function runNoteGeneration(
         });
       }
 
-      // Glossary if requested (80-95%)
-      if (config.recaps.definitions) {
+      // V3: Generate final synthesis (Principle 7: Actionability) (80-85%)
+      if (USE_V3) {
         await updateNoteProgress(admin, courseId, {
           progress: 80,
+          currentStep: 'generating_content',
+          partialContent: mainContent,
+        });
+
+        console.log('[A+ Note V3] Generating final synthesis (Principle 7: Actionability)...');
+        const finalSynthesis = await generateFinalSynthesis(mainContent, language, config);
+        if (finalSynthesis && finalSynthesis.trim().length > 0) {
+          mainContent += `\n\n---\n\n${finalSynthesis}`;
+          await updateNoteProgress(admin, courseId, {
+            progress: 85,
+            currentStep: 'generating_content',
+            partialContent: mainContent,
+          });
+        }
+      }
+
+      // Glossary if requested (85-90%)
+      if (config.recaps.definitions) {
+        await updateNoteProgress(admin, courseId, {
+          progress: USE_V3 ? 85 : 80,
           currentStep: 'generating_content',
           partialContent: mainContent,
         });
@@ -512,7 +676,7 @@ async function runNoteGeneration(
         mainContent += `\n\n---\n\n${glossary}`;
         // Update partial content with glossary
         await updateNoteProgress(admin, courseId, {
-          progress: 85,
+          progress: USE_V3 ? 90 : 85,
           currentStep: 'generating_content',
           partialContent: mainContent,
         });
@@ -521,19 +685,41 @@ async function runNoteGeneration(
       noteContent = mainContent;
 
     } else {
-      console.log('[A+ Note] Using SINGLE-PASS generation (document <= 15k chars)');
+      console.log('[A+ Note V3] Using SINGLE-PASS generation (document <= 15k chars)');
 
       await updateNoteProgress(admin, courseId, {
         progress: 5,
         currentStep: 'analyzing_document',
       });
 
-      noteContent = await singlePassGeneration(sourceText, language, config, imageContext);
+      noteContent = await singlePassGeneration(sourceText, language, config, imageContext, USE_V3);
 
       await updateNoteProgress(admin, courseId, {
-        progress: 85,
+        progress: 80,
         currentStep: 'generating_content',
       });
+
+      // V3: Single-pass already includes synthesis section, so no need to generate separately
+      console.log('[A+ Note V3] Single-pass includes synthesis section (Principle 7)');
+
+      // Generate glossary if requested (also for single-pass)
+      if (config.recaps.definitions) {
+        await updateNoteProgress(admin, courseId, {
+          progress: 85,
+          currentStep: 'generating_content',
+          partialContent: noteContent,
+        });
+
+        console.log('[A+ Note] Generating glossary (single-pass)...');
+        const glossary = await generateGlossary(noteContent, language, config);
+        noteContent += `\n\n---\n\n${glossary}`;
+
+        await updateNoteProgress(admin, courseId, {
+          progress: 88,
+          currentStep: 'generating_content',
+          partialContent: noteContent,
+        });
+      }
     }
 
     if (!noteContent) {
@@ -564,6 +750,12 @@ async function runNoteGeneration(
       progress: 95,
       currentStep: 'finalizing',
     });
+
+    // Replace graphic placeholders with actual image URLs (only if graphics were included)
+    if (config.includeGraphics) {
+      console.log('[A+ Note] Replacing graphic placeholders with actual URLs...');
+      noteContent = await replaceGraphicPlaceholders(noteContent, courseId);
+    }
 
     // Save note and config to course
     const { error: updateError } = await admin
@@ -679,6 +871,7 @@ export async function POST(
           formules: body.config.recaps?.formules ?? DEFAULT_CONFIG.recaps.formules,
           schemas: body.config.recaps?.schemas ?? DEFAULT_CONFIG.recaps.schemas,
         },
+        includeGraphics: body.config.includeGraphics ?? DEFAULT_CONFIG.includeGraphics ?? false,
       };
     }
   } catch {

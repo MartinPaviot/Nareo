@@ -53,6 +53,12 @@ const LOADING_GIFS = [
   '/gifs/loading/giphy (5).gif',
   '/gifs/loading/giphy (6).gif',
   '/gifs/loading/giphy (7).gif',
+  '/gifs/loading/giphy (8).gif',
+  '/gifs/loading/giphy (9).gif',
+  '/gifs/loading/giphy (10).gif',
+  '/gifs/loading/giphy (11).gif',
+  '/gifs/loading/giphy (12).gif',
+  '/gifs/loading/giphy (13).gif',
 ];
 
 interface ExtractionLoaderProps {

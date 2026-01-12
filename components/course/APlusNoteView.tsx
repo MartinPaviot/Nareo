@@ -559,20 +559,25 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
     // Calculate min height based on previous content to prevent layout shift
     const minContentHeight = showPreviousAsBackground ? 'auto' : '400px';
 
+    // Show progress bar separately only when we have content (previous or streaming)
+    const showSeparateProgressBar = showPreviousAsBackground || (partialContent && partialContent.trim().length > 0);
+
     return (
       <div className="space-y-4">
-        {/* Progress bar at top */}
-        <div className={`rounded-2xl border shadow-sm p-4 transition-colors ${
-          isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-        }`}>
-          <GenerationProgress
-            type="note"
-            progress={generationProgress}
-            message={getProgressMessage(currentStep ?? null, translate, sectionIndex, totalSections)}
-            itemsGenerated={sectionIndex ?? undefined}
-            totalItems={totalSections ?? undefined}
-          />
-        </div>
+        {/* Progress bar at top - only when we have content below */}
+        {showSeparateProgressBar && (
+          <div className={`rounded-2xl border shadow-sm p-4 transition-colors ${
+            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+          }`}>
+            <GenerationProgress
+              type="note"
+              progress={generationProgress}
+              message={getProgressMessage(currentStep ?? null, translate, sectionIndex, totalSections)}
+              itemsGenerated={sectionIndex ?? undefined}
+              totalItems={totalSections ?? undefined}
+            />
+          </div>
+        )}
 
         {/* Content area with hydration */}
         <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors relative ${
@@ -628,13 +633,15 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
 
           {/* LAYER 3: Empty state - first generation (no previous content) */}
           {!showPreviousAsBackground && !hasPartialContent && (
-            <div className="p-4 sm:p-6 md:p-8 flex items-center justify-center" style={{ minHeight: '350px' }}>
-              <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-3" />
-                <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                  {translate('aplus_note_preparing') || 'Preparing your revision sheet...'}
-                </p>
-              </div>
+            <div className="p-4 sm:p-6 md:p-8">
+              <GenerationLoadingScreen
+                type="note"
+                compact={true}
+                progress={generationProgress}
+                progressMessage={getProgressMessage(currentStep ?? null, translate, sectionIndex, totalSections)}
+                itemsGenerated={sectionIndex ?? undefined}
+                totalItems={totalSections ?? undefined}
+              />
             </div>
           )}
         </div>

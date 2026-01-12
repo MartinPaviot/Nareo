@@ -16,7 +16,7 @@ import {
   getTranscriptionPromptV3,
   getFinalSynthesisPrompt
 } from '@/lib/prompts/excellent-revision-v3';
-import { formatGraphicsContext, getCourseGraphicsSummaries, replaceGraphicPlaceholders } from '@/lib/backend/graphics-enricher';
+import { formatGraphicsContext, getCourseGraphicsSummaries, extractGraphicReferences } from '@/lib/backend/graphics-enricher';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -443,6 +443,7 @@ export async function POST(
           formules: body.config.recaps?.formules ?? DEFAULT_CONFIG.recaps.formules,
           schemas: body.config.recaps?.schemas ?? DEFAULT_CONFIG.recaps.schemas,
         },
+        includeGraphics: body.config.includeGraphics ?? DEFAULT_CONFIG.includeGraphics ?? false,
       };
     }
   } catch {
@@ -479,9 +480,15 @@ export async function POST(
       try {
         console.log(`[Stream] Starting generation for course ${courseId}`);
 
-        // Fetch graphics
-        const graphics = await getCourseGraphicsSummaries(courseId);
-        const imageContext = formatGraphicsContext(graphics);
+        // Fetch graphics only if enabled (URLs are resolved inside formatGraphicsContext)
+        let imageContext = '';
+        if (config.includeGraphics) {
+          const graphics = await getCourseGraphicsSummaries(courseId);
+          imageContext = formatGraphicsContext(graphics);
+          console.log(`[Stream] Graphics enabled: ${graphics.length} graphics with resolved URLs`);
+        } else {
+          console.log('[Stream] Graphics disabled by user preference');
+        }
 
         let noteContent = '';
         const sourceText = course.source_text;
@@ -620,9 +627,8 @@ export async function POST(
           }
         }
 
-        // Replace graphic placeholders
+        // Finalize (no placeholder replacement needed - URLs are already embedded)
         send('progress', { step: 'finalizing', progress: 95 });
-        noteContent = await replaceGraphicPlaceholders(noteContent, courseId);
 
         // Save final content
         await admin

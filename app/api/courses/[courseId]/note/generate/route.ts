@@ -17,7 +17,7 @@ import {
   getTranscriptionPromptV3,
   getFinalSynthesisPrompt
 } from '@/lib/prompts/excellent-revision-v3';
-import { formatGraphicsContext, getCourseGraphicsSummaries, replaceGraphicPlaceholders, extractGraphicReferences } from '@/lib/backend/graphics-enricher';
+import { formatGraphicsContext, getCourseGraphicsSummaries, extractGraphicReferences } from '@/lib/backend/graphics-enricher';
 
 // Max duration for note generation
 export const maxDuration = 300;
@@ -751,11 +751,8 @@ async function runNoteGeneration(
       currentStep: 'finalizing',
     });
 
-    // Replace graphic placeholders with actual image URLs (only if graphics were included)
-    if (config.includeGraphics) {
-      console.log('[A+ Note] Replacing graphic placeholders with actual URLs...');
-      noteContent = await replaceGraphicPlaceholders(noteContent, courseId);
-    }
+    // Note: No placeholder replacement needed - URLs are already embedded in the content
+    // The formatGraphicsContext function now resolves URLs upfront
 
     // Save note and config to course
     const { error: updateError } = await admin

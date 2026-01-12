@@ -211,6 +211,36 @@ export default function StreamingMarkdownView({
                 {children}
               </td>
             ),
+            // Image component with error handling for streaming content
+            img: ({ src, alt }) => {
+              const srcString = typeof src === 'string' ? src : '';
+              return (
+                <figure className="my-6 block">
+                  <img
+                    src={srcString}
+                    alt={alt || 'Figure'}
+                    className={`w-full max-w-2xl mx-auto rounded-xl shadow-lg border ${
+                      isDark ? 'border-neutral-700' : 'border-gray-200'
+                    }`}
+                    loading="lazy"
+                    onError={(e) => {
+                      // Hide broken images (e.g., #loading placeholders)
+                      const target = e.currentTarget;
+                      if (srcString.includes('#loading') || srcString.includes('graphic')) {
+                        target.style.display = 'none';
+                      }
+                    }}
+                  />
+                  {alt && alt !== 'Figure' && (
+                    <figcaption className={`text-center text-sm mt-2 ${
+                      isDark ? 'text-neutral-400' : 'text-gray-500'
+                    }`}>
+                      {alt}
+                    </figcaption>
+                  )}
+                </figure>
+              );
+            },
           }}
         >
           {processedContent}

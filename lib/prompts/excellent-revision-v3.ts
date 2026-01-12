@@ -41,7 +41,6 @@ Logical organization required:
 ## 1. [Fundamental Concept A]
 ### 1.1 [Sub-concept]
 ## 2. [Fundamental Concept B]
-## Self-Assessment
 ## Key Points Summary
 
 RULE: No more than 5-7 main sections.
@@ -199,7 +198,6 @@ Return a valid JSON object with this structure:
         ]
       },
       "activeLearningOpportunities": {
-        "conceptsForReflectiveQuestions": ["concept to question deeply"],
         "conceptsForAnalogies": ["abstract concept to make concrete"],
         "concreteExamplesFromCourse": ["numerical example or case study from source"]
       },
@@ -215,7 +213,7 @@ Key instructions:
 - coreIdeas: List 3-5 central ideas of the entire course
 - sections.isEssential: Mark as true only sections with VITAL concepts
 - essentialContent: List only ESSENTIAL definitions, key formulas, and critical examples
-- activeLearningOpportunities: Identify concepts for reflective questions, concepts for analogies, concrete examples from the course
+- activeLearningOpportunities: Identify concepts for analogies, concrete examples from the course
 - connections: Identify prerequisites and links between concepts
 
 Analysis language: ${languageName}
@@ -257,7 +255,6 @@ Pedagogical graphics: ${JSON.stringify(essentialContent?.pedagogicalGraphs || []
 ACTIVE LEARNING OPPORTUNITIES
 ------------------------------
 
-Concepts for reflective questions: ${JSON.stringify(activeLearningOpportunities?.conceptsForReflectiveQuestions || [])}
 Concepts for analogies: ${JSON.stringify(activeLearningOpportunities?.conceptsForAnalogies || [])}
 Concrete examples from course: ${JSON.stringify(activeLearningOpportunities?.concreteExamplesFromCourse || [])}
 
@@ -285,7 +282,6 @@ where $variable$ = [meaning]
 |-----------|-----------|
 | ...       | ...       |
 
-### Self-Assessment
 **Example from the course**:
 [Include a concrete numerical example or case study FROM THE SOURCE DOCUMENT]
 
@@ -422,7 +418,6 @@ REMINDER: EXPLANATORY MODE ACTIVATED
 - Develop concepts to help understand
 - Add the "why" behind each mechanism
 - Multiply analogies - Use examples to clarify
-- Reflective questions must be deep
 `;
   }
   return ''; // Standard = no special reminder

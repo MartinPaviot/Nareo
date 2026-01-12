@@ -18,6 +18,14 @@ export interface GraphicSummary {
   confidence: number;
   elements?: string[] | null;
   suggestions?: string[] | null;
+  storagePath?: string; // Storage path for URL generation
+}
+
+/**
+ * Graphic with resolved URL for direct use in markdown
+ */
+export interface GraphicWithUrl extends GraphicSummary {
+  publicUrl: string;
 }
 
 // Priority graphic types that should have a lower confidence threshold
@@ -119,7 +127,7 @@ export async function getCourseGraphicsSummaries(
   // First, fetch priority graphics with lower threshold (0.5)
   const { data: priorityGraphics, error: priorityError } = await admin
     .from('course_graphics')
-    .select('id, page_number, graphic_type, description, confidence, elements, suggestions')
+    .select('id, page_number, graphic_type, description, confidence, elements, suggestions, storage_path')
     .eq('course_id', courseId)
     .not('graphic_type', 'is', null)
     .not('description', 'is', null)
@@ -131,7 +139,7 @@ export async function getCourseGraphicsSummaries(
   // Filter out priority types using proper Supabase syntax
   const { data: otherGraphics, error: otherError } = await admin
     .from('course_graphics')
-    .select('id, page_number, graphic_type, description, confidence, elements, suggestions')
+    .select('id, page_number, graphic_type, description, confidence, elements, suggestions, storage_path')
     .eq('course_id', courseId)
     .not('graphic_type', 'is', null)
     .not('description', 'is', null)
@@ -158,6 +166,7 @@ export async function getCourseGraphicsSummaries(
     confidence: g.confidence,
     elements: g.elements,
     suggestions: g.suggestions,
+    storagePath: g.storage_path,
   }));
 
   // Sort by page number first, then deduplicate
@@ -171,9 +180,36 @@ export async function getCourseGraphicsSummaries(
 }
 
 /**
- * Generate graphics context string for prompt injection (V2)
+ * Resolve public URLs for graphics and return enriched array
  *
- * @param graphics - Array of graphic summaries
+ * @param graphics - Array of graphic summaries with storage paths
+ * @returns Array of graphics with resolved public URLs
+ */
+export function resolveGraphicsUrls(graphics: GraphicSummary[]): GraphicWithUrl[] {
+  const admin = getServiceSupabase();
+
+  return graphics.map(g => {
+    let publicUrl = '';
+
+    if (g.storagePath) {
+      const { data: urlData } = admin.storage
+        .from('course-graphics')
+        .getPublicUrl(g.storagePath);
+      publicUrl = urlData.publicUrl;
+    }
+
+    return {
+      ...g,
+      publicUrl,
+    };
+  });
+}
+
+/**
+ * Generate graphics context string for prompt injection (V2)
+ * Now uses real URLs directly instead of #loading placeholders
+ *
+ * @param graphics - Array of graphic summaries (with or without URLs)
  * @param excludeIds - Optional set of graphic IDs to exclude (already placed in previous sections)
  * @returns Formatted string for prompt with 4-step integration structure
  */
@@ -187,8 +223,11 @@ export function formatGraphicsContext(graphics: GraphicSummary[], excludeIds?: S
     return '';
   }
 
-  // Replace 'graphics' with 'availableGraphics' for the rest of the function
-  const graphicsToProcess = availableGraphics;
+  // Resolve URLs for all graphics upfront so they can be used directly in markdown
+  const graphicsWithUrls = resolveGraphicsUrls(availableGraphics);
+
+  // Replace 'graphics' with 'graphicsWithUrls' for the rest of the function
+  const graphicsToProcess = graphicsWithUrls;
 
   const typeLabels: Record<string, string> = {
     supply_demand_curve: 'Supply/Demand Curve',
@@ -230,6 +269,11 @@ export function formatGraphicsContext(graphics: GraphicSummary[], excludeIds?: S
         ? g.suggestions.map(s => `  - ${s}`).join('\n')
         : '  - Describe the main concept illustrated';
 
+      // Build the actual markdown image syntax with real URL
+      const imageMarkdown = g.publicUrl
+        ? `![${g.description || 'Figure'}](${g.publicUrl})`
+        : `![GRAPHIC-${g.id}](#loading)`; // Fallback if no URL
+
       return `
 ### GRAPHIQUE ${index + 1} : [GRAPHIC-${g.id}]
 **Localisation** : Page ${g.pageNumber} of source document
@@ -244,7 +288,7 @@ export function formatGraphicsContext(graphics: GraphicSummary[], excludeIds?: S
 **Key elements to mention in your explanation** :
 ${elements}
 
-**Placeholder to use** : \`![GRAPHIC-${g.id}](#loading)\`
+**Image markdown to use** : \`${imageMarkdown}\`
 `;
     })
     .join('\n---\n');
@@ -326,8 +370,9 @@ ${elements}
     '  NOT: "Le graphique suivant illustre la courbe d\'offre." (WRONG - incomplete)',
     '  NOT: "Le graphique montre l\'équilibre." (WRONG - rephrased)',
     '',
-    '**STEP 2 — Placeholder**',
-    'Insert: ![GRAPHIC-{id}](#loading)',
+    '**STEP 2 — Insert the image**',
+    'Copy and paste the EXACT "Image markdown to use" provided above for each graphic.',
+    'The format is: ![description](url)',
     '',
     '**STEP 3 — Brief analysis (1-2 sentences)**',
     'Explain what to observe using the "Key elements" list provided.',
@@ -340,7 +385,7 @@ ${elements}
     'Before finishing, verify EACH graphic placement:',
     '☐ Does the graphic description MATCH the surrounding text topic?',
     '☐ Would placing this graphic HERE confuse a student? If yes, REMOVE IT.',
-    '☐ Is each placeholder format correct: ![GRAPHIC-{id}](#loading)?',
+    '☐ Is each image markdown copied EXACTLY as provided (including full URL)?',
     '',
     '⚠️ REMEMBER: It is acceptable to NOT include a graphic if no section matches it perfectly.',
     `Out of ${graphicsToProcess.length} graphics available, you may include FEWER if semantic matching requires it.`,
@@ -352,18 +397,29 @@ ${elements}
 
 /**
  * Extract graphic IDs from generated markdown content
+ * Supports multiple formats:
+ * - Old placeholder: ![GRAPHIC-id](#loading) or ![GRAPHIC-id](graphic)
+ * - New direct URL: ![description](https://...supabase.co/.../graphics/courseId/id.png)
  *
  * @param markdown - Generated note content
  * @returns Array of graphic IDs referenced in the content
  */
 export function extractGraphicReferences(markdown: string): string[] {
-  // Support both new format (#loading) and old format (graphic)
-  const regex = /!\[GRAPHIC-([a-f0-9-]+)\]\((?:#loading|graphic)\)/gi;
-  const matches = markdown.matchAll(regex);
   const ids: string[] = [];
 
-  for (const match of matches) {
+  // Pattern 1: Old placeholder format ![GRAPHIC-{uuid}](#loading) or ![GRAPHIC-{uuid}](graphic)
+  const placeholderRegex = /!\[GRAPHIC-([a-f0-9-]+)\]\((?:#loading|graphic)\)/gi;
+  for (const match of markdown.matchAll(placeholderRegex)) {
     ids.push(match[1]);
+  }
+
+  // Pattern 2: Real URL format - extract UUID from Supabase storage path
+  // Example: ![desc](https://xxx.supabase.co/storage/v1/object/public/course-graphics/courseId/graphicId.png)
+  const urlRegex = /!\[[^\]]*\]\(https?:\/\/[^)]*\/course-graphics\/[^/]+\/([a-f0-9-]+)\.[a-z]+\)/gi;
+  for (const match of markdown.matchAll(urlRegex)) {
+    if (!ids.includes(match[1])) {
+      ids.push(match[1]);
+    }
   }
 
   return ids;

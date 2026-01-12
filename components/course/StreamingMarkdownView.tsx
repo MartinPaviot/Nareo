@@ -212,10 +212,11 @@ export default function StreamingMarkdownView({
               </td>
             ),
             // Image component with error handling for streaming content
+            // Uses span instead of figure to avoid hydration errors when inside <p>
             img: ({ src, alt }) => {
               const srcString = typeof src === 'string' ? src : '';
               return (
-                <figure className="my-6 block">
+                <span className="block my-6">
                   <img
                     src={srcString}
                     alt={alt || 'Figure'}
@@ -232,13 +233,13 @@ export default function StreamingMarkdownView({
                     }}
                   />
                   {alt && alt !== 'Figure' && (
-                    <figcaption className={`text-center text-sm mt-2 ${
+                    <span className={`block text-center text-sm mt-2 ${
                       isDark ? 'text-neutral-400' : 'text-gray-500'
                     }`}>
                       {alt}
-                    </figcaption>
+                    </span>
                   )}
-                </figure>
+                </span>
               );
             },
           }}

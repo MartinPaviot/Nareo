@@ -18,34 +18,52 @@ import {
 } from './llm';
 
 /**
- * Types of pedagogical graphics (V2 - expanded types)
+ * Types of pedagogical graphics (V3 - universal for all subjects)
  */
 export type GraphicType =
-  // Economic graphs
+  // Universal diagrams
+  | 'flow_diagram'           // Flowcharts, process diagrams, algorithms
+  | 'concept_map'            // Concept maps, mind maps
+  | 'tree_diagram'           // Decision trees, hierarchies, taxonomies
+  | 'venn_diagram'           // Venn diagrams, set relationships
+  | 'timeline'               // Timelines, chronologies, historical sequences
+  | 'cycle_diagram'          // Cycles (water, life, business, etc.)
+  | 'comparison_chart'       // Side-by-side comparisons
+  | 'organizational_chart'   // Org charts, hierarchical structures
+  // Charts and data visualizations
+  | 'histogram'              // Bar charts, histograms
+  | 'pie_chart'              // Pie/donut charts
+  | 'line_chart'             // Line graphs, time series, trends
+  | 'scatter_plot'           // Scatter plots, correlation diagrams
+  | 'table'                  // Data tables, matrices
+  // Mathematics and formulas
+  | 'formula_visual'         // Mathematical formulas with visualization
+  | 'geometric_diagram'      // Geometric shapes, proofs
+  | 'function_graph'         // Mathematical function graphs (f(x), derivatives)
+  // Sciences
+  | 'circuit_diagram'        // Electrical/electronic circuits
+  | 'chemical_structure'     // Chemical formulas, molecular structures
+  | 'molecular_diagram'      // 3D molecular representations
+  | 'anatomical_diagram'     // Human/animal anatomy
+  | 'biological_diagram'     // Cells, organisms, ecosystems
+  | 'physics_diagram'        // Forces, motion, optics, waves
+  // Economics
   | 'supply_demand_curve'    // Supply/demand curves
   | 'equilibrium_graph'      // Market equilibrium diagrams
   | 'surplus_graph'          // Consumer/producer surplus
   | 'elasticity_graph'       // Elasticity illustrations
   | 'shift_graph'            // Supply/demand shifts
-  // Charts and visualizations
-  | 'histogram'              // Bar charts, histograms
-  | 'pie_chart'              // Pie/donut charts
-  | 'line_chart'             // Line graphs, time series
-  | 'scatter_plot'           // Scatter plots
-  // Diagrams
-  | 'flow_diagram'           // Flowcharts, process diagrams
-  | 'tree_diagram'           // Decision trees, hierarchies
-  | 'venn_diagram'           // Venn diagrams, sets
-  | 'table'                  // Tables, matrices
-  | 'formula_visual'         // Mathematical formulas with visualization
-  | 'concept_map'            // Concept maps, mind maps
-  | 'timeline'               // Timelines, chronologies
+  // Geography and history
+  | 'map'                    // Maps (geographic, political, historical)
+  | 'geographic_map'         // Physical geography maps
+  | 'historical_map'         // Historical event maps
   // Legacy types (backward compatibility)
   | 'courbe_offre_demande'   // Legacy: supply/demand
   | 'diagramme_flux'         // Legacy: flowchart
   | 'organigramme'           // Legacy: org chart
   | 'tableau'                // Legacy: table
-  | 'autre';                 // Other
+  | 'autre'                  // Legacy: other
+  | 'other';                 // Other
 
 /**
  * Complete analysis result for a graphic (V2 - simplified for prompts)
@@ -63,180 +81,325 @@ export interface GraphicAnalysis {
 /**
  * Analysis prompt for Claude Vision (V2)
  */
-const GRAPHIC_ANALYSIS_PROMPT = `Tu es un expert en analyse de documents pédagogiques et de visualisations de données.
+const GRAPHIC_ANALYSIS_PROMPT = `You are an expert in analyzing educational documents and data visualizations across ALL academic subjects.
 
 ═══════════════════════════════════════════════════════════════════════════════
                               MISSION
 ═══════════════════════════════════════════════════════════════════════════════
 
-Analyse ce graphique/schéma pédagogique extrait d'un cours universitaire.
-Ton analyse sera utilisée pour aider un autre modèle à intégrer ce graphique dans une fiche de révision.
+Analyze this pedagogical graphic/diagram extracted from a university course.
+Your analysis will help another model integrate this graphic into a revision sheet.
+
+IMPORTANT: This graphic could be from ANY subject (economics, physics, chemistry, biology, history, mathematics, computer science, medicine, law, etc.). Analyze it based on what you see.
 
 ═══════════════════════════════════════════════════════════════════════════════
-                         FORMAT DE RÉPONSE (JSON)
+                         RESPONSE FORMAT (JSON)
 ═══════════════════════════════════════════════════════════════════════════════
 
-Retourne UNIQUEMENT un objet JSON valide avec cette structure :
+Return ONLY a valid JSON object with this structure:
 
 {
   "type": "[TYPE]",
   "confidence": [0.0-1.0],
   "description": "[DESCRIPTION]",
   "elements": ["[ELEMENT_1]", "[ELEMENT_2]", ...],
-  "textContent": ["[TEXTE_1]", "[TEXTE_2]", ...],
+  "textContent": ["[TEXT_1]", "[TEXT_2]", ...],
   "suggestions": ["[SUGGESTION_1]", "[SUGGESTION_2]", ...],
   "relatedConcepts": ["[CONCEPT_1]", "[CONCEPT_2]", ...]
 }
 
 ═══════════════════════════════════════════════════════════════════════════════
-                         INSTRUCTIONS PAR CHAMP
+                         FIELD INSTRUCTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
 ### type (string)
-Catégorise le graphique. Valeurs possibles :
-- "supply_demand_curve" : Courbes offre/demande
-- "equilibrium_graph" : Graphique d'équilibre de marché
-- "surplus_graph" : Graphique montrant surplus consommateur/producteur
-- "elasticity_graph" : Graphique illustrant l'élasticité
-- "shift_graph" : Graphique de déplacement de courbes (chocs)
-- "histogram" : Histogramme / diagramme en barres
-- "pie_chart" : Diagramme circulaire
-- "line_chart" : Graphique en lignes (évolution temporelle)
-- "scatter_plot" : Nuage de points
-- "flow_diagram" : Diagramme de flux / processus
-- "tree_diagram" : Arbre de décision / organigramme
-- "venn_diagram" : Diagramme de Venn
-- "table" : Tableau de données
-- "formula_visual" : Formule mathématique illustrée
-- "concept_map" : Carte conceptuelle
-- "timeline" : Frise chronologique
-- "other" : Autre type
+Categorize the graphic. Possible values:
+
+UNIVERSAL DIAGRAMS:
+- "flow_diagram" : Flowcharts, process diagrams, algorithms
+- "concept_map" : Concept maps, mind maps
+- "tree_diagram" : Decision trees, hierarchies, taxonomies, family trees
+- "venn_diagram" : Venn diagrams, set relationships
+- "timeline" : Timelines, chronologies, historical sequences
+- "cycle_diagram" : Cycles (water cycle, life cycle, business cycle)
+- "comparison_chart" : Side-by-side comparisons
+- "organizational_chart" : Org charts, hierarchical structures
+
+CHARTS & DATA:
+- "histogram" : Histograms, bar charts
+- "pie_chart" : Pie charts, donut charts
+- "line_chart" : Line graphs, time series, trends
+- "scatter_plot" : Scatter plots, correlation diagrams
+- "table" : Data tables, matrices
+
+MATHEMATICS & FORMULAS:
+- "formula_visual" : Mathematical formulas with visualization
+- "geometric_diagram" : Geometric shapes, proofs
+- "function_graph" : Mathematical function graphs (f(x), derivatives)
+
+SCIENCES:
+- "circuit_diagram" : Electrical/electronic circuits
+- "chemical_structure" : Chemical formulas, molecular structures
+- "molecular_diagram" : 3D molecular representations
+- "anatomical_diagram" : Human/animal anatomy
+- "biological_diagram" : Cells, organisms, ecosystems
+- "physics_diagram" : Forces, motion, optics, waves
+
+ECONOMICS:
+- "supply_demand_curve" : Supply/demand curves
+- "equilibrium_graph" : Market equilibrium diagrams
+- "surplus_graph" : Consumer/producer surplus
+- "elasticity_graph" : Elasticity illustrations
+- "shift_graph" : Supply/demand shifts
+
+GEOGRAPHY & HISTORY:
+- "map" : Maps (geographic, political, historical)
+- "geographic_map" : Physical geography maps
+- "historical_map" : Historical event maps
+
+OTHER:
+- "other" : Any other type of diagram
 
 ### confidence (number)
-Ta confiance dans l'analyse, de 0.0 à 1.0.
-- 0.9-1.0 : Très sûr, graphique clair et standard
-- 0.7-0.9 : Assez sûr, quelques ambiguïtés mineures
-- 0.5-0.7 : Moyennement sûr, qualité d'image moyenne ou graphique complexe
-- < 0.5 : Peu sûr, image floue ou graphique inhabituel
+Your confidence in the analysis, from 0.0 to 1.0.
+- 0.9-1.0 : Very confident, clear and standard graphic
+- 0.7-0.9 : Fairly confident, minor ambiguities
+- 0.5-0.7 : Moderately confident, average image quality or complex graphic
+- < 0.5 : Low confidence, blurry image or unusual graphic
 
 ### description (string)
-Description complète du graphique en 2-4 phrases.
-- Que représente-t-il globalement ?
-- Quelles sont les variables/axes ?
-- Quel est le message principal ?
+Complete description of the graphic in 2-4 sentences.
+- What does it represent overall?
+- What are the variables/axes/components?
+- What is the main message or concept illustrated?
+
+IMPORTANT: Write the description in the SAME LANGUAGE as the text visible in the graphic.
 
 ### elements (array of strings)
-Liste TOUS les éléments visuels importants que l'étudiant doit observer.
-Sois SPÉCIFIQUE et CONCRET. Exemples :
-- "Courbe de demande décroissante (bleue) de (0,15) à (8,7)"
-- "Point d'équilibre E* à l'intersection (Q*=4, P*=10)"
-- "Zone colorée en vert représentant le surplus du consommateur"
-- "Axe horizontal : Quantité (Q) de 0 à 10"
-- "Axe vertical : Prix (P) de 0 à 20"
-- "Flèche indiquant le déplacement de D vers D'"
-- "Légende : bleu = demande, rouge = offre"
+List ALL important visual elements that a student should observe.
+Be SPECIFIC and CONCRETE. Examples across subjects:
+- Physics: "Force vector F pointing downward at angle 30°"
+- Chemistry: "Carbon atom bonded to 4 hydrogen atoms in tetrahedral structure"
+- Biology: "Cell membrane shown as double phospholipid layer"
+- Math: "Parabola y=x² with vertex at origin (0,0)"
+- Economics: "Demand curve sloping downward from (0,15) to (8,7)"
+- History: "Timeline showing events from 1914 to 1918"
 
 ### textContent (array of strings)
-Retranscris TOUS les textes visibles sur le graphique :
-- Labels des axes
-- Titres et sous-titres
+Transcribe ALL visible text on the graphic:
+- Axis labels
+- Titles and subtitles
 - Annotations
-- Valeurs numériques
-- Légendes
-- Noms des courbes/zones
+- Numerical values
+- Legends
+- Names of curves/zones/regions
 
 ### suggestions (array of strings)
-2-4 suggestions pédagogiques pour exploiter ce graphique :
-- Quel concept illustre-t-il le mieux ?
-- Quelle question poser à l'étudiant ?
-- Quel exercice pourrait l'accompagner ?
-- Quel lien avec d'autres concepts du cours ?
+2-4 pedagogical suggestions for using this graphic:
+- What concept does it best illustrate?
+- What question could you ask a student?
+- What exercise could accompany it?
+- What connection to other course concepts?
 
 ### relatedConcepts (array of strings)
-Concepts économiques/théoriques liés à ce graphique.
-Exemples : "loi de l'offre et de la demande", "élasticité-prix", "surplus collectif", "équilibre de marché"
+Theoretical concepts related to this graphic (from the relevant subject).
+Examples by subject:
+- Economics: "supply and demand", "market equilibrium"
+- Physics: "Newton's laws", "conservation of energy"
+- Chemistry: "covalent bonding", "molecular geometry"
+- Biology: "cellular respiration", "DNA replication"
+- Math: "quadratic functions", "derivatives"
 
 ═══════════════════════════════════════════════════════════════════════════════
-                              EXEMPLES
+                              EXAMPLES
 ═══════════════════════════════════════════════════════════════════════════════
 
-**Exemple 1 : Graphique offre/demande simple**
+**Example 1: Physics - Force Diagram**
 {
-  "type": "supply_demand_curve",
-  "confidence": 0.95,
-  "description": "Graphique représentant l'équilibre d'un marché idéal-typique avec une courbe de demande décroissante et une courbe d'offre croissante. Le point d'intersection détermine le prix et la quantité d'équilibre.",
+  "type": "physics_diagram",
+  "confidence": 0.92,
+  "description": "Free body diagram showing forces acting on an object on an inclined plane. The weight force is decomposed into components parallel and perpendicular to the surface.",
   "elements": [
-    "Courbe de demande décroissante (bleue) partant de P=15 pour Q=0",
-    "Courbe d'offre croissante (rouge) partant de P=5 pour Q=0",
-    "Point d'équilibre E* marqué à l'intersection (Q*=4, P*=10)",
-    "Axe horizontal labellisé 'Quantité (Q)'",
-    "Axe vertical labellisé 'Prix (P)'",
-    "Lignes pointillées reliant E* aux axes"
+    "Rectangular block on inclined plane at 30° angle",
+    "Weight vector W pointing straight down (mg = 50N)",
+    "Normal force N perpendicular to surface (43.3N)",
+    "Parallel component W∥ along the slope (25N)",
+    "Friction force f opposing motion direction",
+    "Angle θ = 30° marked at base"
   ],
   "textContent": [
-    "Prix (P)",
-    "Quantité (Q)",
-    "Offre",
-    "Demande",
-    "E*",
-    "P* = 10",
-    "Q* = 4"
+    "W = mg = 50N",
+    "N = W cos(θ)",
+    "W∥ = W sin(θ)",
+    "θ = 30°",
+    "f = μN"
   ],
   "suggestions": [
-    "Demander à l'étudiant d'identifier les coordonnées du point d'équilibre",
-    "Faire tracer l'effet d'un choc de demande positif",
-    "Calculer le surplus du consommateur à partir des aires",
-    "Comparer avec un cas d'élasticité différente"
+    "Calculate the acceleration if friction coefficient is μ = 0.2",
+    "Determine the minimum angle for the block to start sliding",
+    "Compare with a horizontal surface scenario",
+    "Explain why N ≠ W on an inclined plane"
   ],
   "relatedConcepts": [
-    "équilibre de marché",
-    "loi de l'offre et de la demande",
-    "prix d'équilibre",
-    "quantité d'équilibre"
+    "Newton's second law",
+    "force decomposition",
+    "static friction",
+    "inclined plane mechanics"
   ]
 }
 
-**Exemple 2 : Histogramme DMP**
+**Example 2: Biology - Cell Structure**
 {
-  "type": "histogram",
-  "confidence": 0.88,
-  "description": "Histogramme en escalier montrant la disposition marginale à payer (DMP) de 4 consommateurs pour des unités successives d'un bien. Chaque couleur représente un consommateur différent.",
+  "type": "biological_diagram",
+  "confidence": 0.89,
+  "description": "Cross-section of an animal cell showing major organelles. Each structure is labeled with its function in cellular metabolism.",
   "elements": [
-    "Barre violette (Zyad) : DMP = 15€ pour unité 1, 13€ pour unité 2",
-    "Barre verte (Irène) : DMP = 12€ pour unité 1, 10€ pour unité 2",
-    "Barre rouge (Pamela) : DMP = 9€",
-    "Barre orange (Marcel) : DMP = 8€",
-    "Axe horizontal : unités achetées (1 à 6)",
-    "Axe vertical : disposition marginale à payer (€)",
-    "Barres ordonnées par DMP décroissante"
+    "Cell membrane (outer boundary, phospholipid bilayer)",
+    "Nucleus with nucleolus visible inside",
+    "Mitochondria (oval shapes with inner folds)",
+    "Endoplasmic reticulum (rough and smooth)",
+    "Golgi apparatus (stacked membranes)",
+    "Ribosomes (small dots on rough ER)",
+    "Cytoplasm filling the cell"
   ],
   "textContent": [
-    "Disposition marginale à payer (€)",
-    "Unités",
-    "Z1 = 15",
-    "Z2 = 13",
-    "I1 = 12",
-    "I2 = 10",
-    "P1 = 9",
-    "M1 = 8"
+    "Nucleus",
+    "Mitochondria",
+    "Rough ER",
+    "Smooth ER",
+    "Golgi apparatus",
+    "Cell membrane",
+    "Ribosomes",
+    "Cytoplasm"
   ],
   "suggestions": [
-    "Expliquer pourquoi la DMP décroît pour chaque consommateur",
-    "Faire calculer le surplus de chaque consommateur à un prix donné",
-    "Montrer comment ce graphique se transforme en courbe de demande",
-    "Identifier qui achète à quel prix"
+    "Trace the path of a protein from synthesis to secretion",
+    "Explain why mitochondria are called 'powerhouses'",
+    "Compare with a plant cell structure",
+    "Identify which organelles have their own DNA"
   ],
   "relatedConcepts": [
-    "disposition marginale à payer",
-    "utilité marginale décroissante",
-    "surplus du consommateur",
-    "courbe de demande agrégée"
+    "cell biology",
+    "organelle function",
+    "protein synthesis",
+    "cellular respiration",
+    "membrane transport"
+  ]
+}
+
+**Example 3: Chemistry - Molecular Structure**
+{
+  "type": "chemical_structure",
+  "confidence": 0.94,
+  "description": "3D representation of a methane molecule (CH4) showing tetrahedral geometry with bond angles of 109.5°.",
+  "elements": [
+    "Central carbon atom (black sphere)",
+    "Four hydrogen atoms (white spheres)",
+    "Four C-H bonds of equal length",
+    "Tetrahedral arrangement",
+    "109.5° bond angle indicated"
+  ],
+  "textContent": [
+    "CH₄",
+    "C",
+    "H",
+    "109.5°",
+    "Tetrahedral"
+  ],
+  "suggestions": [
+    "Explain sp3 hybridization in this molecule",
+    "Compare with ammonia (NH3) geometry",
+    "Predict polarity based on symmetry",
+    "Draw the Lewis structure"
+  ],
+  "relatedConcepts": [
+    "VSEPR theory",
+    "molecular geometry",
+    "covalent bonding",
+    "hybridization",
+    "bond angles"
+  ]
+}
+
+**Example 4: Mathematics - Function Graph**
+{
+  "type": "function_graph",
+  "confidence": 0.91,
+  "description": "Graph of a quadratic function f(x) = x² - 4x + 3 showing the parabola, vertex, roots, and axis of symmetry.",
+  "elements": [
+    "Parabola opening upward",
+    "Vertex at point (2, -1)",
+    "X-intercepts at x = 1 and x = 3",
+    "Y-intercept at y = 3",
+    "Axis of symmetry x = 2 (dashed line)",
+    "Coordinate grid with labeled axes"
+  ],
+  "textContent": [
+    "f(x) = x² - 4x + 3",
+    "Vertex (2, -1)",
+    "x = 1",
+    "x = 3",
+    "y = 3",
+    "x = 2"
+  ],
+  "suggestions": [
+    "Find the roots using the quadratic formula",
+    "Determine the domain and range",
+    "Calculate the derivative to verify the vertex",
+    "Transform to vertex form f(x) = (x-2)² - 1"
+  ],
+  "relatedConcepts": [
+    "quadratic functions",
+    "parabola properties",
+    "roots and zeros",
+    "vertex form",
+    "axis of symmetry"
+  ]
+}
+
+**Example 5: History - Timeline**
+{
+  "type": "timeline",
+  "confidence": 0.87,
+  "description": "Timeline of major events during World War I (1914-1918), showing key battles and political turning points.",
+  "elements": [
+    "Horizontal timeline from 1914 to 1918",
+    "Assassination of Archduke Franz Ferdinand (June 1914)",
+    "Battle of the Marne (September 1914)",
+    "Battle of Verdun (1916)",
+    "US entry into war (April 1917)",
+    "Armistice (November 11, 1918)"
+  ],
+  "textContent": [
+    "1914",
+    "1915",
+    "1916",
+    "1917",
+    "1918",
+    "Assassination of Franz Ferdinand",
+    "Battle of the Marne",
+    "Battle of Verdun",
+    "US enters war",
+    "Armistice"
+  ],
+  "suggestions": [
+    "Analyze the turning points that changed the war's direction",
+    "Explain why US entry was significant",
+    "Compare the Western and Eastern fronts",
+    "Discuss the impact on civilian populations"
+  ],
+  "relatedConcepts": [
+    "World War I",
+    "trench warfare",
+    "alliances",
+    "total war",
+    "Treaty of Versailles"
   ]
 }
 
 ═══════════════════════════════════════════════════════════════════════════════
 
-Analyse maintenant le graphique fourni et retourne UNIQUEMENT le JSON, sans texte avant ou après.`;
+Now analyze the provided graphic and return ONLY the JSON, no text before or after.`;
 
 /**
  * Analyze a pedagogical graphic with Claude Vision

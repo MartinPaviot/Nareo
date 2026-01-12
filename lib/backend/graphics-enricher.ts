@@ -29,17 +29,49 @@ export interface GraphicWithUrl extends GraphicSummary {
 }
 
 // Priority graphic types that should have a lower confidence threshold
+// These are pedagogically valuable across ALL subjects (V3 - universal)
 const PRIORITY_GRAPHIC_TYPES = [
-  'supply_demand_curve',
-  'equilibrium_graph',
-  'surplus_graph',
-  'elasticity_graph',
-  'shift_graph',
-  'flow_diagram',
-  'formula_visual',
-  'concept_map',
+  // Universal diagrams (all subjects)
+  'flow_diagram',           // Process flows, algorithms, workflows
+  'concept_map',            // Concept maps, mind maps
+  'tree_diagram',           // Decision trees, hierarchies, taxonomies
+  'venn_diagram',           // Set relationships, comparisons
+  'timeline',               // Historical events, processes over time
+  'formula_visual',         // Mathematical formulas with visualization
+  'cycle_diagram',          // Water cycle, life cycle, business cycle
+  'comparison_chart',       // Side-by-side comparisons
+  'organizational_chart',   // Org charts, hierarchical structures
+  // Charts and data visualization
+  'histogram',              // Statistical distributions
+  'line_chart',             // Trends, time series
+  'scatter_plot',           // Correlations, relationships
+  'pie_chart',              // Proportions, percentages
+  'table',                  // Data tables, matrices
+  // Mathematics
+  'geometric_diagram',      // Geometric shapes, proofs
+  'function_graph',         // Mathematical function graphs (f(x))
+  // Sciences
+  'circuit_diagram',        // Physics, electronics
+  'chemical_structure',     // Chemistry, biology
+  'molecular_diagram',      // 3D molecular representations
+  'anatomical_diagram',     // Biology, medicine
+  'biological_diagram',     // Cells, organisms, ecosystems
+  'physics_diagram',        // Forces, motion, optics, waves
+  // Economics
+  'supply_demand_curve',    // Supply/demand curves
+  'equilibrium_graph',      // Market equilibrium
+  'surplus_graph',          // Consumer/producer surplus
+  'elasticity_graph',       // Elasticity illustrations
+  'shift_graph',            // Supply/demand shifts
+  // Geography and history
+  'map',                    // General maps
+  'geographic_map',         // Physical geography maps
+  'historical_map',         // Historical event maps
+  // Legacy types (backward compatibility)
   'courbe_offre_demande',
   'diagramme_flux',
+  'organigramme',
+  'tableau',
 ];
 
 /**
@@ -230,27 +262,51 @@ export function formatGraphicsContext(graphics: GraphicSummary[], excludeIds?: S
   const graphicsToProcess = graphicsWithUrls;
 
   const typeLabels: Record<string, string> = {
+    // Universal diagrams
+    flow_diagram: 'Flow Diagram',
+    concept_map: 'Concept Map',
+    tree_diagram: 'Tree/Hierarchy Diagram',
+    venn_diagram: 'Venn Diagram',
+    timeline: 'Timeline',
+    formula_visual: 'Formula Visualization',
+    cycle_diagram: 'Cycle Diagram',
+    comparison_chart: 'Comparison Chart',
+    organizational_chart: 'Organizational Chart',
+    // Charts and data
+    histogram: 'Histogram/Bar Chart',
+    pie_chart: 'Pie Chart',
+    line_chart: 'Line Chart',
+    scatter_plot: 'Scatter Plot',
+    table: 'Table/Matrix',
+    // Mathematics
+    geometric_diagram: 'Geometric Diagram',
+    function_graph: 'Function Graph',
+    // Economics
     supply_demand_curve: 'Supply/Demand Curve',
     equilibrium_graph: 'Equilibrium Graph',
     surplus_graph: 'Surplus Graph',
     elasticity_graph: 'Elasticity Graph',
     shift_graph: 'Shift/Shock Graph',
-    histogram: 'Histogram',
-    pie_chart: 'Pie Chart',
-    line_chart: 'Line Chart',
-    scatter_plot: 'Scatter Plot',
-    flow_diagram: 'Flow Diagram',
-    tree_diagram: 'Tree Diagram',
-    venn_diagram: 'Venn Diagram',
-    table: 'Table/Matrix',
-    formula_visual: 'Formula Visualization',
-    concept_map: 'Concept Map',
-    timeline: 'Timeline',
+    // Sciences
+    circuit_diagram: 'Circuit Diagram',
+    chemical_structure: 'Chemical Structure',
+    molecular_diagram: 'Molecular Diagram',
+    anatomical_diagram: 'Anatomical Diagram',
+    biological_diagram: 'Biological Diagram',
+    physics_diagram: 'Physics Diagram',
+    // Geography/History
+    map: 'Map',
+    geographic_map: 'Geographic Map',
+    historical_map: 'Historical Map',
+    // Other
+    process_diagram: 'Process Diagram',
+    // Legacy (backward compatibility)
     courbe_offre_demande: 'Supply/Demand Curve',
     diagramme_flux: 'Flow Diagram',
     organigramme: 'Organizational Chart',
     tableau: 'Table',
     autre: 'Diagram/Visual',
+    other: 'Diagram/Visual',
   };
 
   // Build individual graphic blocks
@@ -336,6 +392,14 @@ ${elements}
     'Each graphic can only appear ONCE in the entire document.',
     'Never reuse the same placeholder twice.',
     '',
+    '**RULE 3b: CHOOSE THE BEST MATCH, NOT THE FIRST**',
+    'When multiple graphics are available, DO NOT just pick the first one.',
+    'Read ALL graphic descriptions and choose the ONE that BEST matches your current topic.',
+    'Example: If discussing "market equilibrium" and you have:',
+    '  - Graphic 1: "shows supply curve alone"',
+    '  - Graphic 2: "shows equilibrium point where supply meets demand"',
+    '→ Choose Graphic 2, NOT Graphic 1 (even though 1 appears first).',
+    '',
     '**RULE 4: VERIFY BEFORE PLACING**',
     'Before inserting ANY graphic, answer these THREE questions:',
     '',
@@ -414,8 +478,10 @@ export function extractGraphicReferences(markdown: string): string[] {
   }
 
   // Pattern 2: Real URL format - extract UUID from Supabase storage path
-  // Example: ![desc](https://xxx.supabase.co/storage/v1/object/public/course-graphics/courseId/graphicId.png)
-  const urlRegex = /!\[[^\]]*\]\(https?:\/\/[^)]*\/course-graphics\/[^/]+\/([a-f0-9-]+)\.[a-z]+\)/gi;
+  // Storage path format: {userId}/{courseId}/{graphicId} (NO extension)
+  // Example: ![desc](https://xxx.supabase.co/storage/v1/object/public/course-graphics/userId/courseId/graphicId)
+  // The graphicId is a UUID at the end of the path (with or without extension)
+  const urlRegex = /!\[[^\]]*\]\(https?:\/\/[^)]*\/course-graphics\/[^/]+\/[^/]+\/([a-f0-9-]{36})(?:\.[a-z]+)?\)/gi;
   for (const match of markdown.matchAll(urlRegex)) {
     if (!ids.includes(match[1])) {
       ids.push(match[1]);

@@ -50,31 +50,28 @@ Transform passive content into active content through understanding.
 
 Include concrete examples from the course:
 - Numerical examples and case studies PRESENT IN THE SOURCE DOCUMENT
-- **Example**: [Example from the course that clarifies the concept]
+- **[Example/Exemple in document language]**: [Example from the course that clarifies the concept]
 
 4. CONNECTION (Create links - BE CONCISE)
 Add SHORT connection boxes (1 sentence max):
 
-> CONNECTION: Elasticity = rubber band: more elastic = stronger reaction to price change.
+> [LIEN/CONNECTION in document language]: Elasticity = rubber band: more elastic = stronger reaction to price change.
 
-> TO REMEMBER: Perfect market = price is the ONLY information vector.
+> [À RETENIR/TO REMEMBER in document language]: Perfect market = price is the ONLY information vector.
 
 5. VISUALIZATION (Effective formats)
 Comparative tables (mandatory for comparing 2+ concepts):
 
-| Demand | Supply |
+| [Concept A in doc language] | [Concept B in doc language] |
 |---------|-------|
-| WTP = max price | WTS = min price |
-| Downward curve | Upward curve |
-| Surplus = WTP - Price | Surplus = Price - WTS |
+| ... | ... |
+| ... | ... |
 
 Formulas (with context):
-**Formula: Price Elasticity of Demand**
-Price elasticity = (% change in Qd) / (% change in P)
-where:
-- Qd = quantity demanded
-- P = price
-- If |elasticity| > 1 then elastic demand (price sensitive)
+**[Formule/Formula in document language]: [Formula name in document language]**
+$$[formula]$$
+où/where:
+- [variable] = [meaning in document language]
 
 6. PERSONALIZATION (Feynman Technique)
 Rephrase each concept with simple words, as if explaining to a 15-year-old friend.
@@ -131,6 +128,19 @@ FORBIDDEN:
 - Using underscores in text (write "Q1" not "Q_1", "var" not "var_1")
 - Centering text or using HTML alignment (all text must be left-aligned)
 - Using decorative separators or ASCII art boxes
+
+CRITICAL - LANGUAGE RULE:
+ALL labels, titles, and text MUST be written in ${languageName}.
+Translate these English labels to ${languageName}:
+- "Key formula" / "Formula"
+- "Example" / "Example from the course"
+- "Comparative table"
+- "CONNECTION" / "LINK"
+- "TO REMEMBER"
+- "Related concepts"
+- "Key Points Summary"
+NEVER use English words if the document language is ${languageName} (unless ${languageName} is English).
+The ENTIRE output must be in ${languageName} - no mixing of languages.
 
 ${imageContext}
 
@@ -269,21 +279,24 @@ STRUCTURE TO APPLY (7 PRINCIPLES)
 ## [Section Title]
 
 ### [Fundamental Concept]
-[Clear and rephrased definition ]
+[Clear and rephrased definition]
 
-> CONNECTION: [1 sentence max - analogy or link]
+> [CONNECTION/LIEN/CONNEXION in document language]: [1 sentence max - analogy or link]
 
-**Key formula**:
+**[Formula/Formule in document language]**:
 $$[formula]$$
-where $variable$ = [meaning]
+where/où $variable$ = [meaning in document language]
 
-**Comparative table** (if applicable):
+**[Comparative table/Tableau comparatif in document language]** (if applicable):
 | Concept A | Concept B |
 |-----------|-----------|
 | ...       | ...       |
 
-**Example from the course**:
+**[Example/Exemple in document language]**:
 [Include a concrete numerical example or case study FROM THE SOURCE DOCUMENT]
+
+IMPORTANT: ALL labels (Key formula, Comparative table, Example, CONNECTION, etc.)
+MUST be written in ${languageName}. Never use English labels if the document is in another language.
 
 ELEMENTS TO IGNORE
 ------------------
@@ -329,6 +342,19 @@ FORBIDDEN:
 - Center text or use HTML alignment (all text left-aligned)
 - Decorative separators or ASCII art
 
+CRITICAL - LANGUAGE RULE:
+ALL labels, titles, and text MUST be written in ${languageName}.
+Translate these English labels to ${languageName}:
+- "Key formula" / "Formula"
+- "Example" / "Example from the course"
+- "Comparative table"
+- "CONNECTION" / "LINK"
+- "TO REMEMBER"
+- "Related concepts"
+- "Key Points Summary"
+NEVER use English words if the document language is ${languageName} (unless ${languageName} is English).
+The ENTIRE output must be in ${languageName} - no mixing of languages.
+
 ${imageContext}
 
 ${niveauRappel}
@@ -352,31 +378,31 @@ OBJECTIVE: Enable a complete review in 2-3 minutes.
 
 This summary will be added at the end of the revision sheet.
 
-RESPONSE FORMAT (use the document language for all titles!)
+RESPONSE FORMAT (ALL in ${languageName}!)
 -----------------------------------------------------------
 
-## [Title: "Key Points Summary" / "Synthèse des Points Clés" / etc. in document language]
+## [Title meaning "Key Points Summary" - translated to ${languageName}]
 
-*[Subtitle in document language: "Quick 3-minute review"]*
+*[Subtitle meaning "Quick 3-minute review" - translated to ${languageName}]*
 
-1. **[Idea 1]**: [1-line explanation]
+1. **[Idea 1]**: [1-line explanation in ${languageName}]
 
-2. **[Idea 2]**: [1-line explanation]
+2. **[Idea 2]**: [1-line explanation in ${languageName}]
 
-3. **[Idea 3]**: [1-line explanation]
+3. **[Idea 3]**: [1-line explanation in ${languageName}]
 
-4. **[Idea 4]**: [1-line explanation]
+4. **[Idea 4]**: [1-line explanation in ${languageName}]
 
-5. **[Idea 5]**: [1-line explanation]
+5. **[Idea 5]**: [1-line explanation in ${languageName}]
 
 ---
 
-**[Title in document language: "Formulas to remember" / "Formules à retenir"]**:
-- [Formula name]: [utility]
-- [Formula name]: [utility]
+**[Title meaning "Formulas to remember" - translated to ${languageName}]**:
+- [Formula name]: [utility in ${languageName}]
+- [Formula name]: [utility in ${languageName}]
 
-**[Title in document language: "Related concepts" / "Concepts liés"]**:
-- [Concept A] <-> [Concept B]: [Link in 1 sentence]
+**[Title meaning "Related concepts" - translated to ${languageName}]**:
+- [Concept A] <-> [Concept B]: [Link in 1 sentence in ${languageName}]
 
 CRITICAL RULES
 --------------

@@ -20,82 +20,84 @@ export const RECAPS_HEADER = `
 // BLOCS INDIVIDUELS - Adaptés au niveau de détail
 // ============================================================================
 
-function getBlocFormules(niveau: NiveauDetail): string {
+function getBlocFormules(niveau: NiveauDetail, languageName: string): string {
   const niveauInstructions: Record<NiveauDetail, string> = {
     synthetique: `
-ADAPTATION SYNTHÉTIQUE :
-- Variables : uniquement les essentielles (pas les évidentes)
-- Pas de conditions d'application détaillées
-- Format compact`,
+SYNTHETIC ADAPTATION:
+- Variables: only essential ones (not obvious ones)
+- No detailed application conditions
+- Compact format`,
 
     standard: `
-ADAPTATION STANDARD :
-- Toutes les variables définies
-- Conditions d'application si importantes
-- Format complet`,
+STANDARD ADAPTATION:
+- All variables defined
+- Application conditions if important
+- Complete format`,
 
     explicatif: `
-ADAPTATION EXPLICATIF :
-- Toutes les variables avec leur signification
-- Conditions d'application complètes
-- Ajouter "À utiliser quand..." si pertinent`,
+EXPLANATORY ADAPTATION:
+- All variables with their meaning
+- Complete application conditions
+- Add "Use when..." if relevant`,
   };
 
   return `
-## 🔢 Récap formules
+## [Title meaning "Formula Summary" - translated to ${languageName}]
 
-Extrais TOUTES les formules présentes dans la fiche.
-Format tableau Markdown :
+Extract ALL formulas present in the sheet.
+Markdown table format:
 
-| Nom | Formule | Variables |
+| [Name in ${languageName}] | [Formula in ${languageName}] | [Variables in ${languageName}] |
 |-----|---------|-----------|
-| [Nom 1] | $formule$ | $var1$ = ..., $var2$ = ... |
-| [Nom 2] | $formule$ | ... |
+| [Name 1] | $formula$ | $var1$ = ..., $var2$ = ... |
+| [Name 2] | $formula$ | ... |
 ...
 
-RÈGLES :
-- Formules en LaTeX (format $...$ pour inline)
-- Ne rien inventer : uniquement ce qui est dans la fiche
+RULES:
+- Formulas in LaTeX format ($...$ for inline)
+- Do not invent anything: only what is in the sheet
+- ALL column headers and content must be in ${languageName}
 ${niveauInstructions[niveau]}`;
 }
 
-function getBlocSchemas(niveau: NiveauDetail): string {
+function getBlocSchemas(niveau: NiveauDetail, languageName: string): string {
   const niveauInstructions: Record<NiveauDetail, string> = {
     synthetique: `
-ADAPTATION SYNTHÉTIQUE :
-- Nom + axes + lecture clé en 1 phrase
-- Pas de description détaillée`,
+SYNTHETIC ADAPTATION:
+- Name + axes + key reading in 1 sentence
+- No detailed description`,
 
     standard: `
-ADAPTATION STANDARD :
-- Nom, axes, lecture clé
-- Interprétation principale`,
+STANDARD ADAPTATION:
+- Name, axes, key reading
+- Main interpretation`,
 
     explicatif: `
-ADAPTATION EXPLICATIF :
-- Nom, axes, lecture clé
-- Interprétation détaillée
-- Contexte d'utilisation si pertinent`,
+EXPLANATORY ADAPTATION:
+- Name, axes, key reading
+- Detailed interpretation
+- Usage context if relevant`,
   };
 
   return `
-## 📊 Index des schémas
+## [Title meaning "Diagram/Chart Index" - translated to ${languageName}]
 
-Liste TOUS les graphiques et schémas mentionnés dans la fiche.
-Format :
+List ALL graphs and diagrams mentioned in the sheet.
+Format (ALL in ${languageName}):
 
-**1. [Nom du graphique/schéma]**
-- Axes : X = [variable], Y = [variable]
-- Lecture clé : [ce qu'il faut retenir]
+**1. [Graph/diagram name in ${languageName}]**
+- [Axes label in ${languageName}]: X = [variable], Y = [variable]
+- [Key reading label in ${languageName}]: [what to remember]
 
-**2. [Nom du graphique/schéma]**
+**2. [Graph/diagram name in ${languageName}]**
 - ...
 
-RÈGLES :
-- Numéroter les schémas
-- Pour chaque schéma : nom, axes (si applicable), interprétation clé
-- Si le schéma n'a pas d'axes (ex: organigramme), décrire sa structure
-- Ne rien inventer : uniquement ce qui est dans la fiche
+RULES:
+- Number the diagrams
+- For each diagram: name, axes (if applicable), key interpretation
+- If the diagram has no axes (e.g., flowchart), describe its structure
+- Do not invent anything: only what is in the sheet
+- ALL labels and content must be in ${languageName}
 ${niveauInstructions[niveau]}`;
 }
 
@@ -118,33 +120,33 @@ export function getRecapsPrompt(
   // Note: definitions n'est plus ici, c'est le glossaire (géré séparément)
 
   if (config.recaps.formules) {
-    blocksToGenerate.push(getBlocFormules(config.niveau));
+    blocksToGenerate.push(getBlocFormules(config.niveau, languageName));
   }
 
   if (config.recaps.schemas) {
-    blocksToGenerate.push(getBlocSchemas(config.niveau));
+    blocksToGenerate.push(getBlocSchemas(config.niveau, languageName));
   }
 
   if (blocksToGenerate.length === 0) {
     return ''; // Ne devrait pas arriver car shouldGenerateRecaps vérifie en amont
   }
 
-  return `À partir de la fiche de révision ci-dessous, génère les récapitulatifs demandés.
+  return `From the revision sheet below, generate the requested summaries.
 
-Ces récaps seront ajoutés À LA FIN de la fiche pour permettre une révision rapide.
-Ils doivent être exhaustifs : extraire TOUS les éléments du type demandé présents dans la fiche.
+These recaps will be added AT THE END of the sheet for quick revision.
+They must be exhaustive: extract ALL elements of the requested type present in the sheet.
 
-=== RÉCAPS À GÉNÉRER ===
+=== RECAPS TO GENERATE ===
 
 ${blocksToGenerate.join('\n\n')}
 
-FORMAT DE SORTIE:
+OUTPUT FORMAT:
 
-Commence directement par le premier bloc demandé (pas d'introduction).
-Utilise exactement les titres et formats spécifiés ci-dessus.
-Sépare chaque bloc par une ligne "---".
-Tout le texte doit être aligné à gauche (pas de centrage).
-Pas de séparateurs décoratifs ou de boîtes ASCII.
+Start directly with the first requested block (no introduction).
+Use the formats specified above.
+Separate each block with a "---" line.
+All text must be left-aligned (no centering).
+No decorative separators or ASCII boxes.
 
-Génère en ${languageName}.`;
+CRITICAL: Generate EVERYTHING in ${languageName}. All titles, labels, and content must be in ${languageName}.`;
 }

@@ -59,7 +59,34 @@ async function withRetry<T>(
 }
 
 function getLanguageName(language: string): string {
-  return language === 'FR' ? 'French' : language === 'DE' ? 'German' : 'English';
+  const languageMap: Record<string, string> = {
+    'FR': 'French',
+    'DE': 'German',
+    'ES': 'Spanish',
+    'IT': 'Italian',
+    'PT': 'Portuguese',
+    'NL': 'Dutch',
+    'PL': 'Polish',
+    'RU': 'Russian',
+    'ZH': 'Chinese',
+    'JA': 'Japanese',
+    'KO': 'Korean',
+    'AR': 'Arabic',
+    'TR': 'Turkish',
+    'SV': 'Swedish',
+    'DA': 'Danish',
+    'NO': 'Norwegian',
+    'FI': 'Finnish',
+    'CS': 'Czech',
+    'RO': 'Romanian',
+    'HU': 'Hungarian',
+    'EL': 'Greek',
+    'HE': 'Hebrew',
+    'TH': 'Thai',
+    'VI': 'Vietnamese',
+    'EN': 'English',
+  };
+  return languageMap[language.toUpperCase()] || 'English';
 }
 
 interface ContentTypes {
@@ -519,6 +546,11 @@ export async function POST(
           // Pass 2: Transcribe each section with streaming
           const metadataToIgnore = structure.metadata_to_ignore || [];
 
+          // Track used graphics to prevent duplicates across sections
+          const usedGraphicIds = new Set<string>();
+          // Fetch graphics once for the entire document
+          const allGraphics = config.includeGraphics ? await getCourseGraphicsSummaries(courseId) : [];
+
           for (let i = 0; i < structure.sections.length; i++) {
             const section = structure.sections[i];
             const progressBase = 15 + Math.floor((i / structure.sections.length) * 55);
@@ -533,6 +565,11 @@ export async function POST(
 
             const sectionSourceText = findSectionText(sourceText, section, structure.sections, i);
 
+            // Generate fresh imageContext excluding already-used graphics
+            const sectionImageContext = config.includeGraphics
+              ? formatGraphicsContext(allGraphics, usedGraphicIds)
+              : '';
+
             // Stream this section
             const sectionGenerator = transcribeSectionStreaming(
               sectionSourceText,
@@ -541,7 +578,7 @@ export async function POST(
               section.contentTypes || { definitions: [], formulas: [], numerical_examples: [], graphs_or_visuals: [], exercises: [] },
               metadataToIgnore,
               config,
-              imageContext,
+              sectionImageContext,
               section
             );
 
@@ -550,6 +587,15 @@ export async function POST(
               sectionContent += chunk;
               noteContent += chunk;
               send('content', { text: chunk });
+            }
+
+            // Extract graphics used in this section and mark them as used
+            const graphicsInSection = extractGraphicReferences(sectionContent);
+            for (const graphicId of graphicsInSection) {
+              usedGraphicIds.add(graphicId);
+            }
+            if (graphicsInSection.length > 0) {
+              console.log(`[Stream] Section "${section.title}": used ${graphicsInSection.length} graphic(s), total used: ${usedGraphicIds.size}`);
             }
 
             // Add separator between sections

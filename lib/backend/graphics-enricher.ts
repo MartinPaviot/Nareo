@@ -201,10 +201,51 @@ export async function getCourseGraphicsSummaries(
     storagePath: g.storage_path,
   }));
 
-  // Sort by page number first, then deduplicate
-  mapped.sort((a, b) => a.pageNumber - b.pageNumber);
+  // Filter out empty/incomplete graphics based on description patterns
+  const validGraphics = mapped.filter(g => {
+    const desc = (g.description || '').toLowerCase();
 
-  const deduplicated = deduplicateGraphics(mapped);
+    // Reject graphics with descriptions indicating empty/incomplete content
+    const emptyPatterns = [
+      'empty',
+      'incomplete',
+      'no data',
+      'no content',
+      'without actual data',
+      'without data',
+      'just axes',
+      'just axis',
+      'only axes',
+      'only axis',
+      'template',
+      'placeholder',
+      'blank',
+      'no curves',
+      'no curve',
+      'nothing plotted',
+      'nothing drawn',
+      'grille vide',     // French: empty grid
+      'sans données',    // French: without data
+      'sans courbe',     // French: without curve
+      'axe seul',        // French: axis only
+    ];
+
+    const isEmptyGraphic = emptyPatterns.some(pattern => desc.includes(pattern));
+
+    if (isEmptyGraphic) {
+      console.log(`[graphics-enricher] Rejecting empty graphic: ${g.id} - "${g.description?.substring(0, 60)}..."`);
+      return false;
+    }
+
+    return true;
+  });
+
+  console.log(`[graphics-enricher] After empty filter: ${validGraphics.length} graphics (rejected ${mapped.length - validGraphics.length} empty)`);
+
+  // Sort by page number first, then deduplicate
+  validGraphics.sort((a, b) => a.pageNumber - b.pageNumber);
+
+  const deduplicated = deduplicateGraphics(validGraphics);
 
   console.log(`[graphics-enricher] Final: ${deduplicated.length} unique graphics for course ${courseId}`);
 

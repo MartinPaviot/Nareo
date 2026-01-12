@@ -79,327 +79,39 @@ export interface GraphicAnalysis {
 }
 
 /**
- * Analysis prompt for Claude Vision (V2)
+ * Analysis prompt for Claude Vision (V4 - OPTIMIZED for speed)
+ * Reduced from ~400 lines to ~80 lines = ~80% token reduction
  */
-const GRAPHIC_ANALYSIS_PROMPT = `You are an expert in analyzing educational documents and data visualizations across ALL academic subjects.
+const GRAPHIC_ANALYSIS_PROMPT = `Analyze this educational graphic. Return JSON only.
 
-═══════════════════════════════════════════════════════════════════════════════
-                              MISSION
-═══════════════════════════════════════════════════════════════════════════════
+⚠️ CRITICAL: If the graphic is EMPTY (just axes/grid with NO data/curves/content), return:
+{"type":"other","confidence":0.0,"description":"Empty graphic - only axes/grid without data","elements":[],"textContent":[],"suggestions":[],"relatedConcepts":[]}
 
-Analyze this pedagogical graphic/diagram extracted from a university course.
-Your analysis will help another model integrate this graphic into a revision sheet.
-
-IMPORTANT: This graphic could be from ANY subject (economics, physics, chemistry, biology, history, mathematics, computer science, medicine, law, etc.). Analyze it based on what you see.
-
-═══════════════════════════════════════════════════════════════════════════════
-                         RESPONSE FORMAT (JSON)
-═══════════════════════════════════════════════════════════════════════════════
-
-Return ONLY a valid JSON object with this structure:
-
+JSON FORMAT:
 {
-  "type": "[TYPE]",
-  "confidence": [0.0-1.0],
-  "description": "[DESCRIPTION]",
-  "elements": ["[ELEMENT_1]", "[ELEMENT_2]", ...],
-  "textContent": ["[TEXT_1]", "[TEXT_2]", ...],
-  "suggestions": ["[SUGGESTION_1]", "[SUGGESTION_2]", ...],
-  "relatedConcepts": ["[CONCEPT_1]", "[CONCEPT_2]", ...]
+  "type": "TYPE",
+  "confidence": 0.0-1.0,
+  "description": "2-3 sentences in SAME LANGUAGE as graphic text",
+  "elements": ["specific visual element 1", "element 2", ...],
+  "textContent": ["all visible text", "labels", "values"],
+  "suggestions": ["pedagogical use 1", "use 2"],
+  "relatedConcepts": ["concept 1", "concept 2"]
 }
 
-═══════════════════════════════════════════════════════════════════════════════
-                         FIELD INSTRUCTIONS
-═══════════════════════════════════════════════════════════════════════════════
+TYPES (pick one):
+- flow_diagram, concept_map, tree_diagram, venn_diagram, timeline, cycle_diagram
+- histogram, pie_chart, line_chart, scatter_plot, table
+- function_graph, geometric_diagram, formula_visual
+- circuit_diagram, chemical_structure, biological_diagram, anatomical_diagram, physics_diagram
+- supply_demand_curve, equilibrium_graph, map, other
 
-### type (string)
-Categorize the graphic. Possible values:
+CONFIDENCE:
+- 0.0 = empty/incomplete (NO actual data drawn)
+- 0.3-0.5 = blurry/partial
+- 0.6-0.8 = good with minor issues
+- 0.9-1.0 = excellent/clear
 
-UNIVERSAL DIAGRAMS:
-- "flow_diagram" : Flowcharts, process diagrams, algorithms
-- "concept_map" : Concept maps, mind maps
-- "tree_diagram" : Decision trees, hierarchies, taxonomies, family trees
-- "venn_diagram" : Venn diagrams, set relationships
-- "timeline" : Timelines, chronologies, historical sequences
-- "cycle_diagram" : Cycles (water cycle, life cycle, business cycle)
-- "comparison_chart" : Side-by-side comparisons
-- "organizational_chart" : Org charts, hierarchical structures
-
-CHARTS & DATA:
-- "histogram" : Histograms, bar charts
-- "pie_chart" : Pie charts, donut charts
-- "line_chart" : Line graphs, time series, trends
-- "scatter_plot" : Scatter plots, correlation diagrams
-- "table" : Data tables, matrices
-
-MATHEMATICS & FORMULAS:
-- "formula_visual" : Mathematical formulas with visualization
-- "geometric_diagram" : Geometric shapes, proofs
-- "function_graph" : Mathematical function graphs (f(x), derivatives)
-
-SCIENCES:
-- "circuit_diagram" : Electrical/electronic circuits
-- "chemical_structure" : Chemical formulas, molecular structures
-- "molecular_diagram" : 3D molecular representations
-- "anatomical_diagram" : Human/animal anatomy
-- "biological_diagram" : Cells, organisms, ecosystems
-- "physics_diagram" : Forces, motion, optics, waves
-
-ECONOMICS:
-- "supply_demand_curve" : Supply/demand curves
-- "equilibrium_graph" : Market equilibrium diagrams
-- "surplus_graph" : Consumer/producer surplus
-- "elasticity_graph" : Elasticity illustrations
-- "shift_graph" : Supply/demand shifts
-
-GEOGRAPHY & HISTORY:
-- "map" : Maps (geographic, political, historical)
-- "geographic_map" : Physical geography maps
-- "historical_map" : Historical event maps
-
-OTHER:
-- "other" : Any other type of diagram
-
-### confidence (number)
-Your confidence in the analysis, from 0.0 to 1.0.
-- 0.9-1.0 : Very confident, clear and standard graphic
-- 0.7-0.9 : Fairly confident, minor ambiguities
-- 0.5-0.7 : Moderately confident, average image quality or complex graphic
-- < 0.5 : Low confidence, blurry image or unusual graphic
-
-### description (string)
-Complete description of the graphic in 2-4 sentences.
-- What does it represent overall?
-- What are the variables/axes/components?
-- What is the main message or concept illustrated?
-
-IMPORTANT: Write the description in the SAME LANGUAGE as the text visible in the graphic.
-
-### elements (array of strings)
-List ALL important visual elements that a student should observe.
-Be SPECIFIC and CONCRETE. Examples across subjects:
-- Physics: "Force vector F pointing downward at angle 30°"
-- Chemistry: "Carbon atom bonded to 4 hydrogen atoms in tetrahedral structure"
-- Biology: "Cell membrane shown as double phospholipid layer"
-- Math: "Parabola y=x² with vertex at origin (0,0)"
-- Economics: "Demand curve sloping downward from (0,15) to (8,7)"
-- History: "Timeline showing events from 1914 to 1918"
-
-### textContent (array of strings)
-Transcribe ALL visible text on the graphic:
-- Axis labels
-- Titles and subtitles
-- Annotations
-- Numerical values
-- Legends
-- Names of curves/zones/regions
-
-### suggestions (array of strings)
-2-4 pedagogical suggestions for using this graphic:
-- What concept does it best illustrate?
-- What question could you ask a student?
-- What exercise could accompany it?
-- What connection to other course concepts?
-
-### relatedConcepts (array of strings)
-Theoretical concepts related to this graphic (from the relevant subject).
-Examples by subject:
-- Economics: "supply and demand", "market equilibrium"
-- Physics: "Newton's laws", "conservation of energy"
-- Chemistry: "covalent bonding", "molecular geometry"
-- Biology: "cellular respiration", "DNA replication"
-- Math: "quadratic functions", "derivatives"
-
-═══════════════════════════════════════════════════════════════════════════════
-                              EXAMPLES
-═══════════════════════════════════════════════════════════════════════════════
-
-**Example 1: Physics - Force Diagram**
-{
-  "type": "physics_diagram",
-  "confidence": 0.92,
-  "description": "Free body diagram showing forces acting on an object on an inclined plane. The weight force is decomposed into components parallel and perpendicular to the surface.",
-  "elements": [
-    "Rectangular block on inclined plane at 30° angle",
-    "Weight vector W pointing straight down (mg = 50N)",
-    "Normal force N perpendicular to surface (43.3N)",
-    "Parallel component W∥ along the slope (25N)",
-    "Friction force f opposing motion direction",
-    "Angle θ = 30° marked at base"
-  ],
-  "textContent": [
-    "W = mg = 50N",
-    "N = W cos(θ)",
-    "W∥ = W sin(θ)",
-    "θ = 30°",
-    "f = μN"
-  ],
-  "suggestions": [
-    "Calculate the acceleration if friction coefficient is μ = 0.2",
-    "Determine the minimum angle for the block to start sliding",
-    "Compare with a horizontal surface scenario",
-    "Explain why N ≠ W on an inclined plane"
-  ],
-  "relatedConcepts": [
-    "Newton's second law",
-    "force decomposition",
-    "static friction",
-    "inclined plane mechanics"
-  ]
-}
-
-**Example 2: Biology - Cell Structure**
-{
-  "type": "biological_diagram",
-  "confidence": 0.89,
-  "description": "Cross-section of an animal cell showing major organelles. Each structure is labeled with its function in cellular metabolism.",
-  "elements": [
-    "Cell membrane (outer boundary, phospholipid bilayer)",
-    "Nucleus with nucleolus visible inside",
-    "Mitochondria (oval shapes with inner folds)",
-    "Endoplasmic reticulum (rough and smooth)",
-    "Golgi apparatus (stacked membranes)",
-    "Ribosomes (small dots on rough ER)",
-    "Cytoplasm filling the cell"
-  ],
-  "textContent": [
-    "Nucleus",
-    "Mitochondria",
-    "Rough ER",
-    "Smooth ER",
-    "Golgi apparatus",
-    "Cell membrane",
-    "Ribosomes",
-    "Cytoplasm"
-  ],
-  "suggestions": [
-    "Trace the path of a protein from synthesis to secretion",
-    "Explain why mitochondria are called 'powerhouses'",
-    "Compare with a plant cell structure",
-    "Identify which organelles have their own DNA"
-  ],
-  "relatedConcepts": [
-    "cell biology",
-    "organelle function",
-    "protein synthesis",
-    "cellular respiration",
-    "membrane transport"
-  ]
-}
-
-**Example 3: Chemistry - Molecular Structure**
-{
-  "type": "chemical_structure",
-  "confidence": 0.94,
-  "description": "3D representation of a methane molecule (CH4) showing tetrahedral geometry with bond angles of 109.5°.",
-  "elements": [
-    "Central carbon atom (black sphere)",
-    "Four hydrogen atoms (white spheres)",
-    "Four C-H bonds of equal length",
-    "Tetrahedral arrangement",
-    "109.5° bond angle indicated"
-  ],
-  "textContent": [
-    "CH₄",
-    "C",
-    "H",
-    "109.5°",
-    "Tetrahedral"
-  ],
-  "suggestions": [
-    "Explain sp3 hybridization in this molecule",
-    "Compare with ammonia (NH3) geometry",
-    "Predict polarity based on symmetry",
-    "Draw the Lewis structure"
-  ],
-  "relatedConcepts": [
-    "VSEPR theory",
-    "molecular geometry",
-    "covalent bonding",
-    "hybridization",
-    "bond angles"
-  ]
-}
-
-**Example 4: Mathematics - Function Graph**
-{
-  "type": "function_graph",
-  "confidence": 0.91,
-  "description": "Graph of a quadratic function f(x) = x² - 4x + 3 showing the parabola, vertex, roots, and axis of symmetry.",
-  "elements": [
-    "Parabola opening upward",
-    "Vertex at point (2, -1)",
-    "X-intercepts at x = 1 and x = 3",
-    "Y-intercept at y = 3",
-    "Axis of symmetry x = 2 (dashed line)",
-    "Coordinate grid with labeled axes"
-  ],
-  "textContent": [
-    "f(x) = x² - 4x + 3",
-    "Vertex (2, -1)",
-    "x = 1",
-    "x = 3",
-    "y = 3",
-    "x = 2"
-  ],
-  "suggestions": [
-    "Find the roots using the quadratic formula",
-    "Determine the domain and range",
-    "Calculate the derivative to verify the vertex",
-    "Transform to vertex form f(x) = (x-2)² - 1"
-  ],
-  "relatedConcepts": [
-    "quadratic functions",
-    "parabola properties",
-    "roots and zeros",
-    "vertex form",
-    "axis of symmetry"
-  ]
-}
-
-**Example 5: History - Timeline**
-{
-  "type": "timeline",
-  "confidence": 0.87,
-  "description": "Timeline of major events during World War I (1914-1918), showing key battles and political turning points.",
-  "elements": [
-    "Horizontal timeline from 1914 to 1918",
-    "Assassination of Archduke Franz Ferdinand (June 1914)",
-    "Battle of the Marne (September 1914)",
-    "Battle of Verdun (1916)",
-    "US entry into war (April 1917)",
-    "Armistice (November 11, 1918)"
-  ],
-  "textContent": [
-    "1914",
-    "1915",
-    "1916",
-    "1917",
-    "1918",
-    "Assassination of Franz Ferdinand",
-    "Battle of the Marne",
-    "Battle of Verdun",
-    "US enters war",
-    "Armistice"
-  ],
-  "suggestions": [
-    "Analyze the turning points that changed the war's direction",
-    "Explain why US entry was significant",
-    "Compare the Western and Eastern fronts",
-    "Discuss the impact on civilian populations"
-  ],
-  "relatedConcepts": [
-    "World War I",
-    "trench warfare",
-    "alliances",
-    "total war",
-    "Treaty of Versailles"
-  ]
-}
-
-═══════════════════════════════════════════════════════════════════════════════
-
-Now analyze the provided graphic and return ONLY the JSON, no text before or after.`;
+Return ONLY valid JSON.`;
 
 /**
  * Analyze a pedagogical graphic with Claude Vision
@@ -432,14 +144,14 @@ export async function analyzeGraphicWithClaude(
                     type: 'image_url',
                     image_url: {
                       url: imageDataUrl,
-                      detail: 'high', // High detail for accurate coordinate extraction
+                      detail: 'low', // Low detail for faster processing (still accurate for graphs)
                     },
                   },
                 ],
               },
             ],
             temperature: 0.0, // Deterministic output for JSON
-            max_tokens: 2048,
+            max_tokens: 800, // Reduced from 2048 - JSON response is ~300-500 tokens
           });
           return result;
         },
@@ -521,7 +233,7 @@ export async function analyzeGraphicWithAnthropicVision(
       async () => {
         const result = await anthropic.messages.create({
           model: modelId,
-          max_tokens: 2048,
+          max_tokens: 800, // Reduced from 2048 - JSON response is ~300-500 tokens
           messages: [{
             role: 'user',
             content: [
@@ -623,12 +335,12 @@ export async function analyzeGraphic(
  * images in parallel batches for faster throughput.
  *
  * @param images - Array of { pageNum, imageId, base64Data }
- * @param concurrency - Number of parallel requests (default: 10 for speed)
+ * @param concurrency - Number of parallel requests (default: 20 for max speed with Haiku)
  * @returns Map of imageId -> GraphicAnalysis
  */
 export async function analyzeGraphicsBatch(
   images: Array<{ pageNum: number; imageId: string; base64Data: string }>,
-  concurrency: number = 10
+  concurrency: number = 20
 ): Promise<Map<string, GraphicAnalysis>> {
   const provider = LLM_CONFIG.models.visionProvider || 'openai';
   console.log(`\n🔍 Starting batch analysis of ${images.length} graphics (concurrency: ${concurrency}, provider: ${provider})...\n`);
@@ -651,7 +363,19 @@ export async function analyzeGraphicsBatch(
       const analysis = await analyzeGraphic(img.base64Data);
 
       if (analysis) {
-        console.log(`  [${globalIndex}/${images.length}] ✅ ${analysis.type} (${analysis.elements?.length || 0} elements)`);
+        // Reject graphics with very low confidence (empty/incomplete)
+        if (analysis.confidence < 0.3) {
+          console.log(`  [${globalIndex}/${images.length}] ❌ REJECTED: Low confidence ${(analysis.confidence * 100).toFixed(0)}% - "${analysis.description?.substring(0, 50)}..."`);
+          return { imageId: img.imageId, analysis: null };
+        }
+
+        // Reject graphics with empty elements array (no actual content detected)
+        if (!analysis.elements || analysis.elements.length === 0) {
+          console.log(`  [${globalIndex}/${images.length}] ❌ REJECTED: No elements detected - likely empty graphic`);
+          return { imageId: img.imageId, analysis: null };
+        }
+
+        console.log(`  [${globalIndex}/${images.length}] ✅ ${analysis.type} (${analysis.confidence * 100}% conf, ${analysis.elements.length} elements)`);
         return { imageId: img.imageId, analysis };
       } else {
         console.log(`  [${globalIndex}/${images.length}] ⚠️ Analysis failed or skipped`);
@@ -669,9 +393,9 @@ export async function analyzeGraphicsBatch(
       }
     }
 
-    // Small delay between batches to avoid rate limiting (only if more batches remain)
+    // Minimal delay between batches (Haiku has high rate limits)
     if (i + concurrency < images.length) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 

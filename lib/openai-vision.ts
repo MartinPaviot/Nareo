@@ -1990,6 +1990,22 @@ export async function generateMixedQuizParallel(
   const results = await Promise.all(generationPromises);
   const allQuestions = results.flat();
 
+  // CRITICAL FALLBACK: If NO questions were generated from any type, use contextual fallback
+  // This ensures we NEVER return an empty array
+  if (allQuestions.length === 0) {
+    console.warn(`⚠️ [PARALLEL] ALL generation types failed for chapter "${chapterMetadata.title}". Using contextual fallback.`);
+
+    const fallbackQuestions = generateContextualQuestions(
+      chapterMetadata.title,
+      chapterText,
+      language,
+      totalQuestions // Use the total requested count
+    );
+
+    console.log(`🔄 [PARALLEL] Contextual fallback generated ${fallbackQuestions.length} questions`);
+    return fallbackQuestions;
+  }
+
   // Shuffle all questions together
   const shuffledQuestions = shuffleArray(allQuestions);
 

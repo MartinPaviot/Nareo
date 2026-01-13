@@ -22,10 +22,15 @@
   --color-text-muted: #9ca3af;
   --color-text-inverse: #ffffff;
 
-  --color-accent-primary: #f97316; /* orange-500 */
-  --color-accent-hover: #ea580c; /* orange-600 */
+  /* Nareo Brand - Primary Orange */
+  --color-nareo: #ff751f;
+  --color-nareo-hover: #e5681b;
+  --color-nareo-light: #fff0e6;
+
+  --color-accent-primary: #ff751f; /* Nareo brand orange */
+  --color-accent-hover: #e5681b;
   --color-accent-soft: #ffedd5; /* orange-100 */
-  --color-accent-muted: rgba(249, 115, 22, 0.1);
+  --color-accent-muted: rgba(255, 117, 31, 0.1);
 
   --color-success: #379f5a;
   --color-success-soft: rgba(55, 159, 90, 0.15);
@@ -82,6 +87,19 @@
 .text-theme-secondary { color: var(--color-text-secondary); }
 .text-theme-muted { color: var(--color-text-muted); }
 .text-theme-accent { color: var(--color-accent-primary); }
+
+/* Nareo Brand Utilities - Use these instead of hardcoded #ff751f */
+.bg-nareo { background-color: var(--color-nareo); }
+.bg-nareo-hover { background-color: var(--color-nareo-hover); }
+.bg-nareo-light { background-color: var(--color-nareo-light); }
+.text-nareo { color: var(--color-nareo); }
+.border-nareo { border-color: var(--color-nareo); }
+
+/* Focus ring using brand color */
+.focus-ring-nareo:focus-visible {
+  outline: 2px solid var(--color-nareo);
+  outline-offset: 2px;
+}
 
 /* User Avatar Capsule - Blue pill design */
 .user-avatar-capsule {
@@ -567,6 +585,29 @@ body {
 
 .animate-marquee {
   animation: marquee 40s linear infinite;
+}
+
+/* Accessibility: Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+
+  .animate-float,
+  .animate-spin-slow,
+  .animate-pulse-slow,
+  .animate-pulse-ring,
+  .animate-fadeIn {
+    animation: none;
+  }
+
+  /* Disable transitions for users who prefer reduced motion */
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* ============================================

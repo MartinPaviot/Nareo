@@ -156,9 +156,13 @@ export function useCourseChapters({
 
       const data: CourseChaptersResponse = await response.json();
 
+      // IMPORTANT: Always sort chapters by order_index to ensure stable ordering
+      // This prevents UI flickering when chapters are updated during generation
+      const sortedChapters = [...(data.chapters || [])].sort((a, b) => a.order_index - b.order_index);
+
       // Update state
       setCourse(data.course);
-      setChapters(data.chapters);
+      setChapters(sortedChapters);
       setAccessTier(data.access_tier);
       setIsPremium(data.is_premium || false);
       setIsFreeMonthlyCourse(data.is_free_monthly_course || false);
@@ -166,7 +170,7 @@ export function useCourseChapters({
 
       // Update refs
       courseRef.current = data.course;
-      chaptersRef.current = data.chapters;
+      chaptersRef.current = sortedChapters;
 
       // Check if course is processing - we need to poll for course extraction
       // Note: Quiz generation polling is now handled via SSE in learn/page.tsx
@@ -212,7 +216,9 @@ export function useCourseChapters({
       const supabase = createSupabaseBrowserClient();
 
       // Track chapter IDs for questions subscription
-      let chapterIds: string[] = chaptersRef.current.map(ch => ch.id);
+      // Use a getter function to always get fresh chapter IDs from the ref
+      // This fixes the issue where chapterIds was captured empty at subscription time
+      const getChapterIds = () => chaptersRef.current.map(ch => ch.id);
 
       // Create subscription to chapters, courses, AND questions tables
       const channel = supabase
@@ -227,10 +233,6 @@ export function useCourseChapters({
           },
           (payload) => {
             console.log('Chapter change detected:', payload);
-            // Update chapter IDs list
-            if (payload.eventType === 'INSERT' && payload.new) {
-              chapterIds = [...chapterIds, (payload.new as { id: string }).id];
-            }
             // Refetch all data when any chapter changes
             fetchCourseData();
           }
@@ -261,7 +263,9 @@ export function useCourseChapters({
             let debounceTimer: NodeJS.Timeout | null = null;
             return (payload: { new: { chapter_id?: string } | null }) => {
               const questionChapterId = payload.new?.chapter_id;
-              if (questionChapterId && chapterIds.includes(questionChapterId)) {
+              // Use getter function to always get fresh chapter IDs
+              const currentChapterIds = getChapterIds();
+              if (questionChapterId && currentChapterIds.includes(questionChapterId)) {
                 // Clear existing timer
                 if (debounceTimer) clearTimeout(debounceTimer);
                 // Set new timer - refetch after 500ms of no new questions

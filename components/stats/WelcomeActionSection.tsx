@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Upload, Trophy, ChevronRight, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,7 @@ import ChallengeModal from './ChallengeModal';
 import ReviewSelectModal from './ReviewSelectModal';
 import UploadLimitModal from '@/components/upload/UploadLimitModal';
 import DuplicateCourseModal from '@/components/upload/DuplicateCourseModal';
+import ExtractionLoader from '@/components/course/ExtractionLoader';
 
 const ACCEPTED_TYPES = [
   'image/jpeg',
@@ -41,6 +42,7 @@ export default function WelcomeActionSection() {
     existingCourseDate: string;
   } | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploadedCourseId, setUploadedCourseId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -127,7 +129,9 @@ export default function WelcomeActionSection() {
 
       if (data.courseId) {
         trackEvent('upload_success', { userId: user?.id, courseId: data.courseId });
-        router.push(`/courses/${data.courseId}/learn`);
+        // Show ExtractionLoader with GIFs instead of redirecting immediately
+        setUploadedCourseId(data.courseId);
+        setIsUploading(false);
       }
     } catch (error) {
       console.error('Upload error', error);
@@ -153,8 +157,23 @@ export default function WelcomeActionSection() {
 
   const displayName = firstName || translate('welcome_default_name', 'there');
 
+  // Callback for extraction completion - must be stable to avoid re-renders
+  const handleExtractionComplete = useCallback(() => {
+    if (uploadedCourseId) {
+      router.push(`/courses/${uploadedCourseId}/learn`);
+    }
+  }, [uploadedCourseId, router]);
+
   return (
     <>
+      {/* ExtractionLoader with GIFs - shown after upload success */}
+      {uploadedCourseId && (
+        <ExtractionLoader
+          courseId={uploadedCourseId}
+          onComplete={handleExtractionComplete}
+        />
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -163,69 +182,70 @@ export default function WelcomeActionSection() {
           isDark ? 'border-neutral-700 bg-neutral-800' : 'border-gray-100 bg-white'
         }`}
       >
-        <div className="flex">
-          {/* Left: Mascot + Speech bubble */}
-          <div className="relative w-48 flex-shrink-0 flex flex-col justify-center">
-            {/* Speech bubble */}
+        <div className="flex p-4 gap-3">
+          {/* Left: Mascot + Speech bubble - hidden on mobile */}
+          <div className="relative w-40 flex-shrink-0 hidden sm:flex flex-col">
+            {/* Speech bubble - simple rectangle aligned with button */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: -10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3, type: 'spring', stiffness: 400, damping: 20 }}
-              className="absolute top-4 left-2 right-2 z-10"
+              className="px-3 rounded-xl text-xs font-medium text-white h-[72px] flex flex-col justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+              }}
             >
-              <div
-                className="relative px-3 py-3 rounded-2xl text-xs font-medium text-white"
-                style={{
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-                }}
-              >
+              <div>
                 <span>Hello {displayName} !</span>
                 <span className="ml-1">👋</span>
-                <div className={`mt-1 text-[10px] opacity-90`}>
-                  {translate('welcome_question', "Qu'est-ce qu'on révise aujourd'hui ?")}
-                </div>
-                {/* Bubble tail */}
-                <div
-                  className="absolute -bottom-2 left-8 w-0 h-0"
-                  style={{
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    borderTop: '10px solid #f97316',
-                  }}
-                />
+              </div>
+              <div className="mt-1 text-[11px] opacity-90">
+                {translate('welcome_question', "Qu'est-ce qu'on révise aujourd'hui ?")}
               </div>
             </motion.div>
 
-            {/* Mascot */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{
-                opacity: 1,
-                y: [0, -4, 0],
-              }}
-              transition={{
-                opacity: { delay: 0.25, duration: 0.3 },
-                y: {
-                  delay: 0.5,
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }
-              }}
-              className="absolute bottom-1 left-2 top-[76px]"
-            >
-              <Image
-                src="/chat/mascotte.png"
-                alt="Nareo"
-                width={120}
-                height={120}
-                className="object-contain h-full w-auto"
+            {/* Mascot with bubble tail icon */}
+            <div className="flex-1 relative">
+              {/* Bubble tail - small triangle */}
+              <div
+                className="absolute top-0 left-6 w-0 h-0"
+                style={{
+                  borderLeft: '8px solid transparent',
+                  borderRight: '8px solid transparent',
+                  borderTop: '10px solid #ea580c',
+                }}
               />
-            </motion.div>
+              {/* Mascot */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{
+                  opacity: 1,
+                  y: [0, -4, 0],
+                }}
+                transition={{
+                  opacity: { delay: 0.25, duration: 0.3 },
+                  y: {
+                    delay: 0.5,
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }
+                }}
+                className="pt-3"
+              >
+                <Image
+                  src="/chat/mascotte.png"
+                  alt="Nareo"
+                  width={110}
+                  height={110}
+                  className="object-contain w-auto h-[90px]"
+                />
+              </motion.div>
+            </div>
           </div>
 
           {/* Right: Actions */}
-          <div className="flex-1 p-4 pl-0">
+          <div className="flex-1">
             {/* Main CTA - Daily Review */}
             <motion.button
               initial={{ opacity: 0, x: 20 }}
@@ -278,20 +298,20 @@ export default function WelcomeActionSection() {
                 />
                 <label
                   htmlFor="welcome-upload-input"
-                  className={`relative flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-2 border-dashed transition-all cursor-pointer h-full ${
+                  className={`relative flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed transition-all cursor-pointer h-full ${
                     isDark
-                      ? 'bg-neutral-700/30 border-neutral-600 hover:border-orange-500/50'
-                      : 'bg-gray-50/50 border-gray-300 hover:border-orange-400'
+                      ? 'bg-neutral-700/30 border-neutral-600 hover:border-orange-500/50 hover:bg-neutral-700/50'
+                      : 'bg-orange-50/50 border-orange-200 hover:border-orange-400 hover:bg-orange-50'
                   } ${isUploading ? 'pointer-events-none opacity-70' : ''}`}
                 >
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{ backgroundColor: '#f97316' }}
                   >
                     {isUploading ? (
-                      <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
                     ) : (
-                      <Upload className="w-4 h-4 text-white" />
+                      <Upload className="w-5 h-5 text-white" />
                     )}
                   </div>
                   <span className={`text-xs font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>

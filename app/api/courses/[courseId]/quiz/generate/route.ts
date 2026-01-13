@@ -44,6 +44,100 @@ function getTrueFalseLabels(language: 'EN' | 'FR' | 'DE'): [string, string] {
 }
 
 /**
+ * FALLBACK: Generate basic True/False questions from chapter text
+ * Used when all LLM-based generation methods fail
+ * Guarantees every chapter has at least some questions
+ */
+async function generateFallbackQuestions(
+  admin: ReturnType<typeof getServiceSupabase>,
+  chapter: { id: string; title: string; source_text: string | null },
+  language: 'EN' | 'FR' | 'DE'
+): Promise<number> {
+  console.log(`[quiz-generate] FALLBACK: Generating basic questions for chapter "${chapter.title}"`);
+
+  const text = chapter.source_text || '';
+  if (text.length < 50) {
+    console.warn(`[quiz-generate] FALLBACK: Chapter "${chapter.title}" has insufficient text (${text.length} chars)`);
+    return 0;
+  }
+
+  // Extract sentences that are good candidates for True/False questions
+  // Looking for declarative sentences with facts
+  const sentences = text
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => {
+      const wordCount = s.split(/\s+/).length;
+      // Keep sentences with 8-40 words (good length for questions)
+      return wordCount >= 8 && wordCount <= 40;
+    })
+    .slice(0, 10); // Take first 10 suitable sentences
+
+  if (sentences.length === 0) {
+    console.warn(`[quiz-generate] FALLBACK: No suitable sentences found in chapter "${chapter.title}"`);
+    return 0;
+  }
+
+  const [trueLabel, falseLabel] = getTrueFalseLabels(language);
+
+  // Create True/False questions from the sentences
+  const questionsToInsert = sentences.slice(0, 5).map((sentence, idx) => {
+    // Randomly decide if this will be a TRUE or FALSE question
+    const isTrue = Math.random() > 0.3; // 70% true questions (easier to create)
+
+    let statement = sentence;
+    if (!isTrue) {
+      // Try to negate the statement by adding "ne...pas" or "not"
+      if (language === 'FR') {
+        statement = `Il est faux que : ${sentence}`;
+      } else if (language === 'DE') {
+        statement = `Es ist falsch, dass: ${sentence}`;
+      } else {
+        statement = `It is false that: ${sentence}`;
+      }
+    }
+
+    const explanation = language === 'FR'
+      ? `Cette affirmation est ${isTrue ? 'vraie' : 'fausse'} selon le contenu du chapitre "${chapter.title}".`
+      : language === 'DE'
+        ? `Diese Aussage ist ${isTrue ? 'wahr' : 'falsch'} laut dem Inhalt des Kapitels "${chapter.title}".`
+        : `This statement is ${isTrue ? 'true' : 'false'} according to the content of chapter "${chapter.title}".`;
+
+    return {
+      id: randomUUID(),
+      chapter_id: chapter.id,
+      concept_id: null,
+      question_number: idx + 1,
+      question_text: statement,
+      answer_text: isTrue ? 'true' : 'false',
+      options: [trueLabel, falseLabel],
+      type: 'mcq',
+      difficulty: 1, // Easy difficulty for fallback questions
+      phase: 'true_false',
+      points: 10,
+      correct_option_index: isTrue ? 0 : 1,
+      explanation,
+      source_excerpt: sentence.substring(0, 200),
+      cognitive_level: 'remember',
+    };
+  });
+
+  if (questionsToInsert.length === 0) {
+    return 0;
+  }
+
+  // Insert fallback questions
+  const { error: insertError } = await admin.from('questions').insert(questionsToInsert);
+  if (insertError) {
+    console.error(`[quiz-generate] FALLBACK: Failed to insert fallback questions:`, insertError.message);
+    return 0;
+  }
+
+  console.log(`[quiz-generate] FALLBACK: Successfully inserted ${questionsToInsert.length} fallback questions for chapter "${chapter.title}"`);
+  return questionsToInsert.length;
+}
+
+/**
  * Progress milestones for quiz generation
  * These are the key stages with their target percentages
  * Frontend will animate smoothly between these values
@@ -135,14 +229,24 @@ async function runQuizGeneration(
     const deduplicationTracker = new CourseDeduplicationTracker(0.92);
 
     // Process ALL chapters that have source_text
-    const chaptersToProcess = chapters.filter(ch => {
-      const hasSourceText = ch.source_text && ch.source_text.trim().length >= 100;
-      if (!hasSourceText) {
-        console.log(`[quiz-generate] Skipping chapter "${ch.title}" - no source_text or too short (${ch.source_text?.length || 0} chars)`);
-      }
-      return hasSourceText;
-    });
+    // NOTE: Chapters with insufficient content are now filtered during course extraction (course-pipeline.ts)
+    // This check remains as a safety net for older courses created before that filter was added
+    const MIN_SOURCE_TEXT_LENGTH = 50;
+    const chaptersToProcess = chapters
+      .filter(ch => {
+        const hasSourceText = ch.source_text && ch.source_text.trim().length >= MIN_SOURCE_TEXT_LENGTH;
+        if (!hasSourceText) {
+          console.log(`[quiz-generate] LEGACY FALLBACK: Skipping chapter "${ch.title}" - no source_text or too short (${ch.source_text?.length || 0} chars). Note: This should not happen for newly created courses.`);
+        }
+        return hasSourceText;
+      })
+      // IMPORTANT: Sort by order_index to ensure chapter 1 is processed first
+      // This maintains the expected order even if chapters were filtered
+      .sort((a, b) => a.order_index - b.order_index);
     const totalChapters = chaptersToProcess.length;
+
+    // Log the order of chapters to be processed
+    console.log(`[quiz-generate] Chapters to process in order: ${chaptersToProcess.map(ch => `${ch.order_index}:"${ch.title}"`).join(', ')}`);
 
     if (totalChapters === 0) {
       console.error('[quiz-generate] No chapters with sufficient source_text found');
@@ -546,9 +650,13 @@ async function runQuizGeneration(
       // Wait before retry with increasing delay
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[retryPass]));
 
+      // During retry, progress should stay high (we're past the main generation)
+      // Use at least 85% to show we're in the final phase
+      const retryProgress = Math.max(currentProgress, 85);
       await updateQuizProgress(admin, courseId, {
-        progress: currentProgress,
+        progress: retryProgress,
         currentStep: 'retrying_failed',
+        questionsGenerated: totalQuestionsGenerated,
       });
 
       // Retry failed chapters sequentially to avoid rate limits
@@ -587,18 +695,54 @@ async function runQuizGeneration(
       questionsGenerated: totalQuestionsGenerated,
     });
 
-    // Final check: log any chapters still missing questions (should be rare after 3 retry passes)
+    // Final check: any chapters still missing questions after all retries?
     const { data: finalQuestionCheck } = await admin
       .from('questions')
       .select('chapter_id')
       .in('chapter_id', chaptersToProcess.map(ch => ch.id));
 
     const finalChapterIdsWithQuestions = new Set((finalQuestionCheck || []).map(q => q.chapter_id));
-    const stillFailedChapters = chaptersToProcess.filter(ch => !finalChapterIdsWithQuestions.has(ch.id));
+    let stillFailedChapters = chaptersToProcess.filter(ch => !finalChapterIdsWithQuestions.has(ch.id));
 
+    // FALLBACK: Generate basic questions for chapters that still have 0 questions
+    // This is a last resort to ensure every chapter has at least some questions
     if (stillFailedChapters.length > 0) {
       const failedNames = stillFailedChapters.map(ch => ch.title).join(', ');
-      console.warn(`[quiz-generate] WARNING: ${stillFailedChapters.length} chapters still have 0 questions after ${MAX_RETRY_PASSES} retries: ${failedNames}`);
+      console.warn(`[quiz-generate] FALLBACK TRIGGERED: ${stillFailedChapters.length} chapters still have 0 questions after ${MAX_RETRY_PASSES} retries: ${failedNames}`);
+
+      await updateQuizProgress(admin, courseId, {
+        progress: currentProgress,
+        currentStep: 'generating_fallback',
+      });
+
+      for (const ch of stillFailedChapters) {
+        const fallbackCount = await generateFallbackQuestions(admin, ch, modelLanguage);
+        if (fallbackCount > 0) {
+          totalQuestionsGenerated += fallbackCount;
+          // Mark chapter as ready since it now has questions
+          await admin.from('chapters').update({ status: 'ready' }).eq('id', ch.id);
+          console.log(`[quiz-generate] FALLBACK SUCCESS: Chapter "${ch.title}" now has ${fallbackCount} fallback questions`);
+        } else {
+          // Only mark as failed if fallback also failed
+          await admin.from('chapters').update({ status: 'failed' }).eq('id', ch.id);
+          console.error(`[quiz-generate] FALLBACK FAILED: Could not generate any questions for chapter "${ch.title}"`);
+        }
+      }
+
+      // Re-check which chapters still have no questions
+      const { data: postFallbackCheck } = await admin
+        .from('questions')
+        .select('chapter_id')
+        .in('chapter_id', chaptersToProcess.map(ch => ch.id));
+
+      const postFallbackChapterIds = new Set((postFallbackCheck || []).map(q => q.chapter_id));
+      stillFailedChapters = chaptersToProcess.filter(ch => !postFallbackChapterIds.has(ch.id));
+
+      if (stillFailedChapters.length > 0) {
+        console.error(`[quiz-generate] CRITICAL: ${stillFailedChapters.length} chapters still have 0 questions after fallback: ${stillFailedChapters.map(ch => ch.title).join(', ')}`);
+      } else {
+        console.log(`[quiz-generate] SUCCESS: All chapters now have questions after fallback`);
+      }
     }
 
     // Update course quiz status
@@ -608,22 +752,40 @@ async function runQuizGeneration(
       .eq('course_id', courseId)
       .eq('status', 'ready');
 
-    const allReady = readyChapters?.length === chapters.length;
+    // Determine final status:
+    // - 'ready' if all chapters have questions
+    // - 'partial' if some chapters have questions (user can still use the quiz)
+    // - 'failed' if no questions were generated at all
+    const hasAnyQuestions = totalQuestionsGenerated > 0;
+    const allReady = readyChapters?.length === chapters.length && stillFailedChapters.length === 0;
+
+    let finalStatus: 'ready' | 'partial' | 'failed';
+    if (allReady) {
+      finalStatus = 'ready';
+    } else if (hasAnyQuestions) {
+      finalStatus = 'partial';
+    } else {
+      finalStatus = 'failed';
+    }
 
     await admin
       .from('courses')
       .update({
-        quiz_status: allReady ? 'ready' : 'partial',
+        quiz_status: finalStatus,
         chapter_count: readyChapters?.length || 0,
         quiz_progress: 100,
         quiz_questions_generated: totalQuestionsGenerated,
         quiz_current_step: 'complete',
         quiz_completed_at: new Date().toISOString(),
-        quiz_error_message: null,
+        quiz_error_message: finalStatus === 'failed'
+          ? 'Impossible de générer des questions. Veuillez réessayer.'
+          : stillFailedChapters.length > 0
+            ? `${stillFailedChapters.length} chapitre(s) sans questions`
+            : null,
       })
       .eq('id', courseId);
 
-    console.log(`[quiz-generate] Course ${courseId} quiz generation complete. ${totalQuestionsGenerated} questions generated.`);
+    console.log(`[quiz-generate] Course ${courseId} quiz generation complete. Status: ${finalStatus}, ${totalQuestionsGenerated} questions generated.`);
 
   } catch (error: any) {
     console.error('[quiz-generate] Generation error:', error);

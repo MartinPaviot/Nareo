@@ -66,8 +66,8 @@ export default function DailyGoalCard({
           {/* Progress circle */}
           <ProgressCircle
             progress={progress}
-            size={64}
-            strokeWidth={6}
+            size={80}
+            strokeWidth={7}
             progressColor={completed ? '#379f5a' : '#F97316'}
             backgroundColor={isDark ? '#262626' : '#E5E7EB'}
           >
@@ -77,12 +77,12 @@ export default function DailyGoalCard({
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               >
-                <Check className="w-5 h-5" style={{ color: '#379f5a' }} />
+                <Check className="w-6 h-6" style={{ color: '#379f5a' }} />
               </motion.div>
             ) : (
               <div className="text-center">
-                <p className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{current}</p>
-                <p className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>/ {target}</p>
+                <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{current}</p>
+                <p className={`text-[12px] ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>/ {target}</p>
               </div>
             )}
           </ProgressCircle>

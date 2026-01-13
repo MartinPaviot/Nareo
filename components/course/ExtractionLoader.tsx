@@ -62,11 +62,17 @@ const LOADING_GIFS = [
 ];
 
 interface ExtractionLoaderProps {
-  courseId: string;
+  courseId: string | null;
   onComplete: () => void;
+  /** File name to display during upload phase */
+  fileName?: string;
+  /** Whether we're still uploading (before extraction starts) */
+  isUploading?: boolean;
+  /** Cancel callback for upload phase */
+  onCancel?: () => void;
 }
 
-export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoaderProps) {
+export default function ExtractionLoader({ courseId, onComplete, fileName, isUploading = false, onCancel }: ExtractionLoaderProps) {
   const { isDark } = useTheme();
   const { translate } = useLanguage();
   const [displayProgress, setDisplayProgress] = useState(0);
@@ -84,6 +90,13 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
   const maxProgressRef = useRef(4); // Max pour le stage actuel (queued -> start à 5%)
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef(Date.now());
+
+  // Ref stable pour onComplete afin d'éviter les re-renders du useEffect
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  // Ref pour tracker si onComplete a déjà été appelé
+  const hasCompletedRef = useRef(false);
 
   // Debug: Log courseId on mount
   useEffect(() => {
@@ -183,7 +196,9 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
 
       // Vérifier les erreurs
       if (data.job?.status === 'failed' || data.course?.status === 'failed') {
-        setError(data.job?.error_message || data.course?.error_message || 'Une erreur est survenue');
+        // Utiliser une clé de traduction générique au lieu du message brut du backend
+        console.error('[ExtractionLoader] Job failed:', data.job?.error_message || data.course?.error_message);
+        setError('extraction_error_failed');
         return 'complete';
       }
 
@@ -218,8 +233,13 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
     }
   }, [courseId]);
 
-  // Effect de polling
+  // Effect de polling - only when we have a courseId (not during upload)
   useEffect(() => {
+    // Don't poll if we're still uploading or don't have a courseId
+    if (isUploading || !courseId) {
+      return;
+    }
+
     let intervalId: NodeJS.Timeout;
     let isMounted = true;
     let currentFailures = 0;
@@ -262,14 +282,15 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
       setFailureCount(0);
       setNotFoundCount(0);
 
-      if (result === 'complete' && !isCompleting) {
+      if (result === 'complete' && !hasCompletedRef.current) {
+        hasCompletedRef.current = true;
         setIsCompleting(true);
         clearInterval(intervalId);
-        // Attendre 500ms avant d'appeler onComplete
+        console.log('[ExtractionLoader] Extraction complete, calling onComplete in 500ms...');
+        // Attendre 500ms avant d'appeler onComplete via la ref stable
         setTimeout(() => {
-          if (isMounted) {
-            onComplete();
-          }
+          console.log('[ExtractionLoader] Calling onComplete now');
+          onCompleteRef.current();
         }, 500);
       }
     };
@@ -288,7 +309,7 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
       clearTimeout(initialDelay);
       clearInterval(intervalId);
     };
-  }, [fetchStatus, onComplete, isCompleting]);
+  }, [fetchStatus, isUploading, courseId]);
 
   // État d'erreur
   if (error) {
@@ -344,7 +365,7 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
             <span className={`font-medium text-sm ${
               isDark ? 'text-neutral-200' : 'text-gray-700'
             }`}>
-              {translate('extraction_importing')}
+              {isUploading ? translate('global_drop_processing', 'Envoi du fichier...') : translate('extraction_importing')}
             </span>
           </div>
         </div>
@@ -388,14 +409,26 @@ export default function ExtractionLoader({ courseId, onComplete }: ExtractionLoa
             <p className={`font-medium text-sm truncate ${
               isDark ? 'text-neutral-100' : 'text-gray-900'
             }`}>
-              {courseTitle || translate('extraction_loading')}
+              {isUploading && fileName ? fileName : (courseTitle || translate('extraction_loading'))}
             </p>
             <p className={`text-xs ${
               isDark ? 'text-neutral-500' : 'text-gray-500'
             }`}>
-              {stageMessage}
+              {isUploading ? translate('global_drop_uploading', 'Envoi en cours...') : stageMessage}
             </p>
           </div>
+          {isUploading && onCancel && (
+            <button
+              onClick={onCancel}
+              className={`ml-3 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                isDark
+                  ? 'text-neutral-400 hover:text-white hover:bg-neutral-700'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {translate('global_drop_cancel', 'Annuler')}
+            </button>
+          )}
         </div>
 
       </div>

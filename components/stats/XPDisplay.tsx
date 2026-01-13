@@ -28,10 +28,10 @@ export default function XPDisplay({ totalXP, showProgress = true, compact = fals
       }`}>
         <div className="flex items-center justify-center gap-1 mb-0">
           <Star className="w-3 h-3 text-orange-500" />
-          <span className={`text-[9px] font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_label_level')}</span>
+          <span className={`text-[11px] font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{translate('stats_label_level')}</span>
         </div>
         <p className={`text-sm font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{currentLevel.level}</p>
-        <p className={`text-[9px] leading-tight ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{formatNumber(totalXP)} XP</p>
+        <p className={`text-[11px] leading-tight ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{formatNumber(totalXP)} XP</p>
       </div>
     );
   }

@@ -89,12 +89,12 @@ export default function StreakCard({
           {/* Circle with flame inside */}
           <ProgressCircle
             progress={progress}
-            size={64}
-            strokeWidth={6}
+            size={80}
+            strokeWidth={7}
             progressColor={circleColors.progress}
             backgroundColor={circleColors.background}
           >
-            <StreakFlame state={state} size="md" />
+            <StreakFlame state={state} size="lg" />
           </ProgressCircle>
 
           {/* Info */}
@@ -113,7 +113,7 @@ export default function StreakCard({
                     isDark ? 'bg-orange-900/50' : 'bg-orange-100'
                   }`}
                 >
-                  <span className={`text-[10px] font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{translate('streak_personal_record')}</span>
+                  <span className={`text-[11px] font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>{translate('streak_personal_record')}</span>
                 </motion.div>
               )}
             </div>

@@ -27,6 +27,7 @@ import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
 import { useQuizProgressStream } from '@/hooks/useSSEStream';
 import { useSmoothedProgress } from '@/hooks/useAnimatedProgress';
 import { QuizConfig } from '@/types/quiz-personnalisation';
+import GlobalDropZone from '@/components/upload/GlobalDropZone';
 
 interface Chapter {
   id: string;
@@ -92,6 +93,7 @@ export default function CourseLearnPage() {
   // Map step keys to translation keys for quiz generation
   const translateQuizStepMessage = useCallback((step: string | undefined, message: string | undefined): string => {
     const STEP_TO_TRANSLATION_KEY: Record<string, string> = {
+      'starting': 'gen_step_starting',
       'analyzing_document': 'gen_step_analyzing_document',
       'extracting_chapter': 'gen_step_extracting_chapter',
       'identifying_concepts': 'gen_step_identifying_concepts',
@@ -99,6 +101,8 @@ export default function CourseLearnPage() {
       'verifying_content': 'gen_step_verifying_duplicates',
       'saving_content': 'gen_step_finalizing',
       'finalizing': 'gen_step_finalizing',
+      'retrying_failed': 'gen_step_retrying_failed',
+      'complete': 'gen_step_complete',
     };
 
     if (step) {
@@ -183,6 +187,22 @@ export default function CourseLearnPage() {
     });
   }, [isStartingGeneration, apiCourse?.quiz_status, isGeneratingQuiz]);
 
+  // Clear isStartingGeneration once server confirms generation has REALLY started
+  // We check BOTH quiz_status AND quiz_progress to ensure we have fresh data
+  // This prevents the race condition where quiz_status is 'generating' but quiz_progress is still 100%
+  useEffect(() => {
+    if (isStartingGeneration && apiCourse?.quiz_status === 'generating') {
+      // Only clear if quiz_progress is also reset (< 50%), proving we have fresh data
+      const progress = apiCourse?.quiz_progress ?? 0;
+      if (progress < 50) {
+        console.log(`[learn] Server confirmed generation started (progress=${progress}%), clearing isStartingGeneration`);
+        setIsStartingGeneration(false);
+      } else {
+        console.log(`[learn] quiz_status is 'generating' but progress=${progress}% - waiting for fresh data`);
+      }
+    }
+  }, [isStartingGeneration, apiCourse?.quiz_status, apiCourse?.quiz_progress]);
+
   // Generate a progress message based on the step
   const quizGenerationMessage = useMemo(() => {
     if (!quizGenerationStep) return '';
@@ -249,6 +269,10 @@ export default function CourseLearnPage() {
       // Refetch to get the updated status (should be 'ready' now)
       await refetch();
 
+      // Generation completed successfully - clear local state
+      // At this point, server has already set quiz_status to 'ready' or 'partial'
+      setIsStartingGeneration(false);
+
       trackEvent('quiz_generation_started', {
         userId: user?.id,
         courseId,
@@ -259,8 +283,7 @@ export default function CourseLearnPage() {
       console.error('Error during quiz generation:', err);
       setQuizGenerationError(err instanceof Error ? err.message : 'Failed to generate quiz');
       await refetch();
-    } finally {
-      // Clear local loading state - server state will take over
+      // Clear isStartingGeneration on error too
       setIsStartingGeneration(false);
     }
   }, [courseId, isDemoId, isStartingGeneration, apiCourse?.quiz_status, refetch, user?.id]);
@@ -570,15 +593,31 @@ export default function CourseLearnPage() {
 
   // Poll for quiz status during generation
   // This ensures the UI stays updated with progress from the server
+  // IMPORTANT: We poll REGARDLESS of SSE streaming status because SSE only provides
+  // streaming questions - we still need to refetch to get updated chapter question_count
+  // BUT: Don't poll if user is actively playing a quiz (it causes disruptive re-renders)
   useEffect(() => {
     if (isDemoId || !courseId) return;
 
-    // Poll if quiz is generating (either locally started or server confirmed) AND SSE is not streaming
-    const shouldPoll = (isStartingGeneration || course?.quiz_status === 'generating') && !quizStream.isStreaming;
+    // Poll if quiz is generating (either locally started or server confirmed)
+    // Don't gate on SSE streaming - we need chapter data to update even when SSE is active
+    const shouldPoll = isStartingGeneration || course?.quiz_status === 'generating';
     if (!shouldPoll) return;
 
-    console.log('[quiz-poll] Starting progress poll');
+    // IMPORTANT: Don't poll if user is playing the progressive quiz
+    // This prevents disruptive re-renders that reset the quiz to question 1
+    if (wasPlayingProgressiveQuiz) {
+      console.log('[quiz-poll] User is playing quiz, skipping poll to avoid disruption');
+      return;
+    }
+
+    console.log('[quiz-poll] Starting progress poll (SSE streaming:', quizStream.isStreaming, ')');
     const pollInterval = setInterval(async () => {
+      // Double-check user isn't playing before each poll
+      if (wasPlayingProgressiveQuiz) {
+        console.log('[quiz-poll] User started playing quiz, stopping poll');
+        return;
+      }
       console.log('[quiz-poll] Polling for progress...');
       await refetch();
     }, 3000); // Poll every 3 seconds for responsive progress updates
@@ -587,7 +626,7 @@ export default function CourseLearnPage() {
       console.log('[quiz-poll] Stopping progress poll');
       clearInterval(pollInterval);
     };
-  }, [isDemoId, courseId, isStartingGeneration, course?.quiz_status, quizStream.isStreaming, refetch]);
+  }, [isDemoId, courseId, isStartingGeneration, course?.quiz_status, quizStream.isStreaming, refetch, wasPlayingProgressiveQuiz]);
 
   // With fire-and-forget mode, quiz generation continues on the server
   // even if the user navigates away. The status 'generating' is valid.
@@ -715,13 +754,14 @@ export default function CourseLearnPage() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col ${
-      isDark
-        ? 'bg-neutral-900'
-        : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
-    }`}>
-      {/* Sidebar navigation */}
-      {!isDemoId && user && (
+    <GlobalDropZone>
+      <div className={`min-h-screen flex flex-col ${
+        isDark
+          ? 'bg-neutral-900'
+          : 'bg-gradient-to-br from-orange-50 via-white to-orange-50'
+      }`}>
+        {/* Sidebar navigation */}
+        {!isDemoId && user && (
         <CourseSidebar
           isOpen={sidebar.isOpen}
           level={sidebar.level}
@@ -954,7 +994,9 @@ export default function CourseLearnPage() {
                 onChapterClick={handleChapterClick}
                 onRegenerateQuiz={handleGenerateQuiz}
                 isGenerating={isGeneratingQuiz || course?.quiz_status === 'generating'}
+                isStartingGeneration={isStartingGeneration}
                 generationProgress={sseProgress}
+                generationProgressRaw={rawProgress}
                 generationMessage={translateQuizStepMessage(quizGenerationStep, quizGenerationMessage)}
                 streamingQuestions={streamingQuestions}
                 totalExpectedQuestions={totalExpectedQuestions}
@@ -1071,6 +1113,7 @@ export default function CourseLearnPage() {
           onClose={() => setShowPaywallModal(false)}
         />
       )}
-    </div>
+      </div>
+    </GlobalDropZone>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
@@ -93,7 +93,10 @@ interface QuizChapterManagementProps {
   onChapterClick: (chapter: Chapter, index: number) => void;
   onRegenerateQuiz: (config: QuizConfig) => void;
   isGenerating?: boolean;
-  generationProgress?: number; // Progress percentage (0-100)
+  /** True when user just clicked regenerate but server hasn't responded yet */
+  isStartingGeneration?: boolean;
+  generationProgress?: number; // Progress percentage (0-100) - smoothed for display
+  generationProgressRaw?: number; // Raw progress from server (for stuck detection)
   generationMessage?: string; // Current step message
   /** Questions received from streaming during generation (legacy, may be empty with fire-and-forget) */
   streamingQuestions?: StreamingQuestion[];
@@ -123,7 +126,9 @@ export default function QuizChapterManagement({
   onChapterClick,
   onRegenerateQuiz,
   isGenerating = false,
+  isStartingGeneration = false,
   generationProgress = 0,
+  generationProgressRaw,
   generationMessage = '',
   streamingQuestions = [],
   totalExpectedQuestions,
@@ -154,6 +159,32 @@ export default function QuizChapterManagement({
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
+
+  // Force stop state - hide generation screen immediately when user clicks stop
+  const [isForceStopped, setIsForceStopped] = useState(false);
+
+  // Key to force remount of GenerationProgress component when regenerating
+  // This key changes every time isStartingGeneration becomes true
+  const [generationKey, setGenerationKey] = useState(() => Date.now());
+
+  // Track when we last updated the key to avoid duplicate updates
+  const lastKeyUpdateRef = useRef(0);
+
+  // Reset force stopped state and update key when generation starts again
+  // IMPORTANT: This must happen synchronously with the first render where isStartingGeneration is true
+  useEffect(() => {
+    if (isStartingGeneration) {
+      setIsForceStopped(false);
+
+      // Only update key once per generation start (avoid multiple updates)
+      const now = Date.now();
+      if (now - lastKeyUpdateRef.current > 1000) {
+        lastKeyUpdateRef.current = now;
+        setGenerationKey(now);
+        console.log('[QuizChapterManagement] New generationKey:', now);
+      }
+    }
+  }, [isStartingGeneration]);
 
   // Progressive quiz state - use parent state if available, otherwise local state
   // This allows the quiz to persist when navigating away and back
@@ -212,6 +243,24 @@ export default function QuizChapterManagement({
   useEffect(() => {
     console.log('[QuizChapterManagement] isGenerating:', isGenerating, 'isPlayingProgressiveQuiz:', isPlayingProgressiveQuiz);
   }, [isGenerating, isPlayingProgressiveQuiz]);
+
+  // Debug: log chapters and their question counts during generation
+  useEffect(() => {
+    if (isGenerating) {
+      const chaptersWithQuestions = chapters.filter(ch => ch.question_count > 0);
+      console.log('[QuizChapterManagement] Chapters update:', {
+        total: chapters.length,
+        withQuestions: chaptersWithQuestions.length,
+        isStartingGeneration,
+        details: chapters.map((ch, idx) => ({
+          uiIndex: idx + 1,
+          orderIndex: ch.order_index,
+          title: ch.title.substring(0, 25),
+          questions: ch.question_count
+        })),
+      });
+    }
+  }, [chapters, isGenerating, isStartingGeneration]);
 
   // Fetch questions for expanded chapter
   const fetchQuestions = useCallback(async () => {
@@ -657,14 +706,34 @@ export default function QuizChapterManagement({
       </div>
 
       {/* Generation progress screen OR Progressive Quiz during generation */}
-      {isGenerating && !isPlayingProgressiveQuiz && (
+      {/* Hide immediately when force stopped (isForceStopped) for instant feedback */}
+      {isGenerating && !isPlayingProgressiveQuiz && !isForceStopped && (
         <div className="space-y-4">
           <GenerationLoadingScreen
+            key={generationKey}
             type="quiz"
-            progress={generationProgress || 0}
-            progressMessage={generationMessage || translate('quiz_generation_in_progress', 'Génération en cours...')}
-            itemsGenerated={questionsGenerated || streamingQuestions.length}
+            // When starting generation, force progress to 0 to avoid showing stale data
+            progress={isStartingGeneration ? 0 : (generationProgress || 0)}
+            rawProgress={isStartingGeneration ? 0 : generationProgressRaw}
+            // When starting generation, force a "starting" message to avoid showing stale "Terminé !" message
+            progressMessage={isStartingGeneration ? translate('gen_step_starting', 'Démarrage...') : (generationMessage || translate('quiz_generation_in_progress', 'Génération en cours...'))}
+            itemsGenerated={isStartingGeneration ? 0 : (questionsGenerated || streamingQuestions.length)}
             totalItems={totalExpectedQuestions}
+            // Show actual chapters ready count from DB
+            // Only force to 0 when isStartingGeneration (user just clicked regenerate)
+            // The DB polling will update question_count in real-time
+            chaptersReady={isStartingGeneration ? 0 : chapters.filter(ch => ch.question_count > 0).length}
+            totalChapters={chapters.length}
+            courseId={courseId}
+            onForceStop={() => {
+              // Hide generation screen immediately for instant feedback
+              setIsForceStopped(true);
+              // Then refetch to get the updated status from server
+              refetch();
+            }}
+            // Key that changes when regeneration starts - forces GenerationProgress to remount
+            // This resets its internal smoothProgress state to 0 instead of keeping stale 100%
+            progressKey={generationKey}
           />
         </div>
       )}
@@ -728,24 +797,20 @@ export default function QuizChapterManagement({
                       </div>
                       <div className={`flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs ${isDark ? 'text-neutral-500' : 'text-gray-600'}`}>
                         <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${
-                          isGenerating && totalQuestionCount > 0
-                            ? isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
-                            : isDark ? 'bg-neutral-800' : 'bg-gray-100'
+                          isDark ? 'bg-neutral-800' : 'bg-gray-100'
                         }`}>
-                          {isGenerating && totalQuestionCount > 0 && (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          )}
                           {(() => {
-                            const targetCount = lastQuizConfig?.niveau !== 'exhaustif'
-                              ? getAdjustedQuestionCount(10, lastQuizConfig?.niveau || 'standard')
-                              : null;
-
-                            if (isGenerating && targetCount !== null) {
-                              const questionLabel = targetCount <= 1 ? 'question' : 'questions';
-                              return `${totalQuestionCount}/${targetCount} ${questionLabel}`;
-                            }
+                            // During generation: show spinner if chapter has no questions yet
+                            // After generation: just show the count
+                            const isStillGenerating = isGenerating && totalQuestionCount === 0;
                             const questionLabel = totalQuestionCount <= 1 ? 'question' : 'questions';
-                            return `${totalQuestionCount} ${questionLabel}`;
+
+                            return (
+                              <>
+                                {isStillGenerating && <Loader2 className="w-3 h-3 animate-spin text-orange-500" />}
+                                {`${totalQuestionCount} ${questionLabel}`}
+                              </>
+                            );
                           })()}
                         </span>
                       </div>
@@ -789,7 +854,7 @@ export default function QuizChapterManagement({
                             : 'bg-orange-500 text-white hover:bg-orange-600'
                         }`}
                       >
-                        {!isChapterReady ? (
+                        {isGenerating && totalQuestionCount === 0 ? (
                           <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
                         ) : !isGenerating && chapter.completed ? (
                           <>

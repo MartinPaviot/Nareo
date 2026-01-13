@@ -29,6 +29,28 @@ const config: Config = {
           800: '#9a3412',
           900: '#7c2d12',
         },
+        // Nareo Brand Colors - Use these instead of hardcoded hex values
+        nareo: {
+          // Primary orange - the main brand color
+          DEFAULT: '#ff751f',
+          hover: '#e5681b',
+          light: '#fff0e6',
+          50: '#fff7ed',
+          100: '#ffedd5',
+          400: '#fb923c',
+          500: '#ff751f',
+          600: '#e5681b',
+        },
+        // Semantic colors
+        success: {
+          DEFAULT: '#379f5a',
+          light: 'rgba(55, 159, 90, 0.15)',
+        },
+        error: {
+          DEFAULT: '#d91a1c',
+          light: '#fff6f3',
+        },
+        // Legacy - keep for backwards compatibility
         aristo: {
           light: '#fed7aa',
           DEFAULT: '#fb923c',

@@ -436,10 +436,41 @@ export async function processCourseJob(jobId: string) {
     // Update stage to insertion
     await admin.from("pipeline_jobs").update({ stage: "insertion", updated_at: new Date().toISOString() }).eq("id", jobId);
 
-    // Insert chapters with their text (quiz generation is on-demand)
-    for (const chapter of chapters) {
+    // === FILTER CHAPTERS WITH INSUFFICIENT CONTENT ===
+    // Chapters with very short or empty source_text cannot generate meaningful quiz questions
+    // Filter them out during extraction to avoid creating unusable chapters
+    const MIN_CHAPTER_TEXT_LENGTH = 50; // Minimum characters for a chapter to be useful
+
+    const chaptersWithText = chapters.map(chapter => {
       const boundary = chapterBoundaries.find(b => b.index === chapter.orderIndex + 1);
       const chapterText = boundary?.text || extractedText.substring(0, LLM_CONFIG.truncation.chapterText);
+      return { chapter, chapterText };
+    });
+
+    const validChapters = chaptersWithText.filter(({ chapter, chapterText }) => {
+      const textLength = chapterText?.trim().length || 0;
+      const isValid = textLength >= MIN_CHAPTER_TEXT_LENGTH;
+      if (!isValid) {
+        logStep("chapter_filtered_insufficient_content", {
+          courseId: course.id,
+          chapterTitle: chapter.title,
+          orderIndex: chapter.orderIndex,
+          textLength,
+          minRequired: MIN_CHAPTER_TEXT_LENGTH,
+        });
+      }
+      return isValid;
+    });
+
+    logStep("chapters_filtered", {
+      courseId: course.id,
+      totalChapters: chapters.length,
+      validChapters: validChapters.length,
+      filtered: chapters.length - validChapters.length,
+    });
+
+    // Insert only valid chapters with sufficient text content
+    for (const { chapter, chapterText } of validChapters) {
 
       try {
         // Insert chapter with status 'ready' (text extracted, ready for quiz generation)
@@ -510,7 +541,8 @@ export async function processCourseJob(jobId: string) {
       totalInserted: insertedChapters?.length || 0,
       readyCount: readyChapters.length,
       failedCount: failedChapters.length,
-      expectedCount: chapters.length,
+      expectedCount: validChapters.length, // Use validChapters count (after filtering)
+      originalCount: chapters.length, // Original count before filtering
     });
 
     // Course is ready if we have at least some chapters inserted (even if not all)

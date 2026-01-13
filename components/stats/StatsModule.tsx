@@ -27,17 +27,22 @@ interface StatCardProps {
 
 function StatCard({ icon: Icon, label, value, subValue, valueColor, isDark = false }: StatCardProps) {
   return (
-    <div className={`rounded-md px-2 py-1.5 border shadow-sm text-center ${
-      isDark
-        ? 'bg-neutral-800 border-neutral-700'
-        : 'bg-white border-gray-100'
-    }`}>
+    <div
+      className={`rounded-md px-3 py-2 border shadow-sm text-center transition-all duration-200 cursor-default ${
+        isDark
+          ? 'bg-neutral-800 border-neutral-700 hover:border-neutral-600 hover:shadow-md'
+          : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-md'
+      }`}
+      style={{ transform: 'translateY(0)' }}
+      onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+      onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+    >
       <div className="flex items-center justify-center gap-1 mb-0">
         <Icon className={`w-3 h-3 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`} />
-        <span className={`text-[9px] font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{label}</span>
+        <span className={`text-[11px] font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>{label}</span>
       </div>
       <p className={`text-sm font-bold leading-tight ${!valueColor ? (isDark ? 'text-white' : 'text-gray-900') : ''}`} style={valueColor ? { color: valueColor } : {}}>{value}</p>
-      {subValue && <p className={`text-[9px] leading-tight ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{subValue}</p>}
+      {subValue && <p className={`text-[11px] leading-tight ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{subValue}</p>}
     </div>
   );
 }
@@ -88,7 +93,7 @@ export default function StatsModule() {
     : 0;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Milestone Modal */}
       {showMilestoneModal && milestoneRewards.length > 0 && (
         <MilestoneModal
@@ -119,7 +124,7 @@ export default function StatsModule() {
       <WelcomeActionSection />
 
       {/* Row 3: Stats secondaires */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           icon={BookOpen}
           label={translate('stats_label_quiz')}

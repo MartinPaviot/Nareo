@@ -46,7 +46,7 @@ export function HeroPreviewCarousel({ translate }: HeroPreviewCarouselProps) {
     setIsFlipped(false);
   };
 
-  const slideLabels = ['Fiche', 'Quiz', 'Flashcards'];
+  const slideLabels = [translate('home_hero_tab_summary'), translate('home_hero_tab_quiz'), translate('home_hero_tab_flashcards')];
 
   return (
     <div className="w-full max-w-[320px] sm:max-w-[400px] mx-auto">

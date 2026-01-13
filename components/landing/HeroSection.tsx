@@ -28,9 +28,7 @@ export function HeroSection({ translate, onCtaClick }: HeroSectionProps) {
             <span className="relative z-10">{translate('home_hero_title_highlight')}</span>
             <span className="absolute bottom-0 left-0 w-full h-[40%] bg-gradient-to-r from-orange-300 to-amber-300 -z-0 rounded-sm"></span>
           </span>
-          {translate('home_hero_title')}
-          <br className="hidden lg:block" />
-          {translate('home_hero_title_line2')}
+          {translate('home_hero_title')} {translate('home_hero_title_line2')}
           <span style={{ color: '#ff751f' }}>{translate('home_hero_title_end')}</span>
         </h1>
         <p className="text-lg lg:text-2xl text-gray-600 max-w-xl">

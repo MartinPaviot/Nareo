@@ -348,6 +348,7 @@ async function generateGlossary(
 
 /**
  * Verify completeness of transcription (Pass 4)
+ * V4: No longer checks for graphics - they are handled separately via structure assignment
  */
 async function verifyCompleteness(
   structure: DocumentStructure,
@@ -368,9 +369,8 @@ async function verifyCompleteness(
     if (section.contentTypes.numerical_examples.length > 0) {
       expectedItems.push(`Exemples: ${section.contentTypes.numerical_examples.join(', ')}`);
     }
-    if (section.contentTypes.graphs_or_visuals.length > 0) {
-      expectedItems.push(`Graphiques: ${section.contentTypes.graphs_or_visuals.join(', ')}`);
-    }
+    // V4: Graphics are now handled via structure-phase assignment, not verification
+    // Removed: graphs_or_visuals check to prevent "Contenu complémentaire" section with graphics
   }
 
   const expectedContent = expectedItems.join('\n');

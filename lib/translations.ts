@@ -267,7 +267,11 @@ export const translations: Record<Language, Translations> = {
     upload_card3_title: 'Interactive learning',
     upload_card3_desc: 'Engage with your content through questions and explanations',
     upload_tip: 'Tip: Upload clear images or well-formatted documents for best results',
-    
+
+    // Global Drop Zone
+    global_drop_title: 'Drop your file here',
+    global_drop_subtitle: 'PDF, Word or images (JPG, PNG)',
+
     // Learn
     learn_loading: 'Loading your learning session...',
     learn_loading_step_memory: 'Loading chat history...',
@@ -2031,7 +2035,11 @@ export const translations: Record<Language, Translations> = {
     upload_card3_title: 'Apprentissage interactif',
     upload_card3_desc: 'Interagissez avec votre contenu via questions et explications',
     upload_tip: 'Astuce : Téléchargez des images claires ou des documents bien formatés pour de meilleurs résultats',
-    
+
+    // Global Drop Zone
+    global_drop_title: 'Dépose ton fichier ici',
+    global_drop_subtitle: 'PDF, Word ou images (JPG, PNG)',
+
     // Learn
     learn_loading: 'Chargement de votre session...',
     learn_loading_step_memory: 'Chargement de l\'historique...',
@@ -3797,6 +3805,10 @@ export const translations: Record<Language, Translations> = {
     upload_card3_title: 'Interaktives Lernen',
     upload_card3_desc: 'Interagieren Sie mit Ihrem Inhalt durch Fragen und Erklärungen',
     upload_tip: 'Tipp: Laden Sie klare Bilder oder gut formatierte Dokumente für beste Ergebnisse hoch',
+
+    // Global Drop Zone
+    global_drop_title: 'Datei hier ablegen',
+    global_drop_subtitle: 'PDF, Word oder Bilder (JPG, PNG)',
 
     // Learn
     learn_loading: 'Ihre Lernsitzung wird geladen...',

@@ -686,16 +686,6 @@ export async function POST(
             send('content', { text: synthesisSection });
           }
 
-          // Glossary if requested
-          if (config.recaps.definitions) {
-            send('progress', { step: 'generating_content', progress: 85 });
-            console.log('[Stream] Generating glossary...');
-            const glossary = await generateGlossary(noteContent, language, config);
-            const glossarySection = `\n\n---\n\n${glossary}`;
-            noteContent += glossarySection;
-            send('content', { text: glossarySection });
-          }
-
         } else {
           // SINGLE-PASS with streaming
           console.log('[Stream] Using SINGLE-PASS generation');
@@ -710,7 +700,19 @@ export async function POST(
           }
         }
 
-        // Recaps if requested
+        // Glossary if requested (works for both multi-pass and single-pass)
+        if (config.recaps.definitions) {
+          send('progress', { step: 'generating_glossary', progress: 85 });
+          console.log('[Stream] Generating glossary...');
+          const glossary = await generateGlossary(noteContent, language, config);
+          if (glossary && glossary.trim().length > 0) {
+            const glossarySection = `\n\n---\n\n${glossary}`;
+            noteContent += glossarySection;
+            send('content', { text: glossarySection });
+          }
+        }
+
+        // Recaps (formulas) if requested
         if (config.recaps.formules || config.recaps.schemas) {
           send('progress', { step: 'generating_content', progress: 90 });
           console.log('[Stream] Generating recaps...');

@@ -45,15 +45,16 @@ EXPLANATORY ADAPTATION:
 ## [Title meaning "Formula Summary" - translated to ${languageName}]
 
 Extract ALL formulas present in the sheet.
-Markdown table format:
+Output a proper Markdown table with EACH ROW ON A NEW LINE:
 
 | [Name in ${languageName}] | [Formula in ${languageName}] | [Variables in ${languageName}] |
 |-----|---------|-----------|
 | [Name 1] | $formula$ | $var1$ = ..., $var2$ = ... |
 | [Name 2] | $formula$ | ... |
-...
 
-RULES:
+CRITICAL FORMATTING RULES:
+- EACH table row MUST be on its own line (use newline characters between rows)
+- The separator row |-----|---------|...| MUST be on its own line after the header
 - Formulas in LaTeX format ($...$ for inline)
 - Do not invent anything: only what is in the sheet
 - ALL column headers and content must be in ${languageName}

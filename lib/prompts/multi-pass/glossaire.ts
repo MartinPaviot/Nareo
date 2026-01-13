@@ -17,7 +17,7 @@ export function getGlossairePrompt(
 
   return `À partir de cette note de cours, génère un glossaire complet.
 
-FORMAT (tableau Markdown) :
+FORMAT (tableau Markdown avec CHAQUE LIGNE SUR UNE NOUVELLE LIGNE) :
 ## Glossaire
 
 | Terme | Définition |
@@ -25,7 +25,9 @@ FORMAT (tableau Markdown) :
 | terme1 | définition |
 | terme2 | définition |
 
-RÈGLES :
+RÈGLES CRITIQUES DE FORMATAGE :
+- CHAQUE ligne du tableau DOIT être sur sa propre ligne (saut de ligne entre chaque row)
+- La ligne de séparation |-------|------------| DOIT être sur sa propre ligne après l'en-tête
 - Inclus TOUS les termes techniques, acronymes, et concepts clés
 - Ordonne alphabétiquement
 - Minimum 10 termes, maximum 30

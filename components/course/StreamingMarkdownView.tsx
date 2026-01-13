@@ -110,7 +110,7 @@ export default function StreamingMarkdownView({
   return (
     <div
       ref={containerRef}
-      className={`golden-note-content relative ${className}`}
+      className={`golden-note-content ${isDark ? 'dark-mode' : ''} relative ${className}`}
       style={containerStyles}
     >
       {/* Markdown content */}
@@ -189,27 +189,6 @@ export default function StreamingMarkdownView({
             ),
             hr: () => (
               <hr className={`my-6 border-t ${isDark ? 'border-neutral-700' : 'border-gray-200'}`} />
-            ),
-            table: ({ children }) => (
-              <div className="overflow-x-auto my-4">
-                <table className={`min-w-full divide-y ${isDark ? 'divide-neutral-700' : 'divide-gray-200'}`}>
-                  {children}
-                </table>
-              </div>
-            ),
-            th: ({ children }) => (
-              <th className={`px-3 py-2 text-left text-sm font-semibold ${
-                isDark ? 'bg-neutral-800 text-neutral-200' : 'bg-gray-50 text-gray-700'
-              }`}>
-                {children}
-              </th>
-            ),
-            td: ({ children }) => (
-              <td className={`px-3 py-2 text-sm ${
-                isDark ? 'text-neutral-300 border-neutral-700' : 'text-gray-600 border-gray-100'
-              } border-b`}>
-                {children}
-              </td>
             ),
             // Image component with error handling for streaming content
             // Uses span instead of figure to avoid hydration errors when inside <p>

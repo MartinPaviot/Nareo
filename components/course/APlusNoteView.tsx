@@ -54,7 +54,8 @@ const STEP_TO_TRANSLATION_KEY: Record<string, string> = {
   'analyzing_document': 'gen_step_analyzing_structure',
   'extracting_chapter': 'gen_step_transcribing_sections',
   'verifying_content': 'gen_step_verifying_completeness',
-  'generating_content': 'gen_step_generating_glossary',
+  'generating_content': 'gen_step_transcribing_sections',
+  'generating_glossary': 'gen_step_generating_glossary',
   'finalizing': 'gen_step_saving_note',
   'complete': 'gen_step_saving_note',
 };
@@ -610,36 +611,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex]}
-                    components={{
-                      table: ({children}) => (
-                        <div className="overflow-x-auto my-4">
-                          <table className={`min-w-full divide-y ${isDark ? 'divide-neutral-700' : 'divide-gray-200'}`}>
-                            {children}
-                          </table>
-                        </div>
-                      ),
-                      thead: ({children}) => (
-                        <thead className={isDark ? 'bg-neutral-800' : 'bg-gray-50'}>
-                          {children}
-                        </thead>
-                      ),
-                      tbody: ({children}) => (
-                        <tbody className={`divide-y ${isDark ? 'divide-neutral-700' : 'divide-gray-200'}`}>
-                          {children}
-                        </tbody>
-                      ),
-                      tr: ({children}) => <tr>{children}</tr>,
-                      th: ({children}) => (
-                        <th className={`px-3 py-2 text-left text-sm font-semibold ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
-                          {children}
-                        </th>
-                      ),
-                      td: ({children}) => (
-                        <td className={`px-3 py-2 text-sm ${isDark ? 'text-neutral-300' : 'text-gray-600'}`}>
-                          {children}
-                        </td>
-                      ),
-                    }}
                   >
                     {previousParsed?.content || ''}
                   </ReactMarkdown>
@@ -948,34 +919,6 @@ export default function APlusNoteView({ courseId, courseTitle, courseStatus, onM
                         </figcaption>
                       )}
                     </figure>
-                  ),
-                  table: ({children}) => (
-                    <div className="overflow-x-auto my-4">
-                      <table className={`min-w-full divide-y ${isDark ? 'divide-neutral-700' : 'divide-gray-200'}`}>
-                        {children}
-                      </table>
-                    </div>
-                  ),
-                  thead: ({children}) => (
-                    <thead className={isDark ? 'bg-neutral-800' : 'bg-gray-50'}>
-                      {children}
-                    </thead>
-                  ),
-                  tbody: ({children}) => (
-                    <tbody className={`divide-y ${isDark ? 'divide-neutral-700' : 'divide-gray-200'}`}>
-                      {children}
-                    </tbody>
-                  ),
-                  tr: ({children}) => <tr>{children}</tr>,
-                  th: ({children}) => (
-                    <th className={`px-3 py-2 text-left text-sm font-semibold ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
-                      {children}
-                    </th>
-                  ),
-                  td: ({children}) => (
-                    <td className={`px-3 py-2 text-sm ${isDark ? 'text-neutral-300' : 'text-gray-600'}`}>
-                      {children}
-                    </td>
                   ),
                   hr: () => (
                     <hr className={`my-6 border-t ${isDark ? 'border-neutral-700' : 'border-gray-200'}`} />

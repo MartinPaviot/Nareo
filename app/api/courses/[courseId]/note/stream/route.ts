@@ -16,7 +16,17 @@ import {
   getTranscriptionPromptV3,
   getFinalSynthesisPrompt
 } from '@/lib/prompts/excellent-revision-v3';
-import { formatGraphicsContext, getCourseGraphicsSummaries, extractGraphicReferences } from '@/lib/backend/graphics-enricher';
+import {
+  formatGraphicsContext,
+  getCourseGraphicsSummaries,
+  extractGraphicReferences,
+  formatGraphicsForStructureAnalysis,
+  getGraphicsForSection,
+  formatGraphicsContextForSection,
+  resolveGraphicsUrls,
+  GraphicAssignment,
+  GraphicWithUrl
+} from '@/lib/backend/graphics-enricher';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -130,6 +140,8 @@ interface Section {
   essentialContent?: EssentialContent;
   activeLearningOpportunities?: ActiveLearningOpportunities;
   connections?: Connections;
+  // V4: Graphic assignment during structure analysis
+  assignedGraphics?: GraphicAssignment[];
 }
 
 interface DocumentStructure {
@@ -146,14 +158,17 @@ interface VerificationResult {
 }
 
 // Extract structure (non-streaming, quick)
+// V4: Now assigns graphics to sections during structure analysis
 async function extractStructure(
   sourceText: string,
   language: string,
-  config: PersonnalisationConfig
+  config: PersonnalisationConfig,
+  graphicsContext: string = ''
 ): Promise<DocumentStructure> {
   const languageName = getLanguageName(language);
   const textForStructure = sourceText.substring(0, 20000);
-  const structurePrompt = getStructurePromptV3(config, languageName);
+  // V4: Pass graphics context for assignment
+  const structurePrompt = getStructurePromptV3(config, languageName, graphicsContext);
 
   return withRetry(async () => {
     const response = await openai.chat.completions.create({
@@ -164,7 +179,7 @@ async function extractStructure(
       ],
       temperature: 0.2,
       response_format: { type: 'json_object' },
-      max_tokens: 3000,
+      max_tokens: 4000, // Increased for V4's graphic assignments
     });
 
     const content = response.choices[0].message.content;
@@ -505,16 +520,22 @@ export async function POST(
       };
 
       try {
-        console.log(`[Stream] Starting generation for course ${courseId}`);
+        console.log(`[Stream V4] Starting generation for course ${courseId}`);
 
-        // Fetch graphics only if enabled (URLs are resolved inside formatGraphicsContext)
-        let imageContext = '';
+        // V4: Fetch graphics and prepare for structure analysis
+        let graphics: Awaited<ReturnType<typeof getCourseGraphicsSummaries>> = [];
+        let graphicsWithUrls: GraphicWithUrl[] = [];
+        let graphicsForStructure = '';
+        let imageContext = ''; // Legacy: for single-pass mode
+
         if (config.includeGraphics) {
-          const graphics = await getCourseGraphicsSummaries(courseId);
-          imageContext = formatGraphicsContext(graphics);
-          console.log(`[Stream] Graphics enabled: ${graphics.length} graphics with resolved URLs`);
+          graphics = await getCourseGraphicsSummaries(courseId);
+          graphicsWithUrls = resolveGraphicsUrls(graphics);
+          graphicsForStructure = formatGraphicsForStructureAnalysis(graphics);
+          imageContext = formatGraphicsContext(graphics); // Legacy for single-pass
+          console.log(`[Stream V4] Graphics enabled: ${graphics.length} graphics for assignment`);
         } else {
-          console.log('[Stream] Graphics disabled by user preference');
+          console.log('[Stream V4] Graphics disabled by user preference');
         }
 
         let noteContent = '';
@@ -525,12 +546,29 @@ export async function POST(
 
         if (sourceText.length > 15000) {
           // MULTI-PASS with streaming
-          console.log('[Stream] Using MULTI-PASS generation');
+          console.log('[Stream V4] Using MULTI-PASS generation');
 
-          // Pass 1: Extract structure (not streamed, quick)
+          // Pass 1: Extract structure + assign graphics (not streamed, quick)
           send('progress', { step: 'analyzing_document', progress: 5 });
-          const structure = await extractStructure(sourceText, language, config);
-          console.log(`[Stream] Found ${structure.sections.length} sections`);
+          // V4: Pass graphics for assignment during structure analysis
+          const structure = await extractStructure(sourceText, language, config, graphicsForStructure);
+          console.log(`[Stream V4] Found ${structure.sections.length} sections`);
+
+          // V4: Build section -> graphics map from structure analysis
+          const sectionGraphicsMap = new Map<number, string[]>();
+          let totalAssignedGraphics = 0;
+          if (config.includeGraphics) {
+            for (let i = 0; i < structure.sections.length; i++) {
+              const section = structure.sections[i];
+              const assignedIds = section.assignedGraphics?.map(a => a.graphicId) || [];
+              sectionGraphicsMap.set(i, assignedIds);
+              totalAssignedGraphics += assignedIds.length;
+              if (assignedIds.length > 0) {
+                console.log(`[Stream V4] Section "${section.title}": ${assignedIds.length} graphic(s) assigned`);
+              }
+            }
+            console.log(`[Stream V4] Total graphics assigned: ${totalAssignedGraphics}/${graphics.length}`);
+          }
 
           send('progress', {
             step: 'analyzing_document',
@@ -546,10 +584,8 @@ export async function POST(
           // Pass 2: Transcribe each section with streaming
           const metadataToIgnore = structure.metadata_to_ignore || [];
 
-          // Track used graphics to prevent duplicates across sections
+          // Track graphics actually placed (for logging)
           const usedGraphicIds = new Set<string>();
-          // Fetch graphics once for the entire document
-          const allGraphics = config.includeGraphics ? await getCourseGraphicsSummaries(courseId) : [];
 
           for (let i = 0; i < structure.sections.length; i++) {
             const section = structure.sections[i];
@@ -565,10 +601,18 @@ export async function POST(
 
             const sectionSourceText = findSectionText(sourceText, section, structure.sections, i);
 
-            // Generate fresh imageContext excluding already-used graphics
-            const sectionImageContext = config.includeGraphics
-              ? formatGraphicsContext(allGraphics, usedGraphicIds)
-              : '';
+            // V4: Get PRE-ASSIGNED graphics for this section (not all graphics!)
+            let sectionImageContext = '';
+            if (config.includeGraphics) {
+              const assignedIds = sectionGraphicsMap.get(i) || [];
+              if (assignedIds.length > 0) {
+                const sectionGraphics = getGraphicsForSection(graphicsWithUrls, assignedIds);
+                sectionImageContext = formatGraphicsContextForSection(sectionGraphics);
+                console.log(`[Stream V4] Section "${section.title}": ${sectionGraphics.length} graphic(s) PRE-ASSIGNED`);
+              } else {
+                console.log(`[Stream V4] Section "${section.title}": No graphics assigned`);
+              }
+            }
 
             // Stream this section
             const sectionGenerator = transcribeSectionStreaming(
@@ -578,7 +622,7 @@ export async function POST(
               section.contentTypes || { definitions: [], formulas: [], numerical_examples: [], graphs_or_visuals: [], exercises: [] },
               metadataToIgnore,
               config,
-              sectionImageContext,
+              sectionImageContext, // V4: PRE-FILTERED context
               section
             );
 
@@ -595,7 +639,7 @@ export async function POST(
               usedGraphicIds.add(graphicId);
             }
             if (graphicsInSection.length > 0) {
-              console.log(`[Stream] Section "${section.title}": used ${graphicsInSection.length} graphic(s), total used: ${usedGraphicIds.size}`);
+              console.log(`[Stream V4] Section "${section.title}": placed ${graphicsInSection.length} graphic(s)`);
             }
 
             // Add separator between sections
@@ -614,6 +658,10 @@ export async function POST(
                 note_section_index: i + 1,
               })
               .eq('id', courseId);
+          }
+
+          if (config.includeGraphics) {
+            console.log(`[Stream V4] Total graphics placed: ${usedGraphicIds.size}/${graphics.length}`);
           }
 
           // Pass 3: Verify completeness (quick, not streamed)

@@ -17,7 +17,17 @@ import {
   getTranscriptionPromptV3,
   getFinalSynthesisPrompt
 } from '@/lib/prompts/excellent-revision-v3';
-import { formatGraphicsContext, getCourseGraphicsSummaries, extractGraphicReferences } from '@/lib/backend/graphics-enricher';
+import {
+  formatGraphicsContext,
+  getCourseGraphicsSummaries,
+  extractGraphicReferences,
+  formatGraphicsForStructureAnalysis,
+  getGraphicsForSection,
+  formatGraphicsContextForSection,
+  resolveGraphicsUrls,
+  GraphicAssignment,
+  GraphicWithUrl
+} from '@/lib/backend/graphics-enricher';
 
 // Max duration for note generation
 export const maxDuration = 300;
@@ -111,6 +121,8 @@ interface Section {
   essentialContent?: EssentialContent;
   activeLearningOpportunities?: ActiveLearningOpportunities;
   connections?: Connections;
+  // V4: Graphic assignment during structure analysis
+  assignedGraphics?: GraphicAssignment[];
 }
 
 interface DocumentStructure {
@@ -165,19 +177,22 @@ async function updateNoteProgress(
 /**
  * Extract document structure (Pass 1)
  * V3: Uses the new structure prompt based on the 7 principles
+ * V4: Assigns graphics to sections during structure analysis
  */
 async function extractStructure(
   sourceText: string,
   language: string,
   config: PersonnalisationConfig,
-  useV3: boolean = true
+  useV3: boolean = true,
+  graphicsContext: string = ''
 ): Promise<DocumentStructure> {
   const languageName = getLanguageName(language);
   const textForStructure = sourceText.substring(0, 20000);
 
   // V3: Use new prompt focused on essential content and active learning
+  // V4: Now includes graphics context for assignment
   const structurePrompt = useV3
-    ? getStructurePromptV3(config, languageName)
+    ? getStructurePromptV3(config, languageName, graphicsContext)
     : getStructurePrompt(config, languageName);
 
   return withRetry(async () => {
@@ -189,7 +204,7 @@ async function extractStructure(
       ],
       temperature: 0.2,
       response_format: { type: 'json_object' },
-      max_tokens: 3000, // Increased for V3's richer structure
+      max_tokens: 4000, // Increased for V4's graphic assignments
     });
 
     const content = response.choices[0].message.content;
@@ -504,31 +519,56 @@ async function runNoteGeneration(
 
     // Fetch available graphics for this course ONLY if includeGraphics is enabled
     let graphics: Awaited<ReturnType<typeof getCourseGraphicsSummaries>> = [];
+    let graphicsWithUrls: GraphicWithUrl[] = [];
     if (config.includeGraphics) {
       graphics = await getCourseGraphicsSummaries(courseId);
-      console.log(`[A+ Note V3] Found ${graphics.length} high-confidence graphics to include`);
+      graphicsWithUrls = resolveGraphicsUrls(graphics);
+      console.log(`[A+ Note V4] Found ${graphics.length} high-confidence graphics to include`);
     } else {
-      console.log(`[A+ Note V3] Graphics extraction disabled by user preference`);
+      console.log(`[A+ Note V4] Graphics extraction disabled by user preference`);
     }
 
+    // V4: Format graphics for structure analysis (compact format for assignment)
+    const graphicsForStructure = config.includeGraphics
+      ? formatGraphicsForStructureAnalysis(graphics)
+      : '';
+
+    // Legacy: Full image context for single-pass mode
     const imageContext = config.includeGraphics ? formatGraphicsContext(graphics) : '';
     let noteContent: string;
-    const USE_V3 = true; // Enable V3 by default
+    const USE_V3 = true; // Enable V3/V4 by default
 
     // Decision: Use multi-pass for documents > 15k chars
     if (sourceText.length > 15000) {
-      console.log('[A+ Note V3] Using MULTI-PASS generation (document > 15k chars)');
+      console.log('[A+ Note V4] Using MULTI-PASS generation (document > 15k chars)');
 
-      // Pass 1: Extract structure (0-20%)
+      // Pass 1: Extract structure + assign graphics (0-20%)
       await updateNoteProgress(admin, courseId, {
         progress: 1,
         currentStep: 'analyzing_document',
       });
 
-      const structure = await extractStructure(sourceText, language, config, USE_V3);
-      console.log(`[A+ Note V3] Found ${structure.sections.length} sections`);
+      // V4: Pass graphics context to structure analysis for assignment
+      const structure = await extractStructure(sourceText, language, config, USE_V3, graphicsForStructure);
+      console.log(`[A+ Note V4] Found ${structure.sections.length} sections`);
       if (USE_V3 && structure.coreIdeas) {
-        console.log(`[A+ Note V3] Identified ${structure.coreIdeas.length} core ideas:`, structure.coreIdeas);
+        console.log(`[A+ Note V4] Identified ${structure.coreIdeas.length} core ideas:`, structure.coreIdeas);
+      }
+
+      // V4: Build section -> graphics map from structure analysis
+      const sectionGraphicsMap = new Map<number, string[]>();
+      let totalAssignedGraphics = 0;
+      if (config.includeGraphics) {
+        for (let i = 0; i < structure.sections.length; i++) {
+          const section = structure.sections[i];
+          const assignedIds = section.assignedGraphics?.map(a => a.graphicId) || [];
+          sectionGraphicsMap.set(i, assignedIds);
+          totalAssignedGraphics += assignedIds.length;
+          if (assignedIds.length > 0) {
+            console.log(`[A+ Note V4] Section "${section.title}": ${assignedIds.length} graphic(s) assigned`);
+          }
+        }
+        console.log(`[A+ Note V4] Total graphics assigned to sections: ${totalAssignedGraphics}/${graphics.length}`);
       }
 
       await updateNoteProgress(admin, courseId, {
@@ -542,7 +582,7 @@ async function runNoteGeneration(
       const metadataToIgnore = structure.metadata_to_ignore || [];
       const transcribedSections: string[] = [];
 
-      // Track graphics already placed to prevent duplicates across sections
+      // Track graphics actually placed (for logging)
       const usedGraphicIds = new Set<string>();
 
       // Initialize partial content with title
@@ -567,15 +607,22 @@ async function runNoteGeneration(
         });
 
         const sectionSourceText = findSectionText(sourceText, section, structure.sections, i);
-        console.log(`[A+ Note V3] Processing section ${i + 1}/${sectionCount}: ${section.title}`);
+        console.log(`[A+ Note V4] Processing section ${i + 1}/${sectionCount}: ${section.title}`);
         if (USE_V3 && section.isEssential) {
-          console.log(`[A+ Note V3]   → Essential section with active learning opportunities`);
+          console.log(`[A+ Note V4]   → Essential section with active learning opportunities`);
         }
 
-        // Generate image context excluding already-used graphics (only if graphics enabled)
-        const sectionImageContext = config.includeGraphics ? formatGraphicsContext(graphics, usedGraphicIds) : '';
+        // V4: Get PRE-ASSIGNED graphics for this section (not all graphics!)
+        let sectionImageContext = '';
         if (config.includeGraphics) {
-          console.log(`[A+ Note V3]   → ${graphics.length - usedGraphicIds.size} graphics available (${usedGraphicIds.size} already placed)`);
+          const assignedIds = sectionGraphicsMap.get(i) || [];
+          if (assignedIds.length > 0) {
+            const sectionGraphics = getGraphicsForSection(graphicsWithUrls, assignedIds);
+            sectionImageContext = formatGraphicsContextForSection(sectionGraphics);
+            console.log(`[A+ Note V4]   → ${sectionGraphics.length} graphic(s) PRE-ASSIGNED to this section`);
+          } else {
+            console.log(`[A+ Note V4]   → No graphics assigned to this section`);
+          }
         }
 
         const sectionContent = await transcribeSection(
@@ -585,7 +632,7 @@ async function runNoteGeneration(
           section.contentTypes || { definitions: [], formulas: [], numerical_examples: [], graphs_or_visuals: [], exercises: [] },
           metadataToIgnore,
           config,
-          sectionImageContext, // Use filtered context instead of full imageContext
+          sectionImageContext, // V4: Use PRE-FILTERED context (only assigned graphics)
           section, // Pass full section for V3
           USE_V3
         );
@@ -595,7 +642,7 @@ async function runNoteGeneration(
           const sectionGraphicIds = extractGraphicReferences(sectionContent);
           sectionGraphicIds.forEach(id => usedGraphicIds.add(id));
           if (sectionGraphicIds.length > 0) {
-            console.log(`[A+ Note V3]   → Placed ${sectionGraphicIds.length} graphic(s) in this section`);
+            console.log(`[A+ Note V4]   → Placed ${sectionGraphicIds.length} graphic(s) in this section`);
           }
         }
 
@@ -614,7 +661,7 @@ async function runNoteGeneration(
       }
 
       if (config.includeGraphics) {
-        console.log(`[A+ Note V3] Total graphics placed: ${usedGraphicIds.size}/${graphics.length}`);
+        console.log(`[A+ Note V4] Total graphics placed: ${usedGraphicIds.size}/${graphics.length}`);
       }
 
       // Assemble content

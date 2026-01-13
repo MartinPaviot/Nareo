@@ -153,14 +153,30 @@ Start directly with the course title.`;
 
 export function getStructurePromptV3(
   config: PersonnalisationConfig,
-  languageName: string
+  languageName: string,
+  graphicsContext: string = ''
 ): string {
+  // Add assignedGraphics to schema only if graphics are provided
+  const assignedGraphicsSchema = graphicsContext ? `
+      "assignedGraphics": [
+        {
+          "graphicId": "exact-uuid-from-graphics-list",
+          "matchReason": "Brief reason why this graphic belongs here"
+        }
+      ],` : '';
+
+  const graphicsInstructions = graphicsContext ? `
+- assignedGraphics: Assign graphics from the AVAILABLE GRAPHICS list to sections where they SEMANTICALLY match
+  - Use EXACT graphicId from the list (copy-paste the UUID)
+  - Each graphic should be assigned to AT MOST ONE section
+  - Leave unassigned if no section matches the graphic's description` : '';
+
   return `You are an expert in educational document analysis and cognitive sciences.
 
 Your task is to analyze this course document and identify its ESSENTIAL structure based on the Pareto Principle (20% of content provides 80% of understanding).
 
 Extract the core ideas, essential sections, and learning opportunities that will be used to create an active revision sheet.
-
+${graphicsContext ? `\n${graphicsContext}\n` : ''}
 Return a valid JSON object with this structure:
 
 {
@@ -185,7 +201,7 @@ Return a valid JSON object with this structure:
       "pageRange": {
         "start": 1,
         "end": 5
-      },
+      },${assignedGraphicsSchema}
       "contentTypes": {
         "definitions": ["term1", "term2"],
         "formulas": ["formula1", "formula2"],
@@ -224,7 +240,7 @@ Key instructions:
 - sections.isEssential: Mark as true only sections with VITAL concepts
 - essentialContent: List only ESSENTIAL definitions, key formulas, and critical examples
 - activeLearningOpportunities: Identify concepts for analogies, concrete examples from the course
-- connections: Identify prerequisites and links between concepts
+- connections: Identify prerequisites and links between concepts${graphicsInstructions}
 
 Analysis language: ${languageName}
 

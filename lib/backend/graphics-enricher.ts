@@ -635,3 +635,128 @@ export async function enrichPromptWithGraphics(
   // If no marker found, append at the end
   return `${basePrompt}\n\n${graphicsContext}`;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                    NEW: STRUCTURE-PHASE GRAPHIC ASSIGNMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Interface for graphic assignment to sections
+ */
+export interface GraphicAssignment {
+  graphicId: string;
+  matchReason: string;
+}
+
+/**
+ * Format graphics for structure analysis phase (compact format)
+ *
+ * This is used during the structure analysis phase to let the LLM assign
+ * each graphic to the most appropriate section based on semantic matching.
+ *
+ * @param graphics - Array of graphic summaries
+ * @returns Formatted string for structure analysis prompt
+ */
+export function formatGraphicsForStructureAnalysis(graphics: GraphicSummary[]): string {
+  if (graphics.length === 0) return '';
+
+  const graphicsList = graphics.map((g, i) => {
+    return `[${i + 1}] ID: "${g.id}"
+    Page: ${g.pageNumber}
+    Type: ${g.type}
+    Description: "${g.description}"`;
+  }).join('\n\n');
+
+  return `
+═══════════════════════════════════════════════════════════════════════════════
+                    GRAPHICS TO ASSIGN TO SECTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+${graphics.length} graphic(s) available for assignment:
+
+${graphicsList}
+
+GRAPHIC ASSIGNMENT INSTRUCTIONS:
+For each section in your JSON output, include an "assignedGraphics" array.
+Each assignment should contain:
+- graphicId: The exact ID string from above (e.g., "${graphics[0]?.id || 'uuid-here'}")
+- matchReason: Brief explanation of why this graphic belongs in this section
+
+RULES:
+1. Assign a graphic ONLY if its description EXACTLY matches the section topic
+2. Each graphic should be assigned to AT MOST ONE section
+3. It is OK to leave graphics unassigned if no section matches semantically
+4. Do NOT force assignments - precision is more important than coverage
+5. Read the description carefully before assigning
+
+EXAMPLES:
+- Graphic "supply and demand curves intersecting" → Assign to section about market equilibrium
+- Graphic "cell division stages" → Assign to section about mitosis/meiosis
+- Graphic "timeline of French Revolution" → Assign to section about French Revolution
+- Graphic "general axes without data" → Do NOT assign (empty graphic)
+`;
+}
+
+/**
+ * Filter graphics for a specific section based on assigned IDs
+ *
+ * @param allGraphics - Array of all graphics with URLs
+ * @param assignedIds - Array of graphic IDs assigned to this section
+ * @returns Filtered array of graphics for this section only
+ */
+export function getGraphicsForSection(
+  allGraphics: GraphicWithUrl[],
+  assignedIds: string[]
+): GraphicWithUrl[] {
+  if (assignedIds.length === 0) return [];
+
+  const idSet = new Set(assignedIds);
+  return allGraphics.filter(g => idSet.has(g.id));
+}
+
+/**
+ * Format graphics context for section transcription (simplified format)
+ *
+ * This is a much shorter format than formatGraphicsContext because the graphics
+ * have already been pre-filtered to only include those relevant to this section.
+ * The LLM no longer needs to choose among many options.
+ *
+ * @param graphics - Array of graphics assigned to this section (typically 1-3)
+ * @returns Formatted string for transcription prompt
+ */
+export function formatGraphicsContextForSection(graphics: GraphicWithUrl[]): string {
+  if (graphics.length === 0) {
+    return '';
+  }
+
+  const graphicsList = graphics.map((g, index) => {
+    const elements = g.elements && g.elements.length > 0
+      ? g.elements.slice(0, 4).join(', ')
+      : 'N/A';
+
+    return `
+**Graphic ${index + 1}: ${g.description}**
+- Type: ${g.type}
+- Key elements: ${elements}
+- Image: \`![${g.description}](${g.publicUrl})\``;
+  }).join('\n');
+
+  return `
+═══════════════════════════════════════════════════════════════════════════════
+               GRAPHICS ASSIGNED TO THIS SECTION (${graphics.length})
+═══════════════════════════════════════════════════════════════════════════════
+${graphicsList}
+
+PLACEMENT INSTRUCTIONS:
+1. These graphics were PRE-SELECTED as relevant to this section
+2. Place each graphic where its description matches your text
+3. Use the exact markdown syntax provided above
+4. Introduce each graphic using its EXACT description
+5. Do NOT add graphics not listed here
+
+FORMAT:
+"[Sentence using EXACT description from above]"
+![description](url)
+[1-2 sentences explaining key elements to observe]
+`;
+}

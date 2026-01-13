@@ -15,28 +15,39 @@ export function getGlossairePrompt(
   const matiereSpecifics = getMatiereGlossaireSpecifics(config.matiere);
   const niveauInstructions = getNiveauGlossaireInstructions(config.niveau);
 
-  return `À partir de cette note de cours, génère un glossaire complet.
+  // Headers based on language
+  const headers: Record<string, { title: string; term: string; definition: string }> = {
+    French: { title: 'Glossaire', term: 'Terme', definition: 'Définition' },
+    English: { title: 'Glossary', term: 'Term', definition: 'Definition' },
+    German: { title: 'Glossar', term: 'Begriff', definition: 'Definition' },
+    Spanish: { title: 'Glosario', term: 'Término', definition: 'Definición' },
+    Italian: { title: 'Glossario', term: 'Termine', definition: 'Definizione' },
+    Portuguese: { title: 'Glossário', term: 'Termo', definition: 'Definição' },
+  };
+  const h = headers[languageName] || headers.English;
 
-FORMAT (tableau Markdown avec CHAQUE LIGNE SUR UNE NOUVELLE LIGNE) :
-## Glossaire
+  return `Generate a comprehensive glossary from this course note.
 
-| Terme | Définition |
+FORMAT (Markdown table with EACH ROW ON A NEW LINE):
+## ${h.title}
+
+| ${h.term} | ${h.definition} |
 |-------|------------|
-| terme1 | définition |
-| terme2 | définition |
+| term1 | definition |
+| term2 | definition |
 
-RÈGLES CRITIQUES DE FORMATAGE :
-- CHAQUE ligne du tableau DOIT être sur sa propre ligne (saut de ligne entre chaque row)
-- La ligne de séparation |-------|------------| DOIT être sur sa propre ligne après l'en-tête
-- Inclus TOUS les termes techniques, acronymes, et concepts clés
-- Ordonne alphabétiquement
-- Minimum 10 termes, maximum 30
+CRITICAL FORMATTING RULES:
+- EACH table row MUST be on its own line (newline between each row)
+- The separator row |-------|------------| MUST be on its own line after the header
+- Include ALL technical terms, acronyms, and key concepts
+- Order alphabetically
+- Minimum 10 terms, maximum 30
 
 ${niveauInstructions}
 
 ${matiereSpecifics}
 
-Génère en ${languageName}.`;
+Generate in ${languageName}.`;
 }
 
 function getNiveauGlossaireInstructions(niveau: NiveauDetail): string {

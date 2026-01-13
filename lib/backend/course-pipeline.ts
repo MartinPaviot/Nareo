@@ -355,7 +355,9 @@ export async function processCourseJob(jobId: string) {
         title: ch.title || `${chapterLabel} ${idx + 1}`,
         summary: ch.short_summary || fallbackSummary,
         difficulty: difficultyLabel,
-        orderIndex: (ch.index && Number.isFinite(ch.index)) ? ch.index - 1 : idx,
+        // ALWAYS use idx to guarantee sequential order (0, 1, 2, ...)
+        // This ensures stable chapter ordering regardless of LLM-provided index values
+        orderIndex: idx,
         // Store learning objectives and key concepts for better chunking and question generation
         learning_objectives: ch.learning_objectives || [],
         key_concepts: ch.key_concepts || [],

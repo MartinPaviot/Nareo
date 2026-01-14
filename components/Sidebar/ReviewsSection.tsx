@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Bell, ChevronDown, ChevronRight, Check, Loader2 } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTodayReviewCounts } from '@/hooks/useFlashcardReviews';
@@ -13,7 +12,6 @@ interface ReviewsSectionProps {
 }
 
 export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
-  const { isDark } = useTheme();
   const { translate } = useLanguage();
   const { user } = useAuth();
   const { counts, totalCount, isLoading } = useTodayReviewCounts();
@@ -27,30 +25,38 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
       {/* Section header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-          isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'
-        }`}
+        className="w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors duration-150"
+        style={{ backgroundColor: 'transparent' }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
       >
         <div className="flex items-center gap-1.5">
-          <Bell className={`w-3.5 h-3.5 ${totalCount > 0 ? 'text-orange-500' : isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${
-            isDark ? 'text-neutral-500' : 'text-gray-500'
-          }`}>
+          <Bell
+            className="w-3.5 h-3.5"
+            style={{ color: totalCount > 0 ? 'var(--color-nareo)' : 'var(--sidebar-text-muted)' }}
+          />
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider"
+            style={{ color: 'var(--sidebar-text-muted)' }}
+          >
             {translate('sidebar_reviews_title', 'Révisions du jour')}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {isLoading ? (
-            <Loader2 className="w-3 h-3 animate-spin text-orange-500" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--color-nareo)' }} />
           ) : totalCount > 0 ? (
-            <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0 rounded-full min-w-[18px] text-center">
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center text-white"
+              style={{ backgroundColor: 'var(--color-nareo)' }}
+            >
               {totalCount}
             </span>
           ) : null}
           {isExpanded ? (
-            <ChevronDown className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+            <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--sidebar-text-muted)' }} />
           ) : (
-            <ChevronRight className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+            <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--sidebar-text-muted)' }} />
           )}
         </div>
       </button>
@@ -59,15 +65,16 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
       {isExpanded && (
         <div className="mt-1 space-y-0.5">
           {isLoading ? (
-            <div className="flex items-center justify-center py-2">
-              <Loader2 className="w-3 h-3 animate-spin text-orange-500" />
+            <div className="flex items-center justify-center py-3">
+              <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--color-nareo)' }} />
             </div>
           ) : totalCount === 0 ? (
-            <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg ${
-              isDark ? 'bg-neutral-800/50' : 'bg-gray-50'
-            }`}>
-              <Check className="w-3 h-3 text-green-500" />
-              <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+              style={{ backgroundColor: 'var(--sidebar-hover)' }}
+            >
+              <Check className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} />
+              <span className="text-[11px]" style={{ color: 'var(--sidebar-text-muted)' }}>
                 {translate('sidebar_no_reviews', 'Rien à réviser !')}
               </span>
             </div>
@@ -79,15 +86,14 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
                   key={course.course_id}
                   href={`/flashcards/review/${course.course_id}`}
                   onClick={onClose}
-                  className={`flex items-center justify-between px-2 py-0.5 rounded-md text-xs transition-colors ${
-                    isDark
-                      ? 'hover:bg-neutral-800 text-neutral-300'
-                      : 'hover:bg-gray-100 text-gray-700'
-                  }`}
+                  className="flex items-center justify-between px-2 py-1 rounded-lg text-[11px] transition-colors duration-150"
+                  style={{ color: 'var(--sidebar-text)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <span className="truncate pr-2">{course.course_title}</span>
-                  <span className={`text-[10px] flex-shrink-0 ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-                    ({course.count})
+                  <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: 'var(--sidebar-text-muted)' }}>
+                    {course.count}
                   </span>
                 </Link>
               ))}
@@ -96,11 +102,13 @@ export default function ReviewsSection({ onClose }: ReviewsSectionProps) {
               <Link
                 href="/flashcards/review/all"
                 onClick={onClose}
-                className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                  isDark
-                    ? 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
-                    : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
-                }`}
+                className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors duration-150"
+                style={{
+                  backgroundColor: 'var(--sidebar-active-bg)',
+                  color: 'var(--color-nareo)',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
               >
                 {translate('sidebar_review_all', 'Tout réviser')} ({totalCount})
               </Link>

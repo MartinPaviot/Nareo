@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Star, UserPlus, HelpCircle, Plus, X, Trash2, Pencil, Maximize2, Minimize2, Lock } from 'lucide-react';
+import { Loader2, RotateCcw, ChevronLeft, ChevronRight, Star, UserPlus, HelpCircle, Plus, X, Trash2, Pencil, Maximize2, Minimize2, Lock, Archive } from 'lucide-react';
+import AcquiredCardsSection from './AcquiredCardsSection';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -457,6 +458,48 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setDeletingCard(false);
+    }
+  };
+
+  const handleArchiveCard = async () => {
+    if (!user) {
+      setShowSignupModal(true);
+      return;
+    }
+
+    const cardToArchive = flashcards[currentIndex];
+    if (!cardToArchive) return;
+
+    try {
+      const response = await fetch('/api/flashcards/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flashcardId: cardToArchive.id,
+          archived: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to archive flashcard');
+      }
+
+      // Remove the flashcard from the list (it's now archived)
+      const newFlashcards = flashcards.filter((_, idx) => idx !== currentIndex);
+      setFlashcards(newFlashcards);
+
+      // Adjust current index if needed
+      if (newFlashcards.length === 0) {
+        setCurrentIndex(0);
+      } else if (currentIndex >= newFlashcards.length) {
+        setCurrentIndex(newFlashcards.length - 1);
+      }
+
+      setIsFlipped(false);
+      setHasAnswered(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
 
@@ -1193,6 +1236,15 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
             <Trash2 className="w-5 h-5" />
           </button>
           <button
+            onClick={() => user ? handleArchiveCard() : setShowSignupModal(true)}
+            className={`p-2 rounded-lg transition-colors ${
+              isDark ? 'text-green-400 hover:text-green-300 hover:bg-green-500/20' : 'text-green-600 hover:text-green-700 hover:bg-green-50'
+            }`}
+            title={translate('flashcard_archive') || 'Marquer comme acquis'}
+          >
+            <Archive className="w-5 h-5" />
+          </button>
+          <button
             onClick={() => user ? setShowRegenerateModal(true) : setShowSignupModal(true)}
             disabled={generating}
             className={`p-2 rounded-lg transition-colors ${
@@ -1309,6 +1361,33 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
           <Maximize2 className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Acquired (archived) cards section */}
+      {user && (
+        <AcquiredCardsSection
+          courseId={courseId}
+          onCardRestored={() => {
+            // Refresh flashcards when a card is restored
+            fetch(`/api/courses/${courseId}/flashcards`)
+              .then(res => res.json())
+              .then(data => {
+                if (data.flashcards) {
+                  const normalizedFlashcards = data.flashcards.map((fc: Flashcard & { concept?: string; definition?: string }) => ({
+                    id: fc.id,
+                    type: fc.type || 'definition',
+                    front: fc.front || fc.concept || '',
+                    back: fc.back || fc.definition || '',
+                    mastery: fc.mastery || 'new',
+                    correctCount: fc.correctCount || 0,
+                    incorrectCount: fc.incorrectCount || 0,
+                    chapterId: fc.chapterId,
+                  }));
+                  setFlashcards(normalizedFlashcards);
+                }
+              });
+          }}
+        />
+      )}
 
       {/* Signup Modal */}
       {showSignupModal && createPortal(

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // Get all cards due for review with their course info
+    // Get all cards due for review with their course info (exclude archived)
     const { data: progressData, error: progressError } = await supabase
       .from('flashcard_progress')
       .select(`
@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('user_id', user.id)
-      .lte('next_review_at', now);
+      .lte('next_review_at', now)
+      .or('is_archived.is.null,is_archived.eq.false');
 
     if (progressError) {
       console.error('Error fetching review counts:', progressError);

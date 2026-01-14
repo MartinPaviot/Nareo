@@ -31,11 +31,11 @@ export default function LearnPageHeader({
   }[maxWidth];
 
   return (
-    <header className={`border-b transition-colors sticky top-0 z-30 h-[52px] relative ${
+    <header className={`border-b transition-colors sticky top-0 z-30 h-[52px] ${
       isDark
-        ? 'bg-neutral-900 border-neutral-800 before:bg-neutral-900'
-        : 'bg-white border-gray-200 before:bg-white'
-    } before:absolute before:top-0 before:right-full before:w-[250px] before:h-full before:hidden md:before:block`}>
+        ? 'bg-neutral-900 border-neutral-800'
+        : 'bg-white border-gray-200'
+    }`}>
       <div className={`${maxWidthClass} mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3`}>
         {/* Left side: Breadcrumb */}
         <div className="flex items-center gap-2 min-w-0 flex-1">

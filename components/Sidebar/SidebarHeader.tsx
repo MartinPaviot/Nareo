@@ -2,45 +2,49 @@
 
 import Image from 'next/image';
 import { X } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
 
 interface SidebarHeaderProps {
   onClose: () => void;
 }
 
 export default function SidebarHeader({ onClose }: SidebarHeaderProps) {
-  const { isDark } = useTheme();
-
   return (
-    <div className={`flex items-center justify-between px-3 h-[52px] border-b ${
-      isDark ? 'border-neutral-800' : 'border-gray-200'
-    }`}>
-      {/* Logo mascotte + title */}
-      <div className="flex items-center gap-2">
-        <Image
-          src="/chat/mascotte.png"
-          alt="Nareo"
-          width={40}
-          height={40}
-          className="rounded-lg"
-        />
-        <span className={`text-base font-bold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-          Nareo
-        </span>
-      </div>
+    <div className="flex-shrink-0">
+      <div className="h-[51px] flex items-center justify-between px-3">
+        {/* Logo mascotte + title */}
+        <div className="flex items-center gap-2">
+          <Image
+            src="/chat/mascotte.png"
+            alt="Nareo"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
+          <span
+            className="text-base font-semibold tracking-tight"
+            style={{ color: 'var(--sidebar-text)' }}
+          >
+            Nareo
+          </span>
+        </div>
 
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className={`p-2 rounded-lg transition-colors ${
-          isDark
-            ? 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
-            : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-        }`}
-        aria-label="Fermer la sidebar"
-      >
-        <X className="w-5 h-5" />
-      </button>
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg transition-colors duration-150 text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-nareo)] focus-visible:ring-offset-2"
+          style={{ backgroundColor: 'transparent' }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          aria-label="Fermer la sidebar"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      {/* Separator line - full width */}
+      <div
+        className="w-full h-px"
+        style={{ backgroundColor: 'var(--sidebar-border)' }}
+      />
     </div>
   );
 }

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 /**
- * GET /api/flashcards/reviews
- * Get flashcards due for review today
+ * GET /api/flashcards/archived
+ * Get archived (acquired) flashcards for the user
  * Optional: ?courseId=xxx to filter by course
  */
 export async function GET(request: NextRequest) {
@@ -22,21 +22,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('courseId');
 
-    const now = new Date().toISOString();
-
-    // Step 1: Get flashcard progress for this user that are due (exclude archived)
+    // Get archived flashcard progress for this user
     const { data: progressData, error: progressError } = await supabase
       .from('flashcard_progress')
       .select('*')
       .eq('user_id', user.id)
-      .lte('next_review_at', now)
-      .or('is_archived.is.null,is_archived.eq.false')
-      .order('next_review_at', { ascending: true });
+      .eq('is_archived', true)
+      .order('archived_at', { ascending: false });
 
     if (progressError) {
-      console.error('Error fetching progress:', progressError);
+      console.error('Error fetching archived progress:', progressError);
       return NextResponse.json({
-        error: 'Failed to fetch review cards',
+        error: 'Failed to fetch archived cards',
         details: progressError.message || progressError.code || 'Unknown error'
       }, { status: 500 });
     }
@@ -49,7 +46,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Step 2: Get the flashcard IDs and fetch flashcards separately
+    // Get the flashcard IDs and fetch flashcards separately
     const flashcardIds = progressData.map(p => p.flashcard_id);
 
     const { data: flashcardsData, error: flashcardsError } = await supabase
@@ -92,11 +89,14 @@ export async function GET(request: NextRequest) {
             incorrect_count: p.incorrect_count,
             last_rating: p.last_rating,
             mastery: p.mastery,
+            is_archived: p.is_archived,
+            archived_at: p.archived_at,
           }
         };
       })
       .filter((c): c is NonNullable<typeof c> => c !== null);
 
+    // Filter by course if specified
     if (courseId) {
       cards = cards.filter(c => c.course_id === courseId);
     }
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       count: cards.length,
     });
   } catch (error) {
-    console.error('Error in reviews API:', error);
+    console.error('Error in archived API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

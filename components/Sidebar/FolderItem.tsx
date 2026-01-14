@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Folder, ChevronRight, MoreHorizontal, Trash2 } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import DeleteFolderDialog from '@/components/course-management/DeleteFolderDialog';
 
@@ -27,7 +26,6 @@ export default function FolderItem({
   onClick,
   onFolderDeleted,
 }: FolderItemProps) {
-  const { isDark } = useTheme();
   const { translate } = useLanguage();
 
   const [showMenu, setShowMenu] = useState(false);
@@ -57,64 +55,55 @@ export default function FolderItem({
   return (
     <div className="relative group">
       <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-all group ${
-        isActive
-          ? isDark
-            ? 'bg-orange-500/20 border border-orange-500/30'
-            : 'bg-orange-50 border border-orange-200'
-          : isDark
-            ? 'hover:bg-neutral-800 border border-transparent'
-            : 'hover:bg-gray-50 border border-transparent'
-      }`}
-    >
-      {/* Folder icon */}
-      <div
-        className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${color}20` }}
+        onClick={onClick}
+        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all duration-150 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-nareo)] focus-visible:ring-offset-2"
+        style={{
+          backgroundColor: isActive ? 'var(--sidebar-active-bg)' : 'transparent',
+          border: isActive ? '1px solid var(--sidebar-active-border)' : '1px solid transparent',
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive) e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)';
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+        }}
       >
-        {icon ? (
-          <span className="text-[10px]">{icon}</span>
-        ) : (
-          <Folder
-            className="w-3 h-3"
-            style={{ color }}
-          />
-        )}
-      </div>
+        {/* Folder icon */}
+        <div
+          className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: `${color}15` }}
+        >
+          {icon ? (
+            <span className="text-xs">{icon}</span>
+          ) : (
+            <Folder
+              className="w-3.5 h-3.5"
+              style={{ color }}
+            />
+          )}
+        </div>
 
-      {/* Folder name */}
-      <span className={`flex-1 text-left text-[10px] font-medium truncate ${
-        isActive
-          ? 'text-orange-500'
-          : isDark
-            ? 'text-neutral-100'
-            : 'text-gray-900'
-      }`}>
-        {name}
-      </span>
+        {/* Folder name */}
+        <span
+          className="flex-1 text-left text-[11px] font-medium truncate"
+          style={{ color: isActive ? 'var(--color-nareo)' : 'var(--sidebar-text)' }}
+        >
+          {name}
+        </span>
 
-      {/* Course count badge */}
-      <span className={`px-1.5 py-0 text-[10px] font-medium rounded-full ${
-        isActive
-          ? isDark
-            ? 'bg-orange-500/30 text-orange-400'
-            : 'bg-orange-100 text-orange-600'
-          : isDark
-            ? 'bg-neutral-700 text-neutral-400'
-            : 'bg-gray-100 text-gray-500'
-      }`}>
-        {courseCount}
-      </span>
+        {/* Course count - simplified */}
+        <span
+          className="text-[11px] tabular-nums"
+          style={{ color: 'var(--sidebar-text-muted)' }}
+        >
+          {courseCount}
+        </span>
 
         {/* Chevron */}
-        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${
-          isActive
-            ? 'text-orange-500'
-            : isDark
-              ? 'text-neutral-500 group-hover:text-neutral-400'
-              : 'text-gray-400 group-hover:text-gray-500'
-        } group-hover:translate-x-0.5`} />
+        <ChevronRight
+          className="w-4 h-4 transition-transform duration-150 group-hover:translate-x-0.5"
+          style={{ color: isActive ? 'var(--color-nareo)' : 'var(--sidebar-text-muted)' }}
+        />
       </button>
 
       {/* Menu button - appears on hover */}
@@ -125,16 +114,24 @@ export default function FolderItem({
             e.stopPropagation();
             setShowMenu(!showMenu);
           }}
-          className={`absolute top-1/2 -translate-y-1/2 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-            showMenu ? 'opacity-100' : ''
-          } ${
-            isDark
-              ? 'hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200 bg-neutral-800'
-              : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600 bg-white'
+          className={`absolute top-1/2 -translate-y-1/2 right-1.5 p-1 rounded-md transition-all duration-150 ${
+            showMenu ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
+          style={{
+            backgroundColor: 'var(--sidebar-bg)',
+            color: 'var(--sidebar-text-muted)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)';
+            e.currentTarget.style.color = 'var(--sidebar-text)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--sidebar-bg)';
+            e.currentTarget.style.color = 'var(--sidebar-text-muted)';
+          }}
           title={translate('delete_folder_button') || 'Supprimer'}
         >
-          <MoreHorizontal className="w-3.5 h-3.5" />
+          <MoreHorizontal className="w-4 h-4" />
         </button>
       )}
 
@@ -142,11 +139,11 @@ export default function FolderItem({
       {showMenu && onFolderDeleted && (
         <div
           ref={menuRef}
-          className={`absolute right-0 top-8 z-50 w-36 rounded-lg shadow-lg border py-1 ${
-            isDark
-              ? 'bg-neutral-800 border-neutral-700'
-              : 'bg-white border-gray-200'
-          }`}
+          className="absolute right-0 top-9 z-50 w-36 rounded-lg shadow-lg py-1"
+          style={{
+            backgroundColor: 'var(--sidebar-bg)',
+            border: '1px solid var(--sidebar-border)',
+          }}
         >
           <button
             onClick={(e) => {
@@ -154,9 +151,9 @@ export default function FolderItem({
               setShowMenu(false);
               setShowDeleteDialog(true);
             }}
-            className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors text-red-500 hover:bg-red-500/10"
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors duration-150 text-red-500 hover:bg-red-500/10"
           >
-            <Trash2 className="w-3 h-3 flex-shrink-0" />
+            <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{translate('delete_folder_button') || 'Supprimer'}</span>
           </button>
         </div>

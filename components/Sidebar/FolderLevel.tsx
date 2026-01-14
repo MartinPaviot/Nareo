@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import { FolderPlus, Upload, Inbox, MessageCircleQuestion, Folder as FolderIcon, ChevronDown, ChevronRight, FileText } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import SearchInput from './SearchInput';
 import FolderItem from './FolderItem';
@@ -39,7 +38,6 @@ export default function FolderLevel({
   onFolderDeleted,
   onCourseDeleted,
 }: FolderLevelProps) {
-  const { isDark } = useTheme();
   const { translate } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [isFoldersExpanded, setIsFoldersExpanded] = useState(true);
@@ -113,23 +111,24 @@ export default function FolderLevel({
 
         {hasNoContent ? (
           // Empty state
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
-              isDark ? 'bg-neutral-800' : 'bg-gray-100'
-            }`}>
-              <Inbox className={`w-8 h-8 ${isDark ? 'text-neutral-600' : 'text-gray-400'}`} />
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+              style={{ backgroundColor: 'var(--sidebar-hover)' }}
+            >
+              <Inbox className="w-8 h-8" style={{ color: 'var(--sidebar-text-muted)' }} />
             </div>
-            <p className={`text-sm font-medium mb-1 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+            <p className="text-sm font-medium mb-1" style={{ color: 'var(--sidebar-text)' }}>
               {translate('sidebar_no_folders') || 'Aucun dossier'}
             </p>
-            <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
+            <p className="text-xs" style={{ color: 'var(--sidebar-text-muted)' }}>
               {translate('sidebar_create_first_folder') || 'Créez votre premier dossier'}
             </p>
           </div>
         ) : !filteredData.hasResults ? (
           // No search results
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <p className="text-sm" style={{ color: 'var(--sidebar-text-muted)' }}>
               {translate('sidebar_no_results') || 'Aucun résultat'}
             </p>
           </div>
@@ -137,30 +136,32 @@ export default function FolderLevel({
           <>
             {/* Folders section - collapsible */}
             {filteredData.folders.length > 0 && (
-              <div className={`${!filteredData.isSearching ? 'border-t pt-0.5' : ''} ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <div className={`${!filteredData.isSearching ? 'mt-2 pt-1' : ''}`}>
                 {/* Collapsible header */}
                 <button
                   onClick={() => setIsFoldersExpanded(!isFoldersExpanded)}
-                  className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-                    isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'
-                  }`}
+                  className="w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors duration-150"
+                  style={{ backgroundColor: 'transparent' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <div className="flex items-center gap-1.5">
-                    <FolderIcon className="w-3.5 h-3.5 text-orange-500" />
-                    <span className={`text-[10px] font-semibold uppercase tracking-wider ${
-                      isDark ? 'text-neutral-500' : 'text-gray-500'
-                    }`}>
+                    <FolderIcon className="w-3.5 h-3.5" style={{ color: 'var(--color-nareo)' }} />
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'var(--sidebar-text-muted)' }}
+                    >
                       {translate('sidebar_my_folders') || 'Mes dossiers'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className={`text-[10px] ${isDark ? 'text-neutral-600' : 'text-gray-400'}`}>
+                    <span className="text-[10px] tabular-nums" style={{ color: 'var(--sidebar-text-muted)', opacity: 0.6 }}>
                       {filteredData.folders.length}
                     </span>
                     {isFoldersExpanded ? (
-                      <ChevronDown className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+                      <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--sidebar-text-muted)' }} />
                     ) : (
-                      <ChevronRight className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+                      <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--sidebar-text-muted)' }} />
                     )}
                   </div>
                 </button>
@@ -188,16 +189,17 @@ export default function FolderLevel({
 
             {/* Matching courses section (shown when searching) */}
             {filteredData.isSearching && filteredData.matchingCourses.length > 0 && (
-              <div className={`${filteredData.folders.length > 0 ? 'border-t pt-0.5' : ''} ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
-                <div className={`flex items-center gap-1.5 px-2 py-1`}>
-                  <FileText className="w-3.5 h-3.5 text-orange-500" />
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${
-                    isDark ? 'text-neutral-500' : 'text-gray-500'
-                  }`}>
+              <div className={`${filteredData.folders.length > 0 ? 'mt-2 pt-1' : ''}`}>
+                <div className="flex items-center gap-1.5 px-2 py-1">
+                  <FileText className="w-3.5 h-3.5" style={{ color: 'var(--color-nareo)' }} />
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ color: 'var(--sidebar-text-muted)' }}
+                  >
                     {translate('sidebar_courses') || 'Cours'}
                   </p>
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 mt-1">
                   {filteredData.matchingCourses.map((course) => {
                     // Find which folder this course is in
                     const courseFolderId = folders.find(f =>
@@ -228,30 +230,32 @@ export default function FolderLevel({
 
             {/* Uncategorized section (only when not searching) - collapsible */}
             {!filteredData.isSearching && filteredData.uncategorized.length > 0 && (
-              <div className={`border-t pt-0.5 ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <div className="mt-2 pt-1">
                 {/* Collapsible header */}
                 <button
                   onClick={() => setIsUncategorizedExpanded(!isUncategorizedExpanded)}
-                  className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-                    isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'
-                  }`}
+                  className="w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors duration-150"
+                  style={{ backgroundColor: 'transparent' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <div className="flex items-center gap-1.5">
-                    <Inbox className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
-                    <span className={`text-[10px] font-semibold uppercase tracking-wider ${
-                      isDark ? 'text-neutral-500' : 'text-gray-500'
-                    }`}>
+                    <Inbox className="w-3.5 h-3.5" style={{ color: 'var(--sidebar-text-muted)' }} />
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color: 'var(--sidebar-text-muted)' }}
+                    >
                       {translate('sidebar_no_folder') || 'Sans dossier'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className={`text-[10px] ${isDark ? 'text-neutral-600' : 'text-gray-400'}`}>
+                    <span className="text-[10px] tabular-nums" style={{ color: 'var(--sidebar-text-muted)', opacity: 0.6 }}>
                       {filteredData.uncategorized.length}
                     </span>
                     {isUncategorizedExpanded ? (
-                      <ChevronDown className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+                      <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--sidebar-text-muted)' }} />
                     ) : (
-                      <ChevronRight className={`w-3.5 h-3.5 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`} />
+                      <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--sidebar-text-muted)' }} />
                     )}
                   </div>
                 </button>
@@ -284,37 +288,45 @@ export default function FolderLevel({
       </div>
 
       {/* Footer - Action buttons */}
-      <div className={`flex-shrink-0 px-2 pt-1.5 pb-1 border-t ${isDark ? 'border-neutral-800' : 'border-gray-200'}`}>
+      <div className="flex-shrink-0 px-3 pt-2 pb-1.5">
         <button
           onClick={onCreateFolder}
-          className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
-            isDark
-              ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-orange-400'
-              : 'bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-600'
-          }`}
+          className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors duration-150"
+          style={{
+            backgroundColor: 'transparent',
+            color: 'var(--sidebar-text-muted)',
+            border: '1px solid var(--sidebar-border)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)';
+            e.currentTarget.style.color = 'var(--sidebar-text)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = 'var(--sidebar-text-muted)';
+          }}
         >
           <FolderPlus className="w-3.5 h-3.5" />
           {translate('sidebar_new_folder') || 'Nouveau dossier'}
         </button>
         <button
           onClick={onUploadCourse}
-          className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 mt-1 rounded-lg text-[11px] font-medium transition-colors text-white hover:opacity-90"
-          style={{ backgroundColor: '#ff751f' }}
+          className="w-full flex items-center justify-center gap-1.5 px-2 py-2 mt-1.5 rounded-lg text-[11px] font-medium transition-opacity duration-150 text-white hover:opacity-90"
+          style={{ backgroundColor: 'var(--color-nareo)' }}
         >
           <Upload className="w-3.5 h-3.5" />
           {translate('sidebar_upload_course') || 'Déposer un cours'}
         </button>
       </div>
 
-      {/* Support footer - aligned with main footer */}
-      <div className={`flex-shrink-0 px-2 py-1.5 border-t ${isDark ? 'border-neutral-800 bg-neutral-900/50' : 'border-gray-100 bg-gray-50/50'}`}>
+      {/* Support footer - espace réservé pour le guide */}
+      <div className="flex-shrink-0 px-3 py-1.5">
         <button
           onClick={onContactClick}
-          className={`w-full flex items-center justify-center gap-1.5 text-[10px] transition-colors ${
-            isDark
-              ? 'text-neutral-500 hover:text-orange-400'
-              : 'text-gray-400 hover:text-orange-500'
-          }`}
+          className="w-full flex items-center justify-center gap-1.5 text-[10px] transition-colors duration-150"
+          style={{ color: 'var(--sidebar-text-muted)' }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-nareo)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--sidebar-text-muted)'}
         >
           <MessageCircleQuestion className="w-3 h-3" />
           {translate('sidebar_support_contact') || 'Support & Contact'}

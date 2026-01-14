@@ -460,6 +460,15 @@ export const translations: Record<Language, Translations> = {
     go_to_dashboard: 'Go to dashboard',
     saving: 'Saving...',
 
+    // Archive (Acquired Cards)
+    flashcard_archive: 'Mark as acquired',
+    flashcard_archive_short: 'Acquired',
+    flashcard_archive_action: 'Remove',
+    flashcard_unarchive: 'Restore to reviews',
+    flashcard_acquired_section: 'Acquired cards',
+    flashcard_acquired_empty: 'No acquired cards yet',
+    flashcard_archived_on: 'Acquired on',
+
     // Sidebar - Reviews
     sidebar_reviews_title: "Today's Reviews",
     sidebar_no_reviews: 'Nothing to review!',
@@ -2227,6 +2236,15 @@ export const translations: Record<Language, Translations> = {
     flashcard_review_title: 'Révision',
     go_to_dashboard: 'Aller au tableau de bord',
     saving: 'Enregistrement...',
+
+    // Archive (Acquired Cards)
+    flashcard_archive: 'Marquer comme acquis',
+    flashcard_archive_short: 'Acquis',
+    flashcard_archive_action: 'Retirer',
+    flashcard_unarchive: 'Restaurer aux révisions',
+    flashcard_acquired_section: 'Cartes acquises',
+    flashcard_acquired_empty: 'Aucune carte acquise',
+    flashcard_archived_on: 'Acquis le',
 
     // Sidebar - Reviews
     sidebar_reviews_title: 'Révisions du jour',
@@ -3997,6 +4015,15 @@ export const translations: Record<Language, Translations> = {
     flashcard_review_title: 'Wiederholung',
     go_to_dashboard: 'Zum Dashboard',
     saving: 'Speichern...',
+
+    // Archive (Acquired Cards)
+    flashcard_archive: 'Als gelernt markieren',
+    flashcard_archive_short: 'Gelernt',
+    flashcard_archive_action: 'Entfernen',
+    flashcard_unarchive: 'Wiederherstellen',
+    flashcard_acquired_section: 'Gelernte Karten',
+    flashcard_acquired_empty: 'Keine gelernten Karten',
+    flashcard_archived_on: 'Gelernt am',
 
     // Sidebar - Reviews
     sidebar_reviews_title: 'Heutige Wiederholungen',

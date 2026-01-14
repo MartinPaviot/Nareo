@@ -82,6 +82,10 @@ function KeyboardHelpTooltip({ isDark }: { isDark?: boolean }) {
               <span>{translate('flashcard_rating_easy') || 'Facile'}</span>
             </div>
             <div className="flex justify-between gap-4">
+              <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>A</span>
+              <span>{translate('flashcard_archive') || 'Acquis'}</span>
+            </div>
+            <div className="flex justify-between gap-4">
               <span className={isDark ? 'text-neutral-400' : 'text-gray-400'}>F</span>
               <span>{translate('flashcards_fullscreen') || 'Plein écran'}</span>
             </div>
@@ -157,12 +161,10 @@ export default function ReviewPage() {
     };
   }, [currentCard?.progress]);
 
-  // Handle card flip
+  // Handle card flip - toggle between front and back
   const handleFlip = useCallback(() => {
-    if (!isFlipped) {
-      setIsFlipped(true);
-    }
-  }, [isFlipped]);
+    setIsFlipped(prev => !prev);
+  }, []);
 
   // Handle rating
   const handleRating = useCallback(async (rating: Rating) => {
@@ -269,6 +271,45 @@ export default function ReviewPage() {
     }
   }, [refetch, isAllCourses, courseId, router]);
 
+  // Handle archive - mark card as acquired
+  const handleArchive = useCallback(async () => {
+    if (!currentCard || !user) return;
+
+    try {
+      await fetch('/api/flashcards/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flashcardId: currentCard.id,
+          archived: true,
+        }),
+      });
+
+      // Remove card from session and move to next
+      const newCards = sessionCards.filter(c => c.id !== currentCard.id);
+      setSessionCards(newCards);
+
+      // Update session stats to reflect the removed card
+      if (sessionStats) {
+        setSessionStats({
+          ...sessionStats,
+          total: sessionStats.total - 1,
+        });
+      }
+
+      if (newCards.length === 0) {
+        setSessionState('completed');
+      } else if (currentIndex >= newCards.length) {
+        setCurrentIndex(newCards.length - 1);
+      }
+
+      setIsFlipped(false);
+      setHasAnswered(false);
+    } catch (error) {
+      console.error('Error archiving card:', error);
+    }
+  }, [currentCard, user, sessionCards, currentIndex, sessionStats]);
+
   // Handle breadcrumb folder click
   const handleBreadcrumbFolderClick = useCallback(() => {
     if (currentCourseInfo.folder) {
@@ -311,6 +352,13 @@ export default function ReviewPage() {
             handleRating('easy');
           }
           break;
+        case 'a':
+        case 'A':
+          if (isFlipped && !isProcessing && !hasAnswered) {
+            e.preventDefault();
+            handleArchive();
+          }
+          break;
         case 'f':
         case 'F':
           e.preventDefault();
@@ -330,7 +378,7 @@ export default function ReviewPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFlipped, isProcessing, hasAnswered, sessionState, isFullscreen, handleFlip, handleRating, router]);
+  }, [isFlipped, isProcessing, hasAnswered, sessionState, isFullscreen, handleFlip, handleRating, handleArchive, router]);
 
   // Loading state
   if (authLoading || isLoading) {
@@ -549,6 +597,7 @@ export default function ReviewPage() {
               onRate={handleRating}
               currentProgress={currentCardProgress}
               disabled={hasAnswered}
+              onArchive={handleArchive}
             />
           </div>
         )}
@@ -624,7 +673,7 @@ export default function ReviewPage() {
           maxWidth="4xl"
         />
 
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex-1 w-full">
           {/* Session completed - show recap */}
           {sessionState === 'completed' && sessionStats ? (
             <div className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
@@ -642,7 +691,7 @@ export default function ReviewPage() {
             </div>
           ) : (
             /* Playing session */
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Progress indicator and points */}
               <div className="flex flex-wrap items-center justify-end gap-2 text-xs sm:text-sm">
                 <div className="flex items-center gap-1">
@@ -671,7 +720,7 @@ export default function ReviewPage() {
               {currentCard && (
                 <div
                   onClick={handleFlip}
-                  className="relative w-full aspect-[5/3] sm:aspect-[2/1] cursor-pointer"
+                  className="relative w-full aspect-[3/2] sm:aspect-[5/2] cursor-pointer"
                   style={{ perspective: '1000px' }}
                 >
                   <div
@@ -735,12 +784,14 @@ export default function ReviewPage() {
               {isFlipped && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="h-20 flex items-center justify-center"
+                  className="h-16 flex items-center justify-center"
                 >
                   <RatingButtons
                     onRate={handleRating}
                     currentProgress={currentCardProgress}
                     disabled={hasAnswered || isProcessing}
+                    onArchive={handleArchive}
+                    compact
                   />
                 </div>
               )}

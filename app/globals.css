@@ -36,6 +36,15 @@
   --color-success-soft: rgba(55, 159, 90, 0.15);
   --color-error: #d91a1c;
   --color-error-soft: #fff6f3;
+
+  /* Sidebar - Modern & Minimal */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #f0f0f0;
+  --sidebar-text: #0a0a0a;
+  --sidebar-text-muted: #737373;
+  --sidebar-hover: rgba(0, 0, 0, 0.02);
+  --sidebar-active-bg: #fff7ed;
+  --sidebar-active-border: #ffedd5;
 }
 
 /* Dark mode - Warm palette optimized for orange branding
@@ -70,6 +79,15 @@
   --color-success-soft: rgba(74, 222, 128, 0.15);
   --color-error: #f87171; /* red-400 */
   --color-error-soft: rgba(248, 113, 113, 0.15);
+
+  /* Sidebar - Modern & Minimal (Dark) */
+  --sidebar-bg: #0a0a0a;
+  --sidebar-border: #1a1a1a;
+  --sidebar-text: #fafafa;
+  --sidebar-text-muted: #737373;
+  --sidebar-hover: rgba(255, 255, 255, 0.03);
+  --sidebar-active-bg: rgba(255, 117, 31, 0.08);
+  --sidebar-active-border: rgba(255, 117, 31, 0.15);
 }
 
 /* Utility classes using CSS variables */

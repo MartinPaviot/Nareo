@@ -334,3 +334,108 @@ export function useSaveSession() {
     error,
   };
 }
+
+// Type for archived flashcard with progress
+export interface ArchivedFlashcard extends FlashcardWithProgress {
+  progress: FlashcardWithProgress['progress'] & {
+    is_archived: boolean;
+    archived_at: string;
+  };
+}
+
+interface UseArchivedFlashcardsReturn {
+  cards: ArchivedFlashcard[];
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+  restoreCard: (flashcardId: string) => Promise<void>;
+  isRestoring: boolean;
+}
+
+/**
+ * Hook to fetch archived (acquired) flashcards
+ */
+export function useArchivedFlashcards(courseId?: string): UseArchivedFlashcardsReturn {
+  const { user } = useAuth();
+  const [cards, setCards] = useState<ArchivedFlashcard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCards = useCallback(async () => {
+    if (!user) {
+      setCards([]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const url = courseId
+        ? `/api/flashcards/archived?courseId=${courseId}`
+        : '/api/flashcards/archived';
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch archived cards');
+      }
+
+      const data = await response.json();
+      setCards(data.cards || []);
+    } catch (err) {
+      console.error('Error fetching archived cards:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, courseId]);
+
+  const restoreCard = useCallback(async (flashcardId: string) => {
+    if (!user) {
+      setError('User not authenticated');
+      return;
+    }
+
+    try {
+      setIsRestoring(true);
+      setError(null);
+
+      const response = await fetch('/api/flashcards/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flashcardId,
+          archived: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to restore card');
+      }
+
+      // Remove the card from the local list
+      setCards(prev => prev.filter(c => c.id !== flashcardId));
+    } catch (err) {
+      console.error('Error restoring card:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      throw err;
+    } finally {
+      setIsRestoring(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
+
+  return {
+    cards,
+    isLoading,
+    error,
+    refetch: fetchCards,
+    restoreCard,
+    isRestoring,
+  };
+}

@@ -193,59 +193,60 @@ export default function CourseSidebar({
       {/* Toggle button with mascot - only visible when sidebar is closed */}
       {!isOpen && (
         <div
-          className={`hidden md:flex fixed top-0 left-0 h-[52px] z-40 flex items-center gap-2 px-3 border-b ${
-            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-          }`}
-          style={{ pointerEvents: disabled ? 'none' : 'auto', opacity: disabled ? 0.5 : 1 }}
+          className="hidden md:flex fixed top-0 left-0 z-40 flex-col border-b"
+          style={{
+            pointerEvents: disabled ? 'none' : 'auto',
+            opacity: disabled ? 0.5 : 1,
+            backgroundColor: isDark ? '#121212' : '#ffffff',
+            borderColor: isDark ? '#262626' : '#e5e7eb',
+          }}
         >
-          <button
-            onClick={onOpen}
-            disabled={disabled}
-            className={`p-1.5 rounded-lg transition-colors ${
-              isDark
-                ? 'hover:bg-neutral-800 text-neutral-400 hover:text-orange-400'
-                : 'hover:bg-gray-100 text-gray-500 hover:text-orange-500'
-            }`}
-            aria-label="Ouvrir le menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <Image
-            src="/chat/mascotte.png"
-            alt="Nareo"
-            width={40}
-            height={40}
-            className="rounded-lg"
-          />
+          <div className="h-[51px] flex items-center gap-2 px-3">
+            <button
+              onClick={onOpen}
+              disabled={disabled}
+              className="p-1.5 rounded-lg transition-colors duration-150 text-[var(--sidebar-text-muted)] hover:text-[var(--color-nareo)] hover:bg-[var(--sidebar-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-nareo)] focus-visible:ring-offset-2"
+              aria-label="Ouvrir le menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <Image
+              src="/chat/mascotte.png"
+              alt="Nareo"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
+          </div>
         </div>
       )}
 
       {/* Desktop: Animated sidebar that pushes content */}
       <aside
-        className={`hidden md:flex fixed top-0 left-0 h-full w-[250px] z-40 flex-col transition-all duration-300 ease-out ${
-          isDark ? 'bg-neutral-900' : 'bg-white'
-        } ${isOpen ? (isDark ? 'border-r border-neutral-800' : 'border-r border-gray-200') : ''}`}
+        className="hidden md:flex fixed top-0 left-0 h-full w-[260px] z-40 flex-col transition-all duration-200 ease-out"
         style={{
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
           visibility: isOpen ? 'visible' : 'hidden',
           pointerEvents: disabled ? 'none' : 'auto',
           opacity: disabled ? 0.5 : 1,
+          backgroundColor: 'var(--sidebar-bg)',
+          borderRight: isOpen ? '1px solid var(--sidebar-border)' : 'none',
         }}
       >
           {/* Header */}
           <SidebarHeader onClose={onClose} />
 
-          {/* Level content with slide animation */}
+          {/* Level content with fade animation */}
           <div className="flex-1 min-h-0 relative overflow-hidden">
             <AnimatePresence initial={false} mode="popLayout">
               {level === 'folders' ? (
                 <motion.div
                   key="folders"
-                  initial={{ x: '-100%', opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: '-100%', opacity: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="absolute inset-0 pt-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  className="absolute inset-0 pt-4"
                 >
                   <FolderLevel
                     folders={folders}
@@ -265,11 +266,11 @@ export default function CourseSidebar({
               ) : (
                 <motion.div
                   key="courses"
-                  initial={{ x: '100%', opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: '100%', opacity: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="absolute inset-0 pt-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15, ease: 'easeOut' }}
+                  className="absolute inset-0 pt-4"
                 >
                   <CourseLevel
                     folderName={selectedFolderName || ''}
@@ -298,9 +299,9 @@ export default function CourseSidebar({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
               onClick={onClose}
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              className="fixed inset-0 bg-black/40 z-40 md:hidden backdrop-blur-sm"
             />
 
             {/* Full Sidebar (mobile only) */}
@@ -309,28 +310,27 @@ export default function CourseSidebar({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className={`md:hidden fixed top-0 left-0 h-full w-[250px] z-50 shadow-2xl flex flex-col ${
-                isDark ? 'bg-neutral-900' : 'bg-white'
-              }`}
+              className="md:hidden fixed top-0 left-0 h-full w-[260px] z-50 shadow-2xl flex flex-col"
               style={{
                 pointerEvents: disabled ? 'none' : 'auto',
                 opacity: disabled ? 0.5 : 1,
+                backgroundColor: 'var(--sidebar-bg)',
               }}
             >
               {/* Header */}
               <SidebarHeader onClose={onClose} />
 
-              {/* Level content with slide animation */}
+              {/* Level content with fade animation */}
               <div className="flex-1 min-h-0 relative overflow-hidden">
                 <AnimatePresence initial={false} mode="popLayout">
                   {level === 'folders' ? (
                     <motion.div
                       key="folders"
-                      initial={{ x: '-100%', opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: '-100%', opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                      className="absolute inset-0 pt-3"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
+                      className="absolute inset-0 pt-4"
                     >
                       <FolderLevel
                         folders={folders}
@@ -350,11 +350,11 @@ export default function CourseSidebar({
                   ) : (
                     <motion.div
                       key="courses"
-                      initial={{ x: '100%', opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: '100%', opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                      className="absolute inset-0 pt-3"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
+                      className="absolute inset-0 pt-4"
                     >
                       <CourseLevel
                         folderName={selectedFolderName || ''}
@@ -404,12 +404,13 @@ export default function CourseSidebar({
 
       {/* Upload loading overlay */}
       {isUploading && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center">
-          <div className={`rounded-2xl p-6 flex flex-col items-center gap-4 ${
-            isDark ? 'bg-neutral-900' : 'bg-white'
-          }`}>
-            <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-            <p className={`text-sm font-medium ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <div
+            className="rounded-2xl p-6 flex flex-col items-center gap-4"
+            style={{ backgroundColor: 'var(--sidebar-bg)' }}
+          >
+            <Loader2 className="w-8 h-8 text-[var(--color-nareo)] animate-spin" />
+            <p className="text-sm font-medium" style={{ color: 'var(--sidebar-text)' }}>
               {translate('upload_processing_title') || 'Traitement en cours...'}
             </p>
           </div>

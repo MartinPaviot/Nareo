@@ -514,10 +514,17 @@ export async function POST(
 
   // Create SSE stream
   const encoder = new TextEncoder();
+  let controllerClosed = false;
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: string, data: any) => {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        if (controllerClosed) return;
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        } catch (e) {
+          // Controller already closed (client disconnected)
+          controllerClosed = true;
+        }
       };
 
       try {
@@ -744,7 +751,10 @@ export async function POST(
 
         console.log(`[Stream] Generation complete. Length: ${noteContent.length}`);
         send('complete', { success: true, length: noteContent.length });
-        controller.close();
+        if (!controllerClosed) {
+          controllerClosed = true;
+          controller.close();
+        }
 
       } catch (err: any) {
         console.error('[Stream] Generation error:', err);
@@ -759,7 +769,10 @@ export async function POST(
           .eq('id', courseId);
 
         send('error', { message: err.message || 'Erreur lors de la génération' });
-        controller.close();
+        if (!controllerClosed) {
+          controllerClosed = true;
+          controller.close();
+        }
       }
     },
   });

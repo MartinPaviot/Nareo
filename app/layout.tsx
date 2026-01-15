@@ -9,6 +9,7 @@ import { PosthogProvider } from '@/contexts/PosthogProvider';
 import { CoursesRefreshProvider } from '@/contexts/CoursesRefreshContext';
 import Footer from '@/components/layout/Footer';
 import CookieBannerWrapper from '@/components/layout/CookieBannerWrapper';
+import DynamicTitle from '@/components/layout/DynamicTitle';
 import ConditionalGTM from '@/components/analytics/ConditionalGTM';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -150,6 +151,7 @@ export default function RootLayout({
           <PosthogProvider>
             <AuthProvider>
               <LanguageProvider>
+                <DynamicTitle />
                 <ThemeProvider>
                   <CoursesRefreshProvider>
                     {/* Conditional GTM - only loads if analytics consent is given */}

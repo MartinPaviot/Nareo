@@ -6,6 +6,10 @@ export interface Translations {
 
 export const translations: Record<Language, Translations> = {
   en: {
+    // Site metadata
+    site_title: 'Nareo | Turn your courses into interactive quizzes with AI',
+    site_description: 'Nareo transforms your PDFs and documents into personalized quizzes, flashcards and summaries using AI. Study 2x more effectively with the testing effect method.',
+
     // Common
     loading: 'Loading...',
     error: 'Error',
@@ -1577,11 +1581,11 @@ export const translations: Record<Language, Translations> = {
 
     // Daily Goal Levels
     daily_goal_level_relaxed: 'Relaxed',
-    daily_goal_level_relaxed_time: '~5 min',
+    daily_goal_level_relaxed_time: '~10 min',
     daily_goal_level_standard: 'Standard',
-    daily_goal_level_standard_time: '~15 min',
+    daily_goal_level_standard_time: '~20 min',
     daily_goal_level_intensive: 'Intensive',
-    daily_goal_level_intensive_time: '~30 min',
+    daily_goal_level_intensive_time: '~35 min',
 
     // Streak Messages
     streak_message_on_fire: 'Streak maintained!',
@@ -1599,7 +1603,7 @@ export const translations: Record<Language, Translations> = {
     stats_daily_goal_completed: 'Goal completed!',
     stats_daily_goal_selector_title: 'Set your daily goal',
     stats_daily_goal_selector_subtitle: 'Choose a pace that suits your schedule',
-    stats_daily_goal_questions_per_day: 'questions/day',
+    stats_daily_goal_questions_per_day: 'QCM & flashcards/day',
     stats_daily_goal_selector_auto: 'Your goal adjusts automatically based on your activity',
     stats_cta_continue: 'Continue studying',
     stats_cta_start: 'Start studying',
@@ -1781,8 +1785,19 @@ export const translations: Record<Language, Translations> = {
     quiz_perso_type_tf_desc: 'Confirm or deny a statement',
     quiz_perso_type_fill: 'Fill in the blank',
     quiz_perso_type_fill_desc: 'Complete with the exact term',
+    quiz_perso_mode_label: 'Quiz mode',
+    quiz_perso_mode_chapter: 'By chapter',
+    quiz_perso_mode_chapter_desc: 'Questions for a specific chapter',
+    quiz_perso_mode_global: 'Global quiz',
+    quiz_perso_mode_global_desc: 'Mix questions from all chapters',
+    quiz_perso_exclude_seen: 'Exclude already answered questions',
+    quiz_perso_exclude_seen_desc: 'Only show new questions',
   },
   fr: {
+    // Site metadata
+    site_title: 'Nareo | Transformez vos cours en quiz interactifs avec l\'IA',
+    site_description: 'Nareo transforme vos PDF et documents en quiz personnalisés, flashcards et résumés grâce à l\'IA. Révisez 2x plus efficacement avec la méthode du testing effect.',
+
     // Common
     loading: 'Chargement...',
     error: 'Erreur',
@@ -3357,11 +3372,11 @@ export const translations: Record<Language, Translations> = {
 
     // Daily Goal Levels
     daily_goal_level_relaxed: 'Tranquille',
-    daily_goal_level_relaxed_time: '~5 min',
+    daily_goal_level_relaxed_time: '~10 min',
     daily_goal_level_standard: 'Standard',
-    daily_goal_level_standard_time: '~15 min',
+    daily_goal_level_standard_time: '~20 min',
     daily_goal_level_intensive: 'Intensif',
-    daily_goal_level_intensive_time: '~30 min',
+    daily_goal_level_intensive_time: '~35 min',
 
     // Streak Messages
     streak_message_on_fire: 'Série maintenue !',
@@ -3379,7 +3394,7 @@ export const translations: Record<Language, Translations> = {
     stats_daily_goal_completed: 'Objectif atteint !',
     stats_daily_goal_selector_title: 'Définis ton objectif',
     stats_daily_goal_selector_subtitle: 'Choisis un rythme adapté à ton emploi du temps',
-    stats_daily_goal_questions_per_day: 'questions/jour',
+    stats_daily_goal_questions_per_day: 'QCM & flashcards/jour',
     stats_daily_goal_selector_auto: 'Ton objectif s\'ajuste automatiquement selon ton activité',
     stats_cta_continue: 'Continuer à réviser',
     stats_cta_start: 'Commencer à réviser',
@@ -3549,9 +3564,9 @@ export const translations: Record<Language, Translations> = {
     quiz_perso_generating: 'Génération en cours...',
     quiz_perso_shuffle_note: 'Les questions seront mélangées aléatoirement.',
     quiz_perso_level_synthetic: 'Synthétique',
-    quiz_perso_level_synthetic_desc: '~5 questions par chapitre',
+    quiz_perso_level_synthetic_desc: '~5 questions par concept',
     quiz_perso_level_standard: 'Standard',
-    quiz_perso_level_standard_desc: '~10 questions par chapitre',
+    quiz_perso_level_standard_desc: '~8 questions par concept',
     quiz_perso_level_exhaustive: 'Exhaustif',
     quiz_perso_level_exhaustive_desc: 'Maximum de questions',
     quiz_perso_type_mcq: 'QCM',
@@ -3560,8 +3575,19 @@ export const translations: Record<Language, Translations> = {
     quiz_perso_type_tf_desc: 'Affirmer ou infirmer une proposition',
     quiz_perso_type_fill: 'Texte à trous',
     quiz_perso_type_fill_desc: 'Compléter avec le terme exact',
+    quiz_perso_mode_label: 'Mode de quiz',
+    quiz_perso_mode_chapter: 'Par chapitre',
+    quiz_perso_mode_chapter_desc: 'Questions pour un chapitre spécifique',
+    quiz_perso_mode_global: 'Quiz global',
+    quiz_perso_mode_global_desc: 'Mélange les questions de tous les chapitres',
+    quiz_perso_exclude_seen: 'Exclure les questions déjà répondues',
+    quiz_perso_exclude_seen_desc: 'Ne montre que les nouvelles questions',
   },
   de: {
+    // Site metadata
+    site_title: 'Nareo | Verwandeln Sie Ihre Kurse in interaktive Quizze mit KI',
+    site_description: 'Nareo verwandelt Ihre PDFs und Dokumente in personalisierte Quizze, Lernkarten und Zusammenfassungen mit KI. Lernen Sie 2x effektiver mit der Testing-Effect-Methode.',
+
     // Common
     loading: 'Laden...',
     error: 'Fehler',
@@ -5136,11 +5162,11 @@ export const translations: Record<Language, Translations> = {
 
     // Daily Goal Levels
     daily_goal_level_relaxed: 'Entspannt',
-    daily_goal_level_relaxed_time: '~5 Min',
+    daily_goal_level_relaxed_time: '~10 Min',
     daily_goal_level_standard: 'Standard',
-    daily_goal_level_standard_time: '~15 Min',
+    daily_goal_level_standard_time: '~20 Min',
     daily_goal_level_intensive: 'Intensiv',
-    daily_goal_level_intensive_time: '~30 Min',
+    daily_goal_level_intensive_time: '~35 Min',
 
     // Streak Messages
     streak_message_on_fire: 'Serie gehalten!',
@@ -5158,7 +5184,7 @@ export const translations: Record<Language, Translations> = {
     stats_daily_goal_completed: 'Ziel erreicht!',
     stats_daily_goal_selector_title: 'Tagesziel festlegen',
     stats_daily_goal_selector_subtitle: 'Wähle ein Tempo, das zu deinem Zeitplan passt',
-    stats_daily_goal_questions_per_day: 'Fragen/Tag',
+    stats_daily_goal_questions_per_day: 'QCM & Lernkarten/Tag',
     stats_daily_goal_selector_auto: 'Dein Ziel passt sich automatisch an deine Aktivität an',
     stats_cta_continue: 'Weiter lernen',
     stats_cta_start: 'Mit Lernen beginnen',
@@ -5334,5 +5360,12 @@ export const translations: Record<Language, Translations> = {
     quiz_perso_type_tf_desc: 'Eine Aussage bestätigen oder widerlegen',
     quiz_perso_type_fill: 'Lückentext',
     quiz_perso_type_fill_desc: 'Mit dem genauen Begriff vervollständigen',
+    quiz_perso_mode_label: 'Quiz-Modus',
+    quiz_perso_mode_chapter: 'Pro Kapitel',
+    quiz_perso_mode_chapter_desc: 'Fragen für ein bestimmtes Kapitel',
+    quiz_perso_mode_global: 'Globales Quiz',
+    quiz_perso_mode_global_desc: 'Fragen aus allen Kapiteln mischen',
+    quiz_perso_exclude_seen: 'Bereits beantwortete Fragen ausschließen',
+    quiz_perso_exclude_seen_desc: 'Nur neue Fragen anzeigen',
   },
 };

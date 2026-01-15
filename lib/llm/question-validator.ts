@@ -21,6 +21,9 @@ export interface MCQQuestion {
   source_reference?: string;      // Exact quote from source text supporting the answer
   cognitive_level?: 'remember' | 'understand' | 'apply';  // Bloom's taxonomy level
   concept_tested?: string;        // Which concept/learning objective this tests
+  // Fields for true/false questions
+  statement?: string;             // Statement for true/false questions
+  correct_answer?: boolean;       // Boolean answer for true/false questions
 }
 
 export interface ValidationError {
@@ -669,6 +672,217 @@ export class CourseDeduplicationTracker {
   clear(): void {
     this.questionTexts.clear();
   }
+}
+
+/**
+ * ============================================================================
+ * ADMINISTRATIVE CONTENT FILTER
+ * ============================================================================
+ * Filters out questions about course logistics, exam format, materials, etc.
+ * These questions test memorization of course structure, not academic content.
+ */
+
+// Keywords that indicate administrative/logistics content (case-insensitive)
+const ADMIN_KEYWORDS_FR = [
+  // Exam/Assessment structure
+  'examen final', 'examen partiel', 'durée de l\'examen', 'durée totale',
+  'parties de l\'examen', 'nombre de parties', 'format de l\'examen',
+  'barème', 'notation', 'coefficient', 'note finale', 'points bonus',
+  'évaluation continue', 'contrôle continu',
+
+  // Course structure
+  'séance', 'séances', 'travaux dirigés', 'travaux pratiques', 'td', 'tp',
+  'première partie de chaque', 'deuxième partie de chaque',
+  'structure du cours', 'organisation du cours', 'déroulement du cours',
+  'objectif principal du cours', 'objectif du cours', 'objectifs du cours',
+  'activités pédagogiques', 'méthode pédagogique', 'méthodes utilisées',
+
+  // Materials
+  'support de cours', 'supports de cours', 'diapositives', 'polycopié',
+  'ressources du cours', 'ressources mentionnées', 'matériel fourni',
+  'manuel recommandé', 'bibliographie', 'lectures obligatoires',
+
+  // Schedule/Timing
+  'horaire', 'emploi du temps', 'calendrier', 'semestre', 'trimestre',
+  'nombre d\'heures', 'heures de cours', 'crédits ects',
+
+  // Administrative
+  'professeur', 'enseignant', 'assistant', 'chargé de td',
+  'inscription', 'prérequis administratif', 'bureau', 'contact',
+];
+
+const ADMIN_KEYWORDS_EN = [
+  // Exam/Assessment structure
+  'final exam', 'midterm exam', 'exam duration', 'total duration',
+  'exam parts', 'number of parts', 'exam format', 'grading policy',
+  'grading scale', 'grade breakdown', 'bonus points', 'continuous assessment',
+
+  // Course structure
+  'lecture session', 'lab session', 'tutorial session', 'recitation',
+  'first part of each', 'second part of each', 'course structure',
+  'course organization', 'main objective of the course', 'course objective',
+  'course objectives', 'teaching methods', 'pedagogical activities',
+
+  // Materials
+  'course materials', 'lecture slides', 'handouts', 'course resources',
+  'resources mentioned', 'required textbook', 'recommended reading',
+  'bibliography', 'required readings',
+
+  // Schedule/Timing
+  'class schedule', 'course calendar', 'semester', 'quarter',
+  'credit hours', 'ects credits',
+
+  // Administrative
+  'professor', 'instructor', 'teaching assistant',
+  'enrollment', 'prerequisites administrative', 'office hours', 'contact info',
+];
+
+const ADMIN_KEYWORDS_DE = [
+  // Exam/Assessment structure
+  'abschlussprüfung', 'zwischenprüfung', 'prüfungsdauer', 'gesamtdauer',
+  'prüfungsteile', 'anzahl der teile', 'prüfungsformat', 'bewertungsschema',
+  'notenverteilung', 'bonuspunkte', 'fortlaufende bewertung',
+
+  // Course structure
+  'vorlesung', 'übung', 'seminar', 'praktikum',
+  'kursstruktur', 'kursorganisation', 'hauptziel des kurses',
+  'kursziele', 'lehrmethoden', 'pädagogische aktivitäten',
+
+  // Materials
+  'kursmaterialien', 'vorlesungsfolien', 'handouts', 'kursressourcen',
+  'empfohlenes lehrbuch', 'pflichtlektüre', 'literaturverzeichnis',
+
+  // Schedule/Timing
+  'stundenplan', 'kurskalender', 'semester', 'ects-punkte',
+
+  // Administrative
+  'dozent', 'professor', 'tutor', 'einschreibung', 'sprechstunden',
+];
+
+// Patterns that strongly indicate administrative content
+const ADMIN_PATTERNS = [
+  // Exam structure questions
+  /combien de parties?\s+(?:compose|comporte|comprend)/i,
+  /quelle est la durée/i,
+  /quel(?:le)? est (?:l[''])?(?:objectif|but) (?:principal )?du cours/i,
+  /quels sont les objectifs du cours/i,
+
+  // Course logistics
+  /(?:première|seconde|deuxième|dernière) partie de (?:chaque|la) séance/i,
+  /méthodes? utilisée?s? dans (?:les|le) (?:cours|td|travaux)/i,
+  /ressources? mentionnée?s? (?:pour|dans)/i,
+  /comment (?:est|sont) (?:organisé|structuré)/i,
+
+  // English patterns
+  /how many parts does the exam/i,
+  /what is the duration of/i,
+  /what is the (?:main )?objective of (?:the|this) course/i,
+  /what are the course objectives/i,
+  /methods? used in (?:the )?(?:course|lectures|tutorials)/i,
+  /resources mentioned (?:for|in)/i,
+
+  // German patterns
+  /wie viele teile hat die prüfung/i,
+  /wie lange dauert/i,
+  /was ist das (?:haupt)?ziel des kurses/i,
+];
+
+/**
+ * Check if a question is about administrative/logistics content
+ * Returns true if the question should be FILTERED OUT (is administrative)
+ */
+export function isAdministrativeQuestion(questionText: string): {
+  isAdmin: boolean;
+  reason?: string;
+  matchedKeyword?: string;
+} {
+  const lowerText = questionText.toLowerCase();
+
+  // Check patterns first (strongest signal)
+  for (const pattern of ADMIN_PATTERNS) {
+    if (pattern.test(lowerText)) {
+      return {
+        isAdmin: true,
+        reason: 'Matches administrative pattern',
+        matchedKeyword: pattern.source
+      };
+    }
+  }
+
+  // Check French keywords
+  for (const keyword of ADMIN_KEYWORDS_FR) {
+    if (lowerText.includes(keyword.toLowerCase())) {
+      return {
+        isAdmin: true,
+        reason: 'Contains French administrative keyword',
+        matchedKeyword: keyword
+      };
+    }
+  }
+
+  // Check English keywords
+  for (const keyword of ADMIN_KEYWORDS_EN) {
+    if (lowerText.includes(keyword.toLowerCase())) {
+      return {
+        isAdmin: true,
+        reason: 'Contains English administrative keyword',
+        matchedKeyword: keyword
+      };
+    }
+  }
+
+  // Check German keywords
+  for (const keyword of ADMIN_KEYWORDS_DE) {
+    if (lowerText.includes(keyword.toLowerCase())) {
+      return {
+        isAdmin: true,
+        reason: 'Contains German administrative keyword',
+        matchedKeyword: keyword
+      };
+    }
+  }
+
+  return { isAdmin: false };
+}
+
+/**
+ * Filter out administrative questions from a batch
+ * Returns only questions about actual academic content
+ */
+export function filterAdministrativeQuestions(
+  questions: MCQQuestion[]
+): {
+  filtered: MCQQuestion[];
+  removed: Array<{ question: string; reason: string; keyword?: string }>;
+  stats: { total: number; kept: number; removed: number };
+} {
+  const filtered: MCQQuestion[] = [];
+  const removed: Array<{ question: string; reason: string; keyword?: string }> = [];
+
+  for (const question of questions) {
+    const questionText = question.prompt || question.question || '';
+    const check = isAdministrativeQuestion(questionText);
+
+    if (check.isAdmin) {
+      removed.push({
+        question: questionText.substring(0, 100) + (questionText.length > 100 ? '...' : ''),
+        reason: check.reason || 'Administrative content',
+        keyword: check.matchedKeyword,
+      });
+    } else {
+      filtered.push(question);
+    }
+  }
+
+  return {
+    filtered,
+    removed,
+    stats: {
+      total: questions.length,
+      kept: filtered.length,
+      removed: removed.length,
+    },
+  };
 }
 
 /**

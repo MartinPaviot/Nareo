@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, Loader2, BookOpen, Layers, FileText, RefreshCw } from 'lucide-react';
+import { AlertCircle, Loader2, BookOpen, Layers, FileText, RefreshCw, X } from 'lucide-react';
 import GenerationLoadingScreen from '@/components/course/GenerationLoadingScreen';
 import ExtractionLoader from '@/components/course/ExtractionLoader';
 import Image from 'next/image';
@@ -13,8 +13,8 @@ import PaywallModal from '@/components/course/PaywallModal';
 import FlashcardsView from '@/components/course/FlashcardsView';
 import APlusNoteView from '@/components/course/APlusNoteView';
 import QuizPersonnalisationScreen from '@/components/course/QuizPersonnalisationScreen';
-import QuizChapterManagement from '@/components/course/QuizChapterManagement';
 import { StreamingQuestion } from '@/components/course/ProgressiveQuizView';
+import ProgressiveQuizStreamView, { StreamingQuestion as StreamViewQuestion } from '@/components/course/ProgressiveQuizStreamView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -24,7 +24,7 @@ import { loadDemoCourse } from '@/lib/demoCourse';
 import { useCourseChapters } from '@/hooks/useCourseChapters';
 import { useSidebarNavigation } from '@/hooks/useSidebarNavigation';
 import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
-import { useQuizProgressStream } from '@/hooks/useSSEStream';
+import { useQuizProgressStream, useQuizGenerateStream } from '@/hooks/useSSEStream';
 import { useSmoothedProgress } from '@/hooks/useAnimatedProgress';
 import { QuizConfig } from '@/types/quiz-personnalisation';
 import GlobalDropZone from '@/components/upload/GlobalDropZone';
@@ -87,8 +87,15 @@ export default function CourseLearnPage() {
   }, [folders, courseId]);
   const [quizGenerationError, setQuizGenerationError] = useState<string | null>(null);
   const [streamingQuestions, setStreamingQuestions] = useState<StreamingQuestion[]>([]);
+  // State for real-time streaming quiz questions (new streaming mode)
+  const [realTimeStreamingQuestions, setRealTimeStreamingQuestions] = useState<StreamViewQuestion[]>([]);
+  const [isStreamingMode, setIsStreamingMode] = useState(false);
+  // Loading state for auto-loading quiz questions
+  const [isLoadingQuizQuestions, setIsLoadingQuizQuestions] = useState(false);
   // Local state to show loading immediately when generation starts (before server confirms)
   const [isStartingGeneration, setIsStartingGeneration] = useState(false);
+  // State for showing regeneration modal
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
 
   // Map step keys to translation keys for quiz generation
   const translateQuizStepMessage = useCallback((step: string | undefined, message: string | undefined): string => {
@@ -220,9 +227,42 @@ export default function CourseLearnPage() {
     return STEP_TO_MESSAGE[quizGenerationStep] || quizGenerationStep;
   }, [quizGenerationStep]);
 
-  // Function to generate quiz on demand - synchronous approach
-  // The backend now waits for completion before returning
-  // Progress is tracked via polling from the database during generation
+  // Real-time streaming quiz generation - generates AND streams questions simultaneously
+  // This allows users to start playing immediately as questions are generated
+  // NOTE: Declared here (before handleGenerateQuiz) to avoid "used before declaration" error
+  const quizGenerateStream = useQuizGenerateStream(courseId || '', {
+    onEvent: (event) => {
+      console.log('[quiz-generate-stream] Event received:', event.type);
+    },
+    onQuestion: (event) => {
+      // Add question to real-time streaming list
+      const questionEvent = event as unknown as { type: 'question'; data: StreamViewQuestion; questionsGenerated: number; progress: number };
+      if (questionEvent.data) {
+        setRealTimeStreamingQuestions(prev => {
+          // Avoid duplicates
+          if (prev.some(q => q.id === questionEvent.data.id)) return prev;
+          return [...prev, questionEvent.data];
+        });
+      }
+    },
+    onComplete: async () => {
+      console.log('[quiz-generate-stream] Generation complete');
+      // DON'T set isStreamingMode to false here - user is still playing the quiz!
+      // isStreamingMode will be set to false when user finishes playing via ProgressiveQuizStreamView.onComplete
+      setIsStartingGeneration(false);
+      // Refetch to update course status
+      await refetch();
+    },
+    onError: (error) => {
+      console.error('[quiz-generate-stream] Stream error:', error);
+      setQuizGenerationError(error);
+      setIsStreamingMode(false);
+      setIsStartingGeneration(false);
+    },
+  });
+
+  // Function to generate quiz on demand - now uses real-time streaming by default
+  // Questions are streamed as they are generated, allowing users to start playing immediately
   const handleGenerateQuiz = useCallback(async (config?: QuizConfig) => {
     console.log('[learn] handleGenerateQuiz called with config:', config);
     if (!courseId || isDemoId) {
@@ -231,62 +271,88 @@ export default function CourseLearnPage() {
     }
 
     // Check if already generating on server or locally
-    if (isStartingGeneration || apiCourse?.quiz_status === 'generating') {
+    if (isStartingGeneration || apiCourse?.quiz_status === 'generating' || quizGenerateStream.isStreaming) {
       console.log('[learn] Quiz already generating, skipping');
       return;
     }
 
     setQuizGenerationError(null);
-    setStreamingQuestions([]); // Reset streaming questions
+    setStreamingQuestions([]); // Reset legacy streaming questions
+    setRealTimeStreamingQuestions([]); // Reset real-time streaming questions
     setIsStartingGeneration(true); // Show loading immediately
+    setIsStreamingMode(true); // Enable streaming mode for progressive play
 
     // Clear sessionStorage to ensure clean state on regeneration
     sessionStorage.removeItem(`progressive_quiz_${courseId}`);
     setWasPlayingProgressiveQuiz(false);
 
-    // Small delay to allow React to re-render and show the loading screen
-    // before the long-running fetch blocks the main thread
+    // Small delay to allow React to re-render
     await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
-      console.log('[learn] Starting quiz generation...');
+      console.log('[learn] Starting real-time quiz generation stream...');
 
-      // Call the API - it now waits for completion (synchronous)
-      const response = await fetch(`/api/courses/${courseId}/quiz/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error || 'Failed to start quiz generation');
-      }
-
-      const result = await response.json();
-      console.log('[learn] Quiz generation completed:', result);
-
-      // Refetch to get the updated status (should be 'ready' now)
-      await refetch();
-
-      // Generation completed successfully - clear local state
-      // At this point, server has already set quiz_status to 'ready' or 'partial'
-      setIsStartingGeneration(false);
+      // Start the streaming generation - questions will arrive via onQuestion callback
+      await quizGenerateStream.startGeneration(config);
 
       trackEvent('quiz_generation_started', {
         userId: user?.id,
         courseId,
         config,
+        mode: 'streaming',
       });
 
     } catch (err) {
       console.error('Error during quiz generation:', err);
       setQuizGenerationError(err instanceof Error ? err.message : 'Failed to generate quiz');
-      await refetch();
-      // Clear isStartingGeneration on error too
+      setIsStreamingMode(false);
       setIsStartingGeneration(false);
+      await refetch();
     }
-  }, [courseId, isDemoId, isStartingGeneration, apiCourse?.quiz_status, refetch, user?.id]);
+  }, [courseId, isDemoId, isStartingGeneration, apiCourse?.quiz_status, quizGenerateStream, refetch, user?.id]);
+
+  // Function to show regenerate modal
+  const handleShowRegenerateModal = useCallback(() => {
+    setShowRegenerateModal(true);
+  }, []);
+
+  // Function to actually regenerate quiz - deletes existing questions and starts new generation
+  const handleConfirmRegenerate = useCallback(async (config?: QuizConfig) => {
+    if (!courseId || isDemoId) return;
+
+    try {
+      console.log('[learn] Regenerating quiz - deleting existing questions...');
+      setShowRegenerateModal(false);
+
+      // Delete all existing questions for this course
+      const deleteResponse = await fetch(`/api/courses/${courseId}/quiz`, {
+        method: 'DELETE',
+      });
+
+      if (!deleteResponse.ok) {
+        console.error('[learn] Failed to delete questions:', deleteResponse.status);
+        // Continue anyway
+      } else {
+        const deleteData = await deleteResponse.json();
+        console.log(`[learn] Deleted ${deleteData.deletedCount} questions`);
+      }
+
+      // Clear local state
+      setRealTimeStreamingQuestions([]);
+
+      // Start new generation with the provided config
+      await handleGenerateQuiz(config);
+
+      trackEvent('quiz_regenerated', {
+        userId: user?.id,
+        courseId,
+        config,
+      });
+    } catch (err) {
+      console.error('[learn] Error regenerating quiz:', err);
+      setQuizGenerationError(err instanceof Error ? err.message : 'Failed to regenerate quiz');
+    }
+  }, [courseId, isDemoId, handleGenerateQuiz, user?.id]);
 
   // Function to retry processing a stuck course
   const handleRetryProcessing = useCallback(async () => {
@@ -522,6 +588,70 @@ export default function CourseLearnPage() {
     }
   }, [course, chapters.length, isStuck, processingStartTime, jobStatus?.stage]);
 
+  // Auto-load quiz questions when quiz is ready and user is on quiz tab
+  // This provides a seamless experience like flashcards - no intermediate "start" screen
+  useEffect(() => {
+    const loadQuizQuestions = async () => {
+      // Only load if:
+      // 1. Quiz is ready
+      // 2. User is on quiz tab
+      // 3. Not already in streaming mode (to avoid reloading during active quiz)
+      // 4. Not currently generating or loading
+      // 5. We have a courseId
+      if (
+        (course?.quiz_status === 'ready' || course?.quiz_status === 'partial') &&
+        activeTab === 'quiz' &&
+        !isStreamingMode &&
+        !isGeneratingQuiz &&
+        !isLoadingQuizQuestions &&
+        courseId &&
+        !isDemoId &&
+        realTimeStreamingQuestions.length === 0
+      ) {
+        console.log('[learn] Auto-loading quiz questions...');
+        setIsLoadingQuizQuestions(true);
+        try {
+          const response = await fetch(`/api/courses/${courseId}/questions`);
+          if (response.ok) {
+            const data = await response.json();
+            const questions = data.questions || [];
+            console.log(`[learn] Fetched ${questions.length} questions from API`);
+            if (questions.length > 0) {
+              // Convert DB questions to StreamViewQuestion format
+              const streamQuestions = questions.map((q: any, idx: number) => ({
+                id: q.id,
+                chapterId: q.chapter_id,
+                chapterTitle: '',
+                chapterIndex: 0,
+                questionNumber: idx + 1,
+                questionText: q.question_text,
+                options: q.options || [],
+                type: q.type || 'mcq',
+                correctOptionIndex: q.correct_option_index,
+                explanation: q.explanation || '',
+                points: q.points || 10,
+                phase: q.phase || 'mcq',
+              }));
+              setRealTimeStreamingQuestions(streamQuestions);
+              setIsStreamingMode(true);
+              console.log(`[learn] Auto-loaded ${streamQuestions.length} quiz questions`);
+            } else {
+              console.log('[learn] No questions found in DB, quiz may need regeneration');
+            }
+          } else {
+            console.error('[learn] Failed to fetch questions:', response.status);
+          }
+        } catch (err) {
+          console.error('[learn] Error auto-loading quiz questions:', err);
+        } finally {
+          setIsLoadingQuizQuestions(false);
+        }
+      }
+    };
+
+    loadQuizQuestions();
+  }, [course?.quiz_status, activeTab, isStreamingMode, isGeneratingQuiz, isLoadingQuizQuestions, courseId, isDemoId, realTimeStreamingQuestions.length]);
+
   // SSE stream for quiz generation progress
   // This replaces polling with real-time updates via Server-Sent Events
   const quizStream = useQuizProgressStream(courseId || '', {
@@ -565,14 +695,22 @@ export default function CourseLearnPage() {
   });
 
   // SSE-based progress values (override polling values when streaming)
-  const rawProgress = quizStream.isStreaming ? quizStream.progress : quizGenerationProgress;
-  const sseQuestionsGenerated = quizStream.isStreaming
+  // Priority: real-time generate stream > progress stream > polling
+  const rawProgress = quizGenerateStream.isStreaming
+    ? quizGenerateStream.progress
+    : quizStream.isStreaming
+    ? quizStream.progress
+    : quizGenerationProgress;
+  const sseQuestionsGenerated = quizGenerateStream.isStreaming
+    ? realTimeStreamingQuestions.length
+    : quizStream.isStreaming
     ? quizStream.events.filter(e => e.type === 'question').length
     : questionsGenerated;
 
   // Apply smooth animation to progress (slowly increments 0.5%/sec between server updates)
   // This prevents the progress bar from "freezing" and gives users visual feedback
-  const sseProgress = useSmoothedProgress(rawProgress, isGeneratingQuiz);
+  const isCurrentlyGenerating = isGeneratingQuiz || quizGenerateStream.isStreaming;
+  const sseProgress = useSmoothedProgress(rawProgress, isCurrentlyGenerating);
 
   // Start SSE stream when quiz generation begins
   useEffect(() => {
@@ -960,7 +1098,9 @@ export default function CourseLearnPage() {
 
             {/* Quiz not generated yet - show personnalisation screen (hide once generation starts) */}
             {/* Use isGeneratingQuiz which includes local isStartingGeneration state for immediate feedback */}
-            {!isDemoId && course?.status === 'ready' && !isGeneratingQuiz && course?.quiz_status !== 'ready' && course?.quiz_status !== 'partial' && (
+            {/* Also hide during streaming mode */}
+            {/* IMPORTANT: Also check chapters.length > 0 to ensure chapters exist before allowing generation */}
+            {!isDemoId && course?.status === 'ready' && !isGeneratingQuiz && !isStreamingMode && course?.quiz_status !== 'ready' && course?.quiz_status !== 'partial' && (
               <>
                 {quizGenerationError && (
                   <div
@@ -973,63 +1113,73 @@ export default function CourseLearnPage() {
                     {quizGenerationError}
                   </div>
                 )}
-                <QuizPersonnalisationScreen
-                  onGenerate={handleGenerateQuiz}
-                  isGenerating={isGeneratingQuiz}
-                />
+                {chapters.length > 0 ? (
+                  <QuizPersonnalisationScreen
+                    onGenerate={handleGenerateQuiz}
+                    isGenerating={isGeneratingQuiz}
+                  />
+                ) : (
+                  <div className={`rounded-2xl border shadow-sm p-6 sm:p-8 text-center transition-colors ${
+                    isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+                  }`}>
+                    <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+                      isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+                    }`}>
+                      <AlertCircle className={`w-8 h-8 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
+                    </div>
+                    <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+                      {translate('quiz_no_chapters_title') || 'Aucun chapitre disponible'}
+                    </h3>
+                    <p className={`text-sm max-w-md mx-auto ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+                      {translate('quiz_no_chapters_description') || 'Le cours n\'a pas de chapitres exploitables. Veuillez réessayer avec un autre document.'}
+                    </p>
+                  </div>
+                )}
               </>
             )}
 
-            {/* Chapters list OR Progressive Quiz during generation */}
-            {/* Show QuizChapterManagement when quiz exists or is being generated
-                Always show if chapters exist to prevent blank screen after quiz completion
-            */}
-            {(isDemoId || course?.quiz_status === 'ready' || course?.quiz_status === 'partial' || course?.quiz_status === 'generating' || isGeneratingQuiz || chapters.length > 0) && (
-              <QuizChapterManagement
-                courseId={courseId}
-                courseTitle={course.title}
-                chapters={chapters}
-                quizStatus={course.quiz_status}
-                savedQuizConfig={course.quiz_config}
-                onChapterClick={handleChapterClick}
-                onRegenerateQuiz={handleGenerateQuiz}
-                isGenerating={isGeneratingQuiz || course?.quiz_status === 'generating'}
-                isStartingGeneration={isStartingGeneration}
-                generationProgress={sseProgress}
-                generationProgressRaw={rawProgress}
-                generationMessage={translateQuizStepMessage(quizGenerationStep, quizGenerationMessage)}
-                streamingQuestions={streamingQuestions}
-                totalExpectedQuestions={totalExpectedQuestions}
-                questionsGenerated={sseQuestionsGenerated}
-                enableProgressiveQuiz={true}
-                hasFullAccess={hasFullAccess}
-                isDemoId={isDemoId}
-                refetch={refetch}
-                wasPlayingProgressiveQuiz={wasPlayingProgressiveQuiz}
-                onPlayingStateChange={setWasPlayingProgressiveQuiz}
-                onClearProgressiveQuiz={async () => {
-                  // Clear playing state immediately
-                  setWasPlayingProgressiveQuiz(false);
-                  if (courseId) {
-                    sessionStorage.removeItem(`progressive_quiz_playing_${courseId}`);
-                    sessionStorage.removeItem(`progressive_quiz_answers_${courseId}`);
-                  }
+            {/* Loading state while fetching quiz questions */}
+            {isLoadingQuizQuestions && (
+              <div className={`rounded-2xl border shadow-sm p-8 text-center transition-colors ${
+                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+              }`}>
+                <Loader2 className={`w-10 h-10 mx-auto mb-4 animate-spin ${isDark ? 'text-orange-400' : 'text-orange-500'}`} />
+                <p className={`text-sm ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+                  {translate('quiz_loading_questions') || 'Chargement des questions...'}
+                </p>
+              </div>
+            )}
 
-                  // Only clear streaming questions if generation is NOT in progress
-                  if (!isGeneratingQuiz) {
-                    // Refetch to ensure we have the latest data from DB
-                    await refetch();
-
-                    // DON'T clear streaming questions immediately - let them persist
-                    // They will be naturally replaced on the next quiz generation
-                    // This prevents the blank screen issue when returning from progressive quiz
-                    // The streaming questions serve as a fallback display until user navigates away
-
-                    // Only clear sessionStorage for answers (not the questions themselves)
-                    // Questions in sessionStorage will be cleared on next generation start
-                  }
-                }}
-              />
+            {/* Show ProgressiveQuizStreamView during streaming OR when we have streamed questions to play */}
+            {/* Stay on this view until user explicitly finishes the quiz via onComplete */}
+            {isStreamingMode && (
+              realTimeStreamingQuestions.length > 0 ? (
+                <ProgressiveQuizStreamView
+                  questions={realTimeStreamingQuestions}
+                  isGenerating={quizGenerateStream.isStreaming || isStartingGeneration}
+                  progress={quizGenerateStream.progress}
+                  questionsGenerated={realTimeStreamingQuestions.length}
+                  progressMessage={quizGenerateStream.message || translate('quiz_generation_in_progress', 'Génération en cours...')}
+                  courseId={courseId}
+                  courseTitle={course.title}
+                  onComplete={() => {
+                    setIsStreamingMode(false);
+                    setRealTimeStreamingQuestions([]); // Clear questions when done
+                    refetch();
+                  }}
+                  onRegenerate={handleShowRegenerateModal}
+                  onCreateChallenge={() => router.push(`/courses/${courseId}/challenge/create`)}
+                />
+              ) : (
+                // Show loading screen while waiting for first question or during generation
+                <GenerationLoadingScreen
+                  type="quiz"
+                  progress={quizGenerateStream.progress}
+                  progressMessage={quizGenerateStream.message || translate('quiz_generation_starting', 'Démarrage de la génération...')}
+                  itemsGenerated={0}
+                  courseId={courseId}
+                />
+              )
             )}
           </>
         )}
@@ -1112,6 +1262,50 @@ export default function CourseLearnPage() {
           courseTitle={course?.title}
           onClose={() => setShowPaywallModal(false)}
         />
+      )}
+
+      {/* Modal de régénération du quiz */}
+      {showRegenerateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70]">
+          <div
+            className="absolute inset-0"
+            onClick={() => setShowRegenerateModal(false)}
+          />
+          <div className={`relative rounded-2xl max-w-lg w-full shadow-xl overflow-hidden ${
+            isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white'
+          }`}>
+            {/* Header du modal */}
+            <div className={`px-6 py-4 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-lg font-semibold ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
+                  {translate('quiz_regenerate') || 'Régénérer le quiz'}
+                </h3>
+                <button
+                  onClick={() => setShowRegenerateModal(false)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    isDark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu - QuizPersonnalisationScreen */}
+            <div className="max-h-[70vh] overflow-y-auto">
+              <QuizPersonnalisationScreen
+                courseId={courseId}
+                courseTitle={course?.title || ''}
+                onGenerate={(config) => {
+                  handleConfirmRegenerate(config);
+                }}
+                onCancel={() => setShowRegenerateModal(false)}
+                isLoading={quizGenerateStream.isStreaming}
+                isEmbedded={true}
+              />
+            </div>
+          </div>
+        </div>
       )}
       </div>
     </GlobalDropZone>

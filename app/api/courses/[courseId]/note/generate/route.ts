@@ -26,7 +26,8 @@ import {
   formatGraphicsContextForSection,
   resolveGraphicsUrls,
   GraphicAssignment,
-  GraphicWithUrl
+  GraphicWithUrl,
+  buildSectionGraphicsMapV5
 } from '@/lib/backend/graphics-enricher';
 
 // Max duration for note generation
@@ -121,8 +122,13 @@ interface Section {
   essentialContent?: EssentialContent;
   activeLearningOpportunities?: ActiveLearningOpportunities;
   connections?: Connections;
-  // V4: Graphic assignment during structure analysis
+  // V4: Graphic assignment during structure analysis (legacy, replaced by V5)
   assignedGraphics?: GraphicAssignment[];
+  // V5: Page range for hybrid graphic assignment
+  pageRange?: {
+    start: number;
+    end: number;
+  };
 }
 
 interface DocumentStructure {
@@ -523,9 +529,9 @@ async function runNoteGeneration(
     if (config.includeGraphics) {
       graphics = await getCourseGraphicsSummaries(courseId);
       graphicsWithUrls = resolveGraphicsUrls(graphics);
-      console.log(`[A+ Note V4] Found ${graphics.length} high-confidence graphics to include`);
+      console.log(`[A+ Note V5] Found ${graphics.length} high-confidence graphics to include`);
     } else {
-      console.log(`[A+ Note V4] Graphics extraction disabled by user preference`);
+      console.log(`[A+ Note V5] Graphics extraction disabled by user preference`);
     }
 
     // V4: Format graphics for structure analysis (compact format for assignment)
@@ -540,7 +546,7 @@ async function runNoteGeneration(
 
     // Decision: Use multi-pass for documents > 15k chars
     if (sourceText.length > 15000) {
-      console.log('[A+ Note V4] Using MULTI-PASS generation (document > 15k chars)');
+      console.log('[A+ Note V5] Using MULTI-PASS generation (document > 15k chars)');
 
       // Pass 1: Extract structure + assign graphics (0-20%)
       await updateNoteProgress(admin, courseId, {
@@ -550,25 +556,17 @@ async function runNoteGeneration(
 
       // V4: Pass graphics context to structure analysis for assignment
       const structure = await extractStructure(sourceText, language, config, USE_V3, graphicsForStructure);
-      console.log(`[A+ Note V4] Found ${structure.sections.length} sections`);
+      console.log(`[A+ Note V5] Found ${structure.sections.length} sections`);
       if (USE_V3 && structure.coreIdeas) {
-        console.log(`[A+ Note V4] Identified ${structure.coreIdeas.length} core ideas:`, structure.coreIdeas);
+        console.log(`[A+ Note V5] Identified ${structure.coreIdeas.length} core ideas:`, structure.coreIdeas);
       }
 
-      // V4: Build section -> graphics map from structure analysis
-      const sectionGraphicsMap = new Map<number, string[]>();
-      let totalAssignedGraphics = 0;
-      if (config.includeGraphics) {
-        for (let i = 0; i < structure.sections.length; i++) {
-          const section = structure.sections[i];
-          const assignedIds = section.assignedGraphics?.map(a => a.graphicId) || [];
-          sectionGraphicsMap.set(i, assignedIds);
-          totalAssignedGraphics += assignedIds.length;
-          if (assignedIds.length > 0) {
-            console.log(`[A+ Note V4] Section "${section.title}": ${assignedIds.length} graphic(s) assigned`);
-          }
-        }
-        console.log(`[A+ Note V4] Total graphics assigned to sections: ${totalAssignedGraphics}/${graphics.length}`);
+      // V5: Build section -> graphics map using HYBRID page-based assignment
+      // This replaces the LLM-based assignedGraphics with deterministic page proximity
+      let sectionGraphicsMap = new Map<number, string[]>();
+      if (config.includeGraphics && graphics.length > 0) {
+        console.log(`[A+ Note V5] Using HYBRID page-based graphic assignment`);
+        sectionGraphicsMap = buildSectionGraphicsMapV5(structure, graphics);
       }
 
       await updateNoteProgress(admin, courseId, {
@@ -607,21 +605,24 @@ async function runNoteGeneration(
         });
 
         const sectionSourceText = findSectionText(sourceText, section, structure.sections, i);
-        console.log(`[A+ Note V4] Processing section ${i + 1}/${sectionCount}: ${section.title}`);
+        console.log(`[A+ Note V5] Processing section ${i + 1}/${sectionCount}: ${section.title}`);
+        if (section.pageRange) {
+          console.log(`[A+ Note V5]   → Pages ${section.pageRange.start}-${section.pageRange.end}`);
+        }
         if (USE_V3 && section.isEssential) {
-          console.log(`[A+ Note V4]   → Essential section with active learning opportunities`);
+          console.log(`[A+ Note V5]   → Essential section with active learning opportunities`);
         }
 
-        // V4: Get PRE-ASSIGNED graphics for this section (not all graphics!)
+        // V5: Get PAGE-ASSIGNED graphics for this section (deterministic by page proximity)
         let sectionImageContext = '';
         if (config.includeGraphics) {
           const assignedIds = sectionGraphicsMap.get(i) || [];
           if (assignedIds.length > 0) {
             const sectionGraphics = getGraphicsForSection(graphicsWithUrls, assignedIds);
             sectionImageContext = formatGraphicsContextForSection(sectionGraphics);
-            console.log(`[A+ Note V4]   → ${sectionGraphics.length} graphic(s) PRE-ASSIGNED to this section`);
+            console.log(`[A+ Note V5]   → ${sectionGraphics.length} graphic(s) assigned by page proximity`);
           } else {
-            console.log(`[A+ Note V4]   → No graphics assigned to this section`);
+            console.log(`[A+ Note V5]   → No graphics in this page range`);
           }
         }
 
@@ -642,7 +643,7 @@ async function runNoteGeneration(
           const sectionGraphicIds = extractGraphicReferences(sectionContent);
           sectionGraphicIds.forEach(id => usedGraphicIds.add(id));
           if (sectionGraphicIds.length > 0) {
-            console.log(`[A+ Note V4]   → Placed ${sectionGraphicIds.length} graphic(s) in this section`);
+            console.log(`[A+ Note V5]   → Placed ${sectionGraphicIds.length} graphic(s) in this section`);
           }
         }
 
@@ -661,7 +662,7 @@ async function runNoteGeneration(
       }
 
       if (config.includeGraphics) {
-        console.log(`[A+ Note V4] Total graphics placed: ${usedGraphicIds.size}/${graphics.length}`);
+        console.log(`[A+ Note V5] Total graphics placed: ${usedGraphicIds.size}/${graphics.length}`);
       }
 
       // Assemble content
@@ -678,17 +679,8 @@ async function runNoteGeneration(
       const verification = await verifyCompleteness(structure, mainContent, language, config);
       console.log(`[A+ Note] Completeness score: ${verification.completeness_score}%`);
 
-      // Append missing content if any
-      if (verification.missing_content && verification.missing_content.trim().length > 0) {
-        console.log('[A+ Note] Adding missing content...');
-        mainContent += `\n\n---\n\n## Contenu complémentaire\n\n${verification.missing_content}`;
-        // Update partial content with missing content
-        await updateNoteProgress(admin, courseId, {
-          progress: 75,
-          currentStep: 'verifying_content',
-          partialContent: mainContent,
-        });
-      }
+      // Note: "Contenu complémentaire" section removed - it was generating superficial content
+      // Graphics are now handled via structure-phase assignment (V4)
 
       // V3: Generate final synthesis (Principle 7: Actionability) (80-85%)
       if (USE_V3) {

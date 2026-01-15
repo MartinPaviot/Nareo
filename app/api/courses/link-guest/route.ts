@@ -126,6 +126,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Migrate user_question_history from guest to user (quiz progress)
+    const { data: guestHistory, error: historyError } = await supabase
+      .from('user_question_history')
+      .select('id')
+      .eq('guest_session_id', guestSessionId)
+      .is('user_id', null);
+
+    if (!historyError && guestHistory && guestHistory.length > 0) {
+      const { error: updateHistoryError } = await supabase
+        .from('user_question_history')
+        .update({
+          user_id: userId,
+          guest_session_id: null,
+        })
+        .eq('guest_session_id', guestSessionId)
+        .is('user_id', null);
+
+      if (updateHistoryError) {
+        console.error('Error migrating question history:', updateHistoryError);
+      } else {
+        console.log(`✅ Migrated ${guestHistory.length} question history record(s) to user ${userId}`);
+      }
+    }
+
     // Update monthly_upload_count for the user (count linked courses as uploads)
     const now = new Date();
     const { data: profile } = await supabase

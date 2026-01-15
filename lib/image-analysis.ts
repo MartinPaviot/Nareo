@@ -79,10 +79,11 @@ export interface GraphicAnalysis {
 }
 
 /**
- * Analysis prompt for Claude Vision (V4 - OPTIMIZED for speed)
- * Reduced from ~400 lines to ~80 lines = ~80% token reduction
+ * Generate analysis prompt for Claude Vision (V5 - with language support)
+ * Ensures descriptions are generated in the specified target language
  */
-const GRAPHIC_ANALYSIS_PROMPT = `Analyze this educational graphic. Return JSON only.
+function getGraphicAnalysisPrompt(targetLanguage: string = 'English'): string {
+  return `Analyze this educational graphic. Return JSON only.
 
 ⚠️ CRITICAL: If the graphic is EMPTY (just axes/grid with NO data/curves/content), return:
 {"type":"other","confidence":0.0,"description":"Empty graphic - only axes/grid without data","elements":[],"textContent":[],"suggestions":[],"relatedConcepts":[]}
@@ -91,12 +92,18 @@ JSON FORMAT:
 {
   "type": "TYPE",
   "confidence": 0.0-1.0,
-  "description": "2-3 sentences in SAME LANGUAGE as graphic text",
+  "description": "2-3 sentences describing what this graphic shows",
   "elements": ["specific visual element 1", "element 2", ...],
   "textContent": ["all visible text", "labels", "values"],
   "suggestions": ["pedagogical use 1", "use 2"],
   "relatedConcepts": ["concept 1", "concept 2"]
 }
+
+⚠️ CRITICAL LANGUAGE RULE:
+- The "description" field MUST be written in ${targetLanguage}
+- The "suggestions" field MUST be written in ${targetLanguage}
+- The "relatedConcepts" field MUST be written in ${targetLanguage}
+- Keep "textContent" in original language (copy exactly as seen on the graphic)
 
 TYPES (pick one):
 - flow_diagram, concept_map, tree_diagram, venn_diagram, timeline, cycle_diagram
@@ -112,18 +119,21 @@ CONFIDENCE:
 - 0.9-1.0 = excellent/clear
 
 Return ONLY valid JSON.`;
+}
 
 /**
  * Analyze a pedagogical graphic with Claude Vision
  *
  * @param imageDataUrl - Base64 data URL of the image
+ * @param targetLanguage - Language for descriptions (default: 'English')
  * @returns Structured analysis with classification and extracted elements
  */
 export async function analyzeGraphicWithClaude(
-  imageDataUrl: string
+  imageDataUrl: string,
+  targetLanguage: string = 'English'
 ): Promise<GraphicAnalysis | null> {
   const logContext = llmLogger.createContext('analyzeGraphicWithClaude', LLM_CONFIG.models.vision);
-  console.log('🔍 Analyzing graphic with Claude Vision...');
+  console.log(`🔍 Analyzing graphic with Claude Vision (language: ${targetLanguage})...`);
 
   try {
     const response = await withCircuitBreaker(
@@ -138,7 +148,7 @@ export async function analyzeGraphicWithClaude(
                 content: [
                   {
                     type: 'text',
-                    text: GRAPHIC_ANALYSIS_PROMPT,
+                    text: getGraphicAnalysisPrompt(targetLanguage),
                   },
                   {
                     type: 'image_url',
@@ -213,15 +223,17 @@ export async function analyzeGraphicWithClaude(
  *
  * @param imageDataUrl - Base64 data URL of the image
  * @param model - Claude model to use ('sonnet' or 'haiku')
+ * @param targetLanguage - Language for descriptions (default: 'English')
  * @returns Structured analysis with classification and extracted elements
  */
 export async function analyzeGraphicWithAnthropicVision(
   imageDataUrl: string,
-  model: keyof typeof ANTHROPIC_VISION_MODELS = 'haiku'
+  model: keyof typeof ANTHROPIC_VISION_MODELS = 'haiku',
+  targetLanguage: string = 'English'
 ): Promise<GraphicAnalysis | null> {
   const modelId = ANTHROPIC_VISION_MODELS[model];
   const logContext = llmLogger.createContext('analyzeGraphicWithAnthropicVision', modelId);
-  console.log(`🔍 Analyzing graphic with Claude Vision (${model})...`);
+  console.log(`🔍 Analyzing graphic with Claude Vision (${model}, language: ${targetLanguage})...`);
 
   try {
     // Extract base64 data and media type from data URL
@@ -239,7 +251,7 @@ export async function analyzeGraphicWithAnthropicVision(
             content: [
               {
                 type: 'text',
-                text: GRAPHIC_ANALYSIS_PROMPT,
+                text: getGraphicAnalysisPrompt(targetLanguage),
               },
               {
                 type: 'image',
@@ -313,19 +325,21 @@ export async function analyzeGraphicWithAnthropicVision(
  * Routes to either OpenAI GPT-4o or Anthropic Claude based on config
  *
  * @param imageDataUrl - Base64 data URL of the image
+ * @param targetLanguage - Language for descriptions (default: 'English')
  * @returns Structured analysis with classification and extracted elements
  */
 export async function analyzeGraphic(
-  imageDataUrl: string
+  imageDataUrl: string,
+  targetLanguage: string = 'English'
 ): Promise<GraphicAnalysis | null> {
   const provider = LLM_CONFIG.models.visionProvider || 'openai';
 
   if (provider === 'anthropic') {
-    return analyzeGraphicWithAnthropicVision(imageDataUrl, 'haiku');
+    return analyzeGraphicWithAnthropicVision(imageDataUrl, 'haiku', targetLanguage);
   }
 
   // Default to OpenAI (existing behavior)
-  return analyzeGraphicWithClaude(imageDataUrl);
+  return analyzeGraphicWithClaude(imageDataUrl, targetLanguage);
 }
 
 /**
@@ -336,14 +350,16 @@ export async function analyzeGraphic(
  *
  * @param images - Array of { pageNum, imageId, base64Data }
  * @param concurrency - Number of parallel requests (default: 20 for max speed with Haiku)
+ * @param targetLanguage - Language for descriptions (default: 'English')
  * @returns Map of imageId -> GraphicAnalysis
  */
 export async function analyzeGraphicsBatch(
   images: Array<{ pageNum: number; imageId: string; base64Data: string }>,
-  concurrency: number = 20
+  concurrency: number = 20,
+  targetLanguage: string = 'English'
 ): Promise<Map<string, GraphicAnalysis>> {
   const provider = LLM_CONFIG.models.visionProvider || 'openai';
-  console.log(`\n🔍 Starting batch analysis of ${images.length} graphics (concurrency: ${concurrency}, provider: ${provider})...\n`);
+  console.log(`\n🔍 Starting batch analysis of ${images.length} graphics (concurrency: ${concurrency}, provider: ${provider}, language: ${targetLanguage})...\n`);
 
   const results = new Map<string, GraphicAnalysis>();
 
@@ -360,7 +376,7 @@ export async function analyzeGraphicsBatch(
       console.log(`  [${globalIndex}/${images.length}] Analyzing ${img.imageId} (page ${img.pageNum})...`);
 
       // Use the configured vision provider (respects LLM_CONFIG.models.visionProvider)
-      const analysis = await analyzeGraphic(img.base64Data);
+      const analysis = await analyzeGraphic(img.base64Data, targetLanguage);
 
       if (analysis) {
         // Reject graphics with very low confidence (empty/incomplete)

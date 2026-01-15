@@ -63,6 +63,12 @@ export interface DailyActivity {
   xp_multiplier_active: boolean;
   streak_freeze_used: boolean;
   streak_freeze_used_at: string | null;
+  // Unified activity tracking (quiz + flashcards)
+  flashcards_reviewed: number;
+  flashcards_hard: number;
+  flashcards_good: number;
+  flashcards_easy: number;
+  activity_units: number;
   created_at: string;
   updated_at: string;
 }

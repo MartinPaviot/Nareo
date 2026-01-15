@@ -90,6 +90,8 @@ export default function ExtractionLoader({ courseId, onComplete, fileName, isUpl
   const maxProgressRef = useRef(4); // Max pour le stage actuel (queued -> start à 5%)
   const animationFrameRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef(Date.now());
+  const uploadProgressRef = useRef(0); // Track progress during upload phase
+  const wasUploadingRef = useRef(isUploading); // Track previous isUploading state
 
   // Ref stable pour onComplete afin d'éviter les re-renders du useEffect
   const onCompleteRef = useRef(onComplete);
@@ -111,6 +113,19 @@ export default function ExtractionLoader({ courseId, onComplete, fileName, isUpl
 
   const stageMessage = translate(stageTranslationKeys[currentStage] || 'extraction_stage_extraction');
 
+  // Detect transition from upload to extraction phase - preserve progress
+  useEffect(() => {
+    if (wasUploadingRef.current && !isUploading) {
+      // Transition from upload to extraction: ensure progress doesn't drop
+      const savedProgress = uploadProgressRef.current;
+      if (savedProgress > 0) {
+        // Set minimum target to saved progress so we never go below it
+        targetProgressRef.current = Math.max(targetProgressRef.current, savedProgress);
+      }
+    }
+    wasUploadingRef.current = isUploading;
+  }, [isUploading]);
+
   // Animation fluide de la progression
   useEffect(() => {
     const animate = () => {
@@ -119,8 +134,14 @@ export default function ExtractionLoader({ courseId, onComplete, fileName, isUpl
       lastUpdateTimeRef.current = now;
 
       setDisplayProgress(current => {
-        const target = targetProgressRef.current;
-        const maxAllowed = maxProgressRef.current;
+        // During upload phase, store progress for transition
+        if (isUploading) {
+          uploadProgressRef.current = current;
+        }
+
+        // IMPORTANT: Never allow progress to decrease
+        const target = Math.max(targetProgressRef.current, current);
+        const maxAllowed = Math.max(maxProgressRef.current, current);
 
         // Si on est en dessous de la cible du stage actuel, rattraper rapidement
         if (current < target) {
@@ -167,7 +188,7 @@ export default function ExtractionLoader({ courseId, onComplete, fileName, isUpl
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, []);
+  }, [isUploading]);
 
   // Polling du status
   const fetchStatus = useCallback(async () => {
@@ -215,8 +236,10 @@ export default function ExtractionLoader({ courseId, onComplete, fileName, isUpl
       console.log(`[ExtractionLoader] Stage: ${stage}, Target: ${newTargetProgress}%, Max: ${newMaxProgress}%`);
 
       setCurrentStage(stage);
-      targetProgressRef.current = newTargetProgress;
-      maxProgressRef.current = newMaxProgress;
+      // Never go below the progress achieved during upload phase
+      const minProgress = uploadProgressRef.current;
+      targetProgressRef.current = Math.max(newTargetProgress, minProgress);
+      maxProgressRef.current = Math.max(newMaxProgress, minProgress);
 
       // Vérifier si terminé
       if (stage === 'done' || data.course?.status === 'ready') {

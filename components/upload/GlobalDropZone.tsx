@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, Loader2, X, FileText } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -11,6 +11,33 @@ import { trackEvent } from '@/lib/posthog';
 import UploadLimitModal from './UploadLimitModal';
 import DuplicateCourseModal from './DuplicateCourseModal';
 import ExtractionLoader from '@/components/course/ExtractionLoader';
+// Guest session ID utilities (same as UploadSection)
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
+function setCookie(name: string, value: string, days: number) {
+  if (typeof document === 'undefined') return;
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/`;
+}
+
+function getOrCreateGuestSessionId(): string {
+  let guestSessionId = getCookie('guestSessionId');
+  if (!guestSessionId) {
+    guestSessionId = localStorage.getItem('guestSessionId');
+  }
+  if (!guestSessionId) {
+    guestSessionId = crypto.randomUUID();
+  }
+  setCookie('guestSessionId', guestSessionId, 30);
+  localStorage.setItem('guestSessionId', guestSessionId);
+  return guestSessionId;
+}
 
 const ACCEPTED_TYPES = [
   'image/jpeg',
@@ -124,6 +151,12 @@ export default function GlobalDropZone({ children }: GlobalDropZoneProps) {
       const formData = new FormData();
       formData.append('file', file);
 
+      // Add guestSessionId for non-authenticated users
+      if (!user) {
+        const guestSessionId = getOrCreateGuestSessionId();
+        formData.append('guestSessionId', guestSessionId);
+      }
+
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -143,9 +176,11 @@ export default function GlobalDropZone({ children }: GlobalDropZoneProps) {
 
       if (data.courseId) {
         trackEvent('upload_success_global_drop', { userId: user?.id, courseId: data.courseId });
-        // Show ExtractionLoader with GIFs instead of redirecting immediately
+        // Transition to extraction phase - keep isProcessing true to maintain ExtractionLoader mounted
+        // The same ExtractionLoader instance will switch from upload to extraction mode
         setUploadedCourseId(data.courseId);
-        setIsProcessing(false);
+        // Note: Don't set isProcessing to false here - the ExtractionLoader stays mounted
+        // and will call handleExtractionComplete when done
       }
     } catch (error) {
       console.error('Upload error', error);
@@ -175,6 +210,9 @@ export default function GlobalDropZone({ children }: GlobalDropZoneProps) {
   // Callback for extraction completion - must be stable to avoid re-renders
   const handleExtractionComplete = useCallback(() => {
     if (uploadedCourseId) {
+      // Reset all states before navigating
+      setIsProcessing(false);
+      setDroppedFile(null);
       router.push(`/courses/${uploadedCourseId}/learn`);
     }
   }, [uploadedCourseId, router]);
@@ -188,14 +226,6 @@ export default function GlobalDropZone({ children }: GlobalDropZoneProps) {
       onDrop={handleDrop}
     >
       {children}
-
-      {/* ExtractionLoader with GIFs - shown after upload success */}
-      {uploadedCourseId && (
-        <ExtractionLoader
-          courseId={uploadedCourseId}
-          onComplete={handleExtractionComplete}
-        />
-      )}
 
       {/* Full-screen drop overlay */}
       <AnimatePresence>
@@ -244,14 +274,14 @@ export default function GlobalDropZone({ children }: GlobalDropZoneProps) {
         )}
       </AnimatePresence>
 
-      {/* Processing overlay - now uses ExtractionLoader with GIFs directly */}
-      {isProcessing && droppedFile && !uploadedCourseId && (
+      {/* Single ExtractionLoader instance for both upload and extraction phases */}
+      {(isProcessing || uploadedCourseId) && droppedFile && (
         <ExtractionLoader
-          courseId={null}
-          onComplete={() => {}}
+          courseId={uploadedCourseId}
+          onComplete={handleExtractionComplete}
           fileName={droppedFile.name}
-          isUploading={true}
-          onCancel={handleCancel}
+          isUploading={isProcessing && !uploadedCourseId}
+          onCancel={isProcessing && !uploadedCourseId ? handleCancel : undefined}
         />
       )}
 

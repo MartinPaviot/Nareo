@@ -211,10 +211,10 @@ export default function CourseSidebar({
               <Menu className="w-5 h-5" />
             </button>
             <Image
-              src="/chat/mascotte.png"
+              src="/chat/mascotte2.png"
               alt="Nareo"
-              width={32}
-              height={32}
+              width={24}
+              height={24}
               className="rounded-lg"
             />
           </div>

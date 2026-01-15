@@ -112,8 +112,8 @@ export default function StatsModule() {
           previousStreakLost={previousStreakLost}
         />
         <DailyGoalCard
-          current={todayActivity?.questions_answered || 0}
-          target={todayActivity?.daily_goal_target || 15}
+          activityUnits={todayActivity?.activity_units || 0}
+          target={todayActivity?.daily_goal_target || 35}
           completed={todayActivity?.daily_goal_completed || false}
           goalLevel={stats?.daily_goal_level || 'standard'}
           onGoalLevelChange={updateDailyGoalLevel}

@@ -14,10 +14,10 @@ export default function SidebarHeader({ onClose }: SidebarHeaderProps) {
         {/* Logo mascotte + title */}
         <div className="flex items-center gap-2">
           <Image
-            src="/chat/mascotte.png"
+            src="/chat/mascotte2.png"
             alt="Nareo"
-            width={32}
-            height={32}
+            width={24}
+            height={24}
             className="rounded-lg"
           />
           <span

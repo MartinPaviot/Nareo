@@ -33,10 +33,10 @@ SYNTHÉTIQUE RULES:
 - Every question must be "exam-critical"
 `,
     standard: `
-QUESTION COUNT: EXACTLY ${adjustedCount} questions (MODE STANDARD - 10 questions par chapitre)
+QUESTION COUNT: EXACTLY ${adjustedCount} questions (MODE STANDARD - 8 questions par chapitre)
 
 STANDARD RULES:
-- Generate EXACTLY 10 questions for this chapter
+- Generate EXACTLY 8 questions for this chapter
 - Balanced coverage of all learning objectives
 - Include main concepts and important details
 - Test both fundamental and intermediate understanding
@@ -90,7 +90,30 @@ export function getTrueFalsePrompt(
 ): string {
   const niveauBlock = getNiveauBlock(niveau, baseCount);
 
-  return `Generate TRUE/FALSE quiz for this chapter. Each question MUST include:
+  return `Generate TRUE/FALSE quiz for this chapter.
+
+⚠️ ABSOLUTE PRIORITY - CONTENT FILTER (READ THIS FIRST!) ⚠️
+NEVER create statements about COURSE LOGISTICS or ADMINISTRATIVE INFORMATION:
+❌ FORBIDDEN TOPICS (skip entirely - do not generate statements about these):
+- Exam format, duration, number of parts, grading policies
+- Course structure: séances, parties, activités pédagogiques
+- Supports de cours, diapositives, matériel fourni
+- Professor names, office hours, contact info
+- Assignment deadlines, submission procedures
+- University procedures, prerequisites, syllabus structure
+
+❌ EXAMPLES OF BAD STATEMENTS (NEVER create these):
+- "L'examen final dure 2 heures." → FORBIDDEN (exam logistics)
+- "Le cours est divisé en deux parties." → FORBIDDEN (course structure)
+- "Les diapositives sont disponibles sur Moodle." → FORBIDDEN (course materials)
+- "Les séances commencent par un cours théorique." → FORBIDDEN (pedagogical activities)
+
+✅ ONLY test ACADEMIC CONTENT - the actual subject matter being taught:
+- Concepts, theories, definitions from the discipline
+- Formulas, methods, procedures of the field
+- Relationships between academic concepts
+
+Each question MUST include:
 - "type": "true_false"
 - "statement": A clear affirmation about the course content
 - "correct_answer": true or false (boolean)
@@ -178,7 +201,29 @@ export function getFillBlankPrompt(
 ): string {
   const niveauBlock = getNiveauBlock(niveau, baseCount);
 
-  return `Generate FILL-IN-THE-BLANK quiz for this chapter. Each question MUST include:
+  return `Generate FILL-IN-THE-BLANK quiz for this chapter.
+
+⚠️ ABSOLUTE PRIORITY - CONTENT FILTER (READ THIS FIRST!) ⚠️
+NEVER create blanks about COURSE LOGISTICS or ADMINISTRATIVE INFORMATION:
+❌ FORBIDDEN TOPICS (skip entirely - do not generate blanks about these):
+- Exam format, duration, number of parts, grading policies
+- Course structure: séances, parties, activités pédagogiques
+- Supports de cours, diapositives, matériel fourni
+- Professor names, office hours, contact info
+- Assignment deadlines, submission procedures
+- University procedures, prerequisites, syllabus structure
+
+❌ EXAMPLES OF BAD BLANKS (NEVER create these):
+- "L'examen final dure _____ heures." → FORBIDDEN (exam logistics)
+- "La première partie de chaque séance est le _____." → FORBIDDEN (course structure)
+- "Les _____ sont disponibles sur la plateforme." → FORBIDDEN (course materials)
+
+✅ ONLY test ACADEMIC CONTENT - the actual subject matter being taught:
+- Technical terms from the discipline
+- Key concept names and formulas
+- Important theories and their authors (in academic context)
+
+Each question MUST include:
 - "type": "fill_blank"
 - "sentence": A sentence with exactly ONE blank marked as "_____" (5 underscores)
 - "correct_answer": The exact word or short phrase that fills the blank

@@ -45,6 +45,21 @@ export interface GraphicsProcessingResult {
 }
 
 /**
+ * Convert language code to full language name for the vision prompt
+ */
+function getLanguageName(languageCode: string): string {
+  const languageMap: Record<string, string> = {
+    'en': 'English',
+    'fr': 'French',
+    'de': 'German',
+    'es': 'Spanish',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+  };
+  return languageMap[languageCode.toLowerCase()] || 'English';
+}
+
+/**
  * Process graphics from a PDF document
  *
  * Steps:
@@ -57,13 +72,15 @@ export interface GraphicsProcessingResult {
  * @param userId - User UUID (or 'guest')
  * @param buffer - PDF file buffer
  * @param filename - Original filename
+ * @param contentLanguage - Language code for descriptions (default: 'en')
  * @returns Processing statistics
  */
 export async function processDocumentGraphics(
   courseId: string,
   userId: string | null,
   buffer: Buffer,
-  filename: string
+  filename: string,
+  contentLanguage: string = 'en'
 ): Promise<GraphicsProcessingResult> {
   console.log(`\n🖼️ [Graphics Processor] Starting for course ${courseId}`);
 
@@ -116,10 +133,11 @@ export async function processDocumentGraphics(
       base64Data: `data:image/jpeg;base64,${img.imageBuffer.toString('base64')}`,
     }));
 
-    const analyses = await analyzeGraphicsBatch(imagesForAnalysis);
+    const targetLanguage = getLanguageName(contentLanguage);
+    const analyses = await analyzeGraphicsBatch(imagesForAnalysis, 20, targetLanguage);
     result.analyzed = analyses.size;
 
-    console.log(`   Analyzed ${analyses.size}/${imagesToAnalyze.length} graphics`);
+    console.log(`   Analyzed ${analyses.size}/${imagesToAnalyze.length} graphics (language: ${targetLanguage})`);
 
     // ========================================================================
     // STEP 3: Upload images to Supabase Storage
@@ -227,10 +245,12 @@ export async function processDocumentGraphics(
  * Useful if Claude prompt is improved or if analysis failed initially
  *
  * @param courseId - Course UUID
+ * @param contentLanguage - Language code for descriptions (default: 'en')
  * @returns Number of graphics re-analyzed
  */
-export async function reanalyzeGraphics(courseId: string): Promise<number> {
-  console.log(`\n🔄 [Re-analyze] Starting for course ${courseId}`);
+export async function reanalyzeGraphics(courseId: string, contentLanguage: string = 'en'): Promise<number> {
+  const targetLanguage = getLanguageName(contentLanguage);
+  console.log(`\n🔄 [Re-analyze] Starting for course ${courseId} (language: ${targetLanguage})`);
 
   const admin = getServiceSupabase();
 
@@ -278,7 +298,7 @@ export async function reanalyzeGraphics(courseId: string): Promise<number> {
   }
 
   // Analyze with Claude
-  const analyses = await analyzeGraphicsBatch(imagesForAnalysis);
+  const analyses = await analyzeGraphicsBatch(imagesForAnalysis, 20, targetLanguage);
 
   // Update database with new analyses
   let updated = 0;

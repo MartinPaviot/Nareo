@@ -1195,7 +1195,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* Progress indicator and points */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
         <span className={isDark ? 'text-neutral-400' : 'text-gray-600'}>{translate('flashcards_progress', { current: String(currentIndex + 1), total: String(flashcards.length) })}</span>
@@ -1270,7 +1270,8 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
       {/* Flashcard */}
       <div
         onClick={handleFlip}
-        className="relative w-full aspect-[5/3] sm:aspect-[2/1] cursor-pointer perspective-1000"
+        className="relative w-full aspect-[2/1] sm:aspect-[3/1] cursor-pointer perspective-1000"
+        style={{ maxHeight: '45vh' }}
       >
         <div
           className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${
@@ -1283,25 +1284,25 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
         >
           {/* Front - Question */}
           <div
-            className={`absolute inset-0 rounded-2xl border shadow-sm p-6 sm:p-8 md:p-10 flex flex-col items-center justify-center backface-hidden transition-colors ${
+            className={`absolute inset-0 rounded-2xl border shadow-sm p-4 sm:p-6 flex flex-col items-center justify-center backface-hidden transition-colors ${
               isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
             }`}
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <span className="text-xs sm:text-sm text-orange-500 font-semibold uppercase tracking-wide mb-3">
+            <span className="text-xs text-orange-500 font-semibold uppercase tracking-wide mb-2">
               {translate(FLASHCARD_TYPE_TRANSLATION_KEYS[currentCard.type]) || currentCard.type}
             </span>
-            <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center px-2 leading-tight ${
+            <h3 className={`text-lg sm:text-xl md:text-2xl font-bold text-center px-2 leading-tight ${
               isDark ? 'text-neutral-50' : 'text-gray-900'
             }`}>
               {currentCard.front}
             </h3>
-            <p className={`text-sm sm:text-base mt-4 sm:mt-6 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{translate('flashcards_tap_to_flip')}</p>
+            <p className={`text-xs sm:text-sm mt-3 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>{translate('flashcards_tap_to_flip')}</p>
           </div>
 
           {/* Back - Answer */}
           <div
-            className={`absolute inset-0 rounded-2xl border shadow-sm p-6 sm:p-8 md:p-10 flex flex-col items-center justify-center overflow-y-auto transition-colors ${
+            className={`absolute inset-0 rounded-2xl border shadow-sm p-4 sm:p-6 flex flex-col items-center justify-center overflow-y-auto transition-colors ${
               isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-50 border-orange-200'
             }`}
             style={{
@@ -1309,18 +1310,18 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
               transform: 'rotateY(180deg)',
             }}
           >
-            <span className={`text-xs sm:text-sm font-semibold uppercase tracking-wide mb-3 ${
+            <span className={`text-xs font-semibold uppercase tracking-wide mb-2 ${
               isDark ? 'text-orange-400' : 'text-orange-600'
             }`}>
               {translate('flashcards_answer')}
             </span>
-            <p className={`text-lg sm:text-xl md:text-2xl lg:text-3xl text-center leading-relaxed px-2 ${
+            <p className={`text-base sm:text-lg md:text-xl text-center leading-relaxed px-2 ${
               isDark ? 'text-neutral-200' : 'text-gray-800'
             }`}>
               {currentCard.back}
             </p>
             {!hasAnswered && (
-              <p className={`text-sm sm:text-base mt-4 sm:mt-6 ${isDark ? 'text-orange-400/70' : 'text-orange-400'}`}>{translate('flashcards_rate_answer')}</p>
+              <p className={`text-xs sm:text-sm mt-3 ${isDark ? 'text-orange-400/70' : 'text-orange-400'}`}>{translate('flashcards_rate_answer')}</p>
             )}
           </div>
         </div>
@@ -1330,7 +1331,7 @@ export default function FlashcardsView({ courseId, courseTitle, courseStatus, on
       {isFlipped && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="h-20 flex items-center justify-center"
+          className="h-14 flex items-center justify-center"
         >
           <RatingButtons
             onRate={handleRating}

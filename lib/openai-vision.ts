@@ -750,6 +750,7 @@ export async function generateConceptChapterQuestions(
     enableSemanticValidation?: boolean;  // Phase 2: Enable LLM-based semantic validation
     facts?: VerifiableFact[];             // Pre-extracted facts for validation
     quizConfig?: QuizConfig;              // Phase 5: Quiz personalization config
+    skipFactExtraction?: boolean;         // Skip fact extraction for faster first response
   }
 ) {
   const logContext = llmLogger.createContext('generateConceptChapterQuestions', LLM_CONFIG.models.primary);
@@ -766,11 +767,14 @@ export async function generateConceptChapterQuestions(
 
   // Phase 3: Pre-extract verifiable facts BEFORE generating questions
   // This ensures questions are grounded in actual content from the source
+  // Can be skipped for streaming mode to get the first question faster
   let preExtractedFacts: VerifiableFact[] = options?.facts || [];
-  if (preExtractedFacts.length === 0) {
+  if (preExtractedFacts.length === 0 && !options?.skipFactExtraction) {
     console.log('📚 Pre-extracting verifiable facts from source text...');
     preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
     console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+  } else if (options?.skipFactExtraction) {
+    console.log('⚡ Skipping fact extraction for faster streaming');
   }
 
   // Format facts for the prompt - this is the key change
@@ -812,7 +816,32 @@ Only create questions that can be directly answered using one of these facts.`
     ? `\nKEY CONCEPTS TO COVER (${keyConceptsArray.length} concepts - ensure each is tested):\n${keyConceptsArray.map((c: string, i: number) => `${i + 1}. ${c}`).join('\n')}`
     : '';
 
-  const prompt = `Generate MCQ quiz for this chapter concept. Each question MUST include:
+  const prompt = `Generate MCQ quiz for this chapter concept.
+
+⚠️ ABSOLUTE PRIORITY - CONTENT FILTER (READ THIS FIRST!) ⚠️
+NEVER create questions about COURSE LOGISTICS or ADMINISTRATIVE INFORMATION:
+❌ FORBIDDEN TOPICS (skip entirely - do not generate questions about these):
+- Exam format, duration, number of parts, grading policies
+- Course structure: séances, parties, activités pédagogiques
+- Supports de cours, diapositives, matériel fourni
+- Professor names, office hours, contact info
+- Assignment deadlines, submission procedures
+- University procedures, prerequisites, syllabus structure
+
+❌ EXAMPLES OF BAD QUESTIONS (NEVER create these):
+- "Quelle est la durée de l'examen final ?" → FORBIDDEN (exam logistics)
+- "Combien de parties compose l'examen ?" → FORBIDDEN (exam format)
+- "Quelle est la première partie de chaque séance ?" → FORBIDDEN (course structure)
+- "Quels supports de cours sont mentionnés ?" → FORBIDDEN (course materials)
+- "Quelles activités sont prévues en deuxième partie ?" → FORBIDDEN (pedagogical activities)
+
+✅ ONLY test ACADEMIC CONTENT - the actual subject matter being taught:
+- Concepts, theories, definitions from the discipline
+- Formulas, methods, procedures of the field
+- Relationships between academic concepts
+- Applications of theoretical knowledge
+
+Each question MUST include:
 - "type": "multiple_choice"
 - "prompt": The question text
 - "options": Exactly 4 unique options
@@ -834,6 +863,7 @@ CRITICAL RULES FOR QUESTION QUALITY:
 5. AVOID TRAP QUESTIONS: If the text lists multiple related concepts, ask about distinguishing features, not shared characteristics.
 6. COVER ALL LEARNING OBJECTIVES: Generate at least one question per learning objective listed below.
 7. TEST KEY CONCEPTS: Generate questions that directly test the key concepts extracted from the text.
+
 8. NO MEMORIZATION OF CALCULATION RESULTS: NEVER ask students to memorize specific numerical results from example calculations (e.g., "What is the WACC?" with answer "8.5%", "What is the NPV?" with answer "$1.2M"). This is pedagogically useless because:
    - Students cannot derive the answer without knowing the inputs
    - Memorizing example results has no educational value
@@ -1466,6 +1496,7 @@ export async function generateTrueFalseQuestions(
     enableSemanticValidation?: boolean;
     facts?: VerifiableFact[];
     quizConfig?: QuizConfig;
+    skipFactExtraction?: boolean;
   }
 ) {
   const logContext = llmLogger.createContext('generateTrueFalseQuestions', LLM_CONFIG.models.primary);
@@ -1479,12 +1510,14 @@ export async function generateTrueFalseQuestions(
 
   const truncatedText = chapterText.substring(0, LLM_CONFIG.truncation.chapterText);
 
-  // Pre-extract facts
+  // Pre-extract facts (can be skipped for faster streaming)
   let preExtractedFacts: VerifiableFact[] = options?.facts || [];
-  if (preExtractedFacts.length === 0) {
+  if (preExtractedFacts.length === 0 && !options?.skipFactExtraction) {
     console.log('📚 Pre-extracting verifiable facts for true/false...');
     preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
     console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+  } else if (options?.skipFactExtraction) {
+    console.log('⚡ Skipping fact extraction for faster streaming');
   }
 
   const factsForPrompt = preExtractedFacts.length > 0
@@ -1587,6 +1620,7 @@ export async function generateFillBlankQuestions(
     enableSemanticValidation?: boolean;
     facts?: VerifiableFact[];
     quizConfig?: QuizConfig;
+    skipFactExtraction?: boolean;
   }
 ) {
   const logContext = llmLogger.createContext('generateFillBlankQuestions', LLM_CONFIG.models.primary);
@@ -1600,12 +1634,14 @@ export async function generateFillBlankQuestions(
 
   const truncatedText = chapterText.substring(0, LLM_CONFIG.truncation.chapterText);
 
-  // Pre-extract facts
+  // Pre-extract facts (can be skipped for faster streaming)
   let preExtractedFacts: VerifiableFact[] = options?.facts || [];
-  if (preExtractedFacts.length === 0) {
+  if (preExtractedFacts.length === 0 && !options?.skipFactExtraction) {
     console.log('📚 Pre-extracting verifiable facts for fill-blank...');
     preExtractedFacts = await extractVerifiableFacts(chapterText, chapterMetadata.title, language);
     console.log(`📚 Extracted ${preExtractedFacts.length} verifiable facts`);
+  } else if (options?.skipFactExtraction) {
+    console.log('⚡ Skipping fact extraction for faster streaming');
   }
 
   const factsForPrompt = preExtractedFacts.length > 0
@@ -2011,4 +2047,286 @@ export async function generateMixedQuizParallel(
 
   console.log(`✅ [PARALLEL] Mixed quiz complete: ${shuffledQuestions.length} questions from ${activeTypes.length} type(s)`);
   return shuffledQuestions;
+}
+
+/**
+ * STREAMING VERSION: Generate questions and call onQuestion callback as soon as each batch is ready
+ * This allows the UI to show questions immediately without waiting for all types to complete
+ */
+export async function generateMixedQuizStreaming(
+  chapterMetadata: {
+    index?: number;
+    title: string;
+    short_summary?: string;
+    difficulty?: number;
+    learning_objectives?: string[];
+    key_concepts?: string[];
+  },
+  chapterText: string,
+  language: 'EN' | 'FR' | 'DE' = 'EN',
+  quizConfig: QuizConfig,
+  onQuestions: (questions: any[]) => void, // Callback called as soon as questions are ready
+  options?: {
+    enableSemanticValidation?: boolean;
+    facts?: VerifiableFact[];
+  }
+): Promise<any[]> {
+  console.log('🎲 [STREAMING] generateMixedQuizStreaming called');
+  console.log(`🎲 [STREAMING] Chapter: ${chapterMetadata.title}`);
+
+  const activeTypes = Object.entries(quizConfig.types).filter(([, active]) => active);
+
+  if (activeTypes.length === 0) {
+    console.warn('⚠️ No question types selected, defaulting to QCM');
+    activeTypes.push(['qcm', true]);
+  }
+
+  const totalQuestions = (quizConfig as any)._requestedCount || getAdjustedQuestionCount(10, quizConfig.niveau);
+
+  const typeDistribution: Record<string, number> = {
+    qcm: 0.6,
+    vrai_faux: 0.2,
+    texte_trous: 0.2,
+  };
+
+  const activeWeight = activeTypes.reduce((sum, [type]) => sum + (typeDistribution[type] || 0), 0);
+
+  const questionsPerType: Record<string, number> = {};
+  let assignedQuestions = 0;
+
+  for (let i = 0; i < activeTypes.length; i++) {
+    const [type] = activeTypes[i];
+    const weight = typeDistribution[type] || 0;
+    const normalizedWeight = weight / activeWeight;
+
+    if (i === activeTypes.length - 1) {
+      questionsPerType[type] = totalQuestions - assignedQuestions;
+    } else {
+      questionsPerType[type] = Math.round(totalQuestions * normalizedWeight);
+      assignedQuestions += questionsPerType[type];
+    }
+  }
+
+  console.log(`📊 [STREAMING] Question distribution:`, questionsPerType);
+
+  // Start fact extraction in parallel - but don't block on it
+  // We'll generate the first batch without facts for faster first question
+  let factsPromise: Promise<VerifiableFact[]>;
+  if (options?.facts && options.facts.length > 0) {
+    factsPromise = Promise.resolve(options.facts);
+  } else {
+    factsPromise = extractVerifiableFacts(chapterText, chapterMetadata.title, language)
+      .catch(() => [] as VerifiableFact[]);
+  }
+
+  const allQuestions: any[] = [];
+
+  // Generate each type and stream questions ONE BY ONE as soon as they're ready
+  for (const [type] of activeTypes) {
+    const typeQuota = questionsPerType[type] || 0;
+    if (typeQuota === 0) continue;
+
+    // For the first type, skip fact extraction entirely to get the first question ASAP
+    // Facts will be available for subsequent types
+    const isFirstType = allQuestions.length === 0;
+
+    const typeQuizConfig: QuizConfig = {
+      ...quizConfig,
+      _quotaOverride: typeQuota,
+    } as QuizConfig & { _quotaOverride?: number };
+
+    // For the first type, set skipFactExtraction to true for maximum speed
+    // For subsequent types, use the pre-extracted facts
+    const sharedOptions = isFirstType
+      ? {
+          enableSemanticValidation: false,
+          skipFactExtraction: true, // Skip fact extraction for speed
+          quizConfig: typeQuizConfig,
+        }
+      : {
+          enableSemanticValidation: false,
+          facts: await factsPromise,
+          quizConfig: typeQuizConfig,
+        };
+
+    try {
+      let questions: any[] = [];
+
+      console.log(`🎲 [STREAMING] Generating ${typeQuota} ${type} questions...`);
+
+      switch (type) {
+        case 'qcm':
+          questions = await generateConceptChapterQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+        case 'vrai_faux':
+          questions = await generateTrueFalseQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+        case 'texte_trous':
+          questions = await generateFillBlankQuestions(
+            chapterMetadata,
+            chapterText,
+            language,
+            sharedOptions
+          );
+          break;
+      }
+
+      if (questions.length > typeQuota) {
+        questions = questions.slice(0, typeQuota);
+      }
+
+      console.log(`✅ [STREAMING] Generated ${questions.length} ${type} questions - sending ONE BY ONE`);
+
+      // Send questions ONE BY ONE immediately as they're available
+      // This allows the client to display the first question while others are being processed
+      for (const question of questions) {
+        onQuestions([question]);
+        allQuestions.push(question);
+      }
+    } catch (typeError: any) {
+      console.error(`❌ [STREAMING] Failed to generate ${type} questions:`, typeError.message);
+    }
+  }
+
+  // Fallback if nothing generated
+  if (allQuestions.length === 0) {
+    console.warn(`⚠️ [STREAMING] ALL types failed. Using contextual fallback.`);
+    const fallbackQuestions = generateContextualQuestions(
+      chapterMetadata.title,
+      chapterText,
+      language,
+      totalQuestions
+    );
+    onQuestions(fallbackQuestions);
+    return fallbackQuestions;
+  }
+
+  console.log(`✅ [STREAMING] Complete: ${allQuestions.length} questions total`);
+  return allQuestions;
+}
+
+/**
+ * Generate cross-chapter questions that test understanding of connections between topics
+ * These questions compare/contrast concepts from different chapters
+ */
+export async function generateCrossChapterQuestions(
+  chapters: Array<{
+    title: string;
+    summary?: string;
+    sourceText: string;
+    keyConcepts?: string[];
+  }>,
+  language: 'EN' | 'FR' | 'DE' = 'EN',
+  questionCount: number = 10
+): Promise<MCQQuestion[]> {
+  const logContext = llmLogger.createContext('generateCrossChapterQuestions', LLM_CONFIG.models.primary);
+  console.log('🔗 Generating cross-chapter questions for', chapters.length, 'chapters');
+
+  if (chapters.length < 2) {
+    console.warn('⚠️ Need at least 2 chapters for cross-chapter questions');
+    return [];
+  }
+
+  const languageInstruction = language === 'FR'
+    ? 'Generate ALL questions, options, and explanations in French (français).'
+    : language === 'DE'
+      ? 'Generate ALL questions, options, and explanations in German (Deutsch).'
+      : 'Generate ALL questions, options, and explanations in English.';
+
+  // Build chapter summaries for the prompt
+  const chapterSummaries = chapters.map((ch, i) => {
+    const concepts = ch.keyConcepts?.slice(0, 5).join(', ') || 'Non spécifiés';
+    const summary = ch.summary || ch.sourceText.substring(0, 500);
+    return `
+CHAPTER ${i + 1}: ${ch.title}
+Key concepts: ${concepts}
+Summary: ${summary.substring(0, 300)}...
+`;
+  }).join('\n');
+
+  const prompt = `Generate ${questionCount} cross-chapter MCQ questions that TEST CONNECTIONS and COMPARISONS between concepts from different chapters.
+
+${chapterSummaries}
+
+Each question MUST:
+1. Reference concepts from AT LEAST 2 different chapters
+2. Test synthesis, comparison, or application across chapters
+3. Include "chapters_referenced" field with chapter numbers (1-indexed)
+
+Question types to generate:
+- COMPARISON: "How does [concept A from Ch1] differ from [concept B from Ch3]?"
+- SYNTHESIS: "Based on [Ch1 principle] and [Ch2 method], what would happen if...?"
+- APPLICATION: "How would you apply [Ch2 framework] to the problem described in [Ch4]?"
+- RELATIONSHIP: "What is the relationship between [Ch1 concept] and [Ch3 outcome]?"
+
+Format for each question:
+{
+  "type": "multiple_choice",
+  "prompt": "Question comparing/connecting concepts from multiple chapters",
+  "options": ["Option A", "Option B", "Option C", "Option D"],
+  "correct_option_index": 0,
+  "explanation": "Why this answer connects the chapters correctly",
+  "cognitive_level": "apply",
+  "concept_tested": "Cross-chapter synthesis",
+  "chapters_referenced": [1, 3]
+}
+
+CRITICAL RULES:
+1. Each question MUST genuinely require knowledge from multiple chapters
+2. Don't just mention chapters - the correct answer must depend on understanding both
+3. Distractors should reflect common misconceptions about chapter relationships
+4. Questions should test UNDERSTANDING, not just recall
+
+Generate exactly ${questionCount} questions.`;
+
+  try {
+    const parsed = await withRetry(
+      async () => {
+        return await mistralChatJSON<{ questions: any[] }>({
+          model: MISTRAL_MODELS.small,
+          systemPrompt: `Expert quiz creator specializing in synthesis questions. Return valid JSON only. ${languageInstruction}`,
+          userPrompt: prompt,
+          temperature: 0.4, // Slightly higher for more creative connections
+          maxTokens: 4000,
+        });
+      },
+      { maxRetries: 3 }
+    );
+
+    let questions: MCQQuestion[] = parsed.questions || [];
+    console.log(`🔗 Generated ${questions.length} cross-chapter questions`);
+
+    // Validate and filter questions
+    const validatedQuestions = questions.filter(q => {
+      // Must have chapters_referenced with at least 2 chapters
+      const chaptersRef = (q as any).chapters_referenced;
+      if (!Array.isArray(chaptersRef) || chaptersRef.length < 2) {
+        console.warn('⚠️ Skipping question without proper chapter references:', q.prompt?.substring(0, 50));
+        return false;
+      }
+      // Basic validation
+      if (!q.prompt || q.prompt.length < 20) return false;
+      if (!q.options || q.options.length !== 4) return false;
+      if (q.correct_option_index === undefined || q.correct_option_index < 0 || q.correct_option_index > 3) return false;
+      return true;
+    });
+
+    console.log(`✅ Cross-chapter questions after validation: ${validatedQuestions.length}/${questions.length}`);
+    logContext.success();
+    return validatedQuestions;
+  } catch (error: any) {
+    console.error('❌ Error generating cross-chapter questions:', error);
+    logContext.setFallbackUsed().failure(error, error?.status);
+    return [];
+  }
 }

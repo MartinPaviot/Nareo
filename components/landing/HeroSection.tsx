@@ -20,9 +20,9 @@ export function HeroSection({ translate, onCtaClick }: HeroSectionProps) {
   };
 
   return (
-    <section className="flex flex-col lg:flex-row items-center gap-8 lg:gap-6 mb-16">
+    <section className="flex flex-col lg:flex-row items-center gap-0 lg:gap-6 mb-16">
       {/* Left side - 55% width on desktop */}
-      <div className="lg:w-[55%] flex flex-col justify-center space-y-5 text-center lg:text-left order-1 lg:order-1">
+      <div className="lg:w-[55%] flex flex-col justify-center space-y-2 lg:space-y-5 text-center lg:text-left order-1 lg:order-1">
         <h1 className="text-2xl sm:text-3xl lg:text-[2.75rem] font-bold text-gray-900 leading-tight lg:leading-snug">
           <span className="relative inline-block">
             <span className="relative z-10">{translate('home_hero_title_highlight')}</span>
@@ -67,29 +67,31 @@ export function HeroSection({ translate, onCtaClick }: HeroSectionProps) {
         <HeroPreviewCarousel translate={translate} />
         {/* CTA Button - Shown on mobile only, after carousel */}
         <div className="lg:hidden flex flex-col items-center gap-3">
-          <button
-            onClick={scrollToUpload}
-            className="group inline-flex items-center justify-center gap-2 h-14 px-8 rounded-xl text-white text-lg font-semibold shadow-lg transition-all duration-200 hover:scale-[1.02]"
-            style={{
-              backgroundColor: '#ff751f',
-              boxShadow: '0 10px 25px -5px rgba(255, 117, 31, 0.4)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e5681b';
-              e.currentTarget.style.boxShadow = '0 15px 30px -5px rgba(255, 117, 31, 0.5)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#ff751f';
-              e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(255, 117, 31, 0.4)';
-            }}
-          >
-            {translate('home_hero_cta_primary')}
-            <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
-          </button>
-          <p className="flex items-center gap-2 text-sm text-gray-500 text-center">
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            {translate('home_hero_cta_subtext')}
-          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={scrollToUpload}
+              className="group inline-flex items-center justify-center gap-2 h-14 px-8 rounded-xl text-white text-lg font-semibold shadow-lg transition-all duration-200 hover:scale-[1.02] w-full"
+              style={{
+                backgroundColor: '#ff751f',
+                boxShadow: '0 10px 25px -5px rgba(255, 117, 31, 0.4)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e5681b';
+                e.currentTarget.style.boxShadow = '0 15px 30px -5px rgba(255, 117, 31, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#ff751f';
+                e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(255, 117, 31, 0.4)';
+              }}
+            >
+              {translate('home_hero_cta_primary')}
+              <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
+            </button>
+            <p className="flex items-start gap-2 text-sm text-gray-500">
+              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+              <span>{translate('home_hero_cta_subtext')}</span>
+            </p>
+          </div>
         </div>
       </div>
     </section>

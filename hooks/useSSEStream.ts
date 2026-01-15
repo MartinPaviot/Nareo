@@ -50,6 +50,12 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
   const eventsRef = useRef<SSEEvent[]>([]);
   const streamedContentRef = useRef<string>('');
 
+  // Store callbacks in refs to avoid stale closures
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
+
   /**
    * Start streaming from a URL
    */
@@ -143,7 +149,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
                 streamedContent: streamedContentRef.current,
                 events: [...eventsRef.current],
               }));
-              options.onChunk?.(event.content, streamedContentRef.current);
+              optionsRef.current.onChunk?.(event.content, streamedContentRef.current);
               break;
 
             case 'question':
@@ -152,7 +158,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
                 progress: event.progress ?? prev.progress,
                 events: [...eventsRef.current],
               }));
-              options.onQuestion?.(event);
+              optionsRef.current.onQuestion?.(event);
               break;
 
             case 'flashcard':
@@ -161,7 +167,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
                 progress: event.progress ?? prev.progress,
                 events: [...eventsRef.current],
               }));
-              options.onFlashcard?.(event);
+              optionsRef.current.onFlashcard?.(event);
               break;
 
             case 'complete':
@@ -174,7 +180,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
                 events: [...eventsRef.current],
                 streamedContent: event.content ?? prev.streamedContent,
               }));
-              options.onComplete?.(eventsRef.current);
+              optionsRef.current.onComplete?.(eventsRef.current);
               break;
 
             case 'error':
@@ -184,11 +190,11 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
                 error: event.message,
                 events: [...eventsRef.current],
               }));
-              options.onError?.(event.message);
+              optionsRef.current.onError?.(event.message);
               break;
           }
 
-          options.onEvent?.(event);
+          optionsRef.current.onEvent?.(event);
         }
       }
 
@@ -221,9 +227,9 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
         isStreaming: false,
         error: errorMessage,
       }));
-      options.onError?.(errorMessage);
+      optionsRef.current.onError?.(errorMessage);
     }
-  }, [options]);
+  }, []); // No dependencies needed - we use optionsRef for callbacks
 
   /**
    * Stop the current stream
@@ -345,6 +351,28 @@ export function useNoteStream(courseId: string, options: UseSSEStreamOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ config }),
+    });
+  }, [courseId, stream]);
+
+  return {
+    ...stream,
+    startGeneration,
+  };
+}
+
+/**
+ * Helper hook for consuming streaming quiz generation with real-time question delivery
+ * This uses the /quiz/generate-stream endpoint which streams questions as they are generated,
+ * allowing users to start playing immediately.
+ */
+export function useQuizGenerateStream(courseId: string, options: UseSSEStreamOptions = {}) {
+  const stream = useSSEStream(options);
+
+  const startGeneration = useCallback(async (config?: object, chapterId?: string) => {
+    await stream.startStream(`/api/courses/${courseId}/quiz/generate-stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config, chapterId }),
     });
   }, [courseId, stream]);
 

@@ -108,9 +108,9 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
       {!user && (
         <button
           onClick={() => router.push('/auth/signup')}
-          className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
+          className="inline-flex items-center justify-center gap-1.5 h-7 px-3 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
         >
-          <UserPlus className="w-4 h-4 flex-shrink-0" />
+          <UserPlus className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="hidden sm:inline">{translate('auth_signup_button')}</span>
         </button>
       )}
@@ -119,9 +119,9 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
       {user && profile && !profile.isPremium && (
         <button
           onClick={() => router.push('/paywall')}
-          className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
+          className="inline-flex items-center justify-center gap-1.5 h-7 px-3 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
         >
-          <GraduationCap className="w-4 h-4 flex-shrink-0" />
+          <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="hidden sm:inline">{translate('upgrade_button')}</span>
         </button>
       )}
@@ -130,13 +130,13 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
       {user && !hideMyCoursesButton && (
         <button
           onClick={() => router.push('/dashboard')}
-          className={`inline-flex items-center justify-center gap-2 h-10 px-4 rounded-full border text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md ${
+          className={`inline-flex items-center justify-center gap-1.5 h-7 px-3 rounded-full border text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md ${
             isDark
               ? 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700 hover:text-white'
               : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
-          <BookOpen className="w-4 h-4 flex-shrink-0" />
+          <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="hidden sm:inline">{translate('my_courses_button')}</span>
         </button>
       )}
@@ -145,7 +145,7 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
       <div className="relative">
         <button
         onClick={() => setMenuOpen(!menuOpen)}
-        className={`flex items-center justify-center w-10 h-10 rounded-full border-0 transition-all duration-200 overflow-hidden ${
+        className={`flex items-center justify-center w-7 h-7 rounded-full border-0 transition-all duration-200 overflow-hidden ${
           user
             ? profile?.avatar_url
               ? 'shadow-md hover:shadow-lg ring-1 ring-black/5 hover:ring-black/10'
@@ -162,18 +162,18 @@ export default function WorkingPageMenu({ hideMyCoursesButton = false }: Working
             <Image
               src={profile.avatar_url}
               alt="Avatar"
-              width={40}
-              height={40}
+              width={28}
+              height={28}
               className="w-full h-full object-cover"
               unoptimized
             />
           ) : (
-            <span className="text-sm font-bold text-white">{userInitials}</span>
+            <span className="text-xs font-bold text-white">{userInitials}</span>
           )
         ) : menuOpen ? (
-          <X className={`w-5 h-5 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`} />
+          <X className={`w-4 h-4 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`} />
         ) : (
-          <Menu className={`w-5 h-5 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`} />
+          <Menu className={`w-4 h-4 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`} />
         )}
       </button>
 

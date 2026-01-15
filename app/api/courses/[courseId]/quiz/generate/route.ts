@@ -225,8 +225,9 @@ async function runQuizGeneration(
       conceptsByChapter.set(concept.chapter_id, chapterConcepts);
     });
 
-    // Seuil de déduplication à 0.92 = rejette seulement les questions quasi-identiques
-    const deduplicationTracker = new CourseDeduplicationTracker(0.92);
+    // Seuil de déduplication à 0.70 = rejette les questions avec 70%+ de mots en commun
+    // Abaissé de 0.92 pour améliorer la diversité des questions
+    const deduplicationTracker = new CourseDeduplicationTracker(0.70);
 
     // Process ALL chapters that have source_text
     // NOTE: Chapters with insufficient content are now filtered during course extraction (course-pipeline.ts)

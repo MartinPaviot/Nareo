@@ -77,16 +77,16 @@ export function WhyQuizzesSection({ translate }: WhyQuizzesSectionProps) {
 
         {/* Badge VS - Mobile only */}
         <div className="flex md:hidden items-center justify-center -my-3 z-10">
-          <div className="w-14 h-14 bg-white border-[3px] border-gray-200 rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-sm font-bold text-gray-500">VS</span>
+          <div className="w-12 h-12 bg-white border-[3px] border-gray-200 rounded-full flex items-center justify-center shadow-lg">
+            <span className="text-xs font-bold text-gray-500">VS</span>
           </div>
         </div>
 
         {/* Card GAGNANTE */}
-        <div className="flex-1 bg-orange-50 border border-orange-300 rounded-2xl p-5 md:rounded-l-none md:border-l-0 relative">
+        <div className="flex-1 bg-orange-50 border border-orange-300 rounded-2xl p-5 md:rounded-l-none md:border-l-0 relative mt-4 md:mt-0">
 
-          {/* Badge "Prouvé" */}
-          <div className="absolute -top-3 right-4 text-white text-xs font-bold px-3 py-1 rounded-full" style={{ backgroundColor: '#ff751f' }}>
+          {/* Badge "Prouvé" - positioned inside card on mobile, outside on desktop */}
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-4 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap" style={{ backgroundColor: '#ff751f' }}>
             {translate('home_why_badge')}
           </div>
 

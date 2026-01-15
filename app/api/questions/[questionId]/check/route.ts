@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api-auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getServiceSupabase } from '@/lib/supabase';
+
+// Helper to extract guestSessionId from cookies
+function getGuestSessionIdFromRequest(request: NextRequest): string | null {
+  const cookies = request.cookies;
+  return cookies.get('guestSessionId')?.value || null;
+}
 
 export async function POST(
   request: NextRequest,
@@ -9,7 +16,9 @@ export async function POST(
   try {
     const auth = await authenticateRequest(request); // optional auth
     const supabase = await createSupabaseServerClient();
+    const admin = getServiceSupabase();
     const userId = auth?.user.id || null;
+    const guestSessionId = getGuestSessionIdFromRequest(request);
     const resolvedParams = "then" in context.params ? await context.params : context.params;
     const questionId = resolvedParams.questionId;
 
@@ -194,6 +203,50 @@ export async function POST(
         }
       } catch (masteryErr) {
         console.error('[check] Exception updating mastery:', masteryErr);
+      }
+    }
+
+    // Record question history for diversity tracking (both logged-in users and guests)
+    if (userId || guestSessionId) {
+      try {
+        // Use admin client to bypass RLS for guests
+        const dbClient = userId ? supabase : admin;
+
+        // Build the upsert data
+        const historyData: {
+          user_id: string | null;
+          guest_session_id: string | null;
+          question_id: string;
+          course_id: string;
+          chapter_id: string;
+          answered_correctly: boolean;
+          last_answered_at: string;
+          attempt_count?: number;
+        } = {
+          user_id: userId,
+          guest_session_id: userId ? null : guestSessionId,
+          question_id: questionId,
+          course_id: chapterRow.course_id,
+          chapter_id: question.chapter_id,
+          answered_correctly: isCorrect,
+          last_answered_at: new Date().toISOString(),
+        };
+
+        // Try to upsert - if the question was already answered, update it
+        const { error: historyError } = await dbClient
+          .from('user_question_history')
+          .upsert(historyData, {
+            onConflict: userId ? 'user_id,question_id' : 'guest_session_id,question_id',
+          });
+
+        if (historyError) {
+          // Don't fail the request, just log the error
+          console.warn('[check] Could not record question history:', historyError);
+        } else {
+          console.log('[check] Recorded question history:', { questionId, userId, guestSessionId: !!guestSessionId, isCorrect });
+        }
+      } catch (historyErr) {
+        console.warn('[check] Exception recording question history:', historyErr);
       }
     }
 

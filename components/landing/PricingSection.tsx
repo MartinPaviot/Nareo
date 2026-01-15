@@ -96,8 +96,10 @@ export function PricingSection({ translate, currentLanguage, onCtaClick, user }:
           </div>
 
           <div className="mb-4">
-            <span className="text-3xl font-bold text-gray-900">0€</span>
-            <span className="ml-1 text-sm text-gray-500">{translate('paywall_price_per_month')}</span>
+            <div className="flex items-baseline flex-wrap gap-x-1">
+              <span className="text-3xl font-bold text-gray-900">0€</span>
+              <span className="text-sm text-gray-500">{translate('paywall_price_per_month')}</span>
+            </div>
           </div>
 
           <ul className="space-y-2 mb-4 flex-grow">
@@ -144,13 +146,15 @@ export function PricingSection({ translate, currentLanguage, onCtaClick, user }:
           </div>
 
           <div className="mb-4">
-            <span className="text-3xl font-bold text-orange-600">
-              {pricingBilling === 'annual'
-                ? (currentLanguage === 'en' ? '€6.99' : '6,99 €')
-                : (currentLanguage === 'en' ? '€9.99' : '9,99 €')
-              }
-            </span>
-            <span className="ml-1 text-sm text-gray-500">{translate('paywall_price_per_month')}</span>
+            <div className="flex items-baseline flex-wrap gap-x-1">
+              <span className="text-3xl font-bold text-orange-600">
+                {pricingBilling === 'annual'
+                  ? (currentLanguage === 'en' ? '€6.99' : '6,99 €')
+                  : (currentLanguage === 'en' ? '€9.99' : '9,99 €')
+                }
+              </span>
+              <span className="text-sm text-gray-500">{translate('paywall_price_per_month')}</span>
+            </div>
             {pricingBilling === 'annual' ? (
               <p className="text-xs text-gray-500 mt-0.5">
                 {translate('paywall_billed_annually')} {currentLanguage === 'en' ? '€83.88' : '83,88 €'}

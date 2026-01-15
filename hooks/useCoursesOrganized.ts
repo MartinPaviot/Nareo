@@ -16,7 +16,7 @@ interface UseCoursesOrganizedReturn {
 
 export function useCoursesOrganized(): UseCoursesOrganizedReturn {
   const { user } = useAuth();
-  const { subscribe } = useCoursesRefresh();
+  const { subscribe, subscribeToRemove } = useCoursesRefresh();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [uncategorized, setUncategorized] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,6 +79,20 @@ export function useCoursesOrganized(): UseCoursesOrganizedReturn {
     const unsubscribe = subscribe(fetchCourses);
     return unsubscribe;
   }, [subscribe, fetchCourses]);
+
+  // Subscribe to course removal events (optimistic update without API call)
+  useEffect(() => {
+    const unsubscribe = subscribeToRemove((courseId: string) => {
+      // Remove from folders
+      setFolders(prev => prev.map(folder => ({
+        ...folder,
+        courses: folder.courses.filter(course => course.id !== courseId)
+      })));
+      // Remove from uncategorized
+      setUncategorized(prev => prev.filter(course => course.id !== courseId));
+    });
+    return unsubscribe;
+  }, [subscribeToRemove]);
 
   return {
     folders,

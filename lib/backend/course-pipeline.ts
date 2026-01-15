@@ -234,59 +234,6 @@ export async function processCourseJob(jobId: string) {
       throw new Error(`Insufficient text extracted (${validation.reason})`);
     }
 
-    // === GRAPHICS EXTRACTION (PDF only) ===
-    // Extract and analyze pedagogical graphics with Mistral OCR + Claude Vision
-    if (ext === ".pdf") {
-      try {
-        logStep("graphics_extraction_start", { courseId: course.id });
-        await admin.from("pipeline_jobs").update({ stage: "graphics_extraction", updated_at: new Date().toISOString() }).eq("id", jobId);
-
-        // Download PDF again to avoid buffer consumption issues
-        // (parsePDFWithPages may have consumed the original buffer)
-        const download2 = await admin.storage.from(bucket).download(storagePath);
-        if (download2.error || !download2.data) {
-          throw new Error("Unable to download PDF for graphics extraction");
-        }
-        const pdfBuffer = Buffer.from(await download2.data.arrayBuffer());
-
-        const { processDocumentGraphics } = await import('./graphics-processor');
-        const graphicsResult = await processDocumentGraphics(
-          course.id,
-          course.user_id,
-          pdfBuffer,
-          course.original_filename || 'document.pdf'
-        );
-
-        logStep("graphics_extraction_complete", {
-          courseId: course.id,
-          totalImages: graphicsResult.totalImages,
-          analyzed: graphicsResult.analyzed,
-          stored: graphicsResult.stored,
-          errors: graphicsResult.errors
-        });
-
-        await logEvent("graphics_extracted", {
-          userId: course.user_id,
-          courseId: course.id,
-          payload: {
-            totalImages: graphicsResult.totalImages,
-            analyzed: graphicsResult.analyzed,
-            stored: graphicsResult.stored
-          }
-        });
-      } catch (graphicsError: any) {
-        // Don't fail the whole pipeline if graphics processing fails
-        console.error('[pipeline] Graphics processing failed:', graphicsError.message);
-        logStep("graphics_extraction_failed", { courseId: course.id, error: graphicsError.message });
-        await logEvent("graphics_extraction_failed", {
-          userId: course.user_id,
-          courseId: course.id,
-          payload: { error: graphicsError.message }
-        });
-        // Continue with the rest of the pipeline
-      }
-    }
-
     // Update stage to language_detection
     await admin.from("pipeline_jobs").update({ stage: "language_detection", updated_at: new Date().toISOString() }).eq("id", jobId);
 
@@ -316,6 +263,63 @@ export async function processCourseJob(jobId: string) {
       language: contentLanguage,
       source_text: extractedText, // Store FULL source text (not truncated) for A+ Note generation
     }).eq("id", course.id);
+
+    // === GRAPHICS EXTRACTION (PDF only) ===
+    // Extract and analyze pedagogical graphics with Mistral OCR + Claude Vision
+    // Now runs AFTER language detection so descriptions are in the correct language
+    if (ext === ".pdf") {
+      try {
+        logStep("graphics_extraction_start", { courseId: course.id, language: contentLanguage });
+        await admin.from("pipeline_jobs").update({ stage: "graphics_extraction", updated_at: new Date().toISOString() }).eq("id", jobId);
+
+        // Download PDF again to avoid buffer consumption issues
+        // (parsePDFWithPages may have consumed the original buffer)
+        const download2 = await admin.storage.from(bucket).download(storagePath);
+        if (download2.error || !download2.data) {
+          throw new Error("Unable to download PDF for graphics extraction");
+        }
+        const pdfBuffer = Buffer.from(await download2.data.arrayBuffer());
+
+        const { processDocumentGraphics } = await import('./graphics-processor');
+        const graphicsResult = await processDocumentGraphics(
+          course.id,
+          course.user_id,
+          pdfBuffer,
+          course.original_filename || 'document.pdf',
+          contentLanguage // Pass language for localized descriptions
+        );
+
+        logStep("graphics_extraction_complete", {
+          courseId: course.id,
+          totalImages: graphicsResult.totalImages,
+          analyzed: graphicsResult.analyzed,
+          stored: graphicsResult.stored,
+          errors: graphicsResult.errors,
+          language: contentLanguage
+        });
+
+        await logEvent("graphics_extracted", {
+          userId: course.user_id,
+          courseId: course.id,
+          payload: {
+            totalImages: graphicsResult.totalImages,
+            analyzed: graphicsResult.analyzed,
+            stored: graphicsResult.stored,
+            language: contentLanguage
+          }
+        });
+      } catch (graphicsError: any) {
+        // Don't fail the whole pipeline if graphics processing fails
+        console.error('[pipeline] Graphics processing failed:', graphicsError.message);
+        logStep("graphics_extraction_failed", { courseId: course.id, error: graphicsError.message });
+        await logEvent("graphics_extraction_failed", {
+          userId: course.user_id,
+          courseId: course.id,
+          payload: { error: graphicsError.message }
+        });
+        // Continue with the rest of the pipeline
+      }
+    }
 
     // === PHASE 1: Detect chapters using LLM ===
     // LLM provides better chapter detection than algorithmic approach

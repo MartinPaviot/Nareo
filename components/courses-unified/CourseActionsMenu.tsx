@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MoreHorizontal, FolderInput, FolderMinus, Trash2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCoursesOrganized } from '@/hooks/useCoursesOrganized';
+import { useCoursesRefresh } from '@/contexts/CoursesRefreshContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import DeleteCourseDialog from '@/components/course-management/DeleteCourseDialog';
 
@@ -22,12 +23,13 @@ export default function CourseActionsMenu({
 }: CourseActionsMenuProps) {
   const { isDark } = useTheme();
   const { translate } = useLanguage();
-  const { folders, moveCourse, refetch } = useCoursesOrganized();
+  const { folders, moveCourse } = useCoursesOrganized();
+  const { removeCourse } = useCoursesRefresh();
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [mounted, setMounted] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Mount check for portal
@@ -35,14 +37,45 @@ export default function CourseActionsMenu({
     setMounted(true);
   }, []);
 
-  // Update menu position when it opens
-  useEffect(() => {
-    if (showMenu && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + 4,
-        left: rect.right - 224, // 224 = w-56 (14rem)
-      });
+  // Update menu position after it renders (using real dimensions)
+  // useLayoutEffect runs synchronously before paint, preventing flash
+  useLayoutEffect(() => {
+    if (showMenu && buttonRef.current && menuRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const menuRect = menuRef.current.getBoundingClientRect();
+      const padding = 8;
+
+      const menuHeight = menuRect.height;
+      const menuWidth = menuRect.width;
+
+      // Check if menu would overflow bottom of viewport
+      const spaceBelow = window.innerHeight - buttonRect.bottom - padding;
+      const spaceAbove = buttonRect.top - padding;
+
+      let top: number;
+      if (spaceBelow >= menuHeight) {
+        // Enough space below - show menu below button
+        top = buttonRect.bottom + 4;
+      } else if (spaceAbove >= menuHeight) {
+        // Not enough space below, but enough above - show menu above button
+        top = buttonRect.top - menuHeight - 4;
+      } else {
+        // Not enough space either way - position to fit in viewport
+        top = Math.max(padding, window.innerHeight - menuHeight - padding);
+      }
+
+      // Check horizontal overflow
+      let left = buttonRect.right - menuWidth;
+      if (left < padding) {
+        left = padding;
+      }
+      if (left + menuWidth > window.innerWidth - padding) {
+        left = window.innerWidth - menuWidth - padding;
+      }
+
+      menuRef.current.style.top = `${top}px`;
+      menuRef.current.style.left = `${left}px`;
+      menuRef.current.style.visibility = 'visible';
     }
   }, [showMenu]);
 
@@ -87,9 +120,10 @@ export default function CourseActionsMenu({
             onClick={() => setShowMenu(false)}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            ref={menuRef}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={`fixed w-56 rounded-xl shadow-lg border z-[9999] overflow-hidden max-h-80 overflow-y-auto ${
@@ -98,8 +132,9 @@ export default function CourseActionsMenu({
                 : 'bg-white border-gray-200'
             }`}
             style={{
-              top: menuPosition.top,
-              left: menuPosition.left,
+              top: 0,
+              left: 0,
+              visibility: 'hidden',
             }}
           >
             {/* Header */}
@@ -216,7 +251,7 @@ export default function CourseActionsMenu({
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
         onDeleted={() => {
-          refetch();
+          removeCourse(courseId);
         }}
       />
     </div>

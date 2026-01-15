@@ -11,6 +11,13 @@
 export type NiveauQuantite = 'synthetique' | 'standard' | 'exhaustif';
 
 /**
+ * Mode de quiz
+ * - chapter: Quiz par chapitre (comportement par défaut)
+ * - global: Quiz mélangeant les questions de tous les chapitres
+ */
+export type QuizMode = 'chapter' | 'global';
+
+/**
  * Types de questions disponibles
  */
 export interface QuizTypesConfig {
@@ -25,6 +32,8 @@ export interface QuizTypesConfig {
 export interface QuizConfig {
   niveau: NiveauQuantite;
   types: QuizTypesConfig;
+  mode?: QuizMode;         // Mode de quiz (chapter par défaut)
+  excludeSeen?: boolean;   // Exclure les questions déjà vues
 }
 
 /**
@@ -37,6 +46,8 @@ export const DEFAULT_QUIZ_CONFIG: QuizConfig = {
     vrai_faux: false,
     texte_trous: false,
   },
+  mode: 'chapter',
+  excludeSeen: false,
 };
 
 /**
@@ -47,14 +58,14 @@ export const NIVEAU_QUANTITE_OPTIONS = [
     value: 'synthetique' as const,
     label: 'Synthétique',
     icon: '⚡',
-    description: '5 questions/chapitre',
+    description: '~5 questions par concept',
     multiplier: 0.5,
   },
   {
     value: 'standard' as const,
     label: 'Standard',
     icon: '📚',
-    description: '10 questions/chapitre',
+    description: '~8 questions par concept',
     multiplier: 1.0,
   },
   {
@@ -90,8 +101,8 @@ export const QUIZ_TYPES_OPTIONS = [
 /**
  * Calcule le nombre de questions ajusté selon le niveau
  * IMPORTANT: Les valeurs sont FIXES pour synthétique et standard
- * - Synthétique: TOUJOURS 5 questions par chapitre
- * - Standard: TOUJOURS 10 questions par chapitre
+ * - Synthétique: TOUJOURS 5 questions par concept
+ * - Standard: TOUJOURS 8 questions par concept
  * - Exhaustif: Au moins 12, ou plus si le contenu le permet
  */
 export function getAdjustedQuestionCount(
@@ -103,11 +114,11 @@ export function getAdjustedQuestionCount(
     case 'synthetique':
       return 5; // TOUJOURS 5 questions
     case 'standard':
-      return 10; // TOUJOURS 10 questions
+      return 8; // TOUJOURS 8 questions
     case 'exhaustif':
       return Math.max(12, Math.round(baseCount * 1.5)); // Au moins 12, ou plus si le contenu le permet
     default:
-      return 10;
+      return 8;
   }
 }
 

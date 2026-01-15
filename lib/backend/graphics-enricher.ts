@@ -760,3 +760,115 @@ FORMAT:
 [1-2 sentences explaining key elements to observe]
 `;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                    V5: HYBRID PAGE-BASED GRAPHIC ASSIGNMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Section with page range for hybrid assignment
+ */
+export interface SectionWithPageRange {
+  index: number;
+  title: string;
+  pageRange?: {
+    start: number;
+    end: number;
+  };
+}
+
+/**
+ * Assign graphics to sections based on page proximity (HYBRID V5)
+ *
+ * This is a DETERMINISTIC assignment based on page numbers:
+ * - A graphic from page N is assigned to the section that covers page N
+ * - If no exact match, assigns to the nearest section (with tolerance)
+ * - The LLM then decides WHERE in the section to place it (semantic part)
+ *
+ * @param graphics - Array of graphics with page numbers
+ * @param sections - Array of sections with page ranges
+ * @param tolerance - Pages of tolerance for edge cases (default: 1)
+ * @returns Map of sectionIndex -> array of graphic IDs
+ */
+export function assignGraphicsByPageRange(
+  graphics: GraphicSummary[],
+  sections: SectionWithPageRange[],
+  tolerance: number = 1
+): Map<number, string[]> {
+  const assignments = new Map<number, string[]>();
+
+  // Initialize empty arrays for each section
+  sections.forEach((_, idx) => assignments.set(idx, []));
+
+  for (const graphic of graphics) {
+    const graphicPage = graphic.pageNumber;
+    let bestSectionIndex = -1;
+    let bestDistance = Infinity;
+
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i];
+      const range = section.pageRange;
+
+      if (!range) continue;
+
+      // Check if graphic page is within section range (with tolerance)
+      const rangeStart = range.start - tolerance;
+      const rangeEnd = range.end + tolerance;
+
+      if (graphicPage >= rangeStart && graphicPage <= rangeEnd) {
+        // Within range - calculate distance to center for tie-breaking
+        const sectionCenter = (range.start + range.end) / 2;
+        const distance = Math.abs(graphicPage - sectionCenter);
+
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestSectionIndex = i;
+        }
+      }
+    }
+
+    // Assign to best matching section
+    if (bestSectionIndex >= 0) {
+      assignments.get(bestSectionIndex)!.push(graphic.id);
+      console.log(`[V5 Hybrid] Graphic "${graphic.id}" (page ${graphicPage}) → Section ${bestSectionIndex} "${sections[bestSectionIndex].title}"`);
+    } else {
+      console.log(`[V5 Hybrid] ⚠️ Graphic "${graphic.id}" (page ${graphicPage}) - no matching section found`);
+    }
+  }
+
+  // Log summary
+  let totalAssigned = 0;
+  assignments.forEach((ids, idx) => {
+    if (ids.length > 0) {
+      totalAssigned += ids.length;
+      console.log(`[V5 Hybrid] Section ${idx}: ${ids.length} graphic(s) assigned`);
+    }
+  });
+  console.log(`[V5 Hybrid] Total: ${totalAssigned}/${graphics.length} graphics assigned by page proximity`);
+
+  return assignments;
+}
+
+/**
+ * Build section graphics map from structure (HYBRID V5)
+ *
+ * Replaces the LLM-based assignedGraphics with deterministic page-based assignment.
+ *
+ * @param structure - Document structure with sections containing pageRange
+ * @param graphics - Array of available graphics
+ * @returns Map of sectionIndex -> array of graphic IDs
+ */
+export function buildSectionGraphicsMapV5(
+  structure: { sections: Array<{ title: string; pageRange?: { start: number; end: number } }> },
+  graphics: GraphicSummary[]
+): Map<number, string[]> {
+  // Convert structure sections to SectionWithPageRange format
+  const sectionsWithRange: SectionWithPageRange[] = structure.sections.map((s, idx) => ({
+    index: idx,
+    title: s.title,
+    pageRange: s.pageRange
+  }));
+
+  // Use page-based assignment
+  return assignGraphicsByPageRange(graphics, sectionsWithRange);
+}

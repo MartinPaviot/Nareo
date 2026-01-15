@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, Star, HelpCircle, Maximize2, Minimize2 } from 'lucide-react';
+import { Star, HelpCircle, Maximize2, Minimize2 } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -231,16 +231,22 @@ export default function ReviewPage() {
           setSessionState('completed');
           setIsFullscreen(false);
 
-          // Record activity for gamification (add points to dashboard)
-          if (user) {
+          // Record activity for daily goal tracking (activity units)
+          if (user && sessionStats) {
             try {
-              await fetch('/api/gamification/activity', {
+              // Get final counts including the current rating
+              const finalHard = sessionStats.hard + (rating === 'hard' ? 1 : 0);
+              const finalGood = sessionStats.good + (rating === 'good' ? 1 : 0);
+              const finalEasy = sessionStats.easy + (rating === 'easy' ? 1 : 0);
+
+              await fetch('/api/flashcards/record-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  points_earned: sessionPoints + pointsMap[rating], // Include current rating points
-                  questions_answered: sessionCards.length,
-                  questions_correct: sessionCards.length - 1 + (rating === 'good' || rating === 'easy' ? 1 : 0), // Approximate
+                  hard: finalHard,
+                  good: finalGood,
+                  easy: finalEasy,
+                  courseId: isAllCourses ? null : courseId,
                 }),
               });
             } catch (err) {
@@ -259,7 +265,7 @@ export default function ReviewPage() {
       setIsProcessing(false);
       setHasAnswered(false);
     }
-  }, [currentCard, currentCardProgress, currentIndex, sessionCards.length, user, isProcessing, hasAnswered]);
+  }, [currentCard, currentCardProgress, currentIndex, sessionCards.length, user, isProcessing, hasAnswered, sessionStats, isAllCourses, courseId]);
 
   // Handle finish - go back
   const handleFinish = useCallback(() => {
@@ -691,7 +697,7 @@ export default function ReviewPage() {
             </div>
           ) : (
             /* Playing session */
-            <div className="space-y-3">
+            <div className="space-y-2">
               {/* Progress indicator and points */}
               <div className="flex flex-wrap items-center justify-end gap-2 text-xs sm:text-sm">
                 <div className="flex items-center gap-1">
@@ -720,8 +726,8 @@ export default function ReviewPage() {
               {currentCard && (
                 <div
                   onClick={handleFlip}
-                  className="relative w-full aspect-[3/2] sm:aspect-[5/2] cursor-pointer"
-                  style={{ perspective: '1000px' }}
+                  className="relative w-full aspect-[4/2] sm:aspect-[6/2] cursor-pointer"
+                  style={{ perspective: '1000px', maxHeight: '50vh' }}
                 >
                   <div
                     className="relative w-full h-full transition-transform duration-500"
@@ -732,27 +738,27 @@ export default function ReviewPage() {
                   >
                     {/* Front - Question */}
                     <div
-                      className={`absolute inset-0 rounded-2xl border shadow-sm p-6 sm:p-8 md:p-10 flex flex-col items-center justify-center transition-colors ${
+                      className={`absolute inset-0 rounded-2xl border shadow-sm p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center transition-colors ${
                         isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                       }`}
                       style={{ backfaceVisibility: 'hidden' }}
                     >
-                      <span className="text-xs sm:text-sm text-orange-500 font-semibold uppercase tracking-wide mb-3">
+                      <span className="text-xs sm:text-sm text-orange-500 font-semibold uppercase tracking-wide mb-2">
                         {translate(FLASHCARD_TYPE_TRANSLATION_KEYS[currentCard.type]) || currentCard.type}
                       </span>
-                      <h3 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center px-2 leading-tight ${
+                      <h3 className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-center px-2 leading-tight ${
                         isDark ? 'text-neutral-50' : 'text-gray-900'
                       }`}>
                         {currentCard.front}
                       </h3>
-                      <p className={`text-sm sm:text-base mt-4 sm:mt-6 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
+                      <p className={`text-xs sm:text-sm mt-3 sm:mt-4 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
                         {translate('flashcards_tap_to_flip', 'Touchez pour retourner')}
                       </p>
                     </div>
 
                     {/* Back - Answer */}
                     <div
-                      className={`absolute inset-0 rounded-2xl border shadow-sm p-6 sm:p-8 md:p-10 flex flex-col items-center justify-center overflow-y-auto transition-colors ${
+                      className={`absolute inset-0 rounded-2xl border shadow-sm p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center overflow-y-auto transition-colors ${
                         isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-50 border-orange-200'
                       }`}
                       style={{
@@ -760,18 +766,18 @@ export default function ReviewPage() {
                         transform: 'rotateY(180deg)',
                       }}
                     >
-                      <span className={`text-xs sm:text-sm font-semibold uppercase tracking-wide mb-3 ${
+                      <span className={`text-xs sm:text-sm font-semibold uppercase tracking-wide mb-2 ${
                         isDark ? 'text-orange-400' : 'text-orange-600'
                       }`}>
                         {translate('flashcards_answer', 'Réponse')}
                       </span>
-                      <p className={`text-lg sm:text-xl md:text-2xl lg:text-3xl text-center leading-relaxed px-2 ${
+                      <p className={`text-base sm:text-lg md:text-xl lg:text-2xl text-center leading-relaxed px-2 ${
                         isDark ? 'text-neutral-200' : 'text-gray-800'
                       }`}>
                         {currentCard.back}
                       </p>
                       {!hasAnswered && (
-                        <p className={`text-sm sm:text-base mt-4 sm:mt-6 ${isDark ? 'text-orange-400/70' : 'text-orange-400'}`}>
+                        <p className={`text-xs sm:text-sm mt-3 sm:mt-4 ${isDark ? 'text-orange-400/70' : 'text-orange-400'}`}>
                           {translate('flashcards_rate_answer', 'Note ta réponse')}
                         </p>
                       )}
@@ -784,7 +790,7 @@ export default function ReviewPage() {
               {isFlipped && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="h-16 flex items-center justify-center"
+                  className="h-14 flex items-center justify-center"
                 >
                   <RatingButtons
                     onRate={handleRating}

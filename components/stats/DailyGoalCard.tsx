@@ -11,7 +11,7 @@ import ProgressCircle from './ProgressCircle';
 import GoalLevelSelector from './GoalLevelSelector';
 
 interface DailyGoalCardProps {
-  current: number;
+  activityUnits: number;  // Unified activity units (quiz + flashcards)
   target: number;
   completed: boolean;
   goalLevel: DailyGoalLevel;
@@ -19,7 +19,7 @@ interface DailyGoalCardProps {
 }
 
 export default function DailyGoalCard({
-  current,
+  activityUnits,
   target: _target,
   completed: _completedFromApi,
   goalLevel,
@@ -32,9 +32,11 @@ export default function DailyGoalCard({
   const config = DAILY_GOAL_CONFIG[goalLevel];
   // Use the fixed target from config to ensure immediate update when level changes
   const target = config.base;
+  // Display activity units as integers
+  const current = Math.floor(activityUnits);
   // Recalculate completed status client-side to handle edge cases
-  const completed = current >= target;
-  const progress = Math.min(100, Math.round((current / target) * 100));
+  const completed = activityUnits >= target;
+  const progress = Math.min(100, Math.round((activityUnits / target) * 100));
 
   return (
     <>
@@ -106,21 +108,6 @@ export default function DailyGoalCard({
           </div>
         </div>
 
-        {/* Completion celebration */}
-        <AnimatePresence>
-          {completed && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mt-2 text-center"
-            >
-              <p className="text-xs font-medium" style={{ color: '#379f5a' }}>
-                {translate('stats_label_xp_bonus')}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
 
       {/* Goal Level Selector Modal */}

@@ -12,6 +12,8 @@ import {
   ListChecks,
   ToggleLeft,
   TextCursor,
+  Shuffle,
+  Layers,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,6 +21,7 @@ import {
   QuizConfig,
   NiveauQuantite,
   QuizTypesConfig,
+  QuizMode,
   DEFAULT_QUIZ_CONFIG,
   NIVEAU_QUANTITE_OPTIONS,
   QUIZ_TYPES_OPTIONS,
@@ -29,6 +32,11 @@ interface QuizPersonnalisationScreenProps {
   onCancel?: () => void;
   isGenerating?: boolean;
   initialConfig?: QuizConfig;
+  showModeSelector?: boolean; // Show chapter/global mode selector
+  isEmbedded?: boolean; // When true, removes the outer card wrapper (for use in modals)
+  courseId?: string;
+  courseTitle?: string;
+  isLoading?: boolean;
 }
 
 // Niveau translation keys mapping
@@ -83,11 +91,34 @@ const TYPES_QUESTIONS = [
   },
 ];
 
+// Quiz mode translation keys
+const MODE_TRANSLATION_KEYS: Record<QuizMode, { label: string; description: string }> = {
+  chapter: { label: 'quiz_perso_mode_chapter', description: 'quiz_perso_mode_chapter_desc' },
+  global: { label: 'quiz_perso_mode_global', description: 'quiz_perso_mode_global_desc' },
+};
+
+// Quiz modes avec icônes
+const MODES = [
+  {
+    value: 'chapter' as const,
+    icon: Layers,
+    iconColor: 'text-blue-500',
+  },
+  {
+    value: 'global' as const,
+    icon: Shuffle,
+    iconColor: 'text-purple-500',
+  },
+];
+
 export default function QuizPersonnalisationScreen({
   onGenerate,
   onCancel,
   isGenerating = false,
   initialConfig,
+  showModeSelector = false,
+  isEmbedded = false,
+  isLoading = false,
 }: QuizPersonnalisationScreenProps) {
   const { isDark } = useTheme();
   const { translate } = useLanguage();
@@ -99,9 +130,15 @@ export default function QuizPersonnalisationScreen({
   const [types, setTypes] = useState<QuizTypesConfig>(
     initialConfig?.types ?? DEFAULT_QUIZ_CONFIG.types
   );
+  const [mode, setMode] = useState<QuizMode>(
+    initialConfig?.mode ?? DEFAULT_QUIZ_CONFIG.mode ?? 'chapter'
+  );
+  const [excludeSeen, setExcludeSeen] = useState<boolean>(
+    initialConfig?.excludeSeen ?? DEFAULT_QUIZ_CONFIG.excludeSeen ?? false
+  );
 
   // Accordion states
-  const [openSection, setOpenSection] = useState<'niveau' | 'types' | null>(null);
+  const [openSection, setOpenSection] = useState<'niveau' | 'types' | 'mode' | null>(null);
 
   const handleTypeToggle = (key: keyof QuizTypesConfig) => {
     const newTypes = { ...types, [key]: !types[key] };
@@ -113,41 +150,49 @@ export default function QuizPersonnalisationScreen({
   };
 
   const handleGenerate = () => {
-    onGenerate({ niveau, types });
+    onGenerate({ niveau, types, mode, excludeSeen });
   };
 
-  const toggleSection = (section: 'niveau' | 'types') => {
+  const toggleSection = (section: 'niveau' | 'types' | 'mode') => {
     setOpenSection(openSection === section ? null : section);
   };
 
   const selectedNiveau = NIVEAUX.find((n) => n.value === niveau);
   const selectedTypesCount = Object.values(types).filter(Boolean).length;
+  const selectedMode = MODES.find((m) => m.value === mode);
+
+  // Use isLoading if provided, fallback to isGenerating for backwards compatibility
+  const loading = isLoading || isGenerating;
 
   return (
     <div
-      className={`rounded-2xl border shadow-sm p-4 transition-colors ${
-        isDark
+      className={`${isEmbedded ? 'p-4' : 'rounded-2xl border shadow-sm p-4'} transition-colors ${
+        isEmbedded
+          ? ''
+          : isDark
           ? 'bg-neutral-900 border-neutral-800'
           : 'bg-white border-gray-200'
       }`}
     >
-      {/* Header */}
-      <div className="mb-4">
-        <h3
-          className={`text-lg font-semibold ${
-            isDark ? 'text-neutral-100' : 'text-gray-900'
-          }`}
-        >
-          {translate('quiz_perso_title')}
-        </h3>
-        <p
-          className={`text-sm mt-1 ${
-            isDark ? 'text-neutral-400' : 'text-gray-500'
-          }`}
-        >
-          {translate('quiz_perso_subtitle')}
-        </p>
-      </div>
+      {/* Header - only show when not embedded (modal has its own header) */}
+      {!isEmbedded && (
+        <div className="mb-4">
+          <h3
+            className={`text-lg font-semibold ${
+              isDark ? 'text-neutral-100' : 'text-gray-900'
+            }`}
+          >
+            {translate('quiz_perso_title')}
+          </h3>
+          <p
+            className={`text-sm mt-1 ${
+              isDark ? 'text-neutral-400' : 'text-gray-500'
+            }`}
+          >
+            {translate('quiz_perso_subtitle')}
+          </p>
+        </div>
+      )}
 
       {/* Section Niveau */}
       <div className="mb-2">
@@ -436,39 +481,215 @@ export default function QuizPersonnalisationScreen({
         </div>
       )}
 
+      {/* Section Mode (optionnel) */}
+      {showModeSelector && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => toggleSection('mode')}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+              openSection === 'mode'
+                ? isDark
+                  ? 'bg-neutral-800 border border-orange-500/50'
+                  : 'bg-orange-50/50 border border-orange-200'
+                : isDark
+                ? 'bg-neutral-800 border border-neutral-700 hover:border-neutral-600'
+                : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  isDark
+                    ? 'bg-neutral-700'
+                    : 'bg-white shadow-sm border border-gray-100'
+                }`}
+              >
+                {selectedMode ? (
+                  <selectedMode.icon
+                    className={`w-[18px] h-[18px] ${selectedMode.iconColor}`}
+                  />
+                ) : (
+                  <Layers
+                    className={`w-[18px] h-[18px] ${
+                      isDark ? 'text-neutral-400' : 'text-gray-400'
+                    }`}
+                  />
+                )}
+              </div>
+              <div className="flex flex-col items-start">
+                <span
+                  className={`text-xs ${
+                    isDark ? 'text-neutral-400' : 'text-gray-500'
+                  }`}
+                >
+                  {translate('quiz_perso_mode_label') || 'Mode de quiz'}
+                </span>
+                <span
+                  className={`text-sm font-semibold ${
+                    isDark ? 'text-neutral-100' : 'text-gray-900'
+                  }`}
+                >
+                  {selectedMode ? translate(MODE_TRANSLATION_KEYS[selectedMode.value].label) : translate('quiz_perso_select')}
+                </span>
+              </div>
+            </div>
+            <ChevronDown
+              className={`w-4 h-4 flex-shrink-0 transition-transform ${
+                openSection === 'mode' ? 'rotate-180' : ''
+              } ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}
+            />
+          </button>
+
+          {openSection === 'mode' && (
+            <div
+              className={`mt-1 rounded-xl border overflow-hidden ${
+                isDark
+                  ? 'bg-neutral-800 border-neutral-700'
+                  : 'bg-white border-gray-200'
+              }`}
+            >
+              {MODES.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    setMode(option.value);
+                    setOpenSection(null);
+                  }}
+                  className={`w-full text-left px-4 py-3 transition-all ${
+                    mode === option.value
+                      ? isDark
+                        ? 'bg-neutral-700/50'
+                        : 'bg-gray-50'
+                      : isDark
+                      ? 'hover:bg-neutral-700/30'
+                      : 'hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          isDark ? 'bg-neutral-700' : 'bg-gray-100'
+                        }`}
+                      >
+                        <option.icon
+                          className={`w-5 h-5 ${option.iconColor}`}
+                        />
+                      </div>
+                      <div>
+                        <p
+                          className={`text-sm font-semibold ${
+                            mode === option.value
+                              ? isDark
+                                ? 'text-white'
+                                : 'text-gray-900'
+                              : isDark
+                              ? 'text-neutral-200'
+                              : 'text-gray-900'
+                          }`}
+                        >
+                          {translate(MODE_TRANSLATION_KEYS[option.value].label)}
+                        </p>
+                        <p
+                          className={`text-xs ${
+                            isDark ? 'text-neutral-400' : 'text-gray-500'
+                          }`}
+                        >
+                          {translate(MODE_TRANSLATION_KEYS[option.value].description)}
+                        </p>
+                      </div>
+                    </div>
+                    {mode === option.value && (
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-orange-500">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
+
+              {/* Option pour exclure les questions vues (seulement en mode global) */}
+              {mode === 'global' && (
+                <div
+                  className={`px-4 py-3 border-t ${
+                    isDark ? 'border-neutral-700' : 'border-gray-200'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setExcludeSeen(!excludeSeen)}
+                    className="w-full flex items-center gap-3"
+                  >
+                    <div
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                        excludeSeen
+                          ? 'bg-orange-500 border-orange-500'
+                          : isDark
+                          ? 'border-neutral-500 bg-transparent'
+                          : 'border-gray-300 bg-transparent'
+                      }`}
+                    >
+                      {excludeSeen && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <span
+                        className={`text-sm font-medium ${
+                          isDark ? 'text-neutral-200' : 'text-gray-700'
+                        }`}
+                      >
+                        {translate('quiz_perso_exclude_seen') || 'Exclure les questions déjà répondues'}
+                      </span>
+                      <p
+                        className={`text-xs ${
+                          isDark ? 'text-neutral-400' : 'text-gray-500'
+                        }`}
+                      >
+                        {translate('quiz_perso_exclude_seen_desc') || 'Ne montre que les nouvelles questions'}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Buttons */}
-      <div className={`flex gap-2 ${onCancel ? '' : ''}`}>
+      <div className={`flex gap-2 mt-4 ${onCancel ? '' : ''}`}>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            disabled={isGenerating}
+            disabled={loading}
             className={`flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold transition-all disabled:opacity-50 ${
               isDark
                 ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {translate('quiz_perso_cancel')}
+            {translate('quiz_perso_cancel') || 'Annuler'}
           </button>
         )}
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={isGenerating || selectedTypesCount === 0}
+          disabled={loading || selectedTypesCount === 0}
           className={`${
             onCancel ? 'flex-1' : 'w-full'
           } inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-all disabled:opacity-50 shadow-sm`}
         >
-          {isGenerating ? (
+          {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              {translate('quiz_perso_generating')}
+              {translate('quiz_perso_generating') || 'Génération...'}
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              {onCancel ? translate('quiz_perso_regenerate') : translate('quiz_perso_generate')}
+              {isEmbedded ? (translate('quiz_perso_regenerate') || 'Régénérer') : (onCancel ? translate('quiz_perso_regenerate') : translate('quiz_perso_generate')) || 'Générer'}
             </>
           )}
         </button>

@@ -43,17 +43,17 @@ export default function PageHeaderWithMascot({
   return (
     <header className={`border-b transition-colors sticky top-0 z-50 backdrop-blur-xl ${
       isDark && showDarkModeToggle
-        ? 'bg-neutral-900/95 border-neutral-800'
-        : 'bg-white/95 border-gray-200'
+        ? 'bg-neutral-900/85 border-neutral-800'
+        : 'bg-white/85 border-gray-200'
     }`}>
       <div className={`${maxWidthClass} mx-auto px-3 sm:px-4 py-1.5 flex items-center justify-between gap-3`}>
         {/* Left side: Mascot + Title + Course Drawer Button */}
         <div className="flex items-center gap-2.5 min-w-0">
           <Image
-            src="/chat/mascotte.png"
+            src="/chat/mascotte2.png"
             alt="Nareo"
-            width={48}
-            height={48}
+            width={24}
+            height={24}
             className="rounded-xl flex-shrink-0"
           />
           <div className="min-w-0 flex-1">

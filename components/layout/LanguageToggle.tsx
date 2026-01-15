@@ -51,10 +51,10 @@ export default function LanguageToggle({ className }: LanguageToggleProps) {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={className || "flex items-center justify-center w-10 h-10 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md"}
+        className={className || "flex items-center justify-center w-8 h-8 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md"}
         title="Change language"
       >
-        <Languages className="w-5 h-5 text-gray-600" />
+        <Languages className="w-4 h-4 text-gray-600" />
       </button>
 
       {isOpen && (

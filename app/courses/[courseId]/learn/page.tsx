@@ -926,11 +926,11 @@ export default function CourseLearnPage() {
       >
         {/* Header */}
         <header
-          className={`border-b sticky top-0 z-30 h-[52px] relative ${
+          className={`border-b sticky top-0 z-30 h-[52px] relative backdrop-blur-md ${
             isDark
-              ? 'bg-neutral-900 border-neutral-800 before:bg-neutral-900'
-              : 'bg-white border-gray-200 before:bg-white'
-          } before:absolute before:top-0 before:right-full before:w-[250px] before:h-full before:hidden md:before:block`}
+              ? 'bg-neutral-900/50 border-neutral-800 before:bg-neutral-900/50'
+              : 'bg-white/50 border-gray-200 before:bg-white/50'
+          } before:absolute before:top-0 before:right-full before:w-[250px] before:h-full before:hidden md:before:block before:backdrop-blur-md`}
         >
           <div className="max-w-4xl mx-auto px-3 sm:px-4 h-full flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0 flex-1">

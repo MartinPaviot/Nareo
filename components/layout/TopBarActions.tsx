@@ -64,31 +64,24 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
   return (
     <>
       {/* Desktop version */}
-      <div className={`hidden sm:flex items-center gap-3 ${className || ''}`}>
+      <div className={`hidden sm:flex items-center gap-2 ${className || ''}`}>
         {/* Upgrade Button - Only for non-premium logged-in users */}
         {user && !isPremium && (
           <button
             onClick={() => router.push('/paywall')}
-            className="flex items-center gap-1.5 h-10 px-4 rounded-full text-white transition-all duration-200 shadow-sm hover:shadow-md"
-            style={{ backgroundColor: '#ff751f' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
+            className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
           >
-            <GraduationCap className="w-4 h-4" />
-            <span className="text-sm font-medium">
-              {translate('upgrade_button')}
-            </span>
+            <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>{translate('upgrade_button')}</span>
           </button>
         )}
         {!hideMyCoursesButton && user && (
           <button
             onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2 h-10 px-4 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 leading-none transition-all duration-200 shadow-sm hover:shadow-md"
           >
-            <BookOpen className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">
-              {translate('my_courses_button')}
-            </span>
+            <BookOpen className="w-3.5 h-3.5 flex-shrink-0 text-gray-600" />
+            <span>{translate('my_courses_button')}</span>
           </button>
         )}
         {user ? (
@@ -97,22 +90,15 @@ export default function TopBarActions({ className, hideMyCoursesButton = false, 
           <>
             <button
               onClick={() => router.push('/auth/signin')}
-              className="flex items-center gap-2 h-10 px-4 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md"
+              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 leading-none transition-all duration-200 shadow-sm hover:shadow-md"
             >
-              <span className="text-sm font-medium text-gray-700">
-                {translate('auth_signin_button')}
-              </span>
+              <span>{translate('auth_signin_button')}</span>
             </button>
             <button
               onClick={() => router.push('/auth/signup')}
-              className="flex items-center gap-2 h-10 px-4 rounded-full text-white transition-all duration-200 shadow-sm hover:shadow-md"
-              style={{ backgroundColor: '#ff751f' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
+              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium leading-none transition-all duration-200 shadow-sm hover:shadow-md hover:from-orange-600 hover:to-orange-700"
             >
-              <span className="text-sm font-medium">
-                {translate('auth_signup_button')}
-              </span>
+              <span>{translate('auth_signup_button')}</span>
             </button>
           </>
         )}

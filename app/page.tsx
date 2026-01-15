@@ -128,10 +128,10 @@ export default function HomePage() {
         <header className="sticky top-0 z-50 bg-gradient-to-b from-orange-50 to-white/95 backdrop-blur-sm border-b border-orange-100/50 flex items-center justify-between px-4 py-2 sm:px-6">
         <div className="flex items-center gap-2">
           <Image
-            src="/chat/mascotte.png"
+            src="/chat/mascotte2.png"
             alt="Nareo Mascotte"
-            width={40}
-            height={40}
+            width={24}
+            height={24}
             className="rounded-xl"
           />
           <p className="text-base font-semibold text-gray-900">Nareo</p>

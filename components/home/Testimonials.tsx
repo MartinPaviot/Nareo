@@ -18,7 +18,7 @@ const testimonials = [
     roleKey: "home_testimonials_2_role",
     quoteKey: "home_testimonials_2_quote",
     src: "/images/joy_kinley.jpg",
-    alt: "Joy Kinley",
+    alt: "Nora Callahan",
   },
   {
     nameKey: "home_testimonials_3_name",

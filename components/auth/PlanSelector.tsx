@@ -143,9 +143,14 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
               </div>
             </div>
 
+            {/* Spacer to align with Premium billing toggle */}
+            <div className="hidden md:block h-[44px] mb-4" />
+
             <div className="mb-6">
               <span className={cn('text-4xl font-bold', isDark ? 'text-gray-100' : 'text-gray-900')}>0€</span>
               <span className={cn('ml-1', isDark ? 'text-gray-400' : 'text-gray-500')}>{translate('paywall_price_per_month')}</span>
+              {/* Spacer to align with Premium "billed annually" text */}
+              <p className="text-sm mt-1 invisible">placeholder</p>
             </div>
 
             <ul className="space-y-3 mb-6">

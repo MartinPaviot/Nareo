@@ -38,7 +38,7 @@ export function WhyQuizzesSection({ translate }: WhyQuizzesSectionProps) {
       <div className="flex flex-col md:flex-row items-stretch justify-center gap-4 md:gap-0 max-w-3xl mx-auto relative">
 
         {/* Card PERDANTE */}
-        <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl p-5 md:rounded-r-none">
+        <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl p-5 md:rounded-r-none flex flex-col">
           {/* Header */}
           <div className="flex items-center gap-2 mb-5">
             <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
@@ -68,8 +68,8 @@ export function WhyQuizzesSection({ translate }: WhyQuizzesSectionProps) {
             </li>
           </ul>
 
-          {/* Résultat */}
-          <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+          {/* Résultat - with mt-auto to push to bottom */}
+          <div className="flex items-center gap-2 pt-4 border-t border-gray-200 mt-auto">
             <TrendingDown className="w-5 h-5" style={{ color: '#d91a1c' }} />
             <span className="font-medium text-sm" style={{ color: '#d91a1c' }}>{translate('home_why_left_result')}</span>
           </div>
@@ -83,7 +83,7 @@ export function WhyQuizzesSection({ translate }: WhyQuizzesSectionProps) {
         </div>
 
         {/* Card GAGNANTE */}
-        <div className="flex-1 bg-orange-50 border border-orange-300 rounded-2xl p-5 md:rounded-l-none md:border-l-0 relative mt-4 md:mt-0">
+        <div className="flex-1 bg-orange-50 border border-orange-300 rounded-2xl p-5 md:rounded-l-none md:border-l-0 relative mt-4 md:mt-0 flex flex-col">
 
           {/* Badge "Prouvé" - positioned inside card on mobile, outside on desktop */}
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-4 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap" style={{ backgroundColor: '#ff751f' }}>
@@ -91,7 +91,7 @@ export function WhyQuizzesSection({ translate }: WhyQuizzesSectionProps) {
           </div>
 
           {/* Header */}
-          <div className="flex items-center gap-2 mb-5 mt-1">
+          <div className="flex items-center gap-2 mb-5">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md" style={{ background: 'linear-gradient(to bottom right, #ff751f, #e5681b)', boxShadow: '0 4px 6px -1px rgba(255, 117, 31, 0.3)' }}>
               <Zap className="w-4 h-4 text-white fill-white" />
             </div>
@@ -119,8 +119,8 @@ export function WhyQuizzesSection({ translate }: WhyQuizzesSectionProps) {
             </li>
           </ul>
 
-          {/* Résultat */}
-          <div className="flex items-center gap-2 pt-4 border-t border-orange-200">
+          {/* Résultat - with mt-auto to push to bottom */}
+          <div className="flex items-center gap-2 pt-4 border-t border-orange-200 mt-auto">
             <TrendingUp className="w-5 h-5" style={{ color: '#379f5a' }} />
             <span className="font-medium text-sm" style={{ color: '#379f5a' }}>{translate('home_why_right_result')}</span>
           </div>

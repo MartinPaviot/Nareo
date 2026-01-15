@@ -208,14 +208,14 @@ export default function DefiPage() {
   }
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <PageHeaderWithMascot
         title={translate('challenge_mode')}
         maxWidth="4xl"
         showDarkModeToggle
       />
 
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-6 flex-1">
         {/* Titre de la page */}
         <h1 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {translate('challenge_subtitle')}
@@ -367,6 +367,23 @@ export default function DefiPage() {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <footer className={`border-t mt-auto ${
+        isDark
+          ? 'bg-neutral-900/50 border-neutral-800'
+          : 'bg-gray-50/50 border-gray-100'
+      }`}>
+        <div className={`max-w-4xl mx-auto px-4 py-1.5 flex items-center justify-center gap-4 text-[10px] ${
+          isDark ? 'text-neutral-500' : 'text-gray-400'
+        }`}>
+          <span>© 2026 Nareo</span>
+          <span className={isDark ? 'text-neutral-700' : 'text-gray-300'}>·</span>
+          <span className="hover:text-orange-500 transition-colors cursor-pointer">
+            Contact
+          </span>
+        </div>
+      </footer>
 
       {/* Modals */}
       {showCreateModal && (

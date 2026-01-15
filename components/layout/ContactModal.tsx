@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Mail, Send, CheckCircle2, X, Clock, Sparkles, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -17,6 +17,15 @@ export default function ContactModal({ onClose }: ContactModalProps) {
   const { isDark } = useTheme();
 
   const [email, setEmail] = useState(user?.email || '');
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -54,10 +63,15 @@ export default function ContactModal({ onClose }: ContactModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className={`relative max-w-md w-full rounded-2xl shadow-xl overflow-hidden ${
-        isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200'
-      }`}>
+    <div className="fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-50">
+      {/* Backdrop overlay */}
+      <div className="fixed top-0 left-0 right-0 bottom-0 w-screen h-screen bg-black/70" onClick={onClose} />
+
+      {/* Modal container */}
+      <div className="relative h-full flex items-center justify-center p-4 pointer-events-none">
+        <div className={`relative max-w-md w-full rounded-2xl shadow-2xl overflow-hidden pointer-events-auto ${
+          isDark ? 'bg-neutral-900 border border-neutral-700' : 'bg-white'
+        }`}>
         {/* Close button */}
         <button
           onClick={onClose}
@@ -71,35 +85,35 @@ export default function ContactModal({ onClose }: ContactModalProps) {
           <X className="w-5 h-5" />
         </button>
 
-        {/* Header compact avec mascotte */}
-        <div className={`px-5 pt-5 pb-4 text-center border-b ${
+        {/* Header inline compact */}
+        <div className={`px-4 py-3 flex items-center gap-3 border-b ${
           isDark ? 'border-neutral-800' : 'border-gray-100'
         }`}>
-          <div className="flex justify-center mb-3">
-            <div className="relative">
-              <Image
-                src="/chat/Happy.png"
-                alt="Nareo"
-                width={56}
-                height={56}
-                className="rounded-xl"
-              />
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ff751f' }}>
-                <Sparkles className="w-3 h-3 text-white" />
-              </div>
+          <div className="relative flex-shrink-0">
+            <Image
+              src="/chat/Happy.png"
+              alt="Nareo"
+              width={36}
+              height={36}
+              className="rounded-lg"
+            />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ backgroundColor: '#ff751f' }}>
+              <Sparkles className="w-2 h-2 text-white" />
             </div>
           </div>
-          <h1 className={`text-xl font-semibold ${
-            isDark ? 'text-neutral-100' : 'text-gray-900'
-          }`}>
-            {translate('contact_title')}
-          </h1>
-          <p className={`text-sm mt-1 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-            {translate('contact_subtitle')}
-          </p>
+          <div className="min-w-0">
+            <h1 className={`text-base font-semibold ${
+              isDark ? 'text-neutral-100' : 'text-gray-900'
+            }`}>
+              {translate('contact_title')}
+            </h1>
+            <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+              {translate('contact_subtitle')}
+            </p>
+          </div>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-4 space-y-2.5">
           {/* Formulaire ou confirmation */}
           {isSent ? (
             <div className={`rounded-xl p-5 text-center ${
@@ -128,10 +142,10 @@ export default function ContactModal({ onClose }: ContactModalProps) {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-2.5">
               {/* Email */}
               <div>
-                <label htmlFor="contact-email" className={`block text-sm font-medium mb-1.5 ${
+                <label htmlFor="contact-email" className={`block text-xs font-medium mb-1 ${
                   isDark ? 'text-neutral-200' : 'text-gray-900'
                 }`}>
                   {translate('contact_email_label')}
@@ -143,7 +157,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={translate('contact_email_placeholder')}
                   required
-                  className={`w-full px-3 py-2.5 rounded-lg border outline-none transition-all text-sm ${
+                  className={`w-full px-3 py-2 rounded-lg border outline-none transition-all text-sm ${
                     isDark
                       ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20'
@@ -153,7 +167,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
 
               {/* Subject */}
               <div>
-                <label htmlFor="contact-subject" className={`block text-sm font-medium mb-1.5 ${
+                <label htmlFor="contact-subject" className={`block text-xs font-medium mb-1 ${
                   isDark ? 'text-neutral-200' : 'text-gray-900'
                 }`}>
                   {translate('contact_subject_label') || 'Objet'}
@@ -165,7 +179,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder={translate('contact_subject_placeholder') || 'Ex: Question sur mon abonnement'}
                   required
-                  className={`w-full px-3 py-2.5 rounded-lg border outline-none transition-all text-sm ${
+                  className={`w-full px-3 py-2 rounded-lg border outline-none transition-all text-sm ${
                     isDark
                       ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20'
@@ -175,7 +189,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
 
               {/* Message */}
               <div>
-                <label htmlFor="contact-message" className={`block text-sm font-medium mb-1.5 ${
+                <label htmlFor="contact-message" className={`block text-xs font-medium mb-1 ${
                   isDark ? 'text-neutral-200' : 'text-gray-900'
                 }`}>
                   {translate('contact_message_label')}
@@ -185,14 +199,11 @@ export default function ContactModal({ onClose }: ContactModalProps) {
                   value={message}
                   onChange={(e) => {
                     setMessage(e.target.value);
-                    // Auto-resize textarea
-                    e.target.style.height = 'auto';
-                    e.target.style.height = `${e.target.scrollHeight}px`;
                   }}
                   placeholder={translate('contact_message_placeholder')}
                   required
-                  rows={3}
-                  className={`w-full px-3 py-2.5 rounded-lg border outline-none transition-all resize-none text-sm min-h-[80px] max-h-[200px] overflow-y-auto ${
+                  rows={4}
+                  className={`w-full px-3 py-2 rounded-lg border outline-none transition-all resize-none text-sm h-[100px] ${
                     isDark
                       ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20'
@@ -218,7 +229,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
               <button
                 type="submit"
                 disabled={isSending || !email.trim() || !subject.trim() || !message.trim()}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                 style={{ backgroundColor: '#ff751f' }}
                 onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#e5681b')}
                 onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#ff751f')}
@@ -234,18 +245,19 @@ export default function ContactModal({ onClose }: ContactModalProps) {
           )}
 
           {/* Infos complémentaires */}
-          <div className={`flex items-center justify-center gap-4 pt-3 border-t text-xs ${
+          <div className={`flex items-center justify-center gap-4 pt-2 border-t text-xs ${
             isDark ? 'border-neutral-800 text-neutral-500' : 'border-gray-100 text-gray-400'
           }`}>
-            <span className="flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1">
+              <Mail className="w-3 h-3" />
               contact@usenareo.com
             </span>
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
               24-48h
             </span>
           </div>
+        </div>
         </div>
       </div>
     </div>

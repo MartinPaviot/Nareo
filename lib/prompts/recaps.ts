@@ -43,28 +43,29 @@ EXPLANATORY ADAPTATION:
 
   // Headers based on language
   const headers: Record<string, { title: string; name: string; formula: string; variables: string }> = {
-    French: { title: 'Résumé des Formules', name: 'Nom', formula: 'Formule', variables: 'Variables' },
-    English: { title: 'Formula Summary', name: 'Name', formula: 'Formula', variables: 'Variables' },
-    German: { title: 'Formelübersicht', name: 'Name', formula: 'Formel', variables: 'Variablen' },
-    Spanish: { title: 'Resumen de Fórmulas', name: 'Nombre', formula: 'Fórmula', variables: 'Variables' },
-    Italian: { title: 'Riepilogo Formule', name: 'Nome', formula: 'Formula', variables: 'Variabili' },
-    Portuguese: { title: 'Resumo das Fórmulas', name: 'Nome', formula: 'Fórmula', variables: 'Variáveis' },
+    French: { title: 'Formules', name: 'Nom', formula: 'Formule', variables: 'Variables' },
+    English: { title: 'Formulas', name: 'Name', formula: 'Formula', variables: 'Variables' },
+    German: { title: 'Formeln', name: 'Name', formula: 'Formel', variables: 'Variablen' },
+    Spanish: { title: 'Fórmulas', name: 'Nombre', formula: 'Fórmula', variables: 'Variables' },
+    Italian: { title: 'Formule', name: 'Nome', formula: 'Formula', variables: 'Variabili' },
+    Portuguese: { title: 'Fórmulas', name: 'Nome', formula: 'Fórmula', variables: 'Variáveis' },
   };
   const h = headers[languageName] || headers.English;
 
   return `
-## ${h.title}
+FORMULAS BLOCK - Generate this EXACT structure:
 
-Extract ALL formulas present in the sheet.
-Output a proper Markdown table with EACH ROW ON A NEW LINE:
+## ${h.title}
 
 | ${h.name} | ${h.formula} | ${h.variables} |
 |-----|---------|-----------|
-| ... | $formula$ | $var1$ = ..., $var2$ = ... |
+| [name] | $formula$ | $var1$ = ..., $var2$ = ... |
+| [name] | $formula$ | $var1$ = ..., $var2$ = ... |
 
-CRITICAL FORMATTING RULES:
-- EACH table row MUST be on its own line (use newline characters between rows)
-- The separator row |-----|---------|...| MUST be on its own line after the header
+INSTRUCTIONS:
+- The title "## ${h.title}" is MANDATORY - start with it
+- Extract ALL formulas present in the sheet
+- EACH table row MUST be on its own line
 - Formulas in LaTeX format ($...$ for inline)
 - Do not invent anything: only what is in the sheet
 ${niveauInstructions[niveau]}`;
@@ -152,11 +153,12 @@ ${blocksToGenerate.join('\n\n')}
 
 OUTPUT FORMAT:
 
-Start directly with the first requested block (no introduction).
-Use the formats specified above.
-Separate each block with a "---" line.
-All text must be left-aligned (no centering).
-No decorative separators or ASCII boxes.
+1. START with the section title (e.g., "## Formules") - this is MANDATORY
+2. Then the table or list as specified
+3. No introduction text before the title
+4. Separate each block with a "---" line
+5. All text must be left-aligned (no centering)
+6. No decorative separators or ASCII boxes
 
 CRITICAL: Generate EVERYTHING in ${languageName}. All titles, labels, and content must be in ${languageName}.`;
 }

@@ -201,7 +201,8 @@ Return a valid JSON object with this structure:
       "pageRange": {
         "start": 1,
         "end": 5
-      },${assignedGraphicsSchema}
+      },
+      "semanticKeywords": ["keyword1", "keyword2", "technical_term", "variable_name"],${assignedGraphicsSchema}
       "contentTypes": {
         "definitions": ["term1", "term2"],
         "formulas": ["formula1", "formula2"],
@@ -238,6 +239,11 @@ Return a valid JSON object with this structure:
 Key instructions:
 - coreIdeas: List 3-5 central ideas of the entire course
 - sections.isEssential: Mark as true only sections with VITAL concepts
+- semanticKeywords: For EACH section, provide 5-10 keywords that characterize its content:
+  * Technical terms specific to the section (e.g., "elasticity", "surplus", "equilibrium")
+  * Variables and formulas used (e.g., "P", "Q", "D(P)", "O(P)", "ε")
+  * Key concepts and phenomena (e.g., "decreasing curve", "intersection", "shift")
+  * This is CRITICAL for graphic placement - be thorough and specific
 - essentialContent: List only ESSENTIAL definitions, key formulas, and critical examples
 - activeLearningOpportunities: Identify concepts for analogies, concrete examples from the course
 - connections: Identify prerequisites and links between concepts${graphicsInstructions}
@@ -411,14 +417,7 @@ RESPONSE FORMAT (ALL in ${languageName}!)
 
 5. **[Idea 5]**: [1-line explanation in ${languageName}]
 
----
-
-**[Title meaning "Formulas to remember" - translated to ${languageName}]**:
-- [Formula name]: [utility in ${languageName}]
-- [Formula name]: [utility in ${languageName}]
-
-**[Title meaning "Related concepts" - translated to ${languageName}]**:
-- [Concept A] <-> [Concept B]: [Link in 1 sentence in ${languageName}]
+DO NOT include "Formulas to remember" or "Related concepts" sections - these will be added separately.
 
 CRITICAL RULES
 --------------

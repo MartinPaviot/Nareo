@@ -226,8 +226,14 @@ export default function GenerationProgress({
       return Math.min((generated / totalItems) * 100, 100);
     }
 
-    if (type === 'note' && totalChapters > 0 && chapterIndex !== undefined) {
-      return Math.min((chapterIndex / totalChapters) * 100, 100);
+    if (type === 'note') {
+      // Note generation: use itemsGenerated (sectionIndex) and totalItems (totalSections)
+      // or fall back to chapterIndex/totalChapters
+      const current = itemsGenerated ?? chapterIndex ?? 0;
+      const total = totalItems ?? totalChapters ?? 0;
+      if (total > 0 && current > 0) {
+        return Math.min((current / total) * 100, 100);
+      }
     }
 
     return startupProgress;

@@ -79,8 +79,8 @@ export interface GraphicAnalysis {
 }
 
 /**
- * Generate analysis prompt for Claude Vision (V5 - with language support)
- * Ensures descriptions are generated in the specified target language
+ * Generate analysis prompt for Claude Vision (V6 - accurate descriptions)
+ * Forces description based on VISIBLE elements (axes, labels) not interpretation
  */
 function getGraphicAnalysisPrompt(targetLanguage: string = 'English'): string {
   return `Analyze this educational graphic. Return JSON only.
@@ -92,25 +92,43 @@ JSON FORMAT:
 {
   "type": "TYPE",
   "confidence": 0.0-1.0,
-  "description": "2-3 sentences describing what this graphic shows",
+  "description": "FACTUAL description based on what you SEE",
   "elements": ["specific visual element 1", "element 2", ...],
   "textContent": ["all visible text", "labels", "values"],
   "suggestions": ["pedagogical use 1", "use 2"],
   "relatedConcepts": ["concept 1", "concept 2"]
 }
 
-⚠️ CRITICAL LANGUAGE RULE:
-- The "description" field MUST be written in ${targetLanguage}
-- The "suggestions" field MUST be written in ${targetLanguage}
-- The "relatedConcepts" field MUST be written in ${targetLanguage}
-- Keep "textContent" in original language (copy exactly as seen on the graphic)
+⚠️ CRITICAL - DESCRIPTION RULES:
+The "description" MUST be FACTUAL and based on VISIBLE elements:
+1. START with the TITLE if visible (e.g., "Table titled 'Formulas'...")
+2. For charts: mention axis labels (X-axis: "...", Y-axis: "...")
+3. For tables: mention column headers (Columns: "Nom", "Formule", "Variables")
+4. DESCRIBE what is actually shown (bars, curves, formulas, data rows, etc.)
+5. DO NOT interpret or guess the concept - describe what you SEE
 
-TYPES (pick one):
+GOOD description examples:
+- Chart: "Histogram with X-axis 'Units purchased' (1-14) and Y-axis 'Marginal willingness to pay' (0-16). Shows descending colored bars for different consumers (Zyad, Irène, Pamela)."
+- Table: "Table with columns 'Nom', 'Formule', 'Variables'. Contains 2 rows: elasticity formulas for price of demand and price of supply with their mathematical expressions."
+
+BAD description (too interpretive):
+"Graph showing market equilibrium" ← WRONG if axes don't say "Price" and "Quantity"
+
+⚠️ LANGUAGE RULE:
+- "description", "suggestions", "relatedConcepts" MUST be in ${targetLanguage}
+- "textContent" stays in original language (copy exactly as seen)
+
+TYPES (pick based on VISUAL structure, not interpretation):
+- histogram: bars/rectangles showing quantities
+- line_chart: continuous lines connecting points
+- scatter_plot: individual points without connecting lines
+- supply_demand_curve: ONLY if axes are Price/Quantity AND curves cross
+- equilibrium_graph: ONLY if explicitly shows intersection point labeled as equilibrium
+- function_graph: mathematical f(x) with formula visible
 - flow_diagram, concept_map, tree_diagram, venn_diagram, timeline, cycle_diagram
-- histogram, pie_chart, line_chart, scatter_plot, table
-- function_graph, geometric_diagram, formula_visual
+- pie_chart, table, geometric_diagram, formula_visual
 - circuit_diagram, chemical_structure, biological_diagram, anatomical_diagram, physics_diagram
-- supply_demand_curve, equilibrium_graph, map, other
+- map, other
 
 CONFIDENCE:
 - 0.0 = empty/incomplete (NO actual data drawn)

@@ -24,6 +24,7 @@ import {
   getGraphicsForSection,
   formatGraphicsContextForSection,
   resolveGraphicsUrls,
+  buildSectionGraphicsMapV7,
   GraphicAssignment,
   GraphicWithUrl
 } from '@/lib/backend/graphics-enricher';
@@ -166,7 +167,9 @@ async function extractStructure(
   graphicsContext: string = ''
 ): Promise<DocumentStructure> {
   const languageName = getLanguageName(language);
-  const textForStructure = sourceText.substring(0, 20000);
+  // V6: Increased limit to capture full document structure (gpt-4o-mini supports 128k context)
+  // 80k chars ≈ 20k tokens, leaving room for prompt + response
+  const textForStructure = sourceText.substring(0, 80000);
   // V4: Pass graphics context for assignment
   const structurePrompt = getStructurePromptV3(config, languageName, graphicsContext);
 
@@ -179,7 +182,7 @@ async function extractStructure(
       ],
       temperature: 0.2,
       response_format: { type: 'json_object' },
-      max_tokens: 4000, // Increased for V4's graphic assignments
+      max_tokens: 8000, // V6: Increased for larger documents with more sections
     });
 
     const content = response.choices[0].message.content;
@@ -562,20 +565,23 @@ export async function POST(
           const structure = await extractStructure(sourceText, language, config, graphicsForStructure);
           console.log(`[Stream V4] Found ${structure.sections.length} sections`);
 
-          // V4: Build section -> graphics map from structure analysis
-          const sectionGraphicsMap = new Map<number, string[]>();
-          let totalAssignedGraphics = 0;
-          if (config.includeGraphics) {
-            for (let i = 0; i < structure.sections.length; i++) {
-              const section = structure.sections[i];
-              const assignedIds = section.assignedGraphics?.map(a => a.graphicId) || [];
-              sectionGraphicsMap.set(i, assignedIds);
-              totalAssignedGraphics += assignedIds.length;
-              if (assignedIds.length > 0) {
-                console.log(`[Stream V4] Section "${section.title}": ${assignedIds.length} graphic(s) assigned`);
+          // V7: Build section -> graphics map using SEMANTIC-ONLY assignment
+          // This replaces V5 page-based assignment which caused misplacements
+          // V7 uses Jaccard similarity on tokenized description vs section keywords
+          let sectionGraphicsMap = new Map<number, string[]>();
+          if (config.includeGraphics && graphics.length > 0) {
+            // Use semantic matching based on section semanticKeywords
+            sectionGraphicsMap = buildSectionGraphicsMapV7(structure, graphics);
+
+            // Log assignments
+            let totalAssignedGraphics = 0;
+            sectionGraphicsMap.forEach((ids, sectionIdx) => {
+              if (ids.length > 0) {
+                totalAssignedGraphics += ids.length;
+                console.log(`[Stream V7] Section ${sectionIdx} "${structure.sections[sectionIdx]?.title}": ${ids.length} graphic(s) assigned by semantic match`);
               }
-            }
-            console.log(`[Stream V4] Total graphics assigned: ${totalAssignedGraphics}/${graphics.length}`);
+            });
+            console.log(`[Stream V7] Total graphics assigned by semantic matching: ${totalAssignedGraphics}/${graphics.length}`);
           }
 
           send('progress', {
@@ -609,16 +615,14 @@ export async function POST(
 
             const sectionSourceText = findSectionText(sourceText, section, structure.sections, i);
 
-            // V4: Get PRE-ASSIGNED graphics for this section (not all graphics!)
+            // V5: Get PRE-ASSIGNED graphics for this section (assigned by page proximity)
             let sectionImageContext = '';
             if (config.includeGraphics) {
               const assignedIds = sectionGraphicsMap.get(i) || [];
               if (assignedIds.length > 0) {
                 const sectionGraphics = getGraphicsForSection(graphicsWithUrls, assignedIds);
                 sectionImageContext = formatGraphicsContextForSection(sectionGraphics);
-                console.log(`[Stream V4] Section "${section.title}": ${sectionGraphics.length} graphic(s) PRE-ASSIGNED`);
-              } else {
-                console.log(`[Stream V4] Section "${section.title}": No graphics assigned`);
+                console.log(`[Stream V5] Section "${section.title}": ${sectionGraphics.length} graphic(s) available (page-based)`);
               }
             }
 
@@ -647,7 +651,7 @@ export async function POST(
               usedGraphicIds.add(graphicId);
             }
             if (graphicsInSection.length > 0) {
-              console.log(`[Stream V4] Section "${section.title}": placed ${graphicsInSection.length} graphic(s)`);
+              console.log(`[Stream V5] Section "${section.title}": placed ${graphicsInSection.length} graphic(s)`);
             }
 
             // Add separator between sections
@@ -669,7 +673,7 @@ export async function POST(
           }
 
           if (config.includeGraphics) {
-            console.log(`[Stream V4] Total graphics placed: ${usedGraphicIds.size}/${graphics.length}`);
+            console.log(`[Stream V5] Total graphics placed: ${usedGraphicIds.size}/${graphics.length}`);
           }
 
           // Pass 3: Verify completeness (quick, not streamed)

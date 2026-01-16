@@ -6,15 +6,16 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 // Ordre des stages pour calculer les limites de progression
-const stageOrder = ['queued', 'start', 'download', 'extraction', 'language_detection', 'structuring', 'insertion', 'done'];
+const stageOrder = ['queued', 'start', 'download', 'extraction', 'language_detection', 'graphics_extraction', 'structuring', 'insertion', 'done'];
 
 // Mapping des stages vers les pourcentages cibles
 const stageToProgress: Record<string, number> = {
   'queued': 0,
   'start': 5,
   'download': 10,
-  'extraction': 35,
-  'language_detection': 55,
+  'extraction': 30,
+  'language_detection': 45,
+  'graphics_extraction': 55,
   'structuring': 75,
   'insertion': 90,
   'done': 100
@@ -27,6 +28,7 @@ const stageTranslationKeys: Record<string, string> = {
   'download': 'extraction_stage_download',
   'extraction': 'extraction_stage_extraction',
   'language_detection': 'extraction_stage_language',
+  'graphics_extraction': 'extraction_stage_graphics',
   'structuring': 'extraction_stage_structuring',
   'insertion': 'extraction_stage_insertion',
   'done': 'extraction_stage_done'

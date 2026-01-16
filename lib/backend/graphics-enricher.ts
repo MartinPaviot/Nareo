@@ -28,6 +28,125 @@ export interface GraphicWithUrl extends GraphicSummary {
   publicUrl: string;
 }
 
+// Adaptive limit on graphics per section
+// Goal: Include most graphics but not overwhelm the LLM
+const MIN_GRAPHICS_PER_SECTION = 2;
+const MAX_GRAPHICS_PER_SECTION = 5;
+
+/**
+ * Calculate adaptive limit per section based on total graphics and sections
+ * Goal: Include ~90% of graphics, distributed across sections
+ */
+function calculateAdaptiveLimit(totalGraphics: number, totalSections: number): number {
+  if (totalSections === 0) return MAX_GRAPHICS_PER_SECTION;
+
+  // Target: include ~90% of graphics (not 80%, to not miss important ones)
+  const targetGraphics = Math.ceil(totalGraphics * 0.9);
+
+  // Distribute across sections with 1.5x buffer for uneven distribution
+  const perSection = Math.ceil((targetGraphics / totalSections) * 1.5);
+
+  // Clamp between min and max
+  return Math.max(MIN_GRAPHICS_PER_SECTION, Math.min(perSection, MAX_GRAPHICS_PER_SECTION));
+}
+
+// Graphic types that are typically MORE pedagogically valuable (universal across subjects)
+// These show relationships, processes, or comparisons - not just static data
+const HIGH_VALUE_GRAPHIC_PATTERNS = [
+  // Relationship/process graphics (show HOW things work)
+  'flow', 'cycle', 'process', 'diagram', 'schema', 'schéma',
+  'relationship', 'relation', 'connection', 'lien',
+  // Comparative graphics (show differences/similarities)
+  'comparison', 'versus', 'vs', 'compare', 'comparaison',
+  'before', 'after', 'avant', 'après',
+  // Conceptual graphics (illustrate abstract ideas)
+  'concept', 'model', 'modèle', 'framework', 'structure',
+  'hierarchy', 'hiérarchie', 'tree', 'arbre',
+  // Causal/analytical graphics
+  'cause', 'effect', 'effet', 'impact', 'consequence',
+  'equilibrium', 'équilibre', 'balance',
+  // Visual explanations
+  'illustrat', 'explain', 'expliqu', 'demonstrat', 'démontr', 'montr',
+];
+
+// Graphic types that are typically LESS pedagogically valuable
+// Often redundant with text or decorative
+const LOW_VALUE_GRAPHIC_PATTERNS = [
+  // Simple data that's often in the text already
+  'table', 'tableau', 'list', 'liste',
+  // Decorative or contextual
+  'photo', 'image', 'picture', 'logo', 'icon',
+  'portrait', 'cover', 'couverture',
+  // Too generic
+  'example', 'exemple', 'sample', 'échantillon',
+];
+
+/**
+ * Calculate pedagogical score for a graphic (GENERIC - works for any subject)
+ *
+ * Scoring philosophy:
+ * - Graphics that EXPLAIN relationships/processes are most valuable
+ * - Graphics with rich descriptions indicate the vision model found meaningful content
+ * - Graphics with multiple elements show complexity worth visualizing
+ * - Simple tables/lists are less valuable (often redundant with text)
+ */
+function calculatePedagogicalScore(graphic: GraphicSummary): number {
+  let score = 0;
+  const description = (graphic.description || '').toLowerCase();
+  const type = (graphic.type || '').toLowerCase();
+
+  // 1. BASE SCORE from confidence (0-5 points)
+  // Confidence indicates clear, well-structured graphic
+  score += graphic.confidence * 5;
+
+  // 2. TYPE/DESCRIPTION ANALYSIS (0-5 points)
+  // Check for high-value patterns in type or description
+  const hasHighValuePattern = HIGH_VALUE_GRAPHIC_PATTERNS.some(
+    pattern => type.includes(pattern) || description.includes(pattern)
+  );
+  const hasLowValuePattern = LOW_VALUE_GRAPHIC_PATTERNS.some(
+    pattern => type.includes(pattern) || description.includes(pattern)
+  );
+
+  if (hasHighValuePattern && !hasLowValuePattern) {
+    score += 5; // High value graphic
+  } else if (hasHighValuePattern && hasLowValuePattern) {
+    score += 2; // Mixed signals
+  } else if (!hasLowValuePattern) {
+    score += 3; // Neutral - give benefit of doubt
+  }
+  // Low value pattern only = no bonus
+
+  // 3. COMPLEXITY INDICATORS (0-3 points)
+  // Elements suggest the graphic has multiple components worth showing
+  const elementsCount = graphic.elements?.length || 0;
+  if (elementsCount >= 4) {
+    score += 3; // Complex graphic with many elements
+  } else if (elementsCount >= 2) {
+    score += 2; // Moderate complexity
+  } else if (elementsCount >= 1) {
+    score += 1; // At least some structure
+  }
+
+  // 4. DESCRIPTION RICHNESS (0-2 points)
+  // Longer descriptions indicate the vision model found meaningful content
+  // But cap it - very long descriptions might indicate confusion
+  const descLength = description.length;
+  if (descLength >= 50 && descLength <= 200) {
+    score += 2; // Good descriptive length
+  } else if (descLength >= 30) {
+    score += 1; // Acceptable
+  }
+
+  // 5. SUGGESTIONS PRESENT (0-1 point)
+  // If the vision model suggested how to use this graphic, it's probably useful
+  if (graphic.suggestions && graphic.suggestions.length > 0) {
+    score += 1;
+  }
+
+  return score; // Max possible: ~16 points
+}
+
 // Priority graphic types that should have a lower confidence threshold
 // These are pedagogically valuable across ALL subjects (V3 - universal)
 const PRIORITY_GRAPHIC_TYPES = [
@@ -743,26 +862,226 @@ export function formatGraphicsContextForSection(graphics: GraphicWithUrl[]): str
 
   return `
 ═══════════════════════════════════════════════════════════════════════════════
-               GRAPHICS ASSIGNED TO THIS SECTION (${graphics.length})
+               GRAPHICS FOR THIS SECTION (${graphics.length})
 ═══════════════════════════════════════════════════════════════════════════════
 ${graphicsList}
 
-PLACEMENT INSTRUCTIONS:
-1. These graphics were PRE-SELECTED as relevant to this section
-2. Place each graphic where its description matches your text
-3. Use the exact markdown syntax provided above
-4. Introduce each graphic using its EXACT description
-5. Do NOT add graphics not listed here
+PLACEMENT RULES:
+1. Include ALL graphics listed above - they were pre-selected as relevant
+2. Place each graphic where the topic matches in your text
+3. Use the EXACT markdown syntax provided
 
-FORMAT:
-"[Sentence using EXACT description from above]"
+FORMAT (NO REPETITION):
 ![description](url)
-[1-2 sentences explaining key elements to observe]
+[1-2 sentences explaining what to observe]
+
+EXAMPLE:
+![Ce graphique illustre l'équilibre du marché](url)
+On observe que le point E représente le prix et la quantité où l'offre égale la demande.
 `;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//                    V5: HYBRID PAGE-BASED GRAPHIC ASSIGNMENT
+//                    V7: SEMANTIC-ONLY GRAPHIC ASSIGNMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * French stopwords for tokenization
+ */
+const STOPWORDS_FR = new Set([
+  'le', 'la', 'les', 'de', 'du', 'des', 'un', 'une', 'et', 'ou', 'à', 'en',
+  'pour', 'avec', 'sur', 'par', 'dans', 'qui', 'que', 'ce', 'cette', 'ces',
+  'son', 'sa', 'ses', 'leur', 'leurs', 'au', 'aux', 'est', 'sont', 'être',
+  'avoir', 'fait', 'faire', 'peut', 'plus', 'moins', 'très', 'bien', 'aussi',
+  'comme', 'tout', 'tous', 'toute', 'toutes', 'autre', 'autres', 'même',
+  'ici', 'donc', 'encore', 'entre', 'vers', 'chez', 'sans', 'sous', 'dont'
+]);
+
+/**
+ * English stopwords for tokenization
+ */
+const STOPWORDS_EN = new Set([
+  'the', 'a', 'an', 'of', 'to', 'in', 'for', 'on', 'with', 'at', 'by', 'from',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+  'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
+  'must', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'this', 'that',
+  'these', 'those', 'and', 'but', 'or', 'nor', 'so', 'yet', 'both', 'either',
+  'neither', 'not', 'only', 'own', 'same', 'than', 'too', 'very', 'just',
+  'also', 'now', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
+  'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'any'
+]);
+
+/**
+ * Minimum semantic score required for graphic assignment
+ * Below this threshold, the graphic is NOT assigned (better to skip than misplace)
+ */
+const MIN_SEMANTIC_SCORE = 0.10;
+
+/**
+ * Tokenize text for semantic comparison
+ * - Lowercases
+ * - Removes accents
+ * - Removes punctuation
+ * - Filters stopwords
+ * - Keeps only words with 2+ chars
+ *
+ * @param text - Text to tokenize
+ * @returns Array of normalized tokens
+ */
+function tokenize(text: string): string[] {
+  if (!text) return [];
+
+  return text
+    .toLowerCase()
+    // Remove accents (normalize to NFD, then strip combining marks)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    // Replace non-alphanumeric with space (keep letters, numbers)
+    .replace(/[^a-z0-9\s]/g, ' ')
+    // Split on whitespace
+    .split(/\s+/)
+    // Filter: min length 2, not a stopword
+    .filter(w => w.length >= 2 && !STOPWORDS_FR.has(w) && !STOPWORDS_EN.has(w));
+}
+
+/**
+ * Calculate semantic similarity between a graphic and a section
+ * Uses Jaccard similarity on tokenized content
+ *
+ * @param graphic - Graphic with description, type, elements
+ * @param section - Section with title and semanticKeywords
+ * @returns Similarity score between 0 and 1
+ */
+function calculateSemanticScore(
+  graphic: GraphicSummary,
+  section: { title: string; semanticKeywords?: string[] }
+): number {
+  // Build graphic tokens from all available text
+  const graphicText = [
+    graphic.description || '',
+    graphic.type || '',
+    ...(graphic.elements || [])
+  ].join(' ');
+
+  const graphicTokens = new Set(tokenize(graphicText));
+
+  // Build section tokens from title and semantic keywords
+  const sectionText = [
+    section.title,
+    ...(section.semanticKeywords || [])
+  ].join(' ');
+
+  const sectionTokens = new Set(tokenize(sectionText));
+
+  // Edge cases
+  if (graphicTokens.size === 0 || sectionTokens.size === 0) return 0;
+
+  // Calculate Jaccard similarity: |intersection| / |union|
+  const intersection = [...graphicTokens].filter(t => sectionTokens.has(t));
+  const unionSize = new Set([...graphicTokens, ...sectionTokens]).size;
+
+  const jaccardScore = intersection.length / unionSize;
+
+  // Bonus: if intersection has 3+ tokens, add bonus (strong match)
+  const bonusMultiplier = intersection.length >= 3 ? 1.3 : 1.0;
+
+  return Math.min(jaccardScore * bonusMultiplier, 1.0);
+}
+
+/**
+ * Section interface for V7 assignment
+ */
+export interface SectionForV7 {
+  title: string;
+  semanticKeywords?: string[];
+  pageRange?: { start: number; end: number };
+}
+
+/**
+ * Build section graphics map using SEMANTIC-ONLY assignment (V7)
+ *
+ * This is the new approach that ignores page numbers entirely.
+ * Each graphic is assigned to the section with the highest semantic match.
+ * If no section matches above the threshold, the graphic is NOT assigned.
+ *
+ * Benefits:
+ * - No more misplaced graphics due to page proximity
+ * - Graphics only appear where they semantically belong
+ * - Better user experience (fewer confusing placements)
+ *
+ * @param structure - Document structure with sections containing semanticKeywords
+ * @param graphics - Array of available graphics
+ * @returns Map of sectionIndex -> array of graphic IDs
+ */
+export function buildSectionGraphicsMapV7(
+  structure: { sections: SectionForV7[] },
+  graphics: GraphicSummary[]
+): Map<number, string[]> {
+  const assignments = new Map<number, string[]>();
+
+  // Initialize empty arrays for each section
+  structure.sections.forEach((_, idx) => assignments.set(idx, []));
+
+  let totalAssigned = 0;
+  let totalSkipped = 0;
+
+  for (const graphic of graphics) {
+    let bestSectionIndex = -1;
+    let bestScore = 0;
+    let allScores: Array<{ idx: number; title: string; score: number }> = [];
+
+    // Calculate score against each section
+    for (let i = 0; i < structure.sections.length; i++) {
+      const section = structure.sections[i];
+      const score = calculateSemanticScore(graphic, section);
+
+      allScores.push({ idx: i, title: section.title, score });
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestSectionIndex = i;
+      }
+    }
+
+    // Only assign if score meets minimum threshold
+    if (bestSectionIndex >= 0 && bestScore >= MIN_SEMANTIC_SCORE) {
+      assignments.get(bestSectionIndex)!.push(graphic.id);
+      totalAssigned++;
+
+      const sectionTitle = structure.sections[bestSectionIndex].title;
+      console.log(
+        `[V7] ✓ Graphic "${graphic.id.substring(0, 8)}..." → "${sectionTitle}" ` +
+        `(score: ${bestScore.toFixed(3)}, desc: "${(graphic.description || '').substring(0, 40)}...")`
+      );
+    } else {
+      totalSkipped++;
+      console.log(
+        `[V7] ✗ Graphic "${graphic.id.substring(0, 8)}..." SKIPPED - no semantic match ` +
+        `(best: ${bestScore.toFixed(3)}, threshold: ${MIN_SEMANTIC_SCORE}, ` +
+        `desc: "${(graphic.description || '').substring(0, 40)}...")`
+      );
+    }
+  }
+
+  // Log summary
+  console.log(
+    `[V7] FINAL: ${totalAssigned}/${graphics.length} assigned, ` +
+    `${totalSkipped} skipped (semantic-only, threshold: ${MIN_SEMANTIC_SCORE})`
+  );
+
+  // Log distribution per section
+  assignments.forEach((ids, idx) => {
+    if (ids.length > 0) {
+      const sectionTitle = structure.sections[idx]?.title || `Section ${idx}`;
+      console.log(`[V7]   - "${sectionTitle}": ${ids.length} graphic(s)`);
+    }
+  });
+
+  return assignments;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//                    V5: HYBRID PAGE-BASED GRAPHIC ASSIGNMENT (LEGACY)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
@@ -778,27 +1097,35 @@ export interface SectionWithPageRange {
 }
 
 /**
- * Assign graphics to sections based on page proximity (HYBRID V5)
+ * Assign graphics to sections based on page proximity (HYBRID V5 + Scoring)
  *
- * This is a DETERMINISTIC assignment based on page numbers:
+ * This is a DETERMINISTIC assignment based on page numbers + pedagogical scoring:
  * - A graphic from page N is assigned to the section that covers page N
  * - If no exact match, assigns to the nearest section (with tolerance)
+ * - Graphics are scored by pedagogical value and only top N per section are kept
  * - The LLM then decides WHERE in the section to place it (semantic part)
  *
  * @param graphics - Array of graphics with page numbers
  * @param sections - Array of sections with page ranges
  * @param tolerance - Pages of tolerance for edge cases (default: 1)
- * @returns Map of sectionIndex -> array of graphic IDs
+ * @returns Map of sectionIndex -> array of graphic IDs (limited to MAX_GRAPHICS_PER_SECTION)
  */
 export function assignGraphicsByPageRange(
   graphics: GraphicSummary[],
   sections: SectionWithPageRange[],
   tolerance: number = 1
 ): Map<number, string[]> {
-  const assignments = new Map<number, string[]>();
+  // Temporary map to hold all candidates per section (with scores)
+  const candidates = new Map<number, Array<{ id: string; score: number; page: number }>>();
 
   // Initialize empty arrays for each section
-  sections.forEach((_, idx) => assignments.set(idx, []));
+  sections.forEach((_, idx) => candidates.set(idx, []));
+
+  // Build a map of graphic ID to graphic for quick lookup
+  const graphicMap = new Map<string, GraphicSummary>();
+  for (const g of graphics) {
+    graphicMap.set(g.id, g);
+  }
 
   for (const graphic of graphics) {
     const graphicPage = graphic.pageNumber;
@@ -827,24 +1154,56 @@ export function assignGraphicsByPageRange(
       }
     }
 
-    // Assign to best matching section
+    // Add to candidates for best matching section
     if (bestSectionIndex >= 0) {
-      assignments.get(bestSectionIndex)!.push(graphic.id);
-      console.log(`[V5 Hybrid] Graphic "${graphic.id}" (page ${graphicPage}) → Section ${bestSectionIndex} "${sections[bestSectionIndex].title}"`);
+      const score = calculatePedagogicalScore(graphic);
+      candidates.get(bestSectionIndex)!.push({
+        id: graphic.id,
+        score,
+        page: graphicPage
+      });
+      console.log(`[V5+Score] Graphic "${graphic.id.substring(0, 8)}..." (page ${graphicPage}, type: ${graphic.type}, score: ${score.toFixed(1)}) → Section ${bestSectionIndex}`);
     } else {
-      console.log(`[V5 Hybrid] ⚠️ Graphic "${graphic.id}" (page ${graphicPage}) - no matching section found`);
+      console.log(`[V5+Score] ⚠️ Graphic "${graphic.id.substring(0, 8)}..." (page ${graphicPage}) - no matching section found`);
     }
   }
 
-  // Log summary
+  // Calculate adaptive limit based on total graphics and sections
+  const adaptiveLimit = calculateAdaptiveLimit(graphics.length, sections.length);
+  console.log(`[V5] Adaptive limit: ${adaptiveLimit} graphics/section (${graphics.length} total, ${sections.length} sections)`);
+
+  // Select top N graphics per section based on score
+  const assignments = new Map<number, string[]>();
   let totalAssigned = 0;
-  assignments.forEach((ids, idx) => {
-    if (ids.length > 0) {
-      totalAssigned += ids.length;
-      console.log(`[V5 Hybrid] Section ${idx}: ${ids.length} graphic(s) assigned`);
+  let totalDropped = 0;
+
+  candidates.forEach((sectionCandidates, sectionIdx) => {
+    if (sectionCandidates.length === 0) {
+      assignments.set(sectionIdx, []);
+      return;
+    }
+
+    // Sort by score (descending), then by page number (ascending) for tie-breaking
+    sectionCandidates.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.page - b.page;
+    });
+
+    // Take top N using adaptive limit
+    const selected = sectionCandidates.slice(0, adaptiveLimit);
+    const dropped = sectionCandidates.slice(adaptiveLimit);
+
+    assignments.set(sectionIdx, selected.map(c => c.id));
+    totalAssigned += selected.length;
+    totalDropped += dropped.length;
+
+    if (sectionCandidates.length > 0) {
+      const sectionTitle = sections[sectionIdx]?.title || `Section ${sectionIdx}`;
+      console.log(`[V5] Section "${sectionTitle}": ${selected.length} selected, ${dropped.length} dropped`);
     }
   });
-  console.log(`[V5 Hybrid] Total: ${totalAssigned}/${graphics.length} graphics assigned by page proximity`);
+
+  console.log(`[V5] FINAL: ${totalAssigned}/${graphics.length} graphics assigned (${totalDropped} dropped, limit: ${adaptiveLimit}/section)`);
 
   return assignments;
 }

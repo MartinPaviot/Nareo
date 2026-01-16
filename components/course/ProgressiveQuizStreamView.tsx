@@ -503,6 +503,9 @@ export default function ProgressiveQuizStreamView({
     }
   }, [questions.length, currentIndex]);
 
+  // Track correct streak for XP multiplier
+  const correctStreakRef = useRef(0);
+
   // Submit answer by label (A, B, C, D)
   const submitAnswer = useCallback((label: string) => {
     if (!currentQuestion || !currentShuffledQuestion || answers.has(currentQuestion.id)) return;
@@ -534,6 +537,28 @@ export default function ProgressiveQuizStreamView({
       return next;
     });
 
+    // Record answer to API for XP and activity tracking (fire and forget)
+    if (user) {
+      const currentStreak = correctStreakRef.current;
+      fetch('/api/stats/record-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chapter_id: currentQuestion.chapterId,
+          course_id: courseId,
+          is_correct: isCorrect,
+          current_correct_streak: currentStreak,
+        }),
+      }).catch(err => console.error('Failed to record answer:', err));
+
+      // Update streak
+      if (isCorrect) {
+        correctStreakRef.current += 1;
+      } else {
+        correctStreakRef.current = 0;
+      }
+    }
+
     // Only show feedback card if incorrect - correct answers auto-advance
     if (isCorrect) {
       // Brief visual feedback then auto-advance
@@ -549,7 +574,7 @@ export default function ProgressiveQuizStreamView({
       // Incorrect: show explanation, user must click to continue
       setShowFeedback(true);
     }
-  }, [currentQuestion, currentShuffledQuestion, answers, currentIndex, questions.length, goNext, isGenerating]);
+  }, [currentQuestion, currentShuffledQuestion, answers, currentIndex, questions.length, goNext, isGenerating, user, courseId]);
 
   // Handle finish from recap
   const handleFinish = useCallback(() => {

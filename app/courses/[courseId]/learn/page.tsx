@@ -1163,7 +1163,7 @@ export default function CourseLearnPage() {
                   isGenerating={quizGenerateStream.isStreaming || isStartingGeneration}
                   progress={quizGenerateStream.progress}
                   questionsGenerated={realTimeStreamingQuestions.length}
-                  progressMessage={quizGenerateStream.message || translate('quiz_generation_in_progress', 'Génération en cours...')}
+                  progressMessage={translateQuizStepMessage(quizGenerateStream.step ?? undefined, quizGenerateStream.message)}
                   courseId={courseId}
                   courseTitle={course.title}
                   onComplete={() => {
@@ -1179,7 +1179,7 @@ export default function CourseLearnPage() {
                 <GenerationLoadingScreen
                   type="quiz"
                   progress={quizGenerateStream.progress}
-                  progressMessage={quizGenerateStream.message || translate('quiz_generation_starting', 'Démarrage de la génération...')}
+                  progressMessage={translateQuizStepMessage(quizGenerateStream.step ?? undefined, quizGenerateStream.message)}
                   itemsGenerated={0}
                   courseId={courseId}
                 />

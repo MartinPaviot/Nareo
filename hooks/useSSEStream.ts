@@ -10,6 +10,8 @@ export interface SSEStreamState<T = SSEEvent> {
   progress: number;
   /** Current step/status message */
   message: string;
+  /** Current step key for translation */
+  step: string | null;
   /** All events received so far */
   events: T[];
   /** Any error that occurred */
@@ -40,6 +42,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
     isStreaming: false,
     progress: 0,
     message: '',
+    step: null,
     events: [],
     error: null,
     isComplete: false,
@@ -78,6 +81,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
       isStreaming: true,
       progress: 0,
       message: '',
+      step: null,
       events: [],
       error: null,
       isComplete: false,
@@ -138,6 +142,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
                 ...prev,
                 progress: event.progress ?? prev.progress,
                 message: event.message ?? prev.message,
+                step: event.step ?? prev.step,
                 events: [...eventsRef.current],
               }));
               break;
@@ -256,6 +261,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
       isStreaming: false,
       progress: 0,
       message: '',
+      step: null,
       events: [],
       error: null,
       isComplete: false,

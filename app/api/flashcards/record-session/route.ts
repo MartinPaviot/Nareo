@@ -37,6 +37,8 @@ export async function POST(request: NextRequest) {
           current_activity_units: 0,
           goal_completed: false,
           goal_just_completed: false,
+          xp_earned: 0,
+          total_xp_with_bonus: 0,
         }
       });
     }

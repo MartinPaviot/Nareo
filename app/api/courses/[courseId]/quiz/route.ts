@@ -136,6 +136,7 @@ export async function GET(
       answerText: q.answer_text,
       explanation: q.explanation,
       sourceExcerpt: q.source_excerpt,
+      pageNumber: q.page_number,
       cognitiveLevel: q.cognitive_level,
       difficulty: q.difficulty,
       points: q.points,

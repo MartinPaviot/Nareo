@@ -866,7 +866,8 @@ async function parsePDFWithPageDetail(buffer: Buffer): Promise<PDFParseResult> {
             const pageText = extractPageTextWithTables(page, pageNum, corruptedPages, corruptedZones);
 
             pageTexts.set(pageNum, pageText.trim());
-            fullText += pageText + '\n';
+            // Add page marker for later reference extraction
+            fullText += `[Page ${pageNum}]\n${pageText}\n`;
 
             // Also check the full page text for corruption patterns that span fragments
             // This catches cases where corruption is only visible in the assembled text
@@ -1399,19 +1400,22 @@ export async function parsePDFWithPages(buffer: Buffer): Promise<ParsedPDFResult
 
           // Rebuild pages with OCR results
           const rebuiltPages: string[] = [];
+          const rebuiltTextParts: string[] = [];
           for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
             if (ocrResults.has(pageNum)) {
               const ocrText = ocrResults.get(pageNum) || '';
               rebuiltPages.push(ocrText);
+              rebuiltTextParts.push(`[Page ${pageNum}]\n${ocrText}`);
               const reason = parseResult.corruptedPages.has(pageNum) ? 'corrupted' : 'poor/graphics';
               console.log(`   ✅ Page ${pageNum} (${reason}): replaced with OCR (${ocrText.length} chars)`);
             } else {
               const originalPageText = parseResult.pageTexts.get(pageNum) || '';
               rebuiltPages.push(cleanPDFText(originalPageText));
+              rebuiltTextParts.push(`[Page ${pageNum}]\n${cleanPDFText(originalPageText)}`);
             }
           }
 
-          const rebuiltText = rebuiltPages.join('\n\n');
+          const rebuiltText = rebuiltTextParts.join('\n\n');
           const finalCleaned = cleanPDFText(rebuiltText);
           console.log('✅ Targeted OCR complete - rebuilt document');
 

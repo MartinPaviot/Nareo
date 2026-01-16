@@ -68,6 +68,7 @@ export interface Question {
   points: number | null;
   explanation: string | null;
   source_excerpt: string | null;
+  page_number: number | null;
   correct_option_index: number | null;
   created_at: string;
 }

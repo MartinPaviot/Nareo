@@ -105,7 +105,8 @@ export async function GET(
         correct_option_index,
         points,
         page_source,
-        source_excerpt
+        source_excerpt,
+        page_number
       `)
       .in('chapter_id', chapterIds);
 

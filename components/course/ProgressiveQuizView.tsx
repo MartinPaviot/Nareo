@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Check, X, ChevronRight, Loader2, Trophy, HelpCircle } from 'lucide-react';
+import { Check, X, ChevronRight, Loader2, Trophy, HelpCircle, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -68,6 +68,8 @@ export interface StreamingQuestion {
   answerText: string | null;
   explanation: string | null;
   questionNumber: number;
+  sourceExcerpt: string | null;
+  pageNumber: number | null;
 }
 
 interface UserAnswer {
@@ -550,7 +552,7 @@ export default function ProgressiveQuizView({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className={`p-4 rounded-xl mb-6 ${
+                className={`p-4 rounded-xl mb-4 ${
                   isDark ? 'bg-neutral-800' : 'bg-gray-50'
                 }`}
               >
@@ -559,6 +561,32 @@ export default function ProgressiveQuizView({
                   <p className={`text-sm ${isDark ? 'text-neutral-300' : 'text-gray-600'}`}>
                     {currentQuestion.explanation}
                   </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Source excerpt from course (shown after answer) */}
+            {showFeedback && currentQuestion.sourceExcerpt && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className={`p-4 rounded-xl mb-6 border ${
+                  isDark
+                    ? 'bg-amber-950/30 border-amber-800/50'
+                    : 'bg-amber-50 border-amber-200'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <FileText className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isDark ? 'text-amber-500' : 'text-amber-600'}`} />
+                  <div>
+                    <p className={`text-xs font-medium mb-1 ${isDark ? 'text-amber-500' : 'text-amber-700'}`}>
+                      {translate('quiz_source_excerpt')}{currentQuestion.pageNumber ? ` — ${translate('quiz_page')} ${currentQuestion.pageNumber}` : ''}
+                    </p>
+                    <p className={`text-sm italic ${isDark ? 'text-amber-200/80' : 'text-amber-800'}`}>
+                      &ldquo;{currentQuestion.sourceExcerpt}&rdquo;
+                    </p>
+                  </div>
                 </div>
               </motion.div>
             )}

@@ -122,6 +122,7 @@ Each question MUST include:
   2. If false, explains what the correct information is
   Example: "Cette affirmation est fausse. Le cours indique que le coût des capitaux propres est généralement SUPÉRIEUR au coût de la dette car les actionnaires supportent plus de risque. La dette est moins risquée car les créanciers sont payés en priorité."
 - "source_reference": REQUIRED - The EXACT quote from the source text (15-50 words) that proves the answer. Copy verbatim from the provided text.
+- "page_number": REQUIRED - The page number where this information is found. Look for [Page X] markers in the source text and extract the number X. Return as integer.
 - "cognitive_level": One of "remember" (recall facts), "understand" (explain concepts)
 - "concept_tested": Which key concept or learning objective this question tests
 
@@ -169,6 +170,7 @@ Example output:
       "correct_answer": true,
       "explanation": "Cette affirmation est vraie. Le cours indique que le WACC représente le coût du capital de l'entreprise et sert de taux d'actualisation pour ramener les flux de trésorerie futurs à leur valeur présente dans les modèles Discounted Cash Flow.",
       "source_reference": "Le WACC est utilisé comme taux d'actualisation pour ramener les flux futurs à leur valeur présente.",
+      "page_number": 3,
       "cognitive_level": "understand",
       "concept_tested": "Utilisation du WACC dans la valorisation"
     }
@@ -233,6 +235,7 @@ Each question MUST include:
   2. Provides context about this concept from the course
   Example: "Le terme correct est WACC (Weighted Average Cost of Capital). Le cours définit le WACC comme le coût moyen pondéré du capital, calculé en pondérant le coût des fonds propres et le coût de la dette selon leur proportion dans la structure financière."
 - "source_reference": REQUIRED - The EXACT quote from the source text (15-50 words) that contains this term. Copy verbatim from the provided text.
+- "page_number": REQUIRED - The page number where this information is found. Look for [Page X] markers in the source text and extract the number X. Return as integer.
 - "cognitive_level": One of "remember" (recall terms), "understand" (explain concepts)
 - "concept_tested": Which key concept or learning objective this question tests
 
@@ -282,6 +285,7 @@ Example output:
       "accepted_answers": ["CAPM", "capm", "MEDAF", "medaf", "Capital Asset Pricing Model"],
       "explanation": "Le terme correct est CAPM (Capital Asset Pricing Model). Ce modèle est le standard pour estimer ke en fonction du risque systématique.",
       "source_reference": "Le CAPM (Capital Asset Pricing Model) définit ke = rf + β × (Rm - rf).",
+      "page_number": 7,
       "cognitive_level": "remember",
       "concept_tested": "Formule du CAPM"
     }

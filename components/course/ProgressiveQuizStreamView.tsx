@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, XCircle, Loader2, HelpCircle, ArrowRight, Maximize2, Minimize2, RotateCcw, Gamepad2, Gift, X } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, HelpCircle, ArrowRight, Maximize2, Minimize2, RotateCcw, Gamepad2, Gift, X, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -24,6 +24,8 @@ export interface StreamingQuestion {
   explanation: string;
   points: number;
   phase?: string;
+  sourceExcerpt?: string | null;
+  pageNumber?: number | null;
 }
 
 // Shuffled option with label and original index tracking
@@ -241,57 +243,82 @@ interface ExplanationCardProps {
   isCorrect: boolean;
   correctAnswer?: string;
   explanation?: string;
+  sourceExcerpt?: string | null;
+  pageNumber?: number | null;
   points: number;
   translate: (key: string) => string;
   isDark?: boolean;
 }
 
-function ExplanationCard({ isCorrect, correctAnswer, explanation, points, translate, isDark }: ExplanationCardProps) {
+function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt, pageNumber, points, translate, isDark }: ExplanationCardProps) {
   const [expanded, setExpanded] = useState(false);
   const shouldTruncate = explanation && explanation.length > 150;
 
   return (
-    <div className={`rounded-lg border px-2.5 py-1.5 ${
-      isCorrect
-        ? isDark ? 'bg-green-500/15 border-green-500/40' : 'bg-green-50 border-green-200'
-        : isDark ? 'bg-[#d91a1c]/15 border-[#d91a1c]/40' : 'bg-[#d91a1c]/5 border-[#d91a1c]/20'
-    }`}>
-      {/* Badge result + correct answer inline */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          {isCorrect ? (
-            <CheckCircle2 className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
-          ) : (
-            <XCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d91a1c' }} />
+    <div className="space-y-2">
+      <div className={`rounded-lg border px-2.5 py-1.5 ${
+        isCorrect
+          ? isDark ? 'bg-green-500/15 border-green-500/40' : 'bg-green-50 border-green-200'
+          : isDark ? 'bg-[#d91a1c]/15 border-[#d91a1c]/40' : 'bg-[#d91a1c]/5 border-[#d91a1c]/20'
+      }`}>
+        {/* Badge result + correct answer inline */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            {isCorrect ? (
+              <CheckCircle2 className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
+            ) : (
+              <XCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#d91a1c' }} />
+            )}
+            <span className={`font-semibold text-[11px] ${
+              isCorrect
+                ? isDark ? 'text-green-400' : 'text-green-800'
+                : isDark ? 'text-[#f87171]' : 'text-[#991b1b]'
+            }`}>
+              {isCorrect ? translate('quiz_feedback_correct') || 'Correct !' : 'Incorrect'}
+              {!isCorrect && correctAnswer && ` — ${correctAnswer}`}
+            </span>
+          </div>
+          {isCorrect && points > 0 && (
+            <span className={`text-[11px] font-medium ${isDark ? 'text-green-400' : 'text-green-700'}`}>+{points} pts</span>
           )}
-          <span className={`font-semibold text-[11px] ${
-            isCorrect
-              ? isDark ? 'text-green-400' : 'text-green-800'
-              : isDark ? 'text-[#f87171]' : 'text-[#991b1b]'
-          }`}>
-            {isCorrect ? translate('quiz_feedback_correct') || 'Correct !' : 'Incorrect'}
-            {!isCorrect && correctAnswer && ` — ${correctAnswer}`}
-          </span>
         </div>
-        {isCorrect && points > 0 && (
-          <span className={`text-[11px] font-medium ${isDark ? 'text-green-400' : 'text-green-700'}`}>+{points} pts</span>
+
+        {/* Explanation - collapsed by default */}
+        {explanation && (
+          <div className={`text-[11px] leading-snug mt-1 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
+            <p className={!expanded && shouldTruncate ? 'line-clamp-1' : ''}>
+              {explanation}
+            </p>
+            {shouldTruncate && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className={`font-medium text-[11px] hover:underline ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
+              >
+                {expanded ? translate('show_less') || 'Voir moins' : translate('show_more') || 'Voir plus'}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Explanation - collapsed by default */}
-      {explanation && (
-        <div className={`text-[11px] leading-snug mt-1 ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
-          <p className={!expanded && shouldTruncate ? 'line-clamp-1' : ''}>
-            {explanation}
-          </p>
-          {shouldTruncate && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className={`font-medium text-[11px] hover:underline ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
-            >
-              {expanded ? translate('show_less') || 'Voir moins' : translate('show_more') || 'Voir plus'}
-            </button>
-          )}
+      {/* Source excerpt from course */}
+      {sourceExcerpt && (
+        <div className={`rounded-lg border px-2.5 py-1.5 ${
+          isDark
+            ? 'bg-amber-950/30 border-amber-800/50'
+            : 'bg-amber-50 border-amber-200'
+        }`}>
+          <div className="flex items-start gap-1.5">
+            <FileText className={`w-3 h-3 mt-0.5 flex-shrink-0 ${isDark ? 'text-amber-500' : 'text-amber-600'}`} />
+            <div>
+              <p className={`text-[10px] font-medium ${isDark ? 'text-amber-500' : 'text-amber-700'}`}>
+                {translate('quiz_source_excerpt')}{pageNumber ? ` — ${translate('quiz_page')} ${pageNumber}` : ''}
+              </p>
+              <p className={`text-[11px] italic leading-snug ${isDark ? 'text-amber-200/80' : 'text-amber-800'}`}>
+                &ldquo;{sourceExcerpt}&rdquo;
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -782,6 +809,8 @@ export default function ProgressiveQuizStreamView({
                     })()
                   : undefined}
                 explanation={currentShuffledQuestion.explanation}
+                sourceExcerpt={currentQuestion.sourceExcerpt}
+                pageNumber={currentQuestion.pageNumber}
                 points={answers.get(currentQuestion.id)?.isCorrect ? 10 : 0}
                 translate={translate}
                 isDark={isDark}

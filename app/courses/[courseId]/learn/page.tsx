@@ -631,6 +631,8 @@ export default function CourseLearnPage() {
                 explanation: q.explanation || '',
                 points: q.points || 10,
                 phase: q.phase || 'mcq',
+                sourceExcerpt: q.source_excerpt || null,
+                pageNumber: q.page_number || null,
               }));
               setRealTimeStreamingQuestions(streamQuestions);
               setIsStreamingMode(true);
@@ -661,7 +663,7 @@ export default function CourseLearnPage() {
     onQuestion: (event) => {
       // Add streaming question for progressive quiz view
       // The event is SSEQuestionEvent which has a 'data' property
-      const questionEvent = event as { type: 'question'; data: { chapterId: string; chapterTitle: string; question: { id: string; questionText: string; type: string; options: string[] | null; correctOptionIndex: number | null; answerText: string | null; explanation: string | null; questionNumber: number } }; questionsGenerated: number; progress: number };
+      const questionEvent = event as { type: 'question'; data: { chapterId: string; chapterTitle: string; question: { id: string; questionText: string; type: string; options: string[] | null; correctOptionIndex: number | null; answerText: string | null; explanation: string | null; questionNumber: number; sourceExcerpt?: string | null; pageNumber?: number | null } }; questionsGenerated: number; progress: number };
       if (questionEvent.data) {
         const { chapterId, chapterTitle, question } = questionEvent.data;
         setStreamingQuestions(prev => {
@@ -678,6 +680,8 @@ export default function CourseLearnPage() {
             answerText: question.answerText,
             explanation: question.explanation,
             questionNumber: question.questionNumber || prev.length + 1,
+            sourceExcerpt: question.sourceExcerpt || null,
+            pageNumber: question.pageNumber || null,
           };
           return [...prev, newQuestion];
         });

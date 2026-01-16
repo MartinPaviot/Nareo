@@ -238,13 +238,14 @@ export async function POST(
                   explanation: question.explanation || '',
                   correct_option_index: normalizedCorrectIndex,
                   source_excerpt: question.source_reference || '',
+                  page_number: question.page_number || null,
                   phase: phase,
                 };
 
                 const { data: insertedQuestion, error: insertError } = await admin
                   .from('questions')
                   .insert(questionData)
-                  .select('id, chapter_id, question_text, options, type, correct_option_index, explanation, points')
+                  .select('id, chapter_id, question_text, options, type, correct_option_index, explanation, points, source_excerpt, page_number')
                   .single();
 
                 if (insertError) {
@@ -271,6 +272,8 @@ export async function POST(
                     explanation: insertedQuestion.explanation,
                     points: insertedQuestion.points,
                     phase: question.phase || 'mcq',
+                    sourceExcerpt: insertedQuestion.source_excerpt || null,
+                    pageNumber: insertedQuestion.page_number || null,
                   },
                   questionsGenerated: totalQuestionsGenerated,
                   progress: chapterProgress + Math.floor((totalQuestionsGenerated % 10) * 2),

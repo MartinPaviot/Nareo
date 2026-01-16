@@ -28,8 +28,9 @@ export default function AcquiredCardsSection({ courseId, onCardRestored }: Acqui
     }
   };
 
-  // Don't show section if no archived cards
-  if (!isLoading && cards.length === 0) {
+  // Don't show section while loading or if no archived cards
+  // This prevents the flash of "loading" state when there are no cards
+  if (isLoading || cards.length === 0) {
     return null;
   }
 

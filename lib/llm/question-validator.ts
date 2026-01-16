@@ -19,6 +19,7 @@ export interface MCQQuestion {
   questionNumber?: number;
   // New fields for improved quality tracking
   source_reference?: string;      // Exact quote from source text supporting the answer
+  page_number?: number;           // Page number from the source document
   cognitive_level?: 'remember' | 'understand' | 'apply';  // Bloom's taxonomy level
   concept_tested?: string;        // Which concept/learning objective this tests
   // Fields for true/false questions

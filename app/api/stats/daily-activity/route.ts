@@ -18,7 +18,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    // Use client's local date if provided, otherwise fallback to server UTC
+    const url = new URL(request.url);
+    const clientDate = url.searchParams.get('date');
+    const today = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate)
+      ? clientDate
+      : new Date().toISOString().split('T')[0];
 
     // Get today's activity
     let { data: todayActivity, error: todayError } = await supabase
@@ -67,15 +72,17 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Get last 7 days activity
-    const sevenDaysAgo = new Date();
+    // Get last 7 days activity (based on client's date)
+    const todayDate = new Date(today + 'T00:00:00');
+    const sevenDaysAgo = new Date(todayDate);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
 
     const { data: recentActivity, error: recentError } = await supabase
       .from('daily_activity')
       .select('*')
       .eq('user_id', user.id)
-      .gte('activity_date', sevenDaysAgo.toISOString().split('T')[0])
+      .gte('activity_date', sevenDaysAgoStr)
       .order('activity_date', { ascending: false });
 
     if (recentError) {

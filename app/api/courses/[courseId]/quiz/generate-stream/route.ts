@@ -37,6 +37,7 @@ export async function POST(
   // Parse request body
   let quizConfig: QuizConfig = DEFAULT_QUIZ_CONFIG;
   let chapterId: string | null = null;
+  let uiLanguage: string = 'fr';
 
   try {
     const body = await request.json();
@@ -44,9 +45,55 @@ export async function POST(
       quizConfig = { ...DEFAULT_QUIZ_CONFIG, ...body.config };
     }
     chapterId = body.chapterId || null;
+    uiLanguage = body.uiLanguage || 'fr';
   } catch {
     // Use defaults
   }
+
+  // UI translations for progress messages
+  const uiMessages: Record<string, Record<string, string>> = {
+    en: {
+      starting: 'Starting generation...',
+      analyzing: 'Analyzing {count} chapter(s)...',
+      generating_for: 'Generating for "{title}"...',
+      questions_generated: '{count} questions generated!',
+      error_chapters: 'Error fetching chapters',
+      no_chapters: 'No chapters found for this course. Document extraction may have failed. Please try again or upload a different document.',
+      no_content: 'No chapters contain enough content to generate questions.',
+      generation_error: 'An error occurred during generation',
+    },
+    fr: {
+      starting: 'Démarrage de la génération...',
+      analyzing: 'Analyse de {count} chapitre(s)...',
+      generating_for: 'Génération pour "{title}"...',
+      questions_generated: '{count} questions générées !',
+      error_chapters: 'Erreur lors de la récupération des chapitres',
+      no_chapters: 'Aucun chapitre trouvé pour ce cours. L\'extraction du document a peut-être échoué. Veuillez réessayer ou télécharger un autre document.',
+      no_content: 'Aucun chapitre ne contient suffisamment de contenu pour générer des questions.',
+      generation_error: 'Une erreur est survenue pendant la génération',
+    },
+    de: {
+      starting: 'Generierung wird gestartet...',
+      analyzing: '{count} Kapitel werden analysiert...',
+      generating_for: 'Generierung für "{title}"...',
+      questions_generated: '{count} Fragen generiert!',
+      error_chapters: 'Fehler beim Abrufen der Kapitel',
+      no_chapters: 'Keine Kapitel für diesen Kurs gefunden. Die Dokumentenextraktion ist möglicherweise fehlgeschlagen. Bitte versuche es erneut oder lade ein anderes Dokument hoch.',
+      no_content: 'Kein Kapitel enthält genug Inhalt, um Fragen zu generieren.',
+      generation_error: 'Bei der Generierung ist ein Fehler aufgetreten',
+    },
+  };
+
+  const t = (key: string, params?: Record<string, string | number>): string => {
+    const messages = uiMessages[uiLanguage] || uiMessages.fr;
+    let message = messages[key] || uiMessages.fr[key] || key;
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        message = message.replace(`{${k}}`, String(v));
+      });
+    }
+    return message;
+  };
 
   // Create SSE stream
   const { stream, send, close, isClosed } = createSSEStream();
@@ -59,7 +106,7 @@ export async function POST(
         type: 'progress',
         progress: 5,
         step: 'starting',
-        message: 'Démarrage de la génération...',
+        message: t('starting'),
         questionsGenerated: 0,
       });
 
@@ -100,7 +147,7 @@ export async function POST(
 
       if (chaptersError) {
         console.error(`[quiz-stream] Error fetching chapters for course ${courseId}:`, chaptersError);
-        send({ type: 'error', message: `Erreur lors de la récupération des chapitres: ${chaptersError.message}` });
+        send({ type: 'error', message: `${t('error_chapters')}: ${chaptersError.message}` });
         close();
         return;
       }
@@ -109,7 +156,7 @@ export async function POST(
         console.error(`[quiz-stream] No chapters found for course ${courseId}. Course status may be incorrect or extraction failed.`);
         send({
           type: 'error',
-          message: 'Aucun chapitre trouvé pour ce cours. L\'extraction du document a peut-être échoué. Veuillez réessayer ou télécharger un autre document.'
+          message: t('no_chapters')
         });
         close();
         return;
@@ -125,7 +172,7 @@ export async function POST(
       if (chaptersWithContent.length === 0) {
         send({
           type: 'error',
-          message: 'Aucun chapitre ne contient suffisamment de contenu pour générer des questions.',
+          message: t('no_content'),
         });
         close();
         return;
@@ -137,7 +184,7 @@ export async function POST(
         type: 'progress',
         progress: 10,
         step: 'analyzing',
-        message: `Analyse de ${chaptersWithContent.length} chapitre(s)...`,
+        message: t('analyzing', { count: chaptersWithContent.length }),
         questionsGenerated: 0,
         totalChapters: chaptersWithContent.length,
       });
@@ -160,7 +207,7 @@ export async function POST(
           type: 'progress',
           progress: chapterProgress,
           step: 'generating',
-          message: `Génération pour "${chapter.title}"...`,
+          message: t('generating_for', { title: chapter.title }),
           questionsGenerated: totalQuestionsGenerated,
           currentChapter: chapterIndex + 1,
           totalChapters,
@@ -305,7 +352,7 @@ export async function POST(
         type: 'complete',
         progress: 100,
         questionsGenerated: totalQuestionsGenerated,
-        message: `${totalQuestionsGenerated} questions générées !`,
+        message: t('questions_generated', { count: totalQuestionsGenerated }),
       });
 
       close();
@@ -313,7 +360,7 @@ export async function POST(
       console.error('[quiz-stream] Fatal error:', error);
       send({
         type: 'error',
-        message: 'Une erreur est survenue pendant la génération',
+        message: t('generation_error'),
       });
       close();
     }

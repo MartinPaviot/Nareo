@@ -293,10 +293,10 @@ export default function QuizSessionRecap({
 
   // Get encouragement message based on performance
   const getEncouragementMessage = (): string => {
-    if (stats.score >= 90) return translate('quiz_session_excellent') || 'Excellent travail !';
-    if (stats.score >= 70) return translate('quiz_session_good') || 'Bien joue !';
-    if (stats.score >= 50) return translate('quiz_session_keep_going') || 'Continue comme ca !';
-    return translate('quiz_session_practice_more') || 'La pratique rend parfait !';
+    if (stats.score >= 90) return translate('quiz_session_excellent');
+    if (stats.score >= 70) return translate('quiz_session_good');
+    if (stats.score >= 50) return translate('quiz_session_keep_going');
+    return translate('quiz_session_practice_more');
   };
 
   // Get mascot image based on score or AI feedback
@@ -317,7 +317,7 @@ export default function QuizSessionRecap({
         isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
       }`}>
         <h1 className={`text-lg font-bold text-center mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {translate('quiz_session_complete') || 'Quiz termine !'}
+          {translate('quiz_session_complete')}
         </h1>
 
         {courseTitle && (
@@ -380,7 +380,7 @@ export default function QuizSessionRecap({
               <div className="text-center space-y-2">
                 <Loader2 className="w-5 h-5 text-orange-500 animate-spin mx-auto" />
                 <p className={`text-xs ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
-                  {translate('results_feedback_loading') || 'Analyse en cours...'}
+                  {translate('results_feedback_loading')}
                 </p>
               </div>
             </div>
@@ -399,7 +399,7 @@ export default function QuizSessionRecap({
                     <CheckCircle2 className="w-3 h-3 text-white" />
                   </div>
                   <h4 className="text-sm font-semibold" style={{ color: isDark ? '#6ee7b7' : '#256838' }}>
-                    {translate('results_feedback_mastered') || 'Points maîtrisés'}
+                    {translate('results_feedback_mastered')}
                   </h4>
                 </div>
                 {aiFeedback?.points_maitrises && aiFeedback.points_maitrises.length > 0 ? (
@@ -419,11 +419,11 @@ export default function QuizSessionRecap({
                   </ul>
                 ) : correctQuestions.length > 0 ? (
                   <p className="text-xs italic" style={{ color: isDark ? '#4ade80' : '#2d8049' }}>
-                    {translate('results_feedback_no_mastered') || 'Continue à pratiquer pour maîtriser les concepts !'}
+                    {translate('results_feedback_no_mastered')}
                   </p>
                 ) : (
                   <p className="text-xs italic" style={{ color: isDark ? '#4ade80' : '#2d8049' }}>
-                    {translate('results_feedback_no_mastered') || 'Continue à pratiquer !'}
+                    {translate('results_feedback_no_mastered')}
                   </p>
                 )}
               </div>
@@ -439,7 +439,7 @@ export default function QuizSessionRecap({
                     <span className="text-white text-[10px] font-bold">!</span>
                   </div>
                   <h4 className={`text-sm font-semibold ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
-                    {translate('results_feedback_to_review') || 'À revoir'}
+                    {translate('results_feedback_to_review')}
                   </h4>
                 </div>
                 {aiFeedback?.points_a_revoir && aiFeedback.points_a_revoir.length > 0 ? (
@@ -459,7 +459,7 @@ export default function QuizSessionRecap({
                   </ul>
                 ) : incorrectQuestions.length === 0 ? (
                   <p className={`text-xs italic ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                    {translate('results_feedback_all_mastered') || 'Tout est maîtrisé !'}
+                    {translate('results_feedback_all_mastered')}
                   </p>
                 ) : (
                   <ul className="space-y-1">
@@ -495,7 +495,7 @@ export default function QuizSessionRecap({
             }`}
           >
             <span className={`text-sm font-semibold ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
-              {translate('quiz_detailed_results') || 'Detail des reponses'}
+              {translate('quiz_detailed_results')}
             </span>
             {showDetails ? (
               <ChevronUp className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
@@ -509,7 +509,7 @@ export default function QuizSessionRecap({
               {/* Maîtrisé questions */}
               {correctQuestions.length > 0 && (
                 <QuestionGroup
-                  title={translate('quiz_mastered') || 'Maîtrisé'}
+                  title={translate('quiz_mastered')}
                   questions={correctQuestions}
                   colorClass="text-green-500"
                   bgClass={isDark ? 'bg-green-500/5' : 'bg-green-50/50'}
@@ -522,7 +522,7 @@ export default function QuizSessionRecap({
               {/* À revoir questions */}
               {incorrectQuestions.length > 0 && (
                 <QuestionGroup
-                  title={translate('quiz_to_review') || 'À revoir'}
+                  title={translate('quiz_to_review')}
                   questions={incorrectQuestions}
                   colorClass="text-orange-500"
                   bgClass={isDark ? 'bg-orange-500/5' : 'bg-orange-50/50'}
@@ -550,7 +550,7 @@ export default function QuizSessionRecap({
             }`}
           >
             <RotateCcw className="w-4 h-4" />
-            {translate('quiz_retry_incorrect') || 'Retravailler les'} {stats.incorrect} {translate('quiz_incorrect_questions') || 'questions incorrectes'}
+            {translate('quiz_retry_incorrect')} {stats.incorrect} {translate('quiz_incorrect_questions')}
           </button>
         )}
 
@@ -560,7 +560,7 @@ export default function QuizSessionRecap({
           className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white text-sm font-semibold shadow-md transition-colors bg-orange-500 hover:bg-orange-600"
         >
           <Check className="w-4 h-4" />
-          {translate('quiz_finish_session') || 'Terminer'}
+          {translate('quiz_finish_session')}
         </button>
       </div>
 
@@ -576,20 +576,20 @@ export default function QuizSessionRecap({
 
             <div className="space-y-2">
               <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {translate('quiz_first_complete_title') || 'Bravo ! Premier quiz terminé !'}
+                {translate('quiz_first_complete_title')}
               </h2>
               <p className={isDark ? 'text-neutral-300' : 'text-gray-600'}>
-                {translate('quiz_first_complete_subtitle') || 'Tu as fait tes premiers pas vers la réussite !'}
+                {translate('quiz_first_complete_subtitle')}
               </p>
             </div>
 
             <div className="bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
               <div className="text-5xl mb-3">🎓</div>
               <h3 className="text-xl font-bold">
-                {translate('quiz_first_complete_badge') || 'Première étoile'}
+                {translate('quiz_first_complete_badge')}
               </h3>
               <p className="text-sm opacity-90 mt-1">
-                {translate('quiz_first_complete_badge_desc') || 'Tu as terminé ton premier quiz !'}
+                {translate('quiz_first_complete_badge_desc')}
               </p>
             </div>
 
@@ -597,7 +597,7 @@ export default function QuizSessionRecap({
               onClick={handleCloseCelebration}
               className="w-full px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
             >
-              {translate('continue') || 'Continuer'}
+              {translate('continue')}
             </button>
           </div>
         </div>
@@ -617,12 +617,12 @@ export default function QuizSessionRecap({
 
             <div className="space-y-2">
               <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {translate('quiz_complete_title') || 'Quiz terminé !'}
+                {translate('quiz_complete_title')}
               </h2>
               <p className={isDark ? 'text-neutral-300' : 'text-gray-600'}>
                 {stats.score >= 70
-                  ? (translate('quiz_complete_good') || 'Excellent travail !')
-                  : (translate('quiz_complete_keep_going') || 'Continue comme ça !')
+                  ? translate('quiz_complete_good')
+                  : translate('quiz_complete_keep_going')
                 }
               </p>
             </div>
@@ -631,7 +631,7 @@ export default function QuizSessionRecap({
               onClick={handleCloseCelebration}
               className="w-full px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
             >
-              {translate('continue') || 'Continuer'}
+              {translate('continue')}
             </button>
           </div>
         </div>
@@ -660,10 +660,10 @@ export default function QuizSessionRecap({
 
             <div className="space-y-2">
               <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {translate('results_signup_modal_title') || 'Sauvegarde ta progression'}
+                {translate('results_signup_modal_title')}
               </h2>
               <p className={isDark ? 'text-neutral-300' : 'text-gray-600'}>
-                {translate('results_signup_modal_subtitle') || 'Crée un compte gratuit pour ne pas perdre tes résultats'}
+                {translate('results_signup_modal_subtitle')}
               </p>
             </div>
 
@@ -671,7 +671,7 @@ export default function QuizSessionRecap({
               isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-50 border-orange-100'
             }`}>
               <p className={`text-sm ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
-                {translate('results_signup_modal_benefit') || 'Avec un compte, tu peux suivre tes progrès, gagner des badges et défier tes amis !'}
+                {translate('results_signup_modal_benefit')}
               </p>
             </div>
 
@@ -681,7 +681,7 @@ export default function QuizSessionRecap({
                 className="w-full px-6 py-4 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
               >
                 <Gift className="w-5 h-5" />
-                {translate('results_signup_modal_cta') || 'Créer mon compte gratuit'}
+                {translate('results_signup_modal_cta')}
               </button>
               <button
                 onClick={() => setShowSignupModal(false)}
@@ -689,7 +689,7 @@ export default function QuizSessionRecap({
                   isDark ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {translate('later') || 'Plus tard'}
+                {translate('later')}
               </button>
             </div>
           </div>
@@ -738,10 +738,10 @@ function QuestionGroup({
             {showCorrectAnswer && (
               <div className="mt-1 space-y-0.5">
                 <p className={`text-xs ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                  {translate('quiz_your_answer') || 'Ta reponse'}: {question.userAnswer}
+                  {translate('quiz_your_answer')}: {question.userAnswer}
                 </p>
                 <p className={`text-xs ${isDark ? 'text-green-400' : 'text-green-600'}`}>
-                  {translate('quiz_correct_answer') || 'Bonne reponse'}: {question.correctAnswer}
+                  {translate('quiz_correct_answer')}: {question.correctAnswer}
                 </p>
               </div>
             )}

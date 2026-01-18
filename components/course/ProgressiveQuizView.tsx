@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import GenerationProgress from './GenerationProgress';
+import MathText from '@/components/ui/MathText';
 
 
 // Skeleton component for loading questions
@@ -445,7 +446,7 @@ export default function ProgressiveQuizView({
 
             {/* Question text */}
             <h3 className={`text-lg font-semibold mb-6 ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-              {currentQuestion.questionText}
+              <MathText>{currentQuestion.questionText}</MathText>
             </h3>
 
             {/* Answer options with staggered animation */}
@@ -507,7 +508,7 @@ export default function ProgressiveQuizView({
                           )}
                         </div>
                         <span className={`flex-1 ${isDark ? 'text-neutral-100' : 'text-gray-800'}`}>
-                          {option}
+                          <MathText>{option}</MathText>
                         </span>
                       </div>
                     </motion.button>

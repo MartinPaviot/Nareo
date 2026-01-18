@@ -61,32 +61,36 @@ export async function POST(request: NextRequest) {
       .join('\n\n');
 
     const languageInstructions = {
-      fr: 'Réponds en français avec un ton bienveillant et encourageant. TUTOIE TOUJOURS l\'utilisateur (utilise "tu", "te", "tes", jamais "vous").',
-      en: 'Respond in English with a kind and encouraging tone. Use informal "you" (as if talking to a friend).',
-      de: 'Antworte auf Deutsch mit einem freundlichen und ermutigenden Ton. DUZE den Benutzer IMMER (verwende "du", "dich", "dein", niemals "Sie").',
+      fr: 'Réponds UNIQUEMENT en français avec un ton bienveillant et encourageant. TUTOIE TOUJOURS l\'utilisateur (utilise "tu", "te", "tes", jamais "vous"). NE JAMAIS répondre en anglais.',
+      en: 'Respond ONLY in English with a kind and encouraging tone. Use informal "you" (as if talking to a friend). NEVER respond in French.',
+      de: 'Antworte NUR auf Deutsch mit einem freundlichen und ermutigenden Ton. DUZE den Benutzer IMMER (verwende "du", "dich", "dein", niemals "Sie"). NIEMALS auf Englisch oder Französisch antworten.',
     };
 
-    const prompt = `Tu es un assistant pédagogique pour une application d'apprentissage. L'utilisateur vient de terminer un quiz.
+    const systemMessages = {
+      fr: 'Tu es un assistant pédagogique expert. Tu analyses les résultats de quiz et génères du feedback constructif basé sur les concepts, pas sur les numéros de questions. Réponds TOUJOURS en français et en JSON valide.',
+      en: 'You are an expert educational assistant. You analyze quiz results and generate constructive feedback based on concepts, not question numbers. ALWAYS respond in English and valid JSON.',
+      de: 'Du bist ein Experte für pädagogische Assistenz. Du analysierst Quizergebnisse und gibst konstruktives Feedback basierend auf Konzepten, nicht auf Fragennummern. Antworte IMMER auf Deutsch und in gültigem JSON.',
+    };
 
-Score: ${percentage}%
-${chapterTitle ? `Thème du chapitre: ${chapterTitle}` : ''}
+    const promptIntros = {
+      fr: 'Tu es un assistant pédagogique pour une application d\'apprentissage. L\'utilisateur vient de terminer un quiz.',
+      en: 'You are an educational assistant for a learning app. The user just completed a quiz.',
+      de: 'Du bist ein pädagogischer Assistent für eine Lern-App. Der Benutzer hat gerade ein Quiz abgeschlossen.',
+    };
 
-Questions réussies:
-${correctQuestions || 'Aucune'}
-
-Questions ratées:
-${incorrectQuestions || 'Aucune'}
-
-${languageInstructions[language]}
-
-IMPORTANT - Contraintes strictes:
+    const promptLabels = {
+      fr: {
+        chapterTheme: 'Thème du chapitre',
+        correctQuestions: 'Questions réussies',
+        incorrectQuestions: 'Questions ratées',
+        none: 'Aucune',
+        constraints: `IMPORTANT - Contraintes strictes:
 - Ne JAMAIS afficher les numéros de questions
 - Ne JAMAIS recopier l'intitulé exact d'une question
 - Regrouper les questions par concepts clés (max 3-4 concepts par section)
 - Transformer ces concepts en explications pédagogiques concises
-- Le ton doit être clair, bienveillant, utile et adapté à un étudiant
-
-Génère un feedback au format JSON suivant:
+- Le ton doit être clair, bienveillant, utile et adapté à un étudiant`,
+        jsonInstruction: `Génère un feedback au format JSON suivant:
 {
   "feedback_intro": "Phrase courte personnalisée selon le score (encourageante si bas, félicitations si haut)",
   "points_maitrises": [
@@ -103,7 +107,88 @@ Génère un feedback au format JSON suivant:
   ]
 }
 
-Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
+Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`,
+      },
+      en: {
+        chapterTheme: 'Chapter topic',
+        correctQuestions: 'Correct answers',
+        incorrectQuestions: 'Incorrect answers',
+        none: 'None',
+        constraints: `IMPORTANT - Strict constraints:
+- NEVER show question numbers
+- NEVER copy the exact question text
+- Group questions by key concepts (max 3-4 concepts per section)
+- Transform these concepts into concise pedagogical explanations
+- The tone must be clear, kind, helpful and suited for a student`,
+        jsonInstruction: `Generate feedback in the following JSON format:
+{
+  "feedback_intro": "Short personalized sentence based on score (encouraging if low, congratulatory if high)",
+  "points_maitrises": [
+    {
+      "concept": "Short name of mastered concept",
+      "explication": "What the user understood (1-2 sentences)"
+    }
+  ],
+  "points_a_revoir": [
+    {
+      "concept": "Short name of concept to review",
+      "explication": "What the user needs to work on (1-2 sentences)"
+    }
+  ]
+}
+
+Respond ONLY with the JSON, no text before or after.`,
+      },
+      de: {
+        chapterTheme: 'Kapitelthema',
+        correctQuestions: 'Richtige Antworten',
+        incorrectQuestions: 'Falsche Antworten',
+        none: 'Keine',
+        constraints: `WICHTIG - Strikte Einschränkungen:
+- NIEMALS Fragennummern anzeigen
+- NIEMALS den genauen Fragetext kopieren
+- Fragen nach Schlüsselkonzepten gruppieren (max. 3-4 Konzepte pro Abschnitt)
+- Diese Konzepte in prägnante pädagogische Erklärungen umwandeln
+- Der Ton muss klar, freundlich, hilfreich und für einen Studenten geeignet sein`,
+        jsonInstruction: `Generiere Feedback im folgenden JSON-Format:
+{
+  "feedback_intro": "Kurzer personalisierter Satz basierend auf der Punktzahl (ermutigend wenn niedrig, gratulierend wenn hoch)",
+  "points_maitrises": [
+    {
+      "concept": "Kurzer Name des gemeisterten Konzepts",
+      "explication": "Was der Benutzer verstanden hat (1-2 Sätze)"
+    }
+  ],
+  "points_a_revoir": [
+    {
+      "concept": "Kurzer Name des zu überprüfenden Konzepts",
+      "explication": "Woran der Benutzer arbeiten muss (1-2 Sätze)"
+    }
+  ]
+}
+
+Antworte NUR mit dem JSON, kein Text davor oder danach.`,
+      },
+    };
+
+    const labels = promptLabels[language];
+
+    const prompt = `${promptIntros[language]}
+
+Score: ${percentage}%
+${chapterTitle ? `${labels.chapterTheme}: ${chapterTitle}` : ''}
+
+${labels.correctQuestions}:
+${correctQuestions || labels.none}
+
+${labels.incorrectQuestions}:
+${incorrectQuestions || labels.none}
+
+${languageInstructions[language]}
+
+${labels.constraints}
+
+${labels.jsonInstruction}`;
 
     try {
       const response = await openai.chat.completions.create({
@@ -111,7 +196,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
         messages: [
           {
             role: 'system',
-            content: 'Tu es un assistant pédagogique expert. Tu analyses les résultats de quiz et génères du feedback constructif basé sur les concepts, pas sur les numéros de questions. Réponds toujours en JSON valide.',
+            content: systemMessages[language],
           },
           {
             role: 'user',

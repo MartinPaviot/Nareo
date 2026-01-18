@@ -148,7 +148,7 @@ export default function CourseCard({ course, onClick, folderId, showActions = tr
               color: freshnessColor,
             }}
           >
-            {formatDaysSince(course.days_since_study)}
+            {formatDaysSince(course.days_since_study, translate)}
           </div>
         </div>
       </div>

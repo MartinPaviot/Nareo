@@ -62,7 +62,7 @@ export default function CourseLearnPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { translate } = useLanguage();
+  const { translate, language } = useLanguage();
   const { isDark } = useTheme();
   const courseId = params?.courseId as string;
   const isDemoId = courseId?.startsWith('demo-');
@@ -293,7 +293,7 @@ export default function CourseLearnPage() {
       console.log('[learn] Starting real-time quiz generation stream...');
 
       // Start the streaming generation - questions will arrive via onQuestion callback
-      await quizGenerateStream.startGeneration(config);
+      await quizGenerateStream.startGeneration(config, undefined, language);
 
       trackEvent('quiz_generation_started', {
         userId: user?.id,

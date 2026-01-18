@@ -374,11 +374,11 @@ export function useNoteStream(courseId: string, options: UseSSEStreamOptions = {
 export function useQuizGenerateStream(courseId: string, options: UseSSEStreamOptions = {}) {
   const stream = useSSEStream(options);
 
-  const startGeneration = useCallback(async (config?: object, chapterId?: string) => {
+  const startGeneration = useCallback(async (config?: object, chapterId?: string, uiLanguage?: string) => {
     await stream.startStream(`/api/courses/${courseId}/quiz/generate-stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ config, chapterId }),
+      body: JSON.stringify({ config, chapterId, uiLanguage }),
     });
   }, [courseId, stream]);
 

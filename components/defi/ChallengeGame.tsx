@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import MathText from '@/components/ui/MathText';
 import {
   Challenge,
   ChallengeQuestion,
@@ -426,9 +427,9 @@ export default function ChallengeGame({
           isDark ? 'bg-gray-800' : 'bg-white shadow-md'
         }`}>
           <p className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {questionData.type === 'multiple_choice' && questionData.prompt}
-            {questionData.type === 'true_false' && questionData.statement}
-            {questionData.type === 'fill_blank' && questionData.sentence}
+            {questionData.type === 'multiple_choice' && <MathText>{questionData.prompt}</MathText>}
+            {questionData.type === 'true_false' && <MathText>{questionData.statement}</MathText>}
+            {questionData.type === 'fill_blank' && <MathText>{questionData.sentence}</MathText>}
           </p>
         </div>
 
@@ -466,7 +467,7 @@ export default function ChallengeGame({
                     {letter}
                   </span>
                   <span className={isDark ? 'text-white' : 'text-gray-900'}>
-                    {option}
+                    <MathText>{option}</MathText>
                   </span>
                   {isSelected && hasAnswered && (
                     <Check className="ml-auto w-5 h-5 text-orange-500" />

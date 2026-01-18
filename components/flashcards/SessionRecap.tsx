@@ -183,10 +183,10 @@ export default function SessionRecap({
 
   // Get encouragement message based on performance
   const getEncouragementMessage = (): string => {
-    if (masteryPercentage >= 90) return translate('flashcard_session_excellent') || 'Excellent travail !';
-    if (masteryPercentage >= 70) return translate('flashcard_session_good') || 'Bien joué !';
-    if (masteryPercentage >= 50) return translate('flashcard_session_keep_going') || 'Continue comme ça !';
-    return translate('flashcard_session_practice_more') || 'La pratique rend parfait !';
+    if (masteryPercentage >= 90) return translate('flashcard_session_excellent');
+    if (masteryPercentage >= 70) return translate('flashcard_session_good');
+    if (masteryPercentage >= 50) return translate('flashcard_session_keep_going');
+    return translate('flashcard_session_practice_more');
   };
 
   // Get mascot image based on score
@@ -203,7 +203,7 @@ export default function SessionRecap({
         isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
       }`}>
         <h1 className={`text-lg font-bold text-center mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {translate('flashcard_session_complete') || 'Session terminée !'}
+          {translate('flashcard_session_complete')}
         </h1>
 
         {/* Circular Progress */}
@@ -259,7 +259,7 @@ export default function SessionRecap({
                 <Star className="w-2.5 h-2.5 text-white fill-white" />
               </div>
               <h4 className={`text-xs font-semibold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                {translate('flashcard_rating_easy') || 'Facile'}
+                {translate('flashcard_rating_easy')}
               </h4>
             </div>
             <span className="text-2xl font-bold text-blue-500">
@@ -276,7 +276,7 @@ export default function SessionRecap({
                 <CheckCircle2 className="w-2.5 h-2.5 text-white" />
               </div>
               <h4 className={`text-xs font-semibold ${isDark ? 'text-green-400' : 'text-green-700'}`}>
-                {translate('flashcard_rating_good') || 'Bien'}
+                {translate('flashcard_rating_good')}
               </h4>
             </div>
             <span className="text-2xl font-bold text-green-500">
@@ -293,7 +293,7 @@ export default function SessionRecap({
                 <span className="text-white text-[9px] font-bold">!</span>
               </div>
               <h4 className={`text-xs font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>
-                {translate('flashcard_rating_hard') || 'Difficile'}
+                {translate('flashcard_rating_hard')}
               </h4>
             </div>
             <span className="text-2xl font-bold text-red-500">
@@ -315,7 +315,7 @@ export default function SessionRecap({
             }`}
           >
             <span className={`text-sm font-semibold ${isDark ? 'text-neutral-200' : 'text-gray-700'}`}>
-              {translate('flashcard_detailed_results') || 'Détail des cartes'}
+              {translate('flashcard_detailed_results')}
             </span>
             {showDetails ? (
               <ChevronUp className={`w-5 h-5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`} />
@@ -329,7 +329,7 @@ export default function SessionRecap({
               {/* Easy cards */}
               {easyCards.length > 0 && (
                 <CardGroup
-                  title={translate('flashcard_rating_easy') || 'Facile'}
+                  title={translate('flashcard_rating_easy')}
                   cards={easyCards}
                   colorClass="text-blue-500"
                   bgClass={isDark ? 'bg-blue-500/5' : 'bg-blue-50/50'}
@@ -341,7 +341,7 @@ export default function SessionRecap({
               {/* Good cards */}
               {goodCards.length > 0 && (
                 <CardGroup
-                  title={translate('flashcard_rating_good') || 'Bien'}
+                  title={translate('flashcard_rating_good')}
                   cards={goodCards}
                   colorClass="text-green-500"
                   bgClass={isDark ? 'bg-green-500/5' : 'bg-green-50/50'}
@@ -353,7 +353,7 @@ export default function SessionRecap({
               {/* Hard cards */}
               {hardCards.length > 0 && (
                 <CardGroup
-                  title={translate('flashcard_rating_hard') || 'Difficile'}
+                  title={translate('flashcard_rating_hard')}
                   cards={hardCards}
                   colorClass="text-red-500"
                   bgClass={isDark ? 'bg-red-500/5' : 'bg-red-50/50'}
@@ -379,7 +379,7 @@ export default function SessionRecap({
             }`}
           >
             <RotateCcw className="w-4 h-4" />
-            {translate('flashcard_retry_difficult') || 'Retravailler les'} {difficultCount} {translate('flashcard_difficult_cards') || 'cartes difficiles'}
+            {translate('flashcard_retry_difficult')} {difficultCount} {translate('flashcard_difficult_cards')}
           </button>
         )}
 
@@ -389,7 +389,7 @@ export default function SessionRecap({
           className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white text-sm font-semibold shadow-md transition-colors bg-orange-500 hover:bg-orange-600"
         >
           <Check className="w-4 h-4" />
-          {translate('flashcard_finish_session') || 'Terminer la session'}
+          {translate('flashcard_finish_session')}
         </button>
       </div>
     </div>

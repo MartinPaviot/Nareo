@@ -9,6 +9,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import QuizSessionRecap, { QuizSessionStats, QuestionResult } from './QuizSessionRecap';
+import MathText from '@/components/ui/MathText';
 
 // Question interface matching the SSE event data
 export interface StreamingQuestion {
@@ -274,7 +275,7 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
                 ? isDark ? 'text-green-400' : 'text-green-800'
                 : isDark ? 'text-[#f87171]' : 'text-[#991b1b]'
             }`}>
-              {isCorrect ? translate('quiz_feedback_correct') || 'Correct !' : 'Incorrect'}
+              {isCorrect ? translate('quiz_feedback_correct') : translate('quiz_feedback_incorrect')}
               {!isCorrect && correctAnswer && ` — ${correctAnswer}`}
             </span>
           </div>
@@ -294,7 +295,7 @@ function ExplanationCard({ isCorrect, correctAnswer, explanation, sourceExcerpt,
                 onClick={() => setExpanded(!expanded)}
                 className={`font-medium text-[11px] hover:underline ${isDark ? 'text-orange-400' : 'text-orange-600'}`}
               >
-                {expanded ? translate('show_less') || 'Voir moins' : translate('show_more') || 'Voir plus'}
+                {expanded ? translate('show_less') : translate('show_more')}
               </button>
             )}
           </div>
@@ -744,7 +745,7 @@ export default function ProgressiveQuizStreamView({
           {/* Question text */}
           <div className="flex items-start justify-between gap-2">
             <p className={`${isFullscreenMode ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'} font-semibold leading-snug ${isDark ? 'text-neutral-50' : 'text-gray-900'}`}>
-              {currentShuffledQuestion.questionText}
+              <MathText>{currentShuffledQuestion.questionText}</MathText>
             </p>
             {!isFullscreenMode && <KeyboardHelpTooltip isDark={isDark} />}
           </div>
@@ -810,7 +811,7 @@ export default function ProgressiveQuizStreamView({
                   disabled={answered}
                 >
                   <span className={labelClasses}>{opt.label}.</span>
-                  <span className={textClasses}>{opt.value}</span>
+                  <span className={textClasses}><MathText>{opt.value}</MathText></span>
                 </button>
               );
             })}
@@ -867,7 +868,7 @@ export default function ProgressiveQuizStreamView({
                     : 'bg-gray-900 text-white hover:bg-black'
                 }`}
               >
-                {translate('quiz_next_question') || 'Question suivante'}
+                {translate('quiz_next_question')}
                 <ArrowRight className="w-3 h-3" />
               </button>
             )}
@@ -878,7 +879,7 @@ export default function ProgressiveQuizStreamView({
                   onClick={() => setIsQuizComplete(true)}
                   className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md bg-orange-500 text-white text-[13px] font-semibold hover:bg-orange-600"
                 >
-                  {translate('quiz_finish') || 'Terminer'}
+                  {translate('quiz_finish')}
                 </button>
               ) : (
                 <span className={`flex-1 text-center text-[11px] ${isDark ? 'text-neutral-500' : 'text-gray-500'}`}>
@@ -1007,7 +1008,7 @@ export default function ProgressiveQuizStreamView({
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
           >
             <Gamepad2 className="w-3.5 h-3.5" />
-            <span>{translate('challenge_title') || 'Défi'}</span>
+            <span>{translate('challenge_title')}</span>
           </button>
         )}
         {onRegenerate && (
@@ -1016,7 +1017,7 @@ export default function ProgressiveQuizStreamView({
             className={`p-2 rounded-lg transition-colors ${
               isDark ? 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/20' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-50'
             }`}
-            title={translate('quiz_regenerate') || 'Régénérer le quiz'}
+            title={translate('quiz_regenerate')}
           >
             <RotateCcw className="w-5 h-5" />
           </button>
@@ -1026,7 +1027,7 @@ export default function ProgressiveQuizStreamView({
           className={`p-2 rounded-lg transition-colors ${
             isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
           }`}
-          title={translate('quiz_fullscreen') || 'Plein écran (F)'}
+          title={translate('quiz_fullscreen')}
         >
           <Maximize2 className="w-5 h-5" />
         </button>
@@ -1082,10 +1083,10 @@ export default function ProgressiveQuizStreamView({
 
             <div className="space-y-2">
               <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {translate('quiz_signup_modal_title') || 'Crée ton compte gratuit'}
+                {translate('quiz_signup_modal_title')}
               </h2>
               <p className={isDark ? 'text-neutral-300' : 'text-gray-600'}>
-                {translate('quiz_signup_modal_subtitle') || 'Sauvegarde ta progression et accède à toutes les fonctionnalités'}
+                {translate('quiz_signup_modal_subtitle')}
               </p>
             </div>
 
@@ -1093,7 +1094,7 @@ export default function ProgressiveQuizStreamView({
               isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-50 border-orange-100'
             }`}>
               <p className={`text-sm ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
-                {translate('quiz_signup_modal_benefit') || 'En créant un compte, tu pourras suivre tes progrès, gagner des badges et défier tes amis !'}
+                {translate('quiz_signup_modal_benefit')}
               </p>
             </div>
 
@@ -1103,7 +1104,7 @@ export default function ProgressiveQuizStreamView({
                 className="w-full px-6 py-4 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
               >
                 <Gift className="w-5 h-5" />
-                {translate('quiz_signup_modal_cta') || 'Créer mon compte'}
+                {translate('quiz_signup_modal_cta')}
               </button>
               <button
                 onClick={() => setShowSignupModal(false)}
@@ -1111,7 +1112,7 @@ export default function ProgressiveQuizStreamView({
                   isDark ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {translate('later') || 'Plus tard'}
+                {translate('later')}
               </button>
             </div>
           </div>

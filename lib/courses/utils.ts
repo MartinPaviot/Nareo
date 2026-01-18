@@ -18,13 +18,29 @@ export function getFreshnessConfig(daysSinceStudy: number | null) {
   };
 }
 
-export function formatDaysSince(days: number | null): string {
-  if (days === null) return 'Jamais révisé';
-  if (days === 0) return 'Aujourd\'hui';
-  if (days === 1) return 'Hier';
-  if (days < 7) return `Il y a ${days} jours`;
-  if (days < 30) return `Il y a ${Math.floor(days / 7)} semaine(s)`;
-  return `Il y a ${Math.floor(days / 30)} mois`;
+export function formatDaysSince(
+  days: number | null,
+  translate: (key: string, params?: Record<string, string | number>) => string
+): string {
+  if (days === null) return translate('dashboard_time_never_reviewed');
+  if (days === 0) return translate('dashboard_time_today');
+  if (days === 1) return translate('dashboard_time_yesterday');
+
+  const prefix = translate('dashboard_time_ago_prefix');
+  const suffix = translate('dashboard_time_ago_suffix');
+
+  if (days < 7) {
+    const unit = translate('dashboard_time_days_ago');
+    return `${prefix}${days} ${unit}${suffix}`.trim();
+  }
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    const unit = translate('dashboard_time_weeks_ago');
+    return `${prefix}${weeks} ${unit}${suffix}`.trim();
+  }
+  const months = Math.floor(days / 30);
+  const unit = translate('dashboard_time_months_ago');
+  return `${prefix}${months} ${unit}${suffix}`.trim();
 }
 
 export function getMasteryColor(percentage: number): string {

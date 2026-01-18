@@ -216,17 +216,33 @@ export function formatDuration(seconds: number): string {
 /**
  * Format date to relative time
  */
-export function formatRelativeTime(date: string | Date): string {
+export function formatRelativeTime(
+  date: string | Date,
+  translate: (key: string, params?: Record<string, string | number>) => string
+): string {
   const now = new Date();
   const target = new Date(date);
   const diffMs = now.getTime() - target.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "Aujourd'hui";
-  if (diffDays === 1) return 'Hier';
-  if (diffDays < 7) return `Il y a ${diffDays} jours`;
-  if (diffDays < 30) return `Il y a ${Math.floor(diffDays / 7)} semaines`;
-  return `Il y a ${Math.floor(diffDays / 30)} mois`;
+  if (diffDays === 0) return translate('dashboard_time_today');
+  if (diffDays === 1) return translate('dashboard_time_yesterday');
+
+  const prefix = translate('dashboard_time_ago_prefix');
+  const suffix = translate('dashboard_time_ago_suffix');
+
+  if (diffDays < 7) {
+    const unit = translate('dashboard_time_days_ago');
+    return `${prefix}${diffDays} ${unit}${suffix}`.trim();
+  }
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    const unit = translate('dashboard_time_weeks_ago');
+    return `${prefix}${weeks} ${unit}${suffix}`.trim();
+  }
+  const months = Math.floor(diffDays / 30);
+  const unit = translate('dashboard_time_months_ago');
+  return `${prefix}${months} ${unit}${suffix}`.trim();
 }
 
 /**

@@ -248,6 +248,9 @@ export const translations: Record<Language, Translations> = {
     upload_listening: 'Listening for updates...',
     upload_checking: 'Checking for updates...',
     upload_processing_failed: 'Processing Failed',
+    welcome_uploading: 'Uploading...',
+    global_drop_uploading: 'Uploading...',
+    global_drop_processing: 'Uploading file...',
 
     // Course loading progress steps
     course_loading_title: 'Preparing your course...',
@@ -2084,6 +2087,9 @@ export const translations: Record<Language, Translations> = {
     upload_listening: 'En attente de mises à jour...',
     upload_checking: 'Vérification des mises à jour...',
     upload_processing_failed: 'Échec du traitement',
+    welcome_uploading: 'Envoi en cours...',
+    global_drop_uploading: 'Envoi en cours...',
+    global_drop_processing: 'Envoi du fichier...',
 
     // Course loading progress steps
     course_loading_title: 'Préparation de votre cours...',
@@ -3922,6 +3928,9 @@ export const translations: Record<Language, Translations> = {
     upload_listening: 'Warten auf Updates...',
     upload_checking: 'Überprüfe auf Updates...',
     upload_processing_failed: 'Verarbeitung fehlgeschlagen',
+    welcome_uploading: 'Wird hochgeladen...',
+    global_drop_uploading: 'Wird hochgeladen...',
+    global_drop_processing: 'Datei wird hochgeladen...',
 
     // Course loading progress steps
     course_loading_title: 'Ihr Kurs wird vorbereitet...',

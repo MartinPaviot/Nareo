@@ -31,7 +31,7 @@ const websiteJsonLd = {
   '@type': 'WebSite',
   name: 'Nareo',
   url: 'https://www.usenareo.com',
-  description: 'Transformez vos cours en quiz, flashcards et fiches de révision avec l\'IA',
+  description: 'Transforme tes cours en quiz, flashcards et fiches de révision avec l\'IA',
   publisher: {
     '@type': 'Organization',
     name: 'Nareo',
@@ -47,7 +47,7 @@ const websiteJsonLd = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.usenareo.com'),
   title: {
-    default: 'Nareo | Transformez vos cours en quiz, flashcards et fiches de révision avec l\'IA',
+    default: 'Nareo | Transforme tes cours en quiz, flashcards et fiches de révision avec l\'IA',
     template: '%s | Nareo',
   },
   description: 'Nareo transforme vos PDF et documents en quiz personnalisés, flashcards et résumés grâce à l\'IA. Révisez 2x plus efficacement avec la méthode du testing effect. Essai gratuit.',
@@ -97,7 +97,7 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Nareo | Transformez vos cours en quiz, flashcards et fiches de révision avec l\'IA',
+    title: 'Nareo | Transforme tes cours en quiz, flashcards et fiches de révision avec l\'IA',
     description: 'Révisez 2x plus efficacement. Nareo convertit vos PDF en quiz personnalisés, flashcards et résumés grâce à l\'intelligence artificielle.',
     url: 'https://www.usenareo.com',
     siteName: 'Nareo',
@@ -114,7 +114,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Nareo | Transformez vos cours en quiz, flashcards et fiches de révision avec l\'IA',
+    title: 'Nareo | Transforme tes cours en quiz, flashcards et fiches de révision avec l\'IA',
     description: 'Révisez 2x plus efficacement. Convertissez vos PDF en quiz, flashcards et résumés personnalisés.',
     images: ['/images/og-image.png'],
   },

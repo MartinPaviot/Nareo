@@ -1846,7 +1846,7 @@ export const translations: Record<Language, Translations> = {
   },
   fr: {
     // Site metadata
-    site_title: 'Nareo | Transformez vos cours en quiz, flashcards et fiches de révision avec l\'IA',
+    site_title: 'Nareo | Transforme tes cours en quiz, flashcards et fiches de révision avec l\'IA',
     site_description: 'Nareo transforme vos PDF et documents en quiz personnalisés, flashcards et résumés grâce à l\'IA. Révisez 2x plus efficacement avec la méthode du testing effect.',
 
     // Common

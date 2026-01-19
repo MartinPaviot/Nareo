@@ -7,7 +7,7 @@ export interface Translations {
 export const translations: Record<Language, Translations> = {
   en: {
     // Site metadata
-    site_title: 'Nareo | Turn your courses into interactive quizzes with AI',
+    site_title: 'Nareo | Turn your courses into quizzes, flashcards and study sheets with AI',
     site_description: 'Nareo transforms your PDFs and documents into personalized quizzes, flashcards and summaries using AI. Study 2x more effectively with the testing effect method.',
 
     // Common
@@ -1846,7 +1846,7 @@ export const translations: Record<Language, Translations> = {
   },
   fr: {
     // Site metadata
-    site_title: 'Nareo | Transformez vos cours en quiz interactifs avec l\'IA',
+    site_title: 'Nareo | Transformez vos cours en quiz, flashcards et fiches de révision avec l\'IA',
     site_description: 'Nareo transforme vos PDF et documents en quiz personnalisés, flashcards et résumés grâce à l\'IA. Révisez 2x plus efficacement avec la méthode du testing effect.',
 
     // Common
@@ -3687,7 +3687,7 @@ export const translations: Record<Language, Translations> = {
   },
   de: {
     // Site metadata
-    site_title: 'Nareo | Verwandeln Sie Ihre Kurse in interaktive Quizze mit KI',
+    site_title: 'Nareo | Verwandeln Sie Ihre Kurse in Quizze, Lernkarten und Zusammenfassungen mit KI',
     site_description: 'Nareo verwandelt Ihre PDFs und Dokumente in personalisierte Quizze, Lernkarten und Zusammenfassungen mit KI. Lernen Sie 2x effektiver mit der Testing-Effect-Methode.',
 
     // Common

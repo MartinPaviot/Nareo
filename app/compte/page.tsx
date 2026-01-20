@@ -166,7 +166,7 @@ export default function ComptePage() {
         throw new Error('Failed to save');
       }
 
-      setLanguage(selectedLocale as 'en' | 'fr' | 'de');
+      setLanguage(selectedLocale as 'en' | 'fr' | 'de' | 'es');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {

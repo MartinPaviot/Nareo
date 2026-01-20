@@ -20,9 +20,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const languageInstruction = targetLanguage === 'FR'
-      ? 'Translate to French (français). Maintain the same tone, style, and formatting.'
-      : 'Translate to English. Maintain the same tone, style, and formatting.';
+    let languageInstruction = 'Translate to English. Maintain the same tone, style, and formatting.';
+    if (targetLanguage === 'FR' || targetLanguage === 'fr') {
+      languageInstruction = 'Translate to French (français). Maintain the same tone, style, and formatting.';
+    } else if (targetLanguage === 'DE' || targetLanguage === 'de') {
+      languageInstruction = 'Translate to German (Deutsch). Maintain the same tone, style, and formatting.';
+    } else if (targetLanguage === 'ES' || targetLanguage === 'es') {
+      languageInstruction = 'Translate to Spanish (español). Maintain the same tone, style, and formatting.';
+    }
 
     const contentTypeInstructions = {
       question: 'This is an educational question. Translate it accurately while preserving its pedagogical intent.',

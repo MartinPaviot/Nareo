@@ -13,12 +13,14 @@ const LANGUAGE_LABELS: Record<Language, string> = {
   en: 'English',
   fr: 'Français',
   de: 'Deutsch',
+  es: 'Español',
 };
 
 const LANGUAGE_FLAGS: Record<Language, string> = {
   en: '🇬🇧',
   fr: '🇫🇷',
   de: '🇩🇪',
+  es: '🇪🇸',
 };
 
 export default function LanguageToggle({ className }: LanguageToggleProps) {
@@ -59,7 +61,7 @@ export default function LanguageToggle({ className }: LanguageToggleProps) {
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
-          {(['en', 'fr', 'de'] as Language[]).map((lang) => (
+          {(['en', 'fr', 'de', 'es'] as Language[]).map((lang) => (
             <button
               key={lang}
               onClick={() => handleLanguageSelect(lang)}

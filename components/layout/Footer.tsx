@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import ContactModal from './ContactModal';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Pages with integrated footer (hide global footer completely)
 const INTEGRATED_FOOTER_PATTERNS = [
@@ -31,6 +32,7 @@ export default function Footer() {
   const [showContactModal, setShowContactModal] = useState(false);
   const pathname = usePathname();
   const { isDark } = useTheme();
+  const { translate } = useLanguage();
 
   // Pages with integrated footer - hide global footer completely
   const hasIntegratedFooter = INTEGRATED_FOOTER_PATTERNS.some(pattern => pattern.test(pathname));
@@ -93,7 +95,7 @@ export default function Footer() {
                 />
               </div>
               <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Prêt à améliorer tes révisions ?
+                {translate('footer_cta_ready', 'Prêt à améliorer tes révisions ?')}
               </p>
             </div>
             <div className="flex gap-3">
@@ -104,7 +106,7 @@ export default function Footer() {
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5681b'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff751f'}
               >
-                Créer un compte
+                {translate('footer_cta_create_account', 'Créer un compte')}
               </Link>
               <Link
                 href="/#upload"
@@ -114,7 +116,7 @@ export default function Footer() {
                     : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                Déposer un cours
+                {translate('footer_cta_drop_course', 'Déposer un cours')}
               </Link>
             </div>
           </div>
@@ -127,25 +129,25 @@ export default function Footer() {
               Blog
             </Link>
             <Link href="/cgu" className="hover:text-orange-500 transition-colors">
-              CGU
+              {translate('footer_link_cgu', 'CGU')}
             </Link>
             <Link href="/cgv" className="hover:text-orange-500 transition-colors">
-              CGV
+              {translate('footer_link_cgv', 'CGV')}
             </Link>
             <Link href="/mentions-legales" className="hover:text-orange-500 transition-colors">
-              Mentions légales
+              {translate('footer_link_mentions', 'Mentions légales')}
             </Link>
             <Link href="/confidentialite" className="hover:text-orange-500 transition-colors">
-              Confidentialité
+              {translate('footer_link_privacy', 'Confidentialité')}
             </Link>
             <Link href="/cookies" className="hover:text-orange-500 transition-colors">
-              Cookies
+              {translate('footer_link_cookies', 'Cookies')}
             </Link>
             <button
               onClick={() => setShowContactModal(true)}
               className="hover:text-orange-500 transition-colors"
             >
-              Contact
+              {translate('footer_link_contact', 'Contact')}
             </button>
             <a
               href="https://instagram.com/nareo.music"

@@ -29,7 +29,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     // Check if language is already stored in localStorage
     const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language | null;
 
-    if (storedLanguage && (storedLanguage === 'fr' || storedLanguage === 'en' || storedLanguage === 'de')) {
+    if (storedLanguage && (storedLanguage === 'fr' || storedLanguage === 'en' || storedLanguage === 'de' || storedLanguage === 'es')) {
       // Use stored language preference
       setCurrentLanguage(storedLanguage);
     } else {
@@ -43,6 +43,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         detectedLanguage = 'fr';
       } else if (langLower.startsWith('de')) {
         detectedLanguage = 'de';
+      } else if (langLower.startsWith('es')) {
+        detectedLanguage = 'es';
       }
 
       setCurrentLanguage(detectedLanguage);
@@ -62,7 +64,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const fallback = typeof fallbackOrParams === 'string' ? fallbackOrParams : undefined;
     const actualParams = typeof fallbackOrParams === 'object' ? fallbackOrParams : params;
 
-    let translation = translations[currentLanguage]?.[key] || translations['en']?.[key];
+    // Use nullish coalescing to properly handle empty strings (which are valid translations)
+    let translation = translations[currentLanguage]?.[key] ?? translations['en']?.[key];
 
     // If no translation found, use fallback or empty string (never show raw keys)
     if (!translation) {

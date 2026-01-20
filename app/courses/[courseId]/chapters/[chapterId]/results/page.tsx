@@ -35,6 +35,7 @@ interface BadgeEarned {
     name_fr: string;
     name_en: string;
     name_de: string;
+    name_es?: string;
     icon: string | null;
     rarity: string;
   };
@@ -455,6 +456,7 @@ export default function QuizResultsPage() {
   const getBadgeName = (badge: BadgeEarned['badge']) => {
     if (currentLanguage === 'fr') return badge.name_fr;
     if (currentLanguage === 'de') return badge.name_de;
+    if (currentLanguage === 'es') return badge.name_es || badge.name_en;
     return badge.name_en;
   };
 

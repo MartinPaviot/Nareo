@@ -22,6 +22,7 @@ const LANGUAGE_OPTIONS: { code: Language; label: string; flag: string }[] = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
   { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
 ];
 
 export default function TopBarActions({ className, hideMyCoursesButton = false, showDarkModeToggle = false, hideLanguageToggle = false }: TopBarActionsProps) {

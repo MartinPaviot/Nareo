@@ -26,6 +26,7 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
     switch (currentLanguage) {
       case 'fr':
       case 'de':
+      case 'es':
         return '9,99 €';
       default:
         return '$9.99';
@@ -36,6 +37,7 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
     switch (currentLanguage) {
       case 'fr':
       case 'de':
+      case 'es':
         return '6,99 €';
       default:
         return '$6.99';
@@ -46,6 +48,7 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
     switch (currentLanguage) {
       case 'fr':
       case 'de':
+      case 'es':
         return '83,88 €';
       default:
         return '$83.88';
@@ -144,18 +147,18 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
             </div>
 
             {/* Spacer to align with Premium billing toggle */}
-            <div className="hidden md:block h-[44px] mb-4" />
+            <div className="hidden md:block h-[52px] mb-4" />
 
             <div className="mb-6">
               <span className={cn('text-4xl font-bold', isDark ? 'text-gray-100' : 'text-gray-900')}>0€</span>
               <span className={cn('ml-1', isDark ? 'text-gray-400' : 'text-gray-500')}>{translate('paywall_price_per_month')}</span>
-              {/* Spacer to align with Premium "billed annually" text */}
-              <p className="text-sm mt-1 invisible">placeholder</p>
+              {/* Spacer to align with Premium price subtitle */}
+              <div className="h-[20px] mt-1" />
             </div>
 
             <ul className="space-y-3 mb-6">
               {freeFeatures.map((feature, index) => (
-                <li key={index} className="flex items-start gap-3">
+                <li key={index} className="flex items-start gap-3 min-h-[40px]">
                   <CheckCircle2 className={cn('w-5 h-5 flex-shrink-0 mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')} />
                   <span className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>{feature}</span>
                 </li>
@@ -249,7 +252,7 @@ export default function PlanSelector({ onSelectFree, returnTo = '/' }: PlanSelec
 
             <ul className="space-y-3 mb-6">
               {premiumFeatures.map((feature, index) => (
-                <li key={index} className="flex items-start gap-3">
+                <li key={index} className="flex items-start gap-3 min-h-[40px]">
                   <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                   <span className={cn('text-sm', isDark ? 'text-gray-300' : 'text-gray-700')}>{feature}</span>
                 </li>

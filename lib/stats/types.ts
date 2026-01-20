@@ -98,9 +98,11 @@ export interface Badge {
   name_fr: string;
   name_en: string;
   name_de: string;
+  name_es: string;
   description_fr: string | null;
   description_en: string | null;
   description_de: string | null;
+  description_es: string | null;
   icon: string | null;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   created_at: string;

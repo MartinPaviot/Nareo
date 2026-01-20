@@ -1,10 +1,13 @@
-export type Language = 'fr' | 'en' | 'de';
+import { esTranslations } from './translations-es';
+
+export type Language = 'fr' | 'en' | 'de' | 'es';
 
 export interface Translations {
   [key: string]: string;
 }
 
 export const translations: Record<Language, Translations> = {
+  es: esTranslations,
   en: {
     // Site metadata
     site_title: 'Nareo | Turn your courses into quizzes, flashcards and study sheets with AI',
@@ -1353,6 +1356,15 @@ export const translations: Record<Language, Translations> = {
     footer_account_settings: 'Account Settings',
     footer_my_account: 'My Account',
     footer_follow_us: 'Follow Us',
+    footer_cta_ready: 'Ready to improve your revision?',
+    footer_cta_create_account: 'Create an account',
+    footer_cta_drop_course: 'Upload a course',
+    footer_link_cgu: 'Terms of Service',
+    footer_link_cgv: 'Terms of Sale',
+    footer_link_mentions: 'Legal Notice',
+    footer_link_privacy: 'Privacy',
+    footer_link_cookies: 'Cookies',
+    footer_link_contact: 'Contact',
 
     // CGU - Terms of Service
     cgu_title: 'Terms of Service',
@@ -3195,6 +3207,15 @@ export const translations: Record<Language, Translations> = {
     footer_account_settings: 'Paramètres du compte',
     footer_my_account: 'Mon compte',
     footer_follow_us: 'Suivez-nous',
+    footer_cta_ready: 'Prêt à améliorer tes révisions ?',
+    footer_cta_create_account: 'Créer un compte',
+    footer_cta_drop_course: 'Déposer un cours',
+    footer_link_cgu: 'CGU',
+    footer_link_cgv: 'CGV',
+    footer_link_mentions: 'Mentions légales',
+    footer_link_privacy: 'Confidentialité',
+    footer_link_cookies: 'Cookies',
+    footer_link_contact: 'Contact',
 
     // CGU - Conditions Générales d'Utilisation
     cgu_title: "Conditions Générales d'Utilisation",
@@ -5034,6 +5055,15 @@ export const translations: Record<Language, Translations> = {
     footer_account_settings: 'Kontoeinstellungen',
     footer_my_account: 'Mein Konto',
     footer_follow_us: 'Folge uns',
+    footer_cta_ready: 'Bereit, deine Wiederholung zu verbessern?',
+    footer_cta_create_account: 'Konto erstellen',
+    footer_cta_drop_course: 'Kurs hochladen',
+    footer_link_cgu: 'AGB',
+    footer_link_cgv: 'Verkaufsbedingungen',
+    footer_link_mentions: 'Impressum',
+    footer_link_privacy: 'Datenschutz',
+    footer_link_cookies: 'Cookies',
+    footer_link_contact: 'Kontakt',
 
     // CGU - Allgemeine Geschäftsbedingungen
     cgu_title: 'Allgemeine Geschäftsbedingungen',

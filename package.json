@@ -1,7 +1,7 @@
 {
-  "name": "levelup",
+  "name": "nareo",
   "version": "1.0.0",
-  "description": "AI-native edtech app with interactive learning flows",
+  "description": "AI-native edtech app that turns documents into interactive courses, quizzes and revision sheets",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

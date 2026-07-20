@@ -10,6 +10,10 @@
 /.next/
 /out/
 
+# build tooling
+/.turbo
+.turbo
+
 # production
 /build
 
@@ -36,6 +40,13 @@ next-env.d.ts
 # uploads
 /uploads
 
+# generated output from scripts/dev harnesses
+/test-output
+
+# scratch / agent tooling leftovers
 .claude/
 nul
+tmpclaude-*
+temp_*.txt
+*.bak
 

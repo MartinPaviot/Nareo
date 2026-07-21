@@ -6,10 +6,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-12-15.clover',
 });
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(request: NextRequest) {
   try {
+    // Fail closed: without a configured secret we cannot verify signatures, so
+    // reject every event rather than fall back to an empty (publicly guessable)
+    // key that would let anyone forge webhook events.
+    if (!webhookSecret) {
+      console.error('STRIPE_WEBHOOK_SECRET is not configured — rejecting webhook');
+      return NextResponse.json(
+        { error: 'Webhook not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
 

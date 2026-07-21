@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server';
-
-// Admin configuration - only this email can access admin panel
-const ALLOWED_ADMIN_EMAILS = [
-  'contact@usenareo.com',
-];
+import { isAdminEmail } from '@/lib/admin-auth';
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     // Verify email is in allowed list
-    if (!email || !ALLOWED_ADMIN_EMAILS.includes(email.toLowerCase())) {
+    if (!isAdminEmail(email)) {
       console.warn(`Unauthorized admin access attempt from: ${email}`);
       return NextResponse.json(
         { error: 'Access denied' },

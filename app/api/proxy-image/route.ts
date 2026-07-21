@@ -6,6 +6,33 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+// Host of the project's own Supabase instance, derived from the public URL.
+const SUPABASE_HOST = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').hostname;
+  } catch {
+    return '';
+  }
+})();
+
+/**
+ * Only allow https URLs whose *hostname* (parsed, not a substring of the raw
+ * string) is exactly this project's Supabase host. This closes the SSRF where a
+ * raw substring check let `https://attacker.com/?x=supabase.co` through, and it
+ * deliberately does NOT allow arbitrary `*.supabase.co` tenants — anyone can
+ * create a free Supabase project and use it as an SSRF redirect origin.
+ */
+function isAllowedImageUrl(raw: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  return !!SUPABASE_HOST && parsed.hostname.toLowerCase() === SUPABASE_HOST;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const url = request.nextUrl.searchParams.get('url');
@@ -17,21 +44,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Vérifier que l'URL est bien du domaine Supabase
-    if (!url.includes('supabase.co')) {
+    // Only proxy Supabase-hosted https URLs — validated on the parsed hostname.
+    if (!isAllowedImageUrl(url)) {
       return NextResponse.json(
-        { error: 'Only Supabase URLs are allowed' },
+        { error: 'Only Supabase image URLs are allowed' },
         { status: 403 }
       );
     }
 
-    // Télécharger l'image depuis Supabase (côté serveur, pas de CORS)
-    const response = await fetch(url);
+    // Télécharger l'image depuis Supabase (côté serveur, pas de CORS).
+    // redirect: 'manual' so a 3xx cannot bounce the request to an internal
+    // address — only the validated host is ever actually fetched. Supabase
+    // storage URLs return the bytes directly (200), so this is transparent.
+    const response = await fetch(url, { redirect: 'manual' });
 
     if (!response.ok) {
       return NextResponse.json(
         { error: `Failed to fetch image: ${response.status}` },
-        { status: response.status }
+        { status: response.status || 502 }
       );
     }
 

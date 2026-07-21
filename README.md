@@ -244,7 +244,7 @@ Without it, new chapters and questions never stream in and the UI silently degra
 | `STRIPE_SECRET_KEY` | server | required by the Stripe routes | Asserted non-null at module scope in all four payment/subscription routes |
 | `STRIPE_PRICE_MONTHLY` | server | conditional | Billing. Missing ⇒ HTTP 400 at checkout when the monthly plan is requested |
 | `STRIPE_PRICE_ANNUAL` | server | required for billing | Read with a non-null assertion and no fallback |
-| `STRIPE_WEBHOOK_SECRET` | server | required | Defaults to an empty string — verification then rejects every event, and a misconfigured deploy is indistinguishable from a forged request |
+| `STRIPE_WEBHOOK_SECRET` | server | required | Fail-closed: if unset, the webhook route rejects every event with a 500 rather than verifying against an empty (guessable) key |
 | `NEXT_PUBLIC_APP_URL` | public | conditional | Billing. No fallback in Stripe routes — unset yields `undefined/dashboard?...` |
 | `RESEND_API_KEY` | server | conditional | Contact form only; account verification, magic links and password resets are sent by Supabase Auth |
 | `ADMIN_SECRET_CODE` | server | conditional | Admin panel; returns 500 at `/api/admin/verify` if unset |

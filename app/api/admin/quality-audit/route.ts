@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { auditCourse, type CourseAudit } from '@/lib/llm/quality-audit';
+import { requireAdmin, isAdminErrorResponse } from '@/lib/admin-auth';
 
 // Create admin Supabase client
 const supabaseAdmin = createClient(
@@ -13,33 +14,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('courseId');
 
-    // Get auth token from header
-    // We just verify the user is logged in - admin session check is done client-side
-    // via sessionStorage (email + code verification on /admin/login)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.error('Quality audit: Missing or invalid authorization header');
-      return NextResponse.json({ error: 'Unauthorized - No token provided' }, { status: 401 });
-    }
+    // Enforce admin server-side: the caller must be an authenticated user whose
+    // email is in the admin allowlist. The sessionStorage flag set at
+    // /admin/login is UX only and is not trusted here.
+    const admin = await requireAdmin(request);
+    if (isAdminErrorResponse(admin)) return admin;
 
-    const token = authHeader.substring(7);
-
-    // Verify the user is logged in (any authenticated user who passed admin login)
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError) {
-      console.error('Quality audit: Auth error:', authError.message);
-      return NextResponse.json({ error: `Unauthorized - ${authError.message}` }, { status: 401 });
-    }
-
-    if (!user) {
-      console.error('Quality audit: No user found for token');
-      return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
-    }
-
-    // Note: Admin email + code verification is done client-side on /admin/login
-    // The sessionStorage check ensures only users who passed that verification can access these pages
-    console.log('Quality audit: Request from user:', user.email);
+    console.log('Quality audit: Request from admin:', admin.email);
 
     // If courseId provided, return detailed audit for that course
     if (courseId) {
@@ -274,29 +255,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'courseId is required' }, { status: 400 });
     }
 
-    // Get auth token from header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.error('Delete course: Missing or invalid authorization header');
-      return NextResponse.json({ error: 'Unauthorized - No token provided' }, { status: 401 });
-    }
+    // Enforce admin server-side (destructive, cross-user operation).
+    const admin = await requireAdmin(request);
+    if (isAdminErrorResponse(admin)) return admin;
 
-    const token = authHeader.substring(7);
-
-    // Verify the user is logged in
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError) {
-      console.error('Delete course: Auth error:', authError.message);
-      return NextResponse.json({ error: `Unauthorized - ${authError.message}` }, { status: 401 });
-    }
-
-    if (!user) {
-      console.error('Delete course: No user found for token');
-      return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
-    }
-
-    console.log('Delete course: Request from user:', user.email, 'for course:', courseId);
+    console.log('Delete course: Request from admin:', admin.email, 'for course:', courseId);
 
     // Get the course to confirm it exists
     const { data: course, error: courseError } = await supabaseAdmin

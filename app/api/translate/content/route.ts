@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { openai } from '@/lib/openai-vision';
+import { authenticateRequest } from '@/lib/api-auth';
+
+// Cap translation input: this route serves short UI/content strings (questions,
+// options, chat messages, titles), so a generous ceiling still blocks using it
+// as a bulk LLM proxy.
+const MAX_CONTENT_LENGTH = 5000;
+const ALLOWED_TARGET_LANGUAGES = new Set(['EN', 'FR', 'DE', 'ES']);
 
 export async function POST(request: NextRequest) {
   // ✅ Déclarer les variables en dehors du try-catch pour accès dans le catch
@@ -8,6 +15,16 @@ export async function POST(request: NextRequest) {
   let contentType: string | undefined;
 
   try {
+    // Require an authenticated user: without this the route is an open,
+    // unmetered gpt-4o proxy anyone can call.
+    const auth = await authenticateRequest(request);
+    if (!auth) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     content = body.content;
     targetLanguage = body.targetLanguage;
@@ -16,6 +33,20 @@ export async function POST(request: NextRequest) {
     if (!content || !targetLanguage) {
       return NextResponse.json(
         { error: 'Missing required fields: content and targetLanguage are required' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof content !== 'string' || content.length > MAX_CONTENT_LENGTH) {
+      return NextResponse.json(
+        { error: `content must be a string of at most ${MAX_CONTENT_LENGTH} characters` },
+        { status: 400 }
+      );
+    }
+
+    if (!ALLOWED_TARGET_LANGUAGES.has(String(targetLanguage).toUpperCase())) {
+      return NextResponse.json(
+        { error: 'Unsupported targetLanguage' },
         { status: 400 }
       );
     }
